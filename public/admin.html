@@ -211,6 +211,11 @@ let token = localStorage.getItem('token');
 let currentPage = 1;
 let reclamoSeleccionado = null;
 
+function isSuperAdmin() {
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  return user.rol === 'SUPER_ADMIN';
+}
+
 if (token) initAdmin();
 
 async function login() {
@@ -283,6 +288,7 @@ async function cargarReclamos() {
         <td>
           <button class="btn btn-primary" onclick="verDetalle(${r.id})">Ver</button>
           <a class="btn btn-success" href="/api/reclamos/${r.id}/pdf" target="_blank" style="text-decoration:none">PDF</a>
+          ${isSuperAdmin() ? `<button class="btn btn-danger" onclick="eliminarReclamo(${r.id})">🗑</button>` : ''}
         </td>
       </tr>
     `).join('');
@@ -300,6 +306,7 @@ async function cargarReclamos() {
         <div class="mc-actions">
           <button class="btn btn-primary" onclick="verDetalle(${r.id})">Ver / Responder</button>
           <a class="btn btn-success" href="/api/reclamos/${r.id}/pdf" target="_blank" style="text-decoration:none">📄 PDF</a>
+          ${isSuperAdmin() ? `<button class="btn btn-danger" onclick="eliminarReclamo(${r.id})">🗑 Eliminar</button>` : ''}
         </div>
       </div>
     `).join('');
@@ -341,8 +348,10 @@ async function verDetalle(id) {
     ${r.respuesta ? `<div class="respuesta-box"><strong>Respuesta enviada (${new Date(r.fecha_respuesta).toLocaleString('es-PE')}):</strong><p>${r.respuesta}</p></div>` : ''}
   `;
 
-  document.getElementById('respuestaSection').style.display = r.respuesta ? 'none' : 'block';
-  document.getElementById('txtRespuesta').value = '';
+  // Mostrar sección de respuesta: siempre si no hay respuesta, o si es SUPER_ADMIN puede editar
+  const mostrarRespuesta = !r.respuesta || isSuperAdmin();
+  document.getElementById('respuestaSection').style.display = mostrarRespuesta ? 'block' : 'none';
+  document.getElementById('txtRespuesta').value = r.respuesta || '';
   document.getElementById('modalDetalle').classList.add('show');
 }
 
@@ -370,6 +379,16 @@ async function enviarRespuesta() {
     }
   } catch { alert('Error de conexión'); }
   finally { btn.disabled = false; btn.textContent = 'Enviar Respuesta y Notificar'; }
+}
+
+async function eliminarReclamo(id) {
+  if (!confirm('¿Está seguro de eliminar este reclamo? Esta acción no se puede deshacer.')) return;
+  try {
+    const res = await fetch(`${API}/reclamos/${id}`, { method: 'DELETE', headers: headers() });
+    const data = await res.json();
+    if (res.ok) { cargarReclamos(); }
+    else { alert(data.error); }
+  } catch { alert('Error de conexión'); }
 }
 
 // USUARIOS
