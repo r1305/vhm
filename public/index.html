@@ -17,11 +17,11 @@
       justify-content: center;
       align-items: center;
       text-align: center;
-      padding: 40px 20px;
+      padding: 80px 20px 40px;
       color: #fff;
     }
     .hero h1 { font-size: 3rem; margin-bottom: 10px; letter-spacing: 2px; }
-    .hero .tagline { font-size: 1.2rem; opacity: .9; max-width: 600px; margin-bottom: 30px; }
+    .hero .tagline { font-size: 1.2rem; opacity: .9; max-width: 600px; margin-bottom: 30px; line-height: 1.6; }
     .hero .cta { display: inline-block; padding: 14px 32px; background: #fff; color: #764ba2; border-radius: 30px; font-weight: 600; font-size: 1rem; transition: transform .2s; }
     .hero .cta:hover { transform: scale(1.05); }
 
@@ -29,41 +29,43 @@
       position: fixed;
       top: 0;
       width: 100%;
-      padding: 16px 40px;
+      padding: 14px 20px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       z-index: 100;
-      background: rgba(0,0,0,.1);
+      background: rgba(0,0,0,.15);
       backdrop-filter: blur(8px);
     }
     nav .logo { font-weight: 700; font-size: 1.3rem; color: #fff; }
-    nav .links a { color: #fff; margin-left: 24px; font-size: .9rem; opacity: .9; }
+    nav .links { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+    nav .links a { color: #fff; font-size: .85rem; opacity: .9; }
     nav .links a:hover { opacity: 1; border-bottom: 1px solid #fff; }
+    nav .menu-toggle { display: none; background: none; border: none; color: #fff; font-size: 1.5rem; cursor: pointer; }
 
-    section { padding: 80px 20px; max-width: 1000px; margin: 0 auto; }
+    section { padding: 60px 20px; max-width: 1000px; margin: 0 auto; }
     section h2 { font-size: 2rem; text-align: center; margin-bottom: 40px; color: #4a3f8a; }
 
-    .services { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; }
+    .services { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }
     .service-card {
       background: #fff;
       border-radius: 12px;
-      padding: 30px;
+      padding: 28px 20px;
       box-shadow: 0 4px 20px rgba(0,0,0,.08);
       text-align: center;
       transition: transform .2s;
     }
     .service-card:hover { transform: translateY(-4px); }
     .service-card .icon { font-size: 2.5rem; margin-bottom: 12px; }
-    .service-card h3 { color: #4a3f8a; margin-bottom: 8px; }
+    .service-card h3 { color: #4a3f8a; margin-bottom: 8px; font-size: 1rem; }
     .service-card p { font-size: .9rem; color: #666; line-height: 1.5; }
 
-    .about { background: #f8f6ff; padding: 80px 20px; }
+    .about { background: #f8f6ff; padding: 60px 20px; }
     .about-content { max-width: 800px; margin: 0 auto; text-align: center; }
     .about-content p { font-size: 1rem; line-height: 1.8; color: #555; margin-bottom: 16px; }
 
     .testimonials { background: #fff; }
-    .testimonial-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+    .testimonial-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }
     .testimonial {
       background: linear-gradient(135deg, #f8f6ff, #ede7f6);
       border-radius: 10px;
@@ -83,12 +85,37 @@
       font-size: .85rem;
     }
     footer a { color: #b39ddb; }
+
+    /* TABLET */
+    @media (max-width: 768px) {
+      .hero h1 { font-size: 2.2rem; }
+      .hero .tagline { font-size: 1rem; }
+      section h2 { font-size: 1.6rem; }
+      nav { padding: 12px 16px; }
+      nav .links { display: none; flex-direction: column; position: absolute; top: 100%; left: 0; right: 0; background: rgba(45,34,82,.95); padding: 16px; gap: 12px; }
+      nav .links.open { display: flex; }
+      nav .links a { font-size: 1rem; }
+      nav .menu-toggle { display: block; }
+    }
+
+    /* MOBILE */
+    @media (max-width: 480px) {
+      .hero { padding: 100px 16px 40px; }
+      .hero h1 { font-size: 1.8rem; }
+      .hero .tagline { font-size: .9rem; }
+      .hero .cta { padding: 12px 24px; font-size: .9rem; }
+      section { padding: 40px 16px; }
+      section h2 { font-size: 1.4rem; margin-bottom: 24px; }
+      .services { grid-template-columns: 1fr; }
+      .testimonial-grid { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
 
 <nav>
   <div class="logo">VHM</div>
+  <button class="menu-toggle" onclick="document.querySelector('.links').classList.toggle('open')">☰</button>
   <div class="links">
     <a href="#servicios">Servicios</a>
     <a href="#nosotros">Nosotros</a>
