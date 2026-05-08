@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Libro de Reclamaciones - VHM</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #f5f5f5; padding: 20px; }
+    .container { max-width: 800px; margin: 0 auto; background: #fff; border-radius: 8px; padding: 30px; box-shadow: 0 2px 10px rgba(0,0,0,.1); }
+    h1 { text-align: center; color: #c62828; margin-bottom: 5px; font-size: 1.5rem; }
+    .subtitle { text-align: center; color: #666; margin-bottom: 25px; font-size: .9rem; }
+    fieldset { border: 1px solid #ddd; border-radius: 6px; padding: 20px; margin-bottom: 20px; }
+    legend { font-weight: 600; color: #333; padding: 0 8px; }
+    .form-group { margin-bottom: 14px; }
+    label { display: block; font-size: .85rem; font-weight: 500; margin-bottom: 4px; color: #333; }
+    label .req { color: #c62828; }
+    input, select, textarea { width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: .9rem; }
+    textarea { resize: vertical; min-height: 80px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    button[type="submit"] { width: 100%; padding: 12px; background: #c62828; color: #fff; border: none; border-radius: 4px; font-size: 1rem; font-weight: 600; cursor: pointer; }
+    button[type="submit"]:hover { background: #a31515; }
+    .msg { padding: 12px; border-radius: 4px; margin-top: 15px; display: none; }
+    .msg.ok { display: block; background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
+    .msg.err { display: block; background: #ffebee; color: #c62828; border: 1px solid #ef9a9a; }
+    .apoderado-section { display: none; }
+    .nav-links { text-align: center; margin-bottom: 20px; }
+    .nav-links a { color: #764ba2; text-decoration: none; font-size: .9rem; margin: 0 10px; }
+    .nav-links a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>📋 LIBRO DE RECLAMACIONES</h1>
+  <p class="subtitle">Conforme al D.S. N° 011-2011-PCM y sus modificatorias</p>
+  <div class="nav-links">
+    <a href="/">← Volver a VHM</a>
+    <a href="/consulta">🔍 Consultar estado de mi reclamo</a>
+  </div>
+
+  <form id="formReclamo">
+    <fieldset>
+      <legend>1. Identificación del Consumidor</legend>
+      <div class="row">
+        <div class="form-group">
+          <label>Tipo de Documento <span class="req">*</span></label>
+          <select name="tipo_documento" required>
+            <option value="">Seleccione</option>
+            <option value="DNI">DNI</option>
+            <option value="CE">Carné de Extranjería</option>
+            <option value="PASAPORTE">Pasaporte</option>
+            <option value="RUC">RUC</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Número de Documento <span class="req">*</span></label>
+          <input type="text" name="numero_documento" required maxlength="20">
+        </div>
+      </div>
+      <div class="row">
+        <div class="form-group">
+          <label>Nombres <span class="req">*</span></label>
+          <input type="text" name="nombres" required maxlength="100">
+        </div>
+        <div class="form-group">
+          <label>Apellidos <span class="req">*</span></label>
+          <input type="text" name="apellidos" required maxlength="100">
+        </div>
+      </div>
+      <div class="row">
+        <div class="form-group">
+          <label>Correo Electrónico <span class="req">*</span></label>
+          <input type="email" name="email" required maxlength="150">
+        </div>
+        <div class="form-group">
+          <label>Teléfono / Celular <span class="req">*</span></label>
+          <input type="tel" name="telefono" required maxlength="20">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Dirección <span class="req">*</span></label>
+        <input type="text" name="direccion" required maxlength="255">
+      </div>
+      <div class="row-3">
+        <div class="form-group">
+          <label>Departamento <span class="req">*</span></label>
+          <input type="text" name="departamento" required maxlength="50">
+        </div>
+        <div class="form-group">
+          <label>Provincia <span class="req">*</span></label>
+          <input type="text" name="provincia" required maxlength="50">
+        </div>
+        <div class="form-group">
+          <label>Distrito <span class="req">*</span></label>
+          <input type="text" name="distrito" required maxlength="50">
+        </div>
+      </div>
+      <div class="form-group">
+        <label><input type="checkbox" id="chkMenor" name="menor_edad"> El reclamo es a nombre de un menor de edad</label>
+      </div>
+      <div class="form-group apoderado-section">
+        <label>Nombre del Padre/Madre/Apoderado</label>
+        <input type="text" name="nombre_apoderado" maxlength="200">
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>2. Identificación del Bien Contratado</legend>
+      <div class="row">
+        <div class="form-group">
+          <label>Tipo de Bien <span class="req">*</span></label>
+          <select name="tipo_bien" required>
+            <option value="">Seleccione</option>
+            <option value="PRODUCTO">Producto</option>
+            <option value="SERVICIO">Servicio</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Monto Reclamado (S/) <span class="req">*</span></label>
+          <input type="number" name="monto_reclamado" step="0.01" min="0" required>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Descripción del Producto/Servicio <span class="req">*</span></label>
+        <textarea name="descripcion_bien" required maxlength="500"></textarea>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>3. Detalle de la Reclamación</legend>
+      <div class="row">
+        <div class="form-group">
+          <label>Tipo <span class="req">*</span></label>
+          <select name="tipo_reclamo" required>
+            <option value="">Seleccione</option>
+            <option value="RECLAMO">Reclamo (disconformidad con el producto/servicio)</option>
+            <option value="QUEJA">Queja (malestar respecto a la atención)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Fecha del Incidente <span class="req">*</span></label>
+          <input type="date" name="fecha_incidente" required>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Detalle del Reclamo/Queja <span class="req">*</span></label>
+        <textarea name="detalle_reclamo" required></textarea>
+      </div>
+      <div class="form-group">
+        <label>Pedido del Consumidor <span class="req">*</span></label>
+        <textarea name="pedido_consumidor" required></textarea>
+      </div>
+    </fieldset>
+
+    <button type="submit">Enviar Reclamo</button>
+    <div id="msg" class="msg"></div>
+  </form>
+</div>
+
+<script>
+  const form = document.getElementById('formReclamo');
+  const msg = document.getElementById('msg');
+  const chkMenor = document.getElementById('chkMenor');
+
+  chkMenor.addEventListener('change', () => {
+    document.querySelector('.apoderado-section').style.display = chkMenor.checked ? 'block' : 'none';
+  });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    msg.className = 'msg';
+    msg.style.display = 'none';
+
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
+    data.menor_edad = chkMenor.checked;
+
+    try {
+      const res = await fetch('/api/reclamos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const json = await res.json();
+
+      if (res.ok) {
+        msg.className = 'msg ok';
+        msg.textContent = `✅ Reclamo registrado exitosamente. N° de reclamo: ${json.numero_reclamo}`;
+        msg.style.display = 'block';
+        form.reset();
+      } else {
+        msg.className = 'msg err';
+        msg.textContent = `❌ ${json.error}${json.campos ? ': ' + json.campos.join(', ') : ''}`;
+        msg.style.display = 'block';
+      }
+    } catch (err) {
+      msg.className = 'msg err';
+      msg.textContent = '❌ Error de conexión con el servidor';
+      msg.style.display = 'block';
+    }
+  });
+</script>
+</body>
+</html>
