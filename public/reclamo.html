@@ -15,19 +15,28 @@
     .form-group { margin-bottom: 14px; }
     label { display: block; font-size: .85rem; font-weight: 500; margin-bottom: 4px; color: #333; }
     label .req { color: #c62828; }
-    input, select, textarea { width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: .9rem; }
+    input, select, textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem; }
     textarea { resize: vertical; min-height: 80px; }
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
-    button[type="submit"] { width: 100%; padding: 12px; background: #c62828; color: #fff; border: none; border-radius: 4px; font-size: 1rem; font-weight: 600; cursor: pointer; }
+    button[type="submit"] { width: 100%; padding: 14px; background: #c62828; color: #fff; border: none; border-radius: 4px; font-size: 1rem; font-weight: 600; cursor: pointer; }
     button[type="submit"]:hover { background: #a31515; }
     .msg { padding: 12px; border-radius: 4px; margin-top: 15px; display: none; }
     .msg.ok { display: block; background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
     .msg.err { display: block; background: #ffebee; color: #c62828; border: 1px solid #ef9a9a; }
     .apoderado-section { display: none; }
-    .nav-links { text-align: center; margin-bottom: 20px; }
-    .nav-links a { color: #764ba2; text-decoration: none; font-size: .9rem; margin: 0 10px; }
+    .nav-links { text-align: center; margin-bottom: 20px; display: flex; justify-content: center; flex-wrap: wrap; gap: 8px 20px; }
+    .nav-links a { color: #764ba2; text-decoration: none; font-size: .9rem; }
     .nav-links a:hover { text-decoration: underline; }
+
+    @media (max-width: 600px) {
+      body { padding: 10px; }
+      .container { padding: 16px; border-radius: 6px; }
+      h1 { font-size: 1.2rem; }
+      fieldset { padding: 14px; }
+      .row, .row-3 { grid-template-columns: 1fr; }
+      input, select, textarea { font-size: .95rem; padding: 10px; }
+    }
   </style>
 </head>
 <body>

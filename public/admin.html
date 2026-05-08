@@ -7,52 +7,54 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: system-ui, sans-serif; background: #f0f2f5; }
-    .login-container { display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-    .login-box { background: #fff; padding: 40px; border-radius: 8px; box-shadow: 0 2px 20px rgba(0,0,0,.1); width: 360px; }
+    .login-container { display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+    .login-box { background: #fff; padding: 40px; border-radius: 8px; box-shadow: 0 2px 20px rgba(0,0,0,.1); width: 100%; max-width: 360px; }
     .login-box h2 { text-align: center; margin-bottom: 20px; color: #333; }
-    .login-box input { width: 100%; padding: 10px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 4px; font-size: .9rem; }
-    .login-box button { width: 100%; padding: 10px; background: #c62828; color: #fff; border: none; border-radius: 4px; font-size: 1rem; cursor: pointer; }
+    .login-box input { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem; }
+    .login-box button { width: 100%; padding: 12px; background: #c62828; color: #fff; border: none; border-radius: 4px; font-size: 1rem; cursor: pointer; }
     .login-box .error { color: #c62828; font-size: .85rem; margin-bottom: 10px; display: none; }
 
     .admin-container { display: none; }
-    .topbar { background: #c62828; color: #fff; padding: 12px 24px; display: flex; justify-content: space-between; align-items: center; }
-    .topbar h1 { font-size: 1.1rem; }
-    .topbar .user-info { display: flex; align-items: center; gap: 12px; }
-    .topbar button { background: rgba(255,255,255,.2); border: none; color: #fff; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
+    .topbar { background: #c62828; color: #fff; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+    .topbar h1 { font-size: 1rem; }
+    .topbar .user-info { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .topbar .user-info span { font-size: .85rem; }
+    .topbar button { background: rgba(255,255,255,.2); border: none; color: #fff; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: .85rem; }
 
-    .tabs { display: flex; background: #fff; border-bottom: 2px solid #eee; padding: 0 24px; }
-    .tabs button { padding: 12px 20px; border: none; background: none; cursor: pointer; font-size: .9rem; border-bottom: 2px solid transparent; margin-bottom: -2px; }
+    .tabs { display: flex; background: #fff; border-bottom: 2px solid #eee; padding: 0 16px; overflow-x: auto; }
+    .tabs button { padding: 12px 16px; border: none; background: none; cursor: pointer; font-size: .9rem; border-bottom: 2px solid transparent; margin-bottom: -2px; white-space: nowrap; }
     .tabs button.active { border-bottom-color: #c62828; color: #c62828; font-weight: 600; }
 
-    .content { padding: 24px; max-width: 1200px; margin: 0 auto; }
+    .content { padding: 16px; max-width: 1200px; margin: 0 auto; }
     .panel { display: none; }
     .panel.active { display: block; }
 
-    table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 6px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+    .table-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 6px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.08); min-width: 600px; }
     th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #eee; font-size: .85rem; }
-    th { background: #f8f8f8; font-weight: 600; }
-    .badge { padding: 3px 8px; border-radius: 12px; font-size: .75rem; font-weight: 600; }
+    th { background: #f8f8f8; font-weight: 600; white-space: nowrap; }
+    .badge { padding: 3px 8px; border-radius: 12px; font-size: .75rem; font-weight: 600; display: inline-block; }
     .badge-pendiente { background: #fff3e0; color: #e65100; }
     .badge-en_proceso { background: #e3f2fd; color: #1565c0; }
     .badge-resuelto { background: #e8f5e9; color: #2e7d32; }
     .badge-cerrado { background: #eceff1; color: #546e7a; }
 
-    .btn { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: .8rem; }
+    .btn { padding: 7px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: .8rem; display: inline-block; margin: 2px; }
     .btn-primary { background: #1565c0; color: #fff; }
     .btn-danger { background: #c62828; color: #fff; }
     .btn-success { background: #2e7d32; color: #fff; }
 
-    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 1000; justify-content: center; align-items: center; }
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 1000; justify-content: center; align-items: center; padding: 16px; }
     .modal-overlay.show { display: flex; }
-    .modal { background: #fff; border-radius: 8px; padding: 24px; width: 500px; max-width: 90vw; max-height: 80vh; overflow-y: auto; }
-    .modal h3 { margin-bottom: 16px; }
+    .modal { background: #fff; border-radius: 8px; padding: 24px; width: 100%; max-width: 500px; max-height: 85vh; overflow-y: auto; }
+    .modal h3 { margin-bottom: 16px; font-size: 1.1rem; }
     .modal label { display: block; font-size: .85rem; font-weight: 500; margin-bottom: 4px; margin-top: 10px; }
-    .modal input, .modal textarea, .modal select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: .9rem; }
+    .modal input, .modal textarea, .modal select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: .95rem; }
     .modal textarea { min-height: 100px; resize: vertical; }
-    .modal-actions { margin-top: 16px; display: flex; gap: 8px; justify-content: flex-end; }
+    .modal-actions { margin-top: 16px; display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
 
-    .pagination { display: flex; gap: 8px; margin-top: 16px; justify-content: center; align-items: center; }
-    .pagination button { padding: 6px 12px; border: 1px solid #ddd; background: #fff; border-radius: 4px; cursor: pointer; }
+    .pagination { display: flex; gap: 8px; margin-top: 16px; justify-content: center; align-items: center; flex-wrap: wrap; }
+    .pagination button { padding: 8px 14px; border: 1px solid #ddd; background: #fff; border-radius: 4px; cursor: pointer; }
     .pagination button:disabled { opacity: .5; cursor: default; }
     .pagination span { font-size: .85rem; }
 
@@ -60,6 +62,28 @@
     .detail-grid div { font-size: .85rem; }
     .detail-grid strong { display: block; color: #666; font-size: .75rem; }
     .respuesta-box { background: #e8f5e9; padding: 12px; border-radius: 6px; margin-top: 10px; }
+
+    /* MOBILE CARDS for reclamos */
+    .mobile-cards { display: none; }
+    .mobile-card { background: #fff; border-radius: 8px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+    .mobile-card .mc-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .mobile-card .mc-header strong { font-size: .85rem; }
+    .mobile-card .mc-row { font-size: .8rem; color: #555; margin-bottom: 4px; }
+    .mobile-card .mc-actions { margin-top: 10px; display: flex; gap: 6px; flex-wrap: wrap; }
+
+    @media (max-width: 768px) {
+      .topbar h1 { font-size: .9rem; }
+      .content { padding: 12px; }
+      .detail-grid { grid-template-columns: 1fr; }
+      .modal { padding: 16px; }
+      .table-wrapper { display: none; }
+      .mobile-cards { display: block; }
+    }
+
+    @media (min-width: 769px) {
+      .mobile-cards { display: none !important; }
+      .table-wrapper { display: block !important; }
+    }
   </style>
 </head>
 <body>
@@ -78,10 +102,10 @@
 <!-- ADMIN PANEL -->
 <div class="admin-container" id="adminSection">
   <div class="topbar">
-    <h1>📋 Libro de Reclamaciones - Panel Admin</h1>
+    <h1>📋 Panel Admin</h1>
     <div class="user-info">
       <span id="currentUser"></span>
-      <button onclick="logout()">Cerrar Sesión</button>
+      <button onclick="logout()">Salir</button>
     </div>
   </div>
 
@@ -93,20 +117,23 @@
   <div class="content">
     <!-- PANEL RECLAMOS -->
     <div class="panel active" id="panelReclamos">
-      <table>
-        <thead>
-          <tr>
-            <th>N° Reclamo</th>
-            <th>Fecha</th>
-            <th>Cliente</th>
-            <th>Tipo</th>
-            <th>Estado</th>
-            <th>Respuesta</th>
-            <th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody id="reclamosBody"></tbody>
-      </table>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>N° Reclamo</th>
+              <th>Fecha</th>
+              <th>Cliente</th>
+              <th>Tipo</th>
+              <th>Estado</th>
+              <th>Respuesta</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="reclamosBody"></tbody>
+        </table>
+      </div>
+      <div class="mobile-cards" id="reclamosMobile"></div>
       <div class="pagination">
         <button onclick="cambiarPagina(-1)" id="btnPrev">← Anterior</button>
         <span id="paginaInfo"></span>
@@ -117,19 +144,22 @@
     <!-- PANEL USUARIOS -->
     <div class="panel" id="panelUsuarios">
       <button class="btn btn-primary" onclick="mostrarModalUsuario()" style="margin-bottom:12px">+ Nuevo Usuario</button>
-      <table>
-        <thead>
-          <tr>
-            <th>Username</th>
-            <th>Nombre</th>
-            <th>Email</th>
-            <th>Rol</th>
-            <th>Activo</th>
-            <th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody id="usuariosBody"></tbody>
-      </table>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Username</th>
+              <th>Nombre</th>
+              <th>Email</th>
+              <th>Rol</th>
+              <th>Activo</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="usuariosBody"></tbody>
+        </table>
+      </div>
+      <div class="mobile-cards" id="usuariosMobile"></div>
     </div>
   </div>
 </div>
@@ -181,7 +211,6 @@ let token = localStorage.getItem('token');
 let currentPage = 1;
 let reclamoSeleccionado = null;
 
-// Auth
 if (token) initAdmin();
 
 async function login() {
@@ -210,7 +239,7 @@ function initAdmin() {
   document.getElementById('loginSection').style.display = 'none';
   document.getElementById('adminSection').style.display = 'block';
   const user = JSON.parse(localStorage.getItem('user') || '{}');
-  document.getElementById('currentUser').textContent = `${user.nombre} (${user.rol})`;
+  document.getElementById('currentUser').textContent = `${user.nombre}`;
   cargarReclamos();
 }
 
@@ -226,7 +255,6 @@ function headers() {
   return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
 }
 
-// Tabs
 function switchTab(tab) {
   document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
@@ -242,22 +270,41 @@ async function cargarReclamos() {
     const res = await fetch(`${API}/reclamos?page=${currentPage}&limit=10`, { headers: headers() });
     if (res.status === 401) return logout();
     const data = await res.json();
-    const tbody = document.getElementById('reclamosBody');
-    tbody.innerHTML = data.data.map(r => `
+
+    // Desktop table
+    document.getElementById('reclamosBody').innerHTML = data.data.map(r => `
       <tr>
         <td><strong>${r.numero_reclamo}</strong></td>
-        <td>${new Date(r.fecha_registro).toLocaleDateString()}</td>
+        <td>${new Date(r.fecha_registro).toLocaleDateString('es-PE')}</td>
         <td>${r.nombres} ${r.apellidos}</td>
         <td>${r.tipo_reclamo}</td>
         <td><span class="badge badge-${r.estado.toLowerCase()}">${r.estado}</span></td>
-        <td>${r.respuesta ? '✅ Respondido' : '⏳ Pendiente'}</td>
+        <td>${r.respuesta ? '✅' : '⏳'}</td>
         <td>
-          <button class="btn btn-primary" onclick="verDetalle(${r.id})">Ver / Responder</button>
-          <a class="btn btn-success" href="/api/reclamos/${r.id}/pdf" target="_blank" style="text-decoration:none;display:inline-block;margin-top:4px">📄 PDF</a>
+          <button class="btn btn-primary" onclick="verDetalle(${r.id})">Ver</button>
+          <a class="btn btn-success" href="/api/reclamos/${r.id}/pdf" target="_blank" style="text-decoration:none">PDF</a>
         </td>
       </tr>
     `).join('');
-    document.getElementById('paginaInfo').textContent = `Página ${data.page} de ${data.totalPages}`;
+
+    // Mobile cards
+    document.getElementById('reclamosMobile').innerHTML = data.data.map(r => `
+      <div class="mobile-card">
+        <div class="mc-header">
+          <strong>${r.numero_reclamo}</strong>
+          <span class="badge badge-${r.estado.toLowerCase()}">${r.estado}</span>
+        </div>
+        <div class="mc-row">📅 ${new Date(r.fecha_registro).toLocaleDateString('es-PE')}</div>
+        <div class="mc-row">👤 ${r.nombres} ${r.apellidos}</div>
+        <div class="mc-row">📌 ${r.tipo_reclamo} | ${r.respuesta ? '✅ Respondido' : '⏳ Pendiente'}</div>
+        <div class="mc-actions">
+          <button class="btn btn-primary" onclick="verDetalle(${r.id})">Ver / Responder</button>
+          <a class="btn btn-success" href="/api/reclamos/${r.id}/pdf" target="_blank" style="text-decoration:none">📄 PDF</a>
+        </div>
+      </div>
+    `).join('');
+
+    document.getElementById('paginaInfo').textContent = `${data.page} / ${data.totalPages}`;
     document.getElementById('btnPrev').disabled = data.page <= 1;
     document.getElementById('btnNext').disabled = data.page >= data.totalPages;
   } catch { alert('Error cargando reclamos'); }
@@ -276,7 +323,7 @@ async function verDetalle(id) {
   document.getElementById('detalleContent').innerHTML = `
     <div class="detail-grid">
       <div><strong>N° Reclamo</strong>${r.numero_reclamo}</div>
-      <div><strong>Fecha</strong>${new Date(r.fecha_registro).toLocaleString()}</div>
+      <div><strong>Fecha</strong>${new Date(r.fecha_registro).toLocaleString('es-PE')}</div>
       <div><strong>Cliente</strong>${r.nombres} ${r.apellidos}</div>
       <div><strong>Documento</strong>${r.tipo_documento}: ${r.numero_documento}</div>
       <div><strong>Email</strong>${r.email}</div>
@@ -291,7 +338,7 @@ async function verDetalle(id) {
     <div><strong>Descripción del bien:</strong><p>${r.descripcion_bien}</p></div>
     <div style="margin-top:8px"><strong>Detalle del reclamo:</strong><p>${r.detalle_reclamo}</p></div>
     <div style="margin-top:8px"><strong>Pedido del consumidor:</strong><p>${r.pedido_consumidor}</p></div>
-    ${r.respuesta ? `<div class="respuesta-box"><strong>Respuesta enviada (${new Date(r.fecha_respuesta).toLocaleString()}):</strong><p>${r.respuesta}</p></div>` : ''}
+    ${r.respuesta ? `<div class="respuesta-box"><strong>Respuesta enviada (${new Date(r.fecha_respuesta).toLocaleString('es-PE')}):</strong><p>${r.respuesta}</p></div>` : ''}
   `;
 
   document.getElementById('respuestaSection').style.display = r.respuesta ? 'none' : 'block';
@@ -330,6 +377,8 @@ async function cargarUsuarios() {
   const res = await fetch(`${API}/usuarios`, { headers: headers() });
   if (res.status === 401) return logout();
   const data = await res.json();
+
+  // Desktop table
   document.getElementById('usuariosBody').innerHTML = data.map(u => `
     <tr>
       <td>${u.username}</td>
@@ -344,6 +393,25 @@ async function cargarUsuarios() {
         `}
       </td>
     </tr>
+  `).join('');
+
+  // Mobile cards
+  document.getElementById('usuariosMobile').innerHTML = data.map(u => `
+    <div class="mobile-card">
+      <div class="mc-header">
+        <strong>${u.username}</strong>
+        <span class="badge" style="background:#e3f2fd;color:#1565c0">${u.rol}</span>
+      </div>
+      <div class="mc-row">👤 ${u.nombre}</div>
+      <div class="mc-row">📧 ${u.email}</div>
+      <div class="mc-row">${u.activo ? '✅ Activo' : '❌ Inactivo'}</div>
+      <div class="mc-actions">
+        ${u.es_protegido ? '<em style="font-size:.8rem;color:#999">Protegido</em>' : `
+          <button class="btn btn-primary" onclick='editarUsuario(${JSON.stringify(u)})'>Editar</button>
+          <button class="btn btn-danger" onclick="eliminarUsuario(${u.id})">Eliminar</button>
+        `}
+      </div>
+    </div>
   `).join('');
 }
 
@@ -407,7 +475,6 @@ function cerrarModal(id) {
   document.getElementById(id).classList.remove('show');
 }
 
-// Cerrar modales con click fuera
 document.querySelectorAll('.modal-overlay').forEach(m => {
   m.addEventListener('click', e => { if (e.target === m) m.classList.remove('show'); });
 });

@@ -3,25 +3,25 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Consulta de Reclamos</title>
+  <title>Consulta de Reclamos - VHM</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: system-ui, sans-serif; background: #f5f5f5; padding: 20px; }
     .container { max-width: 900px; margin: 0 auto; }
     h1 { text-align: center; color: #c62828; margin-bottom: 5px; font-size: 1.5rem; }
     .subtitle { text-align: center; color: #666; margin-bottom: 25px; font-size: .9rem; }
-    .search-box { background: #fff; padding: 24px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,.1); margin-bottom: 20px; display: flex; gap: 12px; align-items: flex-end; }
-    .search-box .field { flex: 1; }
+    .search-box { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,.1); margin-bottom: 20px; display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+    .search-box .field { flex: 1; min-width: 200px; }
     .search-box label { display: block; font-size: .85rem; font-weight: 500; margin-bottom: 4px; }
-    .search-box input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: .95rem; }
-    .search-box button { padding: 10px 24px; background: #c62828; color: #fff; border: none; border-radius: 4px; font-size: .95rem; cursor: pointer; white-space: nowrap; }
+    .search-box input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem; }
+    .search-box button { padding: 10px 24px; background: #c62828; color: #fff; border: none; border-radius: 4px; font-size: 1rem; cursor: pointer; white-space: nowrap; }
     .search-box button:hover { background: #a31515; }
 
     .no-results { text-align: center; padding: 40px; color: #666; display: none; }
     .results { display: none; }
 
     .reclamo-card { background: #fff; border-radius: 8px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
-    .reclamo-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .reclamo-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
     .reclamo-header h3 { font-size: 1rem; color: #333; }
     .badge { padding: 4px 10px; border-radius: 12px; font-size: .75rem; font-weight: 600; }
     .badge-pendiente { background: #fff3e0; color: #e65100; }
@@ -42,12 +42,22 @@
     .respuesta-box p { font-size: .85rem; color: #333; }
     .respuesta-box .fecha { font-size: .75rem; color: #666; margin-top: 6px; }
 
-    .btn-pdf { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; background: #1565c0; color: #fff; border: none; border-radius: 4px; font-size: .8rem; cursor: pointer; text-decoration: none; margin-top: 12px; }
+    .btn-pdf { display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px; background: #1565c0; color: #fff; border: none; border-radius: 4px; font-size: .85rem; cursor: pointer; text-decoration: none; margin-top: 12px; }
     .btn-pdf:hover { background: #0d47a1; }
 
     .nav-links { text-align: center; margin-bottom: 20px; }
     .nav-links a { color: #c62828; text-decoration: none; font-size: .9rem; margin: 0 10px; }
     .nav-links a:hover { text-decoration: underline; }
+
+    @media (max-width: 600px) {
+      body { padding: 10px; }
+      h1 { font-size: 1.2rem; }
+      .search-box { flex-direction: column; align-items: stretch; }
+      .search-box .field { min-width: auto; }
+      .search-box button { width: 100%; padding: 12px; }
+      .reclamo-body { grid-template-columns: 1fr; }
+      .reclamo-header { flex-direction: column; align-items: flex-start; }
+    }
   </style>
 </head>
 <body>
@@ -103,7 +113,7 @@
             <span class="badge badge-${r.estado.toLowerCase()}">${r.estado}</span>
           </div>
           <div class="reclamo-body">
-            <div><span class="field-label">Fecha de registro</span><span class="field-value">${new Date(r.fecha_registro).toLocaleDateString()}</span></div>
+            <div><span class="field-label">Fecha de registro</span><span class="field-value">${new Date(r.fecha_registro).toLocaleDateString('es-PE')}</span></div>
             <div><span class="field-label">Tipo</span><span class="field-value">${r.tipo_reclamo}</span></div>
             <div><span class="field-label">Bien</span><span class="field-value">${r.tipo_bien}</span></div>
             <div><span class="field-label">Monto</span><span class="field-value">S/ ${r.monto_reclamado}</span></div>
@@ -117,7 +127,7 @@
             <div class="respuesta-box">
               <h4>✅ Respuesta del proveedor</h4>
               <p>${r.respuesta}</p>
-              <p class="fecha">Respondido el: ${new Date(r.fecha_respuesta).toLocaleString()}</p>
+              <p class="fecha">Respondido el: ${new Date(r.fecha_respuesta).toLocaleString('es-PE')}</p>
             </div>
           ` : ''}
           <a class="btn-pdf" href="/api/reclamos/${r.id}/pdf" target="_blank">📄 Descargar PDF</a>
