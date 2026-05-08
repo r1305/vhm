@@ -293,6 +293,11 @@ router.post('/:id/responder', authMiddleware, async (req, res) => {
 
     const reclamo = rows[0];
 
+    // Si ya tiene respuesta, solo SUPER_ADMIN puede editar
+    if (reclamo.respuesta && req.user.rol !== 'SUPER_ADMIN') {
+      return res.status(403).json({ error: 'Solo el Super Admin puede editar respuestas' });
+    }
+
     await pool.execute(
       'UPDATE reclamos SET respuesta = ?, estado = ?, fecha_respuesta = NOW() WHERE id = ?',
       [respuesta, 'RESUELTO', req.params.id]
@@ -328,9 +333,12 @@ router.put('/:id', authMiddleware, async (req, res) => {
   }
 });
 
-// Eliminar reclamo
+// Eliminar reclamo (solo SUPER_ADMIN)
 router.delete('/:id', authMiddleware, async (req, res) => {
   try {
+    if (req.user.rol !== 'SUPER_ADMIN') {
+      return res.status(403).json({ error: 'Solo el Super Admin puede eliminar reclamos' });
+    }
     const [result] = await pool.execute('DELETE FROM reclamos WHERE id = ?', [req.params.id]);
     if (result.affectedRows === 0) return res.status(404).json({ error: 'Reclamo no encontrado' });
     res.json({ message: 'Reclamo eliminado' });
