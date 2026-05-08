@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VHM - Bienestar Emocional y Superación Personal</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; color: #333; }
+    a { text-decoration: none; }
+
+    .hero {
+      min-height: 100vh;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 40px 20px;
+      color: #fff;
+    }
+    .hero h1 { font-size: 3rem; margin-bottom: 10px; letter-spacing: 2px; }
+    .hero .tagline { font-size: 1.2rem; opacity: .9; max-width: 600px; margin-bottom: 30px; }
+    .hero .cta { display: inline-block; padding: 14px 32px; background: #fff; color: #764ba2; border-radius: 30px; font-weight: 600; font-size: 1rem; transition: transform .2s; }
+    .hero .cta:hover { transform: scale(1.05); }
+
+    nav {
+      position: fixed;
+      top: 0;
+      width: 100%;
+      padding: 16px 40px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 100;
+      background: rgba(0,0,0,.1);
+      backdrop-filter: blur(8px);
+    }
+    nav .logo { font-weight: 700; font-size: 1.3rem; color: #fff; }
+    nav .links a { color: #fff; margin-left: 24px; font-size: .9rem; opacity: .9; }
+    nav .links a:hover { opacity: 1; border-bottom: 1px solid #fff; }
+
+    section { padding: 80px 20px; max-width: 1000px; margin: 0 auto; }
+    section h2 { font-size: 2rem; text-align: center; margin-bottom: 40px; color: #4a3f8a; }
+
+    .services { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; }
+    .service-card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 30px;
+      box-shadow: 0 4px 20px rgba(0,0,0,.08);
+      text-align: center;
+      transition: transform .2s;
+    }
+    .service-card:hover { transform: translateY(-4px); }
+    .service-card .icon { font-size: 2.5rem; margin-bottom: 12px; }
+    .service-card h3 { color: #4a3f8a; margin-bottom: 8px; }
+    .service-card p { font-size: .9rem; color: #666; line-height: 1.5; }
+
+    .about { background: #f8f6ff; padding: 80px 20px; }
+    .about-content { max-width: 800px; margin: 0 auto; text-align: center; }
+    .about-content p { font-size: 1rem; line-height: 1.8; color: #555; margin-bottom: 16px; }
+
+    .testimonials { background: #fff; }
+    .testimonial-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+    .testimonial {
+      background: linear-gradient(135deg, #f8f6ff, #ede7f6);
+      border-radius: 10px;
+      padding: 24px;
+      font-style: italic;
+      font-size: .9rem;
+      color: #555;
+      line-height: 1.6;
+    }
+    .testimonial .author { font-style: normal; font-weight: 600; color: #4a3f8a; margin-top: 12px; }
+
+    footer {
+      background: #2d2252;
+      color: #ccc;
+      text-align: center;
+      padding: 30px 20px;
+      font-size: .85rem;
+    }
+    footer a { color: #b39ddb; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">VHM</div>
+  <div class="links">
+    <a href="#servicios">Servicios</a>
+    <a href="#nosotros">Nosotros</a>
+    <a href="#testimonios">Testimonios</a>
+    <a href="/reclamo">Libro de Reclamaciones</a>
+  </div>
+</nav>
+
+<div class="hero">
+  <h1>VHM</h1>
+  <p class="tagline">Tu camino hacia el bienestar emocional comienza aquí. Te acompañamos en el proceso de sanar, crecer y redescubrirte después de una ruptura amorosa.</p>
+  <a href="#servicios" class="cta">Conoce nuestros servicios</a>
+</div>
+
+<section id="servicios">
+  <h2>Nuestros Servicios</h2>
+  <div class="services">
+    <div class="service-card">
+      <div class="icon">💜</div>
+      <h3>Acompañamiento Emocional</h3>
+      <p>Sesiones personalizadas para procesar el duelo de una relación y recuperar tu equilibrio interior.</p>
+    </div>
+    <div class="service-card">
+      <div class="icon">🌱</div>
+      <h3>Programa de Superación</h3>
+      <p>Plan estructurado de 8 semanas para transformar el dolor en crecimiento personal y autoconocimiento.</p>
+    </div>
+    <div class="service-card">
+      <div class="icon">🧘</div>
+      <h3>Talleres de Bienestar</h3>
+      <p>Actividades grupales de mindfulness, autoestima y reconexión con tu propósito de vida.</p>
+    </div>
+    <div class="service-card">
+      <div class="icon">📖</div>
+      <h3>Recursos y Guías</h3>
+      <p>Material exclusivo con herramientas prácticas para cada etapa del proceso de sanación.</p>
+    </div>
+    <div class="service-card">
+      <div class="icon">🤝</div>
+      <h3>Comunidad de Apoyo</h3>
+      <p>Conecta con personas que atraviesan situaciones similares en un espacio seguro y empático.</p>
+    </div>
+    <div class="service-card">
+      <div class="icon">✨</div>
+      <h3>Coaching de Vida</h3>
+      <p>Rediseña tu futuro con claridad, estableciendo nuevas metas y recuperando la confianza en ti.</p>
+    </div>
+  </div>
+</section>
+
+<div class="about" id="nosotros">
+  <div class="about-content">
+    <h2>Sobre VHM</h2>
+    <p>En VHM creemos que el fin de una relación no es el fin de tu historia. Es el comienzo de un nuevo capítulo lleno de posibilidades.</p>
+    <p>Nuestro equipo de profesionales en bienestar emocional te brinda las herramientas necesarias para atravesar este proceso con fortaleza, compasión hacia ti mismo y la certeza de que mereces una vida plena.</p>
+    <p>No estás solo en esto. Cada paso que das hacia adelante es una victoria.</p>
+  </div>
+</div>
+
+<section class="testimonials" id="testimonios">
+  <h2>Testimonios</h2>
+  <div class="testimonial-grid">
+    <div class="testimonial">
+      "Después de 5 años de relación pensé que no podría seguir adelante. VHM me enseñó que mi valor no depende de nadie más."
+      <div class="author">— María, 28 años</div>
+    </div>
+    <div class="testimonial">
+      "El programa de superación cambió mi perspectiva por completo. Hoy me siento más fuerte y conectado conmigo mismo."
+      <div class="author">— Carlos, 34 años</div>
+    </div>
+    <div class="testimonial">
+      "La comunidad de apoyo fue fundamental. Saber que otros entienden lo que sientes hace toda la diferencia."
+      <div class="author">— Lucía, 31 años</div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p>&copy; 2025 VHM - Bienestar Emocional y Superación Personal. Todos los derechos reservados.</p>
+  <p style="margin-top:8px"><a href="/reclamo">Libro de Reclamaciones</a> | <a href="/consulta">Consultar Reclamo</a></p>
+</footer>
+
+</body>
+</html>

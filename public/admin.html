@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Administración - Libro de Reclamaciones</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #f0f2f5; }
+    .login-container { display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+    .login-box { background: #fff; padding: 40px; border-radius: 8px; box-shadow: 0 2px 20px rgba(0,0,0,.1); width: 360px; }
+    .login-box h2 { text-align: center; margin-bottom: 20px; color: #333; }
+    .login-box input { width: 100%; padding: 10px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 4px; font-size: .9rem; }
+    .login-box button { width: 100%; padding: 10px; background: #c62828; color: #fff; border: none; border-radius: 4px; font-size: 1rem; cursor: pointer; }
+    .login-box .error { color: #c62828; font-size: .85rem; margin-bottom: 10px; display: none; }
+
+    .admin-container { display: none; }
+    .topbar { background: #c62828; color: #fff; padding: 12px 24px; display: flex; justify-content: space-between; align-items: center; }
+    .topbar h1 { font-size: 1.1rem; }
+    .topbar .user-info { display: flex; align-items: center; gap: 12px; }
+    .topbar button { background: rgba(255,255,255,.2); border: none; color: #fff; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
+
+    .tabs { display: flex; background: #fff; border-bottom: 2px solid #eee; padding: 0 24px; }
+    .tabs button { padding: 12px 20px; border: none; background: none; cursor: pointer; font-size: .9rem; border-bottom: 2px solid transparent; margin-bottom: -2px; }
+    .tabs button.active { border-bottom-color: #c62828; color: #c62828; font-weight: 600; }
+
+    .content { padding: 24px; max-width: 1200px; margin: 0 auto; }
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 6px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #eee; font-size: .85rem; }
+    th { background: #f8f8f8; font-weight: 600; }
+    .badge { padding: 3px 8px; border-radius: 12px; font-size: .75rem; font-weight: 600; }
+    .badge-pendiente { background: #fff3e0; color: #e65100; }
+    .badge-en_proceso { background: #e3f2fd; color: #1565c0; }
+    .badge-resuelto { background: #e8f5e9; color: #2e7d32; }
+    .badge-cerrado { background: #eceff1; color: #546e7a; }
+
+    .btn { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: .8rem; }
+    .btn-primary { background: #1565c0; color: #fff; }
+    .btn-danger { background: #c62828; color: #fff; }
+    .btn-success { background: #2e7d32; color: #fff; }
+
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 1000; justify-content: center; align-items: center; }
+    .modal-overlay.show { display: flex; }
+    .modal { background: #fff; border-radius: 8px; padding: 24px; width: 500px; max-width: 90vw; max-height: 80vh; overflow-y: auto; }
+    .modal h3 { margin-bottom: 16px; }
+    .modal label { display: block; font-size: .85rem; font-weight: 500; margin-bottom: 4px; margin-top: 10px; }
+    .modal input, .modal textarea, .modal select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: .9rem; }
+    .modal textarea { min-height: 100px; resize: vertical; }
+    .modal-actions { margin-top: 16px; display: flex; gap: 8px; justify-content: flex-end; }
+
+    .pagination { display: flex; gap: 8px; margin-top: 16px; justify-content: center; align-items: center; }
+    .pagination button { padding: 6px 12px; border: 1px solid #ddd; background: #fff; border-radius: 4px; cursor: pointer; }
+    .pagination button:disabled { opacity: .5; cursor: default; }
+    .pagination span { font-size: .85rem; }
+
+    .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+    .detail-grid div { font-size: .85rem; }
+    .detail-grid strong { display: block; color: #666; font-size: .75rem; }
+    .respuesta-box { background: #e8f5e9; padding: 12px; border-radius: 6px; margin-top: 10px; }
+  </style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-container" id="loginSection">
+  <div class="login-box">
+    <h2>🔐 Administración</h2>
+    <div class="error" id="loginError"></div>
+    <input type="text" id="loginUser" placeholder="Usuario">
+    <input type="password" id="loginPass" placeholder="Contraseña">
+    <button onclick="login()">Ingresar</button>
+  </div>
+</div>
+
+<!-- ADMIN PANEL -->
+<div class="admin-container" id="adminSection">
+  <div class="topbar">
+    <h1>📋 Libro de Reclamaciones - Panel Admin</h1>
+    <div class="user-info">
+      <span id="currentUser"></span>
+      <button onclick="logout()">Cerrar Sesión</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="active" onclick="switchTab('reclamos')">Reclamos</button>
+    <button onclick="switchTab('usuarios')">Usuarios</button>
+  </div>
+
+  <div class="content">
+    <!-- PANEL RECLAMOS -->
+    <div class="panel active" id="panelReclamos">
+      <table>
+        <thead>
+          <tr>
+            <th>N° Reclamo</th>
+            <th>Fecha</th>
+            <th>Cliente</th>
+            <th>Tipo</th>
+            <th>Estado</th>
+            <th>Respuesta</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="reclamosBody"></tbody>
+      </table>
+      <div class="pagination">
+        <button onclick="cambiarPagina(-1)" id="btnPrev">← Anterior</button>
+        <span id="paginaInfo"></span>
+        <button onclick="cambiarPagina(1)" id="btnNext">Siguiente →</button>
+      </div>
+    </div>
+
+    <!-- PANEL USUARIOS -->
+    <div class="panel" id="panelUsuarios">
+      <button class="btn btn-primary" onclick="mostrarModalUsuario()" style="margin-bottom:12px">+ Nuevo Usuario</button>
+      <table>
+        <thead>
+          <tr>
+            <th>Username</th>
+            <th>Nombre</th>
+            <th>Email</th>
+            <th>Rol</th>
+            <th>Activo</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="usuariosBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DETALLE RECLAMO -->
+<div class="modal-overlay" id="modalDetalle">
+  <div class="modal">
+    <h3>Detalle del Reclamo</h3>
+    <div id="detalleContent"></div>
+    <hr style="margin:16px 0">
+    <div id="respuestaSection">
+      <label><strong>Responder al reclamo:</strong></label>
+      <textarea id="txtRespuesta" placeholder="Escriba la respuesta..."></textarea>
+      <div class="modal-actions">
+        <button class="btn" onclick="cerrarModal('modalDetalle')">Cerrar</button>
+        <button class="btn btn-success" onclick="enviarRespuesta()">Enviar Respuesta y Notificar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL USUARIO -->
+<div class="modal-overlay" id="modalUsuario">
+  <div class="modal">
+    <h3 id="modalUsuarioTitle">Nuevo Usuario</h3>
+    <input type="hidden" id="usuarioId">
+    <label>Username</label>
+    <input type="text" id="uUsername">
+    <label>Nombre</label>
+    <input type="text" id="uNombre">
+    <label>Email</label>
+    <input type="email" id="uEmail">
+    <label>Contraseña</label>
+    <input type="password" id="uPassword" placeholder="Dejar vacío para no cambiar">
+    <label>Rol</label>
+    <select id="uRol">
+      <option value="ADMIN">Administrador</option>
+    </select>
+    <div class="modal-actions">
+      <button class="btn" onclick="cerrarModal('modalUsuario')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarUsuario()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = '/api';
+let token = localStorage.getItem('token');
+let currentPage = 1;
+let reclamoSeleccionado = null;
+
+// Auth
+if (token) initAdmin();
+
+async function login() {
+  const username = document.getElementById('loginUser').value;
+  const password = document.getElementById('loginPass').value;
+  try {
+    const res = await fetch(`${API}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      document.getElementById('loginError').textContent = data.error;
+      document.getElementById('loginError').style.display = 'block';
+      return;
+    }
+    token = data.token;
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(data.user));
+    initAdmin();
+  } catch { alert('Error de conexión'); }
+}
+
+function initAdmin() {
+  document.getElementById('loginSection').style.display = 'none';
+  document.getElementById('adminSection').style.display = 'block';
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  document.getElementById('currentUser').textContent = `${user.nombre} (${user.rol})`;
+  cargarReclamos();
+}
+
+function logout() {
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  token = null;
+  document.getElementById('loginSection').style.display = 'flex';
+  document.getElementById('adminSection').style.display = 'none';
+}
+
+function headers() {
+  return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+}
+
+// Tabs
+function switchTab(tab) {
+  document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById(`panel${tab.charAt(0).toUpperCase() + tab.slice(1)}`).classList.add('active');
+  if (tab === 'usuarios') cargarUsuarios();
+  if (tab === 'reclamos') cargarReclamos();
+}
+
+// RECLAMOS
+async function cargarReclamos() {
+  try {
+    const res = await fetch(`${API}/reclamos?page=${currentPage}&limit=10`, { headers: headers() });
+    if (res.status === 401) return logout();
+    const data = await res.json();
+    const tbody = document.getElementById('reclamosBody');
+    tbody.innerHTML = data.data.map(r => `
+      <tr>
+        <td><strong>${r.numero_reclamo}</strong></td>
+        <td>${new Date(r.fecha_registro).toLocaleDateString()}</td>
+        <td>${r.nombres} ${r.apellidos}</td>
+        <td>${r.tipo_reclamo}</td>
+        <td><span class="badge badge-${r.estado.toLowerCase()}">${r.estado}</span></td>
+        <td>${r.respuesta ? '✅ Respondido' : '⏳ Pendiente'}</td>
+        <td>
+          <button class="btn btn-primary" onclick="verDetalle(${r.id})">Ver / Responder</button>
+          <a class="btn btn-success" href="/api/reclamos/${r.id}/pdf" target="_blank" style="text-decoration:none;display:inline-block;margin-top:4px">📄 PDF</a>
+        </td>
+      </tr>
+    `).join('');
+    document.getElementById('paginaInfo').textContent = `Página ${data.page} de ${data.totalPages}`;
+    document.getElementById('btnPrev').disabled = data.page <= 1;
+    document.getElementById('btnNext').disabled = data.page >= data.totalPages;
+  } catch { alert('Error cargando reclamos'); }
+}
+
+function cambiarPagina(dir) {
+  currentPage += dir;
+  cargarReclamos();
+}
+
+async function verDetalle(id) {
+  const res = await fetch(`${API}/reclamos/${id}`, { headers: headers() });
+  const r = await res.json();
+  reclamoSeleccionado = r;
+
+  document.getElementById('detalleContent').innerHTML = `
+    <div class="detail-grid">
+      <div><strong>N° Reclamo</strong>${r.numero_reclamo}</div>
+      <div><strong>Fecha</strong>${new Date(r.fecha_registro).toLocaleString()}</div>
+      <div><strong>Cliente</strong>${r.nombres} ${r.apellidos}</div>
+      <div><strong>Documento</strong>${r.tipo_documento}: ${r.numero_documento}</div>
+      <div><strong>Email</strong>${r.email}</div>
+      <div><strong>Teléfono</strong>${r.telefono}</div>
+      <div><strong>Dirección</strong>${r.direccion}, ${r.distrito}, ${r.provincia}, ${r.departamento}</div>
+      <div><strong>Tipo Bien</strong>${r.tipo_bien}</div>
+      <div><strong>Monto</strong>S/ ${r.monto_reclamado}</div>
+      <div><strong>Tipo</strong>${r.tipo_reclamo}</div>
+      <div><strong>Estado</strong>${r.estado}</div>
+      <div><strong>Fecha Incidente</strong>${r.fecha_incidente}</div>
+    </div>
+    <div><strong>Descripción del bien:</strong><p>${r.descripcion_bien}</p></div>
+    <div style="margin-top:8px"><strong>Detalle del reclamo:</strong><p>${r.detalle_reclamo}</p></div>
+    <div style="margin-top:8px"><strong>Pedido del consumidor:</strong><p>${r.pedido_consumidor}</p></div>
+    ${r.respuesta ? `<div class="respuesta-box"><strong>Respuesta enviada (${new Date(r.fecha_respuesta).toLocaleString()}):</strong><p>${r.respuesta}</p></div>` : ''}
+  `;
+
+  document.getElementById('respuestaSection').style.display = r.respuesta ? 'none' : 'block';
+  document.getElementById('txtRespuesta').value = '';
+  document.getElementById('modalDetalle').classList.add('show');
+}
+
+async function enviarRespuesta() {
+  const respuesta = document.getElementById('txtRespuesta').value.trim();
+  if (!respuesta) return alert('Escriba una respuesta');
+
+  const btn = event.target;
+  btn.disabled = true;
+  btn.textContent = 'Enviando...';
+
+  try {
+    const res = await fetch(`${API}/reclamos/${reclamoSeleccionado.id}/responder`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify({ respuesta })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      alert(`Respuesta registrada. ${data.emailEnviado ? 'Email enviado al cliente.' : 'No se pudo enviar el email (verifique configuración SMTP).'}`);
+      cerrarModal('modalDetalle');
+      cargarReclamos();
+    } else {
+      alert(data.error);
+    }
+  } catch { alert('Error de conexión'); }
+  finally { btn.disabled = false; btn.textContent = 'Enviar Respuesta y Notificar'; }
+}
+
+// USUARIOS
+async function cargarUsuarios() {
+  const res = await fetch(`${API}/usuarios`, { headers: headers() });
+  if (res.status === 401) return logout();
+  const data = await res.json();
+  document.getElementById('usuariosBody').innerHTML = data.map(u => `
+    <tr>
+      <td>${u.username}</td>
+      <td>${u.nombre}</td>
+      <td>${u.email}</td>
+      <td>${u.rol}</td>
+      <td>${u.activo ? '✅' : '❌'}</td>
+      <td>
+        ${u.es_protegido ? '<em style="font-size:.8rem;color:#999">Protegido</em>' : `
+          <button class="btn btn-primary" onclick='editarUsuario(${JSON.stringify(u)})'>Editar</button>
+          <button class="btn btn-danger" onclick="eliminarUsuario(${u.id})">Eliminar</button>
+        `}
+      </td>
+    </tr>
+  `).join('');
+}
+
+function mostrarModalUsuario() {
+  document.getElementById('modalUsuarioTitle').textContent = 'Nuevo Usuario';
+  document.getElementById('usuarioId').value = '';
+  document.getElementById('uUsername').value = '';
+  document.getElementById('uUsername').disabled = false;
+  document.getElementById('uNombre').value = '';
+  document.getElementById('uEmail').value = '';
+  document.getElementById('uPassword').value = '';
+  document.getElementById('modalUsuario').classList.add('show');
+}
+
+function editarUsuario(u) {
+  document.getElementById('modalUsuarioTitle').textContent = 'Editar Usuario';
+  document.getElementById('usuarioId').value = u.id;
+  document.getElementById('uUsername').value = u.username;
+  document.getElementById('uUsername').disabled = true;
+  document.getElementById('uNombre').value = u.nombre;
+  document.getElementById('uEmail').value = u.email;
+  document.getElementById('uPassword').value = '';
+  document.getElementById('modalUsuario').classList.add('show');
+}
+
+async function guardarUsuario() {
+  const id = document.getElementById('usuarioId').value;
+  const body = {
+    username: document.getElementById('uUsername').value,
+    nombre: document.getElementById('uNombre').value,
+    email: document.getElementById('uEmail').value,
+    rol: document.getElementById('uRol').value
+  };
+  const pass = document.getElementById('uPassword').value;
+  if (pass) body.password = pass;
+
+  if (!id && !pass) return alert('La contraseña es obligatoria para nuevos usuarios');
+
+  const url = id ? `${API}/usuarios/${id}` : `${API}/usuarios`;
+  const method = id ? 'PUT' : 'POST';
+
+  const res = await fetch(url, { method, headers: headers(), body: JSON.stringify(body) });
+  const data = await res.json();
+  if (res.ok) {
+    cerrarModal('modalUsuario');
+    cargarUsuarios();
+  } else {
+    alert(data.error);
+  }
+}
+
+async function eliminarUsuario(id) {
+  if (!confirm('¿Está seguro de eliminar este usuario?')) return;
+  const res = await fetch(`${API}/usuarios/${id}`, { method: 'DELETE', headers: headers() });
+  const data = await res.json();
+  if (res.ok) cargarUsuarios();
+  else alert(data.error);
+}
+
+function cerrarModal(id) {
+  document.getElementById(id).classList.remove('show');
+}
+
+// Cerrar modales con click fuera
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('show'); });
+});
+</script>
+</body>
+</html>
