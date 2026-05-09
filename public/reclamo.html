@@ -21,8 +21,11 @@
     textarea { resize: vertical; min-height: 80px; }
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
-    button[type="submit"] { width: 100%; padding: 14px; background: linear-gradient(135deg, #f5f0eb, #c8e6f0); color: #000; border: none; border-radius: 4px; font-size: 1rem; font-weight: 600; cursor: pointer; }
+    button[type="submit"] { width: 100%; padding: 14px; background: linear-gradient(135deg, #f5f0eb, #c8e6f0); color: #000; border: none; border-radius: 4px; font-size: 1rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
     button[type="submit"]:hover { opacity: .9; }
+    button[type="submit"]:disabled { opacity: .7; cursor: not-allowed; }
+    .spinner { width: 16px; height: 16px; border: 2px solid rgba(0,0,0,.3); border-top-color: #000; border-radius: 50%; animation: spin .7s linear infinite; display: none; }
+    @keyframes spin { to { transform: rotate(360deg); } }
     .msg { padding: 12px; border-radius: 4px; margin-top: 15px; display: none; }
     .msg.ok { display: block; background: #0a2a0a; color: #6fcf6f; border: 1px solid #2a5a2a; }
     .msg.err { display: block; background: #2a0a0a; color: #f08080; border: 1px solid #5a2a2a; }
@@ -163,7 +166,7 @@
       </div>
     </fieldset>
 
-    <button type="submit">Enviar Reclamo</button>
+    <button type="submit" id="btnSubmit"><span class="spinner" id="submitSpinner"></span><span id="btnSubmitText">Enviar Reclamo</span></button>
     <div id="msg" class="msg"></div>
   </form>
 </div>
@@ -181,6 +184,13 @@
     e.preventDefault();
     msg.className = 'msg';
     msg.style.display = 'none';
+
+    const btn = document.getElementById('btnSubmit');
+    const spinner = document.getElementById('submitSpinner');
+    const btnText = document.getElementById('btnSubmitText');
+    btn.disabled = true;
+    spinner.style.display = 'block';
+    btnText.textContent = 'Enviando...';
 
     const formData = new FormData(form);
     const data = Object.fromEntries(formData.entries());
@@ -208,6 +218,10 @@
       msg.className = 'msg err';
       msg.textContent = '❌ Error de conexión con el servidor';
       msg.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      spinner.style.display = 'none';
+      btnText.textContent = 'Enviar Reclamo';
     }
   });
 </script>
