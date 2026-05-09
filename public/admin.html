@@ -3,72 +3,78 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Administración - Libro de Reclamaciones</title>
+  <title>Administración - VHM</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: system-ui, sans-serif; background: #f0f2f5; }
+    body { font-family: system-ui, sans-serif; background: #0a0a0a; color: #f5f0eb; }
+
     .login-container { display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
-    .login-box { background: #fff; padding: 40px; border-radius: 8px; box-shadow: 0 2px 20px rgba(0,0,0,.1); width: 100%; max-width: 360px; }
-    .login-box h2 { text-align: center; margin-bottom: 20px; color: #333; }
-    .login-box input { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem; }
-    .login-box button { width: 100%; padding: 12px; background: #c62828; color: #fff; border: none; border-radius: 4px; font-size: 1rem; cursor: pointer; }
-    .login-box .error { color: #c62828; font-size: .85rem; margin-bottom: 10px; display: none; }
+    .login-box { background: #111; border: 1px solid #222; padding: 40px; border-radius: 8px; width: 100%; max-width: 360px; }
+    .login-box h2 { text-align: center; margin-bottom: 20px; color: #c8e6f0; }
+    .login-box input { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #333; border-radius: 4px; font-size: 1rem; background: #1a1a1a; color: #f5f0eb; }
+    .login-box input:focus { outline: none; border-color: #c8e6f0; }
+    .login-box button { width: 100%; padding: 12px; background: linear-gradient(135deg, #f5f0eb, #c8e6f0); color: #000; border: none; border-radius: 4px; font-size: 1rem; font-weight: 600; cursor: pointer; }
+    .login-box .error { color: #f08080; font-size: .85rem; margin-bottom: 10px; display: none; }
 
     .admin-container { display: none; }
-    .topbar { background: #c62828; color: #fff; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
-    .topbar h1 { font-size: 1rem; }
+    .topbar { background: #111; border-bottom: 1px solid #222; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+    .topbar h1 { font-size: 1rem; color: #c8e6f0; }
     .topbar .user-info { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-    .topbar .user-info span { font-size: .85rem; }
-    .topbar button { background: rgba(255,255,255,.2); border: none; color: #fff; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: .85rem; }
+    .topbar .user-info span { font-size: .85rem; color: #aaa; }
+    .topbar button { background: #1a1a1a; border: 1px solid #333; color: #c8e6f0; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: .85rem; }
+    .topbar button:hover { border-color: #c8e6f0; }
 
-    .tabs { display: flex; background: #fff; border-bottom: 2px solid #eee; padding: 0 16px; overflow-x: auto; }
-    .tabs button { padding: 12px 16px; border: none; background: none; cursor: pointer; font-size: .9rem; border-bottom: 2px solid transparent; margin-bottom: -2px; white-space: nowrap; }
-    .tabs button.active { border-bottom-color: #c62828; color: #c62828; font-weight: 600; }
+    .tabs { display: flex; background: #0d0d0d; border-bottom: 1px solid #222; padding: 0 16px; overflow-x: auto; }
+    .tabs button { padding: 12px 16px; border: none; background: none; cursor: pointer; font-size: .9rem; border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; color: #888; }
+    .tabs button.active { border-bottom-color: #c8e6f0; color: #c8e6f0; font-weight: 600; }
 
     .content { padding: 16px; max-width: 1200px; margin: 0 auto; }
     .panel { display: none; }
     .panel.active { display: block; }
 
     .table-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-    table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 6px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.08); min-width: 600px; }
-    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #eee; font-size: .85rem; }
-    th { background: #f8f8f8; font-weight: 600; white-space: nowrap; }
+    table { width: 100%; border-collapse: collapse; background: #111; border-radius: 6px; overflow: hidden; border: 1px solid #222; min-width: 600px; }
+    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #1a1a1a; font-size: .85rem; }
+    th { background: #0d0d0d; font-weight: 600; color: #c8e6f0; white-space: nowrap; }
+    td { color: #ccc; }
+
     .badge { padding: 3px 8px; border-radius: 12px; font-size: .75rem; font-weight: 600; display: inline-block; }
-    .badge-pendiente { background: #fff3e0; color: #e65100; }
-    .badge-en_proceso { background: #e3f2fd; color: #1565c0; }
-    .badge-resuelto { background: #e8f5e9; color: #2e7d32; }
-    .badge-cerrado { background: #eceff1; color: #546e7a; }
+    .badge-pendiente { background: #3d2800; color: #ffb74d; }
+    .badge-en_proceso { background: #0a2540; color: #64b5f6; }
+    .badge-resuelto { background: #0a2a0a; color: #6fcf6f; }
+    .badge-cerrado { background: #1a1a1a; color: #999; }
 
-    .btn { padding: 7px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: .8rem; display: inline-block; margin: 2px; }
-    .btn-primary { background: #1565c0; color: #fff; }
-    .btn-danger { background: #c62828; color: #fff; }
-    .btn-success { background: #2e7d32; color: #fff; }
+    .btn { padding: 7px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: .8rem; display: inline-block; margin: 2px; font-weight: 500; }
+    .btn-primary { background: #c8e6f0; color: #000; }
+    .btn-danger { background: #5a1a1a; color: #f08080; border: 1px solid #8a2a2a; }
+    .btn-success { background: #0a2a0a; color: #6fcf6f; border: 1px solid #2a5a2a; }
 
-    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 1000; justify-content: center; align-items: center; padding: 16px; }
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.8); z-index: 1000; justify-content: center; align-items: center; padding: 16px; }
     .modal-overlay.show { display: flex; }
-    .modal { background: #fff; border-radius: 8px; padding: 24px; width: 100%; max-width: 500px; max-height: 85vh; overflow-y: auto; }
-    .modal h3 { margin-bottom: 16px; font-size: 1.1rem; }
-    .modal label { display: block; font-size: .85rem; font-weight: 500; margin-bottom: 4px; margin-top: 10px; }
-    .modal input, .modal textarea, .modal select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: .95rem; }
+    .modal { background: #111; border: 1px solid #2a2a2a; border-radius: 8px; padding: 24px; width: 100%; max-width: 500px; max-height: 85vh; overflow-y: auto; }
+    .modal h3 { margin-bottom: 16px; font-size: 1.1rem; color: #c8e6f0; }
+    .modal label { display: block; font-size: .85rem; font-weight: 500; margin-bottom: 4px; margin-top: 10px; color: #aaa; }
+    .modal input, .modal textarea, .modal select { width: 100%; padding: 10px; border: 1px solid #333; border-radius: 4px; font-size: .95rem; background: #1a1a1a; color: #f5f0eb; }
+    .modal input:focus, .modal textarea:focus, .modal select:focus { outline: none; border-color: #c8e6f0; }
     .modal textarea { min-height: 100px; resize: vertical; }
     .modal-actions { margin-top: 16px; display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+    .modal hr { border-color: #222; margin: 16px 0; }
 
     .pagination { display: flex; gap: 8px; margin-top: 16px; justify-content: center; align-items: center; flex-wrap: wrap; }
-    .pagination button { padding: 8px 14px; border: 1px solid #ddd; background: #fff; border-radius: 4px; cursor: pointer; }
-    .pagination button:disabled { opacity: .5; cursor: default; }
-    .pagination span { font-size: .85rem; }
+    .pagination button { padding: 8px 14px; border: 1px solid #333; background: #111; color: #c8e6f0; border-radius: 4px; cursor: pointer; }
+    .pagination button:disabled { opacity: .3; cursor: default; }
+    .pagination span { font-size: .85rem; color: #888; }
 
     .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
-    .detail-grid div { font-size: .85rem; }
-    .detail-grid strong { display: block; color: #666; font-size: .75rem; }
-    .respuesta-box { background: #e8f5e9; padding: 12px; border-radius: 6px; margin-top: 10px; }
+    .detail-grid div { font-size: .85rem; color: #ccc; }
+    .detail-grid strong { display: block; color: #c8e6f0; font-size: .75rem; }
+    .respuesta-box { background: #0a2a0a; border: 1px solid #2a5a2a; padding: 12px; border-radius: 6px; margin-top: 10px; color: #ccc; font-size: .85rem; }
 
-    /* MOBILE CARDS for reclamos */
     .mobile-cards { display: none; }
-    .mobile-card { background: #fff; border-radius: 8px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+    .mobile-card { background: #111; border: 1px solid #222; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
     .mobile-card .mc-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-    .mobile-card .mc-header strong { font-size: .85rem; }
-    .mobile-card .mc-row { font-size: .8rem; color: #555; margin-bottom: 4px; }
+    .mobile-card .mc-header strong { font-size: .85rem; color: #f5f0eb; }
+    .mobile-card .mc-row { font-size: .8rem; color: #888; margin-bottom: 4px; }
     .mobile-card .mc-actions { margin-top: 10px; display: flex; gap: 6px; flex-wrap: wrap; }
 
     @media (max-width: 768px) {
@@ -79,7 +85,6 @@
       .table-wrapper { display: none; }
       .mobile-cards { display: block; }
     }
-
     @media (min-width: 769px) {
       .mobile-cards { display: none !important; }
       .table-wrapper { display: block !important; }
@@ -88,10 +93,9 @@
 </head>
 <body>
 
-<!-- LOGIN -->
 <div class="login-container" id="loginSection">
   <div class="login-box">
-    <h2>🔐 Administración</h2>
+    <h2>🔐 Administración VHM</h2>
     <div class="error" id="loginError"></div>
     <input type="text" id="loginUser" placeholder="Usuario">
     <input type="password" id="loginPass" placeholder="Contraseña">
@@ -99,35 +103,25 @@
   </div>
 </div>
 
-<!-- ADMIN PANEL -->
 <div class="admin-container" id="adminSection">
   <div class="topbar">
-    <h1>📋 Panel Admin</h1>
+    <h1>📋 Panel Admin - VHM</h1>
     <div class="user-info">
       <span id="currentUser"></span>
       <button onclick="logout()">Salir</button>
     </div>
   </div>
-
   <div class="tabs">
     <button class="active" onclick="switchTab('reclamos')">Reclamos</button>
     <button onclick="switchTab('usuarios')">Usuarios</button>
   </div>
-
   <div class="content">
-    <!-- PANEL RECLAMOS -->
     <div class="panel active" id="panelReclamos">
       <div class="table-wrapper">
         <table>
           <thead>
             <tr>
-              <th>N° Reclamo</th>
-              <th>Fecha</th>
-              <th>Cliente</th>
-              <th>Tipo</th>
-              <th>Estado</th>
-              <th>Respuesta</th>
-              <th>Acciones</th>
+              <th>N° Reclamo</th><th>Fecha</th><th>Cliente</th><th>Tipo</th><th>Estado</th><th>Respuesta</th><th>Acciones</th>
             </tr>
           </thead>
           <tbody id="reclamosBody"></tbody>
@@ -141,20 +135,12 @@
       </div>
     </div>
 
-    <!-- PANEL USUARIOS -->
     <div class="panel" id="panelUsuarios">
       <button class="btn btn-primary" onclick="mostrarModalUsuario()" style="margin-bottom:12px">+ Nuevo Usuario</button>
       <div class="table-wrapper">
         <table>
           <thead>
-            <tr>
-              <th>Username</th>
-              <th>Nombre</th>
-              <th>Email</th>
-              <th>Rol</th>
-              <th>Activo</th>
-              <th>Acciones</th>
-            </tr>
+            <tr><th>Username</th><th>Nombre</th><th>Email</th><th>Rol</th><th>Activo</th><th>Acciones</th></tr>
           </thead>
           <tbody id="usuariosBody"></tbody>
         </table>
@@ -169,13 +155,13 @@
   <div class="modal">
     <h3>Detalle del Reclamo</h3>
     <div id="detalleContent"></div>
-    <hr style="margin:16px 0">
+    <hr>
     <div id="respuestaSection">
       <label><strong>Responder al reclamo:</strong></label>
       <textarea id="txtRespuesta" placeholder="Escriba la respuesta..."></textarea>
       <div class="modal-actions">
-        <button class="btn" onclick="cerrarModal('modalDetalle')">Cerrar</button>
-        <button class="btn btn-success" onclick="enviarRespuesta()">Enviar Respuesta y Notificar</button>
+        <button class="btn" style="background:#1a1a1a;color:#aaa;border:1px solid #333" onclick="cerrarModal('modalDetalle')">Cerrar</button>
+        <button class="btn btn-primary" onclick="enviarRespuesta()">Enviar Respuesta y Notificar</button>
       </div>
     </div>
   </div>
@@ -186,20 +172,14 @@
   <div class="modal">
     <h3 id="modalUsuarioTitle">Nuevo Usuario</h3>
     <input type="hidden" id="usuarioId">
-    <label>Username</label>
-    <input type="text" id="uUsername">
-    <label>Nombre</label>
-    <input type="text" id="uNombre">
-    <label>Email</label>
-    <input type="email" id="uEmail">
-    <label>Contraseña</label>
-    <input type="password" id="uPassword" placeholder="Dejar vacío para no cambiar">
+    <label>Username</label><input type="text" id="uUsername">
+    <label>Nombre</label><input type="text" id="uNombre">
+    <label>Email</label><input type="email" id="uEmail">
+    <label>Contraseña</label><input type="password" id="uPassword" placeholder="Dejar vacío para no cambiar">
     <label>Rol</label>
-    <select id="uRol">
-      <option value="ADMIN">Administrador</option>
-    </select>
+    <select id="uRol"><option value="ADMIN">Administrador</option></select>
     <div class="modal-actions">
-      <button class="btn" onclick="cerrarModal('modalUsuario')">Cancelar</button>
+      <button class="btn" style="background:#1a1a1a;color:#aaa;border:1px solid #333" onclick="cerrarModal('modalUsuario')">Cancelar</button>
       <button class="btn btn-primary" onclick="guardarUsuario()">Guardar</button>
     </div>
   </div>
@@ -212,8 +192,7 @@ let currentPage = 1;
 let reclamoSeleccionado = null;
 
 function isSuperAdmin() {
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-  return user.rol === 'SUPER_ADMIN';
+  return (JSON.parse(localStorage.getItem('user') || '{}')).rol === 'SUPER_ADMIN';
 }
 
 if (token) initAdmin();
@@ -222,17 +201,9 @@ async function login() {
   const username = document.getElementById('loginUser').value;
   const password = document.getElementById('loginPass').value;
   try {
-    const res = await fetch(`${API}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password })
-    });
+    const res = await fetch(`${API}/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) });
     const data = await res.json();
-    if (!res.ok) {
-      document.getElementById('loginError').textContent = data.error;
-      document.getElementById('loginError').style.display = 'block';
-      return;
-    }
+    if (!res.ok) { document.getElementById('loginError').textContent = data.error; document.getElementById('loginError').style.display = 'block'; return; }
     token = data.token;
     localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(data.user));
@@ -243,22 +214,17 @@ async function login() {
 function initAdmin() {
   document.getElementById('loginSection').style.display = 'none';
   document.getElementById('adminSection').style.display = 'block';
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-  document.getElementById('currentUser').textContent = `${user.nombre}`;
+  document.getElementById('currentUser').textContent = (JSON.parse(localStorage.getItem('user') || '{}')).nombre;
   cargarReclamos();
 }
 
 function logout() {
-  localStorage.removeItem('token');
-  localStorage.removeItem('user');
-  token = null;
+  localStorage.removeItem('token'); localStorage.removeItem('user'); token = null;
   document.getElementById('loginSection').style.display = 'flex';
   document.getElementById('adminSection').style.display = 'none';
 }
 
-function headers() {
-  return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
-}
+function headers() { return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }; }
 
 function switchTab(tab) {
   document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
@@ -269,17 +235,15 @@ function switchTab(tab) {
   if (tab === 'reclamos') cargarReclamos();
 }
 
-// RECLAMOS
 async function cargarReclamos() {
   try {
     const res = await fetch(`${API}/reclamos?page=${currentPage}&limit=10`, { headers: headers() });
     if (res.status === 401) return logout();
     const data = await res.json();
 
-    // Desktop table
     document.getElementById('reclamosBody').innerHTML = data.data.map(r => `
       <tr>
-        <td><strong>${r.numero_reclamo}</strong></td>
+        <td><strong style="color:#c8e6f0">${r.numero_reclamo}</strong></td>
         <td>${new Date(r.fecha_registro).toLocaleDateString('es-PE')}</td>
         <td>${r.nombres} ${r.apellidos}</td>
         <td>${r.tipo_reclamo}</td>
@@ -293,7 +257,6 @@ async function cargarReclamos() {
       </tr>
     `).join('');
 
-    // Mobile cards
     document.getElementById('reclamosMobile').innerHTML = data.data.map(r => `
       <div class="mobile-card">
         <div class="mc-header">
@@ -317,16 +280,12 @@ async function cargarReclamos() {
   } catch { alert('Error cargando reclamos'); }
 }
 
-function cambiarPagina(dir) {
-  currentPage += dir;
-  cargarReclamos();
-}
+function cambiarPagina(dir) { currentPage += dir; cargarReclamos(); }
 
 async function verDetalle(id) {
   const res = await fetch(`${API}/reclamos/${id}`, { headers: headers() });
   const r = await res.json();
   reclamoSeleccionado = r;
-
   document.getElementById('detalleContent').innerHTML = `
     <div class="detail-grid">
       <div><strong>N° Reclamo</strong>${r.numero_reclamo}</div>
@@ -342,13 +301,11 @@ async function verDetalle(id) {
       <div><strong>Estado</strong>${r.estado}</div>
       <div><strong>Fecha Incidente</strong>${r.fecha_incidente}</div>
     </div>
-    <div><strong>Descripción del bien:</strong><p>${r.descripcion_bien}</p></div>
-    <div style="margin-top:8px"><strong>Detalle del reclamo:</strong><p>${r.detalle_reclamo}</p></div>
-    <div style="margin-top:8px"><strong>Pedido del consumidor:</strong><p>${r.pedido_consumidor}</p></div>
-    ${r.respuesta ? `<div class="respuesta-box"><strong>Respuesta enviada (${new Date(r.fecha_respuesta).toLocaleString('es-PE')}):</strong><p>${r.respuesta}</p></div>` : ''}
+    <div style="margin-bottom:8px"><strong style="color:#c8e6f0">Descripción del bien:</strong><p style="color:#aaa;margin-top:4px">${r.descripcion_bien}</p></div>
+    <div style="margin-bottom:8px"><strong style="color:#c8e6f0">Detalle del reclamo:</strong><p style="color:#aaa;margin-top:4px">${r.detalle_reclamo}</p></div>
+    <div style="margin-bottom:8px"><strong style="color:#c8e6f0">Pedido del consumidor:</strong><p style="color:#aaa;margin-top:4px">${r.pedido_consumidor}</p></div>
+    ${r.respuesta ? `<div class="respuesta-box"><strong style="color:#6fcf6f">Respuesta enviada (${new Date(r.fecha_respuesta).toLocaleString('es-PE')}):</strong><p style="margin-top:6px">${r.respuesta}</p></div>` : ''}
   `;
-
-  // Mostrar sección de respuesta: siempre si no hay respuesta, o si es SUPER_ADMIN puede editar
   const mostrarRespuesta = !r.respuesta || isSuperAdmin();
   document.getElementById('respuestaSection').style.display = mostrarRespuesta ? 'block' : 'none';
   document.getElementById('txtRespuesta').value = r.respuesta || '';
@@ -358,90 +315,61 @@ async function verDetalle(id) {
 async function enviarRespuesta() {
   const respuesta = document.getElementById('txtRespuesta').value.trim();
   if (!respuesta) return alert('Escriba una respuesta');
-
   const btn = event.target;
-  btn.disabled = true;
-  btn.textContent = 'Enviando...';
-
+  btn.disabled = true; btn.textContent = 'Enviando...';
   try {
-    const res = await fetch(`${API}/reclamos/${reclamoSeleccionado.id}/responder`, {
-      method: 'POST',
-      headers: headers(),
-      body: JSON.stringify({ respuesta })
-    });
+    const res = await fetch(`${API}/reclamos/${reclamoSeleccionado.id}/responder`, { method: 'POST', headers: headers(), body: JSON.stringify({ respuesta }) });
     const data = await res.json();
-    if (res.ok) {
-      alert(`Respuesta registrada. ${data.emailEnviado ? 'Email enviado al cliente.' : 'No se pudo enviar el email (verifique configuración SMTP).'}`);
-      cerrarModal('modalDetalle');
-      cargarReclamos();
-    } else {
-      alert(data.error);
-    }
+    if (res.ok) { alert(`Respuesta registrada. ${data.emailEnviado ? 'Email enviado.' : 'No se pudo enviar el email.'}`); cerrarModal('modalDetalle'); cargarReclamos(); }
+    else { alert(data.error); }
   } catch { alert('Error de conexión'); }
   finally { btn.disabled = false; btn.textContent = 'Enviar Respuesta y Notificar'; }
 }
 
 async function eliminarReclamo(id) {
-  if (!confirm('¿Está seguro de eliminar este reclamo? Esta acción no se puede deshacer.')) return;
+  if (!confirm('¿Eliminar este reclamo? Esta acción no se puede deshacer.')) return;
   try {
     const res = await fetch(`${API}/reclamos/${id}`, { method: 'DELETE', headers: headers() });
     const data = await res.json();
-    if (res.ok) { cargarReclamos(); }
-    else { alert(data.error); }
+    if (res.ok) cargarReclamos(); else alert(data.error);
   } catch { alert('Error de conexión'); }
 }
 
-// USUARIOS
 async function cargarUsuarios() {
   const res = await fetch(`${API}/usuarios`, { headers: headers() });
   if (res.status === 401) return logout();
   const data = await res.json();
 
-  // Desktop table
   document.getElementById('usuariosBody').innerHTML = data.map(u => `
     <tr>
-      <td>${u.username}</td>
-      <td>${u.nombre}</td>
-      <td>${u.email}</td>
-      <td>${u.rol}</td>
+      <td style="color:#c8e6f0">${u.username}</td>
+      <td>${u.nombre}</td><td>${u.email}</td><td>${u.rol}</td>
       <td>${u.activo ? '✅' : '❌'}</td>
-      <td>
-        ${u.es_protegido ? '<em style="font-size:.8rem;color:#999">Protegido</em>' : `
-          <button class="btn btn-primary" onclick='editarUsuario(${JSON.stringify(u)})'>Editar</button>
-          <button class="btn btn-danger" onclick="eliminarUsuario(${u.id})">Eliminar</button>
-        `}
-      </td>
+      <td>${u.es_protegido ? '<em style="font-size:.8rem;color:#555">Protegido</em>' : `
+        <button class="btn btn-primary" onclick='editarUsuario(${JSON.stringify(u)})'>Editar</button>
+        <button class="btn btn-danger" onclick="eliminarUsuario(${u.id})">Eliminar</button>
+      `}</td>
     </tr>
   `).join('');
 
-  // Mobile cards
   document.getElementById('usuariosMobile').innerHTML = data.map(u => `
     <div class="mobile-card">
-      <div class="mc-header">
-        <strong>${u.username}</strong>
-        <span class="badge" style="background:#e3f2fd;color:#1565c0">${u.rol}</span>
-      </div>
+      <div class="mc-header"><strong>${u.username}</strong><span class="badge" style="background:#0a2540;color:#64b5f6">${u.rol}</span></div>
       <div class="mc-row">👤 ${u.nombre}</div>
       <div class="mc-row">📧 ${u.email}</div>
       <div class="mc-row">${u.activo ? '✅ Activo' : '❌ Inactivo'}</div>
-      <div class="mc-actions">
-        ${u.es_protegido ? '<em style="font-size:.8rem;color:#999">Protegido</em>' : `
-          <button class="btn btn-primary" onclick='editarUsuario(${JSON.stringify(u)})'>Editar</button>
-          <button class="btn btn-danger" onclick="eliminarUsuario(${u.id})">Eliminar</button>
-        `}
-      </div>
+      <div class="mc-actions">${u.es_protegido ? '<em style="font-size:.8rem;color:#555">Protegido</em>' : `
+        <button class="btn btn-primary" onclick='editarUsuario(${JSON.stringify(u)})'>Editar</button>
+        <button class="btn btn-danger" onclick="eliminarUsuario(${u.id})">Eliminar</button>
+      `}</div>
     </div>
   `).join('');
 }
 
 function mostrarModalUsuario() {
   document.getElementById('modalUsuarioTitle').textContent = 'Nuevo Usuario';
-  document.getElementById('usuarioId').value = '';
-  document.getElementById('uUsername').value = '';
+  ['usuarioId','uUsername','uNombre','uEmail','uPassword'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('uUsername').disabled = false;
-  document.getElementById('uNombre').value = '';
-  document.getElementById('uEmail').value = '';
-  document.getElementById('uPassword').value = '';
   document.getElementById('modalUsuario').classList.add('show');
 }
 
@@ -458,45 +386,24 @@ function editarUsuario(u) {
 
 async function guardarUsuario() {
   const id = document.getElementById('usuarioId').value;
-  const body = {
-    username: document.getElementById('uUsername').value,
-    nombre: document.getElementById('uNombre').value,
-    email: document.getElementById('uEmail').value,
-    rol: document.getElementById('uRol').value
-  };
+  const body = { username: document.getElementById('uUsername').value, nombre: document.getElementById('uNombre').value, email: document.getElementById('uEmail').value, rol: document.getElementById('uRol').value };
   const pass = document.getElementById('uPassword').value;
   if (pass) body.password = pass;
-
   if (!id && !pass) return alert('La contraseña es obligatoria para nuevos usuarios');
-
-  const url = id ? `${API}/usuarios/${id}` : `${API}/usuarios`;
-  const method = id ? 'PUT' : 'POST';
-
-  const res = await fetch(url, { method, headers: headers(), body: JSON.stringify(body) });
+  const res = await fetch(id ? `${API}/usuarios/${id}` : `${API}/usuarios`, { method: id ? 'PUT' : 'POST', headers: headers(), body: JSON.stringify(body) });
   const data = await res.json();
-  if (res.ok) {
-    cerrarModal('modalUsuario');
-    cargarUsuarios();
-  } else {
-    alert(data.error);
-  }
+  if (res.ok) { cerrarModal('modalUsuario'); cargarUsuarios(); } else alert(data.error);
 }
 
 async function eliminarUsuario(id) {
-  if (!confirm('¿Está seguro de eliminar este usuario?')) return;
+  if (!confirm('¿Eliminar este usuario?')) return;
   const res = await fetch(`${API}/usuarios/${id}`, { method: 'DELETE', headers: headers() });
   const data = await res.json();
-  if (res.ok) cargarUsuarios();
-  else alert(data.error);
+  if (res.ok) cargarUsuarios(); else alert(data.error);
 }
 
-function cerrarModal(id) {
-  document.getElementById(id).classList.remove('show');
-}
-
-document.querySelectorAll('.modal-overlay').forEach(m => {
-  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('show'); });
-});
+function cerrarModal(id) { document.getElementById(id).classList.remove('show'); }
+document.querySelectorAll('.modal-overlay').forEach(m => { m.addEventListener('click', e => { if (e.target === m) m.classList.remove('show'); }); });
 </script>
 </body>
 </html>
