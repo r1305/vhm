@@ -4,6 +4,7 @@ const cors = require('cors');
 const reclamosRoutes = require('./routes');
 const authRoutes = require('./authRoutes');
 const usuariosRoutes = require('./usuariosRoutes');
+const configEmailRoutes = require('./configEmailRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -27,6 +28,7 @@ app.get('/reclamo', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/reclamos', reclamosRoutes);
 app.use('/api/usuarios', usuariosRoutes);
+app.use('/api/config-email', configEmailRoutes);
 
 if (require.main === module) {
   app.listen(PORT, () => {
