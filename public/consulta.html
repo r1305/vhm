@@ -6,54 +6,46 @@
   <title>Consulta de Reclamos - VHM</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: system-ui, sans-serif; background: #f5f5f5; padding: 20px; }
+    body { font-family: system-ui, sans-serif; background: #0a0a0a; padding: 20px; color: #f5f0eb; }
     .container { max-width: 900px; margin: 0 auto; }
-    h1 { text-align: center; color: #c62828; margin-bottom: 5px; font-size: 1.5rem; }
-    .subtitle { text-align: center; color: #666; margin-bottom: 25px; font-size: .9rem; }
-    .search-box { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,.1); margin-bottom: 20px; display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+    h1 { text-align: center; color: #c8e6f0; margin-bottom: 5px; font-size: 1.5rem; }
+    .subtitle { text-align: center; color: #888; margin-bottom: 25px; font-size: .9rem; }
+    .search-box { background: #111; border: 1px solid #222; padding: 20px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
     .search-box .field { flex: 1; min-width: 200px; }
-    .search-box label { display: block; font-size: .85rem; font-weight: 500; margin-bottom: 4px; }
-    .search-box input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem; }
-    .search-box button { padding: 10px 24px; background: #c62828; color: #fff; border: none; border-radius: 4px; font-size: 1rem; cursor: pointer; white-space: nowrap; }
-    .search-box button:hover { background: #a31515; }
-
+    .search-box label { display: block; font-size: .85rem; font-weight: 500; margin-bottom: 4px; color: #ccc; }
+    .search-box input { width: 100%; padding: 10px; border: 1px solid #333; border-radius: 4px; font-size: 1rem; background: #1a1a1a; color: #f5f0eb; }
+    .search-box input:focus { outline: none; border-color: #c8e6f0; }
+    .search-box button { padding: 10px 24px; background: linear-gradient(135deg, #f5f0eb, #c8e6f0); color: #000; border: none; border-radius: 4px; font-size: 1rem; cursor: pointer; font-weight: 600; white-space: nowrap; }
+    .search-box button:hover { opacity: .9; }
     .no-results { text-align: center; padding: 40px; color: #666; display: none; }
     .results { display: none; }
-
-    .reclamo-card { background: #fff; border-radius: 8px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+    .reclamo-card { background: #111; border: 1px solid #222; border-radius: 8px; padding: 20px; margin-bottom: 16px; }
     .reclamo-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
-    .reclamo-header h3 { font-size: 1rem; color: #333; }
+    .reclamo-header h3 { font-size: 1rem; color: #f5f0eb; }
     .badge { padding: 4px 10px; border-radius: 12px; font-size: .75rem; font-weight: 600; }
-    .badge-pendiente { background: #fff3e0; color: #e65100; }
-    .badge-en_proceso { background: #e3f2fd; color: #1565c0; }
-    .badge-resuelto { background: #e8f5e9; color: #2e7d32; }
-    .badge-cerrado { background: #eceff1; color: #546e7a; }
-
+    .badge-pendiente { background: #3d2800; color: #ffb74d; }
+    .badge-en_proceso { background: #0a2540; color: #64b5f6; }
+    .badge-resuelto { background: #0a2a0a; color: #6fcf6f; }
+    .badge-cerrado { background: #1a1a1a; color: #999; }
     .reclamo-body { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: .85rem; }
-    .reclamo-body .field-label { color: #888; font-size: .75rem; }
-    .reclamo-body .field-value { color: #333; }
-
-    .reclamo-detail { margin-top: 12px; font-size: .85rem; border-top: 1px solid #eee; padding-top: 12px; }
-    .reclamo-detail p { margin-bottom: 6px; }
-    .reclamo-detail strong { color: #555; }
-
-    .respuesta-box { background: #e8f5e9; border: 1px solid #a5d6a7; border-radius: 6px; padding: 14px; margin-top: 12px; }
-    .respuesta-box h4 { color: #2e7d32; font-size: .9rem; margin-bottom: 6px; }
-    .respuesta-box p { font-size: .85rem; color: #333; }
+    .reclamo-body .field-label { color: #666; font-size: .75rem; }
+    .reclamo-body .field-value { color: #ccc; }
+    .reclamo-detail { margin-top: 12px; font-size: .85rem; border-top: 1px solid #222; padding-top: 12px; }
+    .reclamo-detail p { margin-bottom: 6px; color: #aaa; }
+    .reclamo-detail strong { color: #c8e6f0; }
+    .respuesta-box { background: #0a2a0a; border: 1px solid #2a5a2a; border-radius: 6px; padding: 14px; margin-top: 12px; }
+    .respuesta-box h4 { color: #6fcf6f; font-size: .9rem; margin-bottom: 6px; }
+    .respuesta-box p { font-size: .85rem; color: #ccc; }
     .respuesta-box .fecha { font-size: .75rem; color: #666; margin-top: 6px; }
-
-    .btn-pdf { display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px; background: #1565c0; color: #fff; border: none; border-radius: 4px; font-size: .85rem; cursor: pointer; text-decoration: none; margin-top: 12px; }
-    .btn-pdf:hover { background: #0d47a1; }
-
+    .btn-pdf { display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px; background: #c8e6f0; color: #000; border: none; border-radius: 4px; font-size: .85rem; cursor: pointer; text-decoration: none; margin-top: 12px; font-weight: 600; }
+    .btn-pdf:hover { opacity: .9; }
     .nav-links { text-align: center; margin-bottom: 20px; }
-    .nav-links a { color: #c62828; text-decoration: none; font-size: .9rem; margin: 0 10px; }
-    .nav-links a:hover { text-decoration: underline; }
-
+    .nav-links a { color: #c8e6f0; text-decoration: none; font-size: .9rem; margin: 0 10px; }
+    .nav-links a:hover { color: #fff; }
     @media (max-width: 600px) {
       body { padding: 10px; }
       h1 { font-size: 1.2rem; }
       .search-box { flex-direction: column; align-items: stretch; }
-      .search-box .field { min-width: auto; }
       .search-box button { width: 100%; padding: 12px; }
       .reclamo-body { grid-template-columns: 1fr; }
       .reclamo-header { flex-direction: column; align-items: flex-start; }
@@ -64,11 +56,9 @@
 <div class="container">
   <h1>🔍 Consulta de Reclamos</h1>
   <p class="subtitle">Ingrese su número de documento para consultar el estado de sus reclamos</p>
-
   <div class="nav-links">
     <a href="/reclamo">← Registrar nuevo reclamo</a>
   </div>
-
   <div class="search-box">
     <div class="field">
       <label>Número de Documento (DNI / CE / Pasaporte / RUC)</label>
@@ -76,35 +66,20 @@
     </div>
     <button onclick="buscar()">Buscar</button>
   </div>
-
-  <div class="no-results" id="noResults">
-    <p>No se encontraron reclamos asociados a este documento.</p>
-  </div>
-
+  <div class="no-results" id="noResults"><p>No se encontraron reclamos asociados a este documento.</p></div>
   <div class="results" id="results"></div>
 </div>
-
 <script>
-  document.getElementById('inputDoc').addEventListener('keypress', e => {
-    if (e.key === 'Enter') buscar();
-  });
-
+  document.getElementById('inputDoc').addEventListener('keypress', e => { if (e.key === 'Enter') buscar(); });
   async function buscar() {
     const doc = document.getElementById('inputDoc').value.trim();
     if (!doc) return alert('Ingrese un número de documento');
-
     document.getElementById('noResults').style.display = 'none';
     document.getElementById('results').style.display = 'none';
-
     try {
       const res = await fetch(`/api/reclamos/consulta/${encodeURIComponent(doc)}`);
       const data = await res.json();
-
-      if (data.length === 0) {
-        document.getElementById('noResults').style.display = 'block';
-        return;
-      }
-
+      if (data.length === 0) { document.getElementById('noResults').style.display = 'block'; return; }
       document.getElementById('results').style.display = 'block';
       document.getElementById('results').innerHTML = data.map(r => `
         <div class="reclamo-card">
@@ -123,19 +98,11 @@
             <p><strong>Detalle:</strong> ${r.detalle_reclamo}</p>
             <p><strong>Pedido:</strong> ${r.pedido_consumidor}</p>
           </div>
-          ${r.respuesta ? `
-            <div class="respuesta-box">
-              <h4>✅ Respuesta del proveedor</h4>
-              <p>${r.respuesta}</p>
-              <p class="fecha">Respondido el: ${new Date(r.fecha_respuesta).toLocaleString('es-PE')}</p>
-            </div>
-          ` : ''}
+          ${r.respuesta ? `<div class="respuesta-box"><h4>✅ Respuesta del proveedor</h4><p>${r.respuesta}</p><p class="fecha">Respondido el: ${new Date(r.fecha_respuesta).toLocaleString('es-PE')}</p></div>` : ''}
           <a class="btn-pdf" href="/api/reclamos/${r.id}/pdf" target="_blank">📄 Descargar PDF</a>
         </div>
       `).join('');
-    } catch {
-      alert('Error al consultar. Intente nuevamente.');
-    }
+    } catch { alert('Error al consultar. Intente nuevamente.'); }
   }
 </script>
 </body>
