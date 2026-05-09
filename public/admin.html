@@ -74,6 +74,11 @@
     .detail-grid strong { display: block; color: #c8e6f0; font-size: .75rem; }
     .respuesta-box { background: #0a2a0a; border: 1px solid #2a5a2a; padding: 12px; border-radius: 6px; margin-top: 10px; color: #ccc; font-size: .85rem; }
 
+    .form-group-cfg { margin-bottom: 14px; }
+    .form-group-cfg label { display: block; font-size: .85rem; color: #aaa; margin-bottom: 4px; }
+    .form-group-cfg input, .form-group-cfg select { width: 100%; padding: 10px; border: 1px solid #333; border-radius: 4px; background: #1a1a1a; color: #f5f0eb; font-size: .95rem; }
+    .form-group-cfg input:focus, .form-group-cfg select:focus { outline: none; border-color: #c8e6f0; }
+
     .mobile-cards { display: none; }
     .mobile-card { background: #111; border: 1px solid #222; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
     .mobile-card .mc-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
@@ -118,6 +123,7 @@
   <div class="tabs">
     <button class="active" onclick="switchTab('reclamos')">Reclamos</button>
     <button onclick="switchTab('usuarios')">Usuarios</button>
+    <button id="tabConfig" style="display:none" onclick="switchTab('config')">⚙️ Configuración</button>
   </div>
   <div class="content">
     <div class="panel active" id="panelReclamos">
@@ -150,6 +156,52 @@
         </table>
       </div>
       <div class="mobile-cards" id="usuariosMobile"></div>
+    </div>
+
+    <!-- PANEL CONFIGURACIÓN EMAIL -->
+    <div class="panel" id="panelConfig">
+      <div style="max-width:560px">
+        <h3 style="color:#c8e6f0;margin-bottom:20px">⚙️ Configuración de Correo SMTP</h3>
+        <div class="form-group-cfg">
+          <label>Servidor SMTP (Host)</label>
+          <input type="text" id="cfgHost" placeholder="smtp.tudominio.com">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group-cfg">
+            <label>Puerto</label>
+            <input type="number" id="cfgPort" placeholder="465">
+          </div>
+          <div class="form-group-cfg">
+            <label>Seguro (SSL/TLS)</label>
+            <select id="cfgSecure">
+              <option value="1">Sí (SSL)</option>
+              <option value="0">No (STARTTLS)</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group-cfg">
+          <label>Usuario / Email SMTP</label>
+          <input type="text" id="cfgUser" placeholder="noreply@tudominio.com">
+        </div>
+        <div class="form-group-cfg">
+          <label>Contraseña SMTP <span style="color:#666;font-size:.8rem">(dejar vacío para no cambiar)</span></label>
+          <input type="password" id="cfgPass" placeholder="••••••••">
+        </div>
+        <div class="form-group-cfg">
+          <label>Email remitente (From)</label>
+          <input type="email" id="cfgEmailFrom" placeholder="noreply@tudominio.com">
+        </div>
+        <div class="form-group-cfg">
+          <label>Nombre remitente</label>
+          <input type="text" id="cfgNombreFrom" placeholder="VHM - Libro de Reclamaciones">
+        </div>
+        <div style="margin-top:8px;font-size:.8rem;color:#666" id="cfgFechaActualizacion"></div>
+        <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="guardarConfig()" style="padding:10px 20px">Guardar Configuración</button>
+          <button class="btn btn-success" onclick="probarConfig()" style="padding:10px 20px">Enviar Correo de Prueba</button>
+        </div>
+        <div id="cfgMsg" style="margin-top:12px;padding:10px;border-radius:4px;display:none;font-size:.85rem"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -231,6 +283,7 @@ function initAdmin() {
   document.getElementById('loginSection').style.display = 'none';
   document.getElementById('adminSection').style.display = 'block';
   document.getElementById('currentUser').textContent = (JSON.parse(localStorage.getItem('user') || '{}')).nombre;
+  if (isSuperAdmin()) document.getElementById('tabConfig').style.display = 'block';
   cargarReclamos();
 }
 
@@ -249,6 +302,7 @@ function switchTab(tab) {
   document.getElementById(`panel${tab.charAt(0).toUpperCase() + tab.slice(1)}`).classList.add('active');
   if (tab === 'usuarios') cargarUsuarios();
   if (tab === 'reclamos') cargarReclamos();
+  if (tab === 'config') cargarConfig();
 }
 
 async function cargarReclamos() {
@@ -420,6 +474,61 @@ async function eliminarUsuario(id) {
 
 function cerrarModal(id) { document.getElementById(id).classList.remove('show'); }
 document.querySelectorAll('.modal-overlay').forEach(m => { m.addEventListener('click', e => { if (e.target === m) m.classList.remove('show'); }); });
+
+// CONFIG EMAIL
+async function cargarConfig() {
+  try {
+    const res = await fetch(`${API}/config-email`, { headers: headers() });
+    const d = await res.json();
+    document.getElementById('cfgHost').value = d.smtp_host || '';
+    document.getElementById('cfgPort').value = d.smtp_port || 465;
+    document.getElementById('cfgSecure').value = d.smtp_secure !== undefined ? String(d.smtp_secure) : '1';
+    document.getElementById('cfgUser').value = d.smtp_user || '';
+    document.getElementById('cfgEmailFrom').value = d.email_from || '';
+    document.getElementById('cfgNombreFrom').value = d.nombre_from || '';
+    document.getElementById('cfgPass').value = '';
+    if (d.fecha_actualizacion) {
+      document.getElementById('cfgFechaActualizacion').textContent = `Última actualización: ${new Date(d.fecha_actualizacion).toLocaleString('es-PE')}`;
+    }
+  } catch { mostrarMsgConfig('Error al cargar configuración', false); }
+}
+
+async function guardarConfig() {
+  const body = {
+    smtp_host: document.getElementById('cfgHost').value.trim(),
+    smtp_port: parseInt(document.getElementById('cfgPort').value),
+    smtp_secure: document.getElementById('cfgSecure').value === '1',
+    smtp_user: document.getElementById('cfgUser').value.trim(),
+    smtp_pass: document.getElementById('cfgPass').value,
+    email_from: document.getElementById('cfgEmailFrom').value.trim(),
+    nombre_from: document.getElementById('cfgNombreFrom').value.trim()
+  };
+  try {
+    const res = await fetch(`${API}/config-email`, { method: 'PUT', headers: headers(), body: JSON.stringify(body) });
+    const d = await res.json();
+    mostrarMsgConfig(res.ok ? '✅ ' + d.message : '❌ ' + d.error, res.ok);
+  } catch { mostrarMsgConfig('❌ Error de conexión', false); }
+}
+
+async function probarConfig() {
+  const btn = event.target;
+  btn.disabled = true; btn.textContent = 'Enviando...';
+  try {
+    const res = await fetch(`${API}/config-email/test`, { method: 'POST', headers: headers() });
+    const d = await res.json();
+    mostrarMsgConfig(res.ok ? '✅ ' + d.message : '❌ ' + d.error, res.ok);
+  } catch { mostrarMsgConfig('❌ Error de conexión', false); }
+  finally { btn.disabled = false; btn.textContent = 'Enviar Correo de Prueba'; }
+}
+
+function mostrarMsgConfig(texto, ok) {
+  const el = document.getElementById('cfgMsg');
+  el.textContent = texto;
+  el.style.display = 'block';
+  el.style.background = ok ? '#0a2a0a' : '#2a0a0a';
+  el.style.color = ok ? '#6fcf6f' : '#f08080';
+  el.style.border = ok ? '1px solid #2a5a2a' : '1px solid #5a2a2a';
+}
 </script>
 </body>
 </html>
