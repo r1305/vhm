@@ -246,11 +246,19 @@
         ${t.autor ? `<div class="author">— ${t.autor}</div>` : ''}
       </div>
     `).join('');
-    // Duplicar para loop infinito
-    track.innerHTML = html + html;
-    // Ajustar velocidad según cantidad
-    const duration = Math.max(20, testimonios.length * 8);
-    track.style.animationDuration = duration + 's';
+    track.innerHTML = html;
+
+    // Verificar si el contenido excede el ancho visible
+    requestAnimationFrame(() => {
+      if (track.scrollWidth > track.parentElement.clientWidth) {
+        track.innerHTML = html + html;
+        const duration = Math.max(20, testimonios.length * 8);
+        track.style.animationDuration = duration + 's';
+      } else {
+        track.style.animation = 'none';
+        track.style.justifyContent = 'center';
+      }
+    });
   } catch (e) {
     console.log('No se pudieron cargar los testimonios');
   }
