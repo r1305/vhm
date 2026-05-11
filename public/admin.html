@@ -86,6 +86,9 @@
     .mobile-card .mc-row { font-size: .8rem; color: #888; margin-bottom: 4px; }
     .mobile-card .mc-actions { margin-top: 10px; display: flex; gap: 6px; flex-wrap: wrap; }
 
+    .config-subpanel { display: none; }
+    .config-subpanel.active { display: block; }
+
     @media (max-width: 768px) {
       .topbar h1 { font-size: .9rem; }
       .content { padding: 12px; }
@@ -158,49 +161,88 @@
       <div class="mobile-cards" id="usuariosMobile"></div>
     </div>
 
-    <!-- PANEL CONFIGURACIÓN EMAIL -->
+    <!-- PANEL CONFIGURACIÓN -->
     <div class="panel" id="panelConfig">
-      <div style="max-width:560px">
-        <h3 style="color:#c8e6f0;margin-bottom:20px">⚙️ Configuración de Correo SMTP</h3>
-        <div class="form-group-cfg">
-          <label>Servidor SMTP (Host)</label>
-          <input type="text" id="cfgHost" placeholder="smtp.tudominio.com">
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="tabs" style="background:#111;border-bottom:1px solid #222;margin:-16px -16px 20px -16px;padding:0 16px">
+        <button class="active" onclick="switchConfigTab('email')">📧 Email SMTP</button>
+        <button onclick="switchConfigTab('pixel')">📊 Pixel Meta</button>
+      </div>
+      
+      <!-- SUB-PANEL EMAIL -->
+      <div class="config-subpanel active" id="configEmail">
+        <div style="max-width:560px">
+          <h3 style="color:#c8e6f0;margin-bottom:20px">⚙️ Configuración de Correo SMTP</h3>
           <div class="form-group-cfg">
-            <label>Puerto</label>
-            <input type="number" id="cfgPort" placeholder="465">
+            <label>Servidor SMTP (Host)</label>
+            <input type="text" id="cfgHost" placeholder="smtp.tudominio.com">
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="form-group-cfg">
+              <label>Puerto</label>
+              <input type="number" id="cfgPort" placeholder="465">
+            </div>
+            <div class="form-group-cfg">
+              <label>Seguro (SSL/TLS)</label>
+              <select id="cfgSecure">
+                <option value="1">Sí (SSL)</option>
+                <option value="0">No (STARTTLS)</option>
+              </select>
+            </div>
           </div>
           <div class="form-group-cfg">
-            <label>Seguro (SSL/TLS)</label>
-            <select id="cfgSecure">
-              <option value="1">Sí (SSL)</option>
-              <option value="0">No (STARTTLS)</option>
+            <label>Usuario / Email SMTP</label>
+            <input type="text" id="cfgUser" placeholder="noreply@tudominio.com">
+          </div>
+          <div class="form-group-cfg">
+            <label>Contraseña SMTP <span style="color:#666;font-size:.8rem">(dejar vacío para no cambiar)</span></label>
+            <input type="password" id="cfgPass" placeholder="••••••••">
+          </div>
+          <div class="form-group-cfg">
+            <label>Email remitente (From)</label>
+            <input type="email" id="cfgEmailFrom" placeholder="noreply@tudominio.com">
+          </div>
+          <div class="form-group-cfg">
+            <label>Nombre remitente</label>
+            <input type="text" id="cfgNombreFrom" placeholder="VHM - Libro de Reclamaciones">
+          </div>
+          <div style="margin-top:8px;font-size:.8rem;color:#666" id="cfgFechaActualizacion"></div>
+          <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap">
+            <button class="btn btn-primary" onclick="guardarConfig()" style="padding:10px 20px">Guardar Configuración</button>
+            <button class="btn btn-success" onclick="probarConfig()" style="padding:10px 20px">Enviar Correo de Prueba</button>
+          </div>
+          <div id="cfgMsg" style="margin-top:12px;padding:10px;border-radius:4px;display:none;font-size:.85rem"></div>
+        </div>
+      </div>
+      
+      <!-- SUB-PANEL PIXEL -->
+      <div class="config-subpanel" id="configPixel">
+        <div style="max-width:560px">
+          <h3 style="color:#c8e6f0;margin-bottom:20px">📊 Configuración de Pixel Meta (Facebook)</h3>
+          <div class="form-group-cfg">
+            <label>ID del Pixel de Meta</label>
+            <input type="text" id="pixelId" placeholder="123456789012345">
+            <small style="color:#666;font-size:.75rem;margin-top:4px;display:block">Ingrese el ID numérico de su pixel de Meta/Facebook</small>
+          </div>
+          <div class="form-group-cfg">
+            <label>Estado del Pixel</label>
+            <select id="pixelActivo">
+              <option value="1">Activo</option>
+              <option value="0">Inactivo</option>
             </select>
+            <small style="color:#666;font-size:.75rem;margin-top:4px;display:block">Cuando esté inactivo, el pixel no se cargará en el sitio web</small>
+          </div>
+          <div style="margin-top:8px;font-size:.8rem;color:#666" id="pixelFechaActualizacion"></div>
+          <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap">
+            <button class="btn btn-primary" onclick="guardarPixelConfig()" style="padding:10px 20px">Guardar Configuración</button>
+          </div>
+          <div id="pixelMsg" style="margin-top:12px;padding:10px;border-radius:4px;display:none;font-size:.85rem"></div>
+          
+          <div style="margin-top:30px;padding:16px;background:#0a0a0a;border:1px solid #222;border-radius:6px">
+            <h4 style="color:#c8e6f0;margin-bottom:10px;font-size:.9rem">ℹ️ Información sobre el Pixel</h4>
+            <p style="color:#aaa;font-size:.8rem;line-height:1.5;margin-bottom:8px">El pixel de Meta se agregará automáticamente al landing page (página principal) para rastrear visitantes y conversiones.</p>
+            <p style="color:#aaa;font-size:.8rem;line-height:1.5">Puedes encontrar tu ID de pixel en el Administrador de Eventos de Facebook Business.</p>
           </div>
         </div>
-        <div class="form-group-cfg">
-          <label>Usuario / Email SMTP</label>
-          <input type="text" id="cfgUser" placeholder="noreply@tudominio.com">
-        </div>
-        <div class="form-group-cfg">
-          <label>Contraseña SMTP <span style="color:#666;font-size:.8rem">(dejar vacío para no cambiar)</span></label>
-          <input type="password" id="cfgPass" placeholder="••••••••">
-        </div>
-        <div class="form-group-cfg">
-          <label>Email remitente (From)</label>
-          <input type="email" id="cfgEmailFrom" placeholder="noreply@tudominio.com">
-        </div>
-        <div class="form-group-cfg">
-          <label>Nombre remitente</label>
-          <input type="text" id="cfgNombreFrom" placeholder="VHM - Libro de Reclamaciones">
-        </div>
-        <div style="margin-top:8px;font-size:.8rem;color:#666" id="cfgFechaActualizacion"></div>
-        <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap">
-          <button class="btn btn-primary" onclick="guardarConfig()" style="padding:10px 20px">Guardar Configuración</button>
-          <button class="btn btn-success" onclick="probarConfig()" style="padding:10px 20px">Enviar Correo de Prueba</button>
-        </div>
-        <div id="cfgMsg" style="margin-top:12px;padding:10px;border-radius:4px;display:none;font-size:.85rem"></div>
       </div>
     </div>
   </div>
@@ -317,7 +359,18 @@ function switchTab(tab) {
   document.getElementById(`panel${tab.charAt(0).toUpperCase() + tab.slice(1)}`).classList.add('active');
   if (tab === 'usuarios') cargarUsuarios();
   if (tab === 'reclamos') cargarReclamos();
-  if (tab === 'config') cargarConfig();
+  if (tab === 'config') {
+    switchConfigTab('email');
+    cargarConfig();
+  }
+}
+
+function switchConfigTab(subtab) {
+  document.querySelectorAll('#panelConfig .tabs button').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.config-subpanel').forEach(p => p.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById(`config${subtab.charAt(0).toUpperCase() + subtab.slice(1)}`).classList.add('active');
+  if (subtab === 'pixel') cargarPixelConfig();
 }
 
 async function cargarReclamos() {
@@ -590,6 +643,40 @@ async function reenviarCorreo(id) {
     btn.disabled = false;
     btn.textContent = textoOriginal;
   }
+}
+
+async function guardarPixelConfig() {
+  const body = {
+    pixel_id: document.getElementById('pixelId').value.trim(),
+    activo: document.getElementById('pixelActivo').value === '1'
+  };
+  try {
+    const res = await fetch(`${API}/config-pixel`, { method: 'PUT', headers: headers(), body: JSON.stringify(body) });
+    const d = await res.json();
+    mostrarMsgPixel(res.ok ? '✅ ' + d.message : '❌ ' + d.error, res.ok);
+    if (res.ok) cargarPixelConfig();
+  } catch { mostrarMsgPixel('❌ Error de conexión', false); }
+}
+
+async function cargarPixelConfig() {
+  try {
+    const res = await fetch(`${API}/config-pixel`, { headers: headers() });
+    const d = await res.json();
+    document.getElementById('pixelId').value = d.pixel_id || '';
+    document.getElementById('pixelActivo').value = d.activo !== undefined ? String(d.activo ? 1 : 0) : '0';
+    if (d.fecha_actualizacion) {
+      document.getElementById('pixelFechaActualizacion').textContent = `Última actualización: ${new Date(d.fecha_actualizacion).toLocaleString('es-PE')}`;
+    }
+  } catch { mostrarMsgPixel('Error al cargar configuración', false); }
+}
+
+function mostrarMsgPixel(texto, ok) {
+  const el = document.getElementById('pixelMsg');
+  el.textContent = texto;
+  el.style.display = 'block';
+  el.style.background = ok ? '#0a2a0a' : '#2a0a0a';
+  el.style.color = ok ? '#6fcf6f' : '#f08080';
+  el.style.border = ok ? '1px solid #2a5a2a' : '1px solid #5a2a2a';
 }
 
 function mostrarMsgConfig(texto, ok) {
