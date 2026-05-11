@@ -348,4 +348,28 @@ router.delete('/:id', authMiddleware, async (req, res) => {
   }
 });
 
+// Reenviar correo de respuesta
+router.post('/:id/reenviar', authMiddleware, async (req, res) => {
+  try {
+    const [rows] = await pool.execute('SELECT * FROM reclamos WHERE id = ?', [req.params.id]);
+    if (rows.length === 0) return res.status(404).json({ error: 'Reclamo no encontrado' });
+    
+    const reclamo = rows[0];
+    if (!reclamo.respuesta) {
+      return res.status(400).json({ error: 'Este reclamo no tiene respuesta para reenviar' });
+    }
+    
+    try {
+      await enviarNotificacion(reclamo.email, reclamo.numero_reclamo, reclamo.respuesta);
+      res.json({ message: `Correo reenviado exitosamente a ${reclamo.email}` });
+    } catch (emailErr) {
+      console.error('Error reenviando email:', emailErr.message);
+      res.status(500).json({ error: `Error al reenviar correo: ${emailErr.message}` });
+    }
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al procesar el reenvío' });
+  }
+});
+
 module.exports = router;
