@@ -45,11 +45,24 @@ router.put('/', soloSuperAdmin, async (req, res) => {
 // Probar configuración
 router.post('/test', soloSuperAdmin, async (req, res) => {
   try {
+    const { email, mensaje } = req.body;
     const { enviarNotificacion } = require('./mailer');
-    const user = await pool.execute('SELECT email FROM usuarios WHERE id = ?', [req.user.id]);
-    const emailDestino = user[0][0]?.email;
-    if (!emailDestino) return res.status(400).json({ error: 'No se encontró email del usuario' });
-    await enviarNotificacion(emailDestino, 'TEST-0000', 'Este es un correo de prueba de configuración SMTP.');
+    
+    let emailDestino, mensajePrueba;
+    
+    if (email && mensaje) {
+      // Si se proporcionan email y mensaje personalizados
+      emailDestino = email;
+      mensajePrueba = mensaje;
+    } else {
+      // Comportamiento por defecto
+      const user = await pool.execute('SELECT email FROM usuarios WHERE id = ?', [req.user.id]);
+      emailDestino = user[0][0]?.email;
+      if (!emailDestino) return res.status(400).json({ error: 'No se encontró email del usuario' });
+      mensajePrueba = 'Este es un correo de prueba de configuración SMTP.';
+    }
+    
+    await enviarNotificacion(emailDestino, 'TEST-0000', mensajePrueba);
     res.json({ message: `Correo de prueba enviado a ${emailDestino}` });
   } catch (err) {
     console.error(err);
