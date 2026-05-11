@@ -6,6 +6,7 @@ const authRoutes = require('./authRoutes');
 const usuariosRoutes = require('./usuariosRoutes');
 const configEmailRoutes = require('./configEmailRoutes');
 const configPixelRoutes = require('./configPixelRoutes');
+const configWhatsappRoutes = require('./configWhatsappRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -38,11 +39,24 @@ app.get('/api/pixel-config', async (req, res) => {
   }
 });
 
+// Ruta pública para obtener configuración de WhatsApp
+app.get('/api/whatsapp-config', async (req, res) => {
+  try {
+    const pool = require('./db');
+    const [rows] = await pool.execute('SELECT numero, mensaje, activo FROM config_whatsapp WHERE id = 1 AND activo = 1');
+    res.json(rows[0] || { numero: null, mensaje: null, activo: false });
+  } catch (err) {
+    console.error(err);
+    res.json({ numero: null, mensaje: null, activo: false });
+  }
+});
+
 app.use('/api/auth', authRoutes);
 app.use('/api/reclamos', reclamosRoutes);
 app.use('/api/usuarios', usuariosRoutes);
 app.use('/api/config-email', configEmailRoutes);
 app.use('/api/config-pixel', configPixelRoutes);
+app.use('/api/config-whatsapp', configWhatsappRoutes);
 
 if (require.main === module) {
   app.listen(PORT, () => {

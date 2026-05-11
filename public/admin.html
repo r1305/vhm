@@ -166,6 +166,7 @@
       <div class="tabs" style="background:#111;border-bottom:1px solid #222;margin:-16px -16px 20px -16px;padding:0 16px">
         <button class="active" onclick="switchConfigTab('email')">📧 Email SMTP</button>
         <button onclick="switchConfigTab('pixel')">📊 Pixel Meta</button>
+        <button onclick="switchConfigTab('whatsapp')">💬 WhatsApp</button>
       </div>
       
       <!-- SUB-PANEL EMAIL -->
@@ -242,6 +243,36 @@
             <p style="color:#aaa;font-size:.8rem;line-height:1.5;margin-bottom:8px">El pixel de Meta se agregará automáticamente al landing page (página principal) para rastrear visitantes y conversiones.</p>
             <p style="color:#aaa;font-size:.8rem;line-height:1.5">Puedes encontrar tu ID de pixel en el Administrador de Eventos de Facebook Business.</p>
           </div>
+        </div>
+      </div>
+      
+      <!-- SUB-PANEL WHATSAPP -->
+      <div class="config-subpanel" id="configWhatsapp">
+        <div style="max-width:560px">
+          <h3 style="color:#c8e6f0;margin-bottom:20px">💬 Configuración de WhatsApp</h3>
+          <div class="form-group-cfg">
+            <label>Número de WhatsApp</label>
+            <input type="text" id="waNumero" placeholder="51999999999">
+            <small style="color:#666;font-size:.75rem;margin-top:4px;display:block">Ingrese el número con código de país sin + ni espacios (ej: 51999999999 para Perú)</small>
+          </div>
+          <div class="form-group-cfg">
+            <label>Mensaje predeterminado</label>
+            <input type="text" id="waMensaje" placeholder="Hola, me gustaría obtener más información...">
+            <small style="color:#666;font-size:.75rem;margin-top:4px;display:block">Este mensaje se pre-cargará cuando el usuario haga clic en el botón de WhatsApp</small>
+          </div>
+          <div class="form-group-cfg">
+            <label>Estado del botón</label>
+            <select id="waActivo">
+              <option value="1">Activo</option>
+              <option value="0">Inactivo</option>
+            </select>
+            <small style="color:#666;font-size:.75rem;margin-top:4px;display:block">Cuando esté inactivo, el botón flotante no se mostrará en el sitio web</small>
+          </div>
+          <div style="margin-top:8px;font-size:.8rem;color:#666" id="waFechaActualizacion"></div>
+          <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap">
+            <button class="btn btn-primary" onclick="guardarWhatsappConfig()" style="padding:10px 20px">Guardar Configuración</button>
+          </div>
+          <div id="waMsg" style="margin-top:12px;padding:10px;border-radius:4px;display:none;font-size:.85rem"></div>
         </div>
       </div>
     </div>
@@ -371,6 +402,7 @@ function switchConfigTab(subtab) {
   event.target.classList.add('active');
   document.getElementById(`config${subtab.charAt(0).toUpperCase() + subtab.slice(1)}`).classList.add('active');
   if (subtab === 'pixel') cargarPixelConfig();
+  if (subtab === 'whatsapp') cargarWhatsappConfig();
 }
 
 async function cargarReclamos() {
@@ -672,6 +704,43 @@ async function cargarPixelConfig() {
 
 function mostrarMsgPixel(texto, ok) {
   const el = document.getElementById('pixelMsg');
+  el.textContent = texto;
+  el.style.display = 'block';
+  el.style.background = ok ? '#0a2a0a' : '#2a0a0a';
+  el.style.color = ok ? '#6fcf6f' : '#f08080';
+  el.style.border = ok ? '1px solid #2a5a2a' : '1px solid #5a2a2a';
+}
+
+// CONFIG WHATSAPP
+async function cargarWhatsappConfig() {
+  try {
+    const res = await fetch(`${API}/config-whatsapp`, { headers: headers() });
+    const d = await res.json();
+    document.getElementById('waNumero').value = d.numero || '';
+    document.getElementById('waMensaje').value = d.mensaje || '';
+    document.getElementById('waActivo').value = d.activo !== undefined ? String(d.activo ? 1 : 0) : '0';
+    if (d.fecha_actualizacion) {
+      document.getElementById('waFechaActualizacion').textContent = `Última actualización: ${new Date(d.fecha_actualizacion).toLocaleString('es-PE')}`;
+    }
+  } catch { mostrarMsgWa('Error al cargar configuración', false); }
+}
+
+async function guardarWhatsappConfig() {
+  const body = {
+    numero: document.getElementById('waNumero').value.trim(),
+    mensaje: document.getElementById('waMensaje').value.trim(),
+    activo: document.getElementById('waActivo').value === '1'
+  };
+  try {
+    const res = await fetch(`${API}/config-whatsapp`, { method: 'PUT', headers: headers(), body: JSON.stringify(body) });
+    const d = await res.json();
+    mostrarMsgWa(res.ok ? '✅ ' + d.message : '❌ ' + d.error, res.ok);
+    if (res.ok) cargarWhatsappConfig();
+  } catch { mostrarMsgWa('❌ Error de conexión', false); }
+}
+
+function mostrarMsgWa(texto, ok) {
+  const el = document.getElementById('waMsg');
   el.textContent = texto;
   el.style.display = 'block';
   el.style.background = ok ? '#0a2a0a' : '#2a0a0a';
