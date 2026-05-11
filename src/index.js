@@ -7,6 +7,7 @@ const usuariosRoutes = require('./usuariosRoutes');
 const configEmailRoutes = require('./configEmailRoutes');
 const configPixelRoutes = require('./configPixelRoutes');
 const configWhatsappRoutes = require('./configWhatsappRoutes');
+const testimoniosRoutes = require('./testimoniosRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -57,6 +58,7 @@ app.use('/api/usuarios', usuariosRoutes);
 app.use('/api/config-email', configEmailRoutes);
 app.use('/api/config-pixel', configPixelRoutes);
 app.use('/api/config-whatsapp', configWhatsappRoutes);
+app.use('/api/testimonios', testimoniosRoutes);
 
 if (require.main === module) {
   app.listen(PORT, () => {

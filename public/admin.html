@@ -127,6 +127,7 @@
   <div class="tabs">
     <button class="active" onclick="switchTab('reclamos')">Reclamos</button>
     <button onclick="switchTab('usuarios')">Usuarios</button>
+    <button id="tabTestimonios" style="display:none" onclick="switchTab('testimonios')">⭐ Testimonios</button>
     <button id="tabConfig" style="display:none" onclick="switchTab('config')">⚙️ Configuración</button>
   </div>
   <div class="content">
@@ -160,6 +161,20 @@
         </table>
       </div>
       <div class="mobile-cards" id="usuariosMobile"></div>
+    </div>
+
+    <!-- PANEL TESTIMONIOS -->
+    <div class="panel" id="panelTestimonios">
+      <button class="btn btn-primary" onclick="mostrarModalTestimonio()" style="margin-bottom:12px">+ Nuevo Testimonio</button>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr><th>Foto</th><th>Autor</th><th>Texto</th><th>Orden</th><th>Activo</th><th>Acciones</th></tr>
+          </thead>
+          <tbody id="testimoniosBody"></tbody>
+        </table>
+      </div>
+      <div class="mobile-cards" id="testimoniosMobile"></div>
     </div>
 
     <!-- PANEL CONFIGURACIÓN -->
@@ -330,6 +345,32 @@
   </div>
 </div>
 
+<!-- MODAL TESTIMONIO -->
+<div class="modal-overlay" id="modalTestimonio">
+  <div class="modal">
+    <h3 id="modalTestimonioTitle">Nuevo Testimonio</h3>
+    <input type="hidden" id="testimonioId">
+    <label>Autor <span style="color:#c8e6f0">*</span></label>
+    <input type="text" id="tAutor" placeholder="María, 28 años">
+    <label>Texto del testimonio <span style="color:#c8e6f0">*</span></label>
+    <textarea id="tTexto" placeholder="Escriba el testimonio..."></textarea>
+    <label>URL de foto (opcional)</label>
+    <input type="text" id="tFoto" placeholder="https://ejemplo.com/foto.jpg">
+    <small style="color:#666;font-size:.75rem;display:block;margin-top:4px">Ingrese una URL de imagen o deje vacío</small>
+    <label>Orden</label>
+    <input type="number" id="tOrden" placeholder="1" min="1">
+    <label>Activo</label>
+    <select id="tActivo">
+      <option value="1">Sí</option>
+      <option value="0">No</option>
+    </select>
+    <div class="modal-actions">
+      <button class="btn" style="background:#1a1a1a;color:#aaa;border:1px solid #333" onclick="cerrarModal('modalTestimonio')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarTestimonio()">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const API = '/api';
 let token = localStorage.getItem('token');
@@ -372,7 +413,10 @@ function initAdmin() {
   document.getElementById('loginSection').style.display = 'none';
   document.getElementById('adminSection').style.display = 'block';
   document.getElementById('currentUser').textContent = (JSON.parse(localStorage.getItem('user') || '{}')).nombre;
-  if (isSuperAdmin()) document.getElementById('tabConfig').style.display = 'block';
+  if (isSuperAdmin()) {
+    document.getElementById('tabConfig').style.display = 'block';
+    document.getElementById('tabTestimonios').style.display = 'block';
+  }
   cargarReclamos();
 }
 
@@ -391,6 +435,7 @@ function switchTab(tab) {
   document.getElementById(`panel${tab.charAt(0).toUpperCase() + tab.slice(1)}`).classList.add('active');
   if (tab === 'usuarios') cargarUsuarios();
   if (tab === 'reclamos') cargarReclamos();
+  if (tab === 'testimonios') cargarTestimonios();
   if (tab === 'config') {
     // Activar el primer sub-tab manualmente
     document.querySelectorAll('#panelConfig .tabs button').forEach(b => b.classList.remove('active'));
@@ -581,6 +626,97 @@ async function eliminarUsuario(id) {
 
 function cerrarModal(id) { document.getElementById(id).classList.remove('show'); }
 document.querySelectorAll('.modal-overlay').forEach(m => { m.addEventListener('click', e => { if (e.target === m) m.classList.remove('show'); }); });
+
+// TESTIMONIOS
+async function cargarTestimonios() {
+  try {
+    const res = await fetch(`${API}/testimonios/admin`, { headers: headers() });
+    if (res.status === 401) return logout();
+    const data = await res.json();
+
+    document.getElementById('testimoniosBody').innerHTML = data.map(t => `
+      <tr>
+        <td>${t.foto_url ? `<img src="${t.foto_url}" style="width:40px;height:40px;border-radius:50%;object-fit:cover">` : '-'}</td>
+        <td style="color:#c8e6f0">${t.autor}</td>
+        <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.texto}</td>
+        <td>${t.orden}</td>
+        <td>${t.activo ? '✅' : '❌'}</td>
+        <td>
+          <button class="btn btn-primary" onclick='editarTestimonio(${JSON.stringify(t)})'>Editar</button>
+          <button class="btn btn-danger" onclick="eliminarTestimonio(${t.id})">Eliminar</button>
+        </td>
+      </tr>
+    `).join('');
+
+    document.getElementById('testimoniosMobile').innerHTML = data.map(t => `
+      <div class="mobile-card">
+        <div class="mc-header">
+          <strong>${t.autor}</strong>
+          <span>${t.activo ? '✅' : '❌'}</span>
+        </div>
+        <div class="mc-row" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">💬 ${t.texto}</div>
+        <div class="mc-row">📷 ${t.foto_url ? 'Con foto' : 'Sin foto'} | Orden: ${t.orden}</div>
+        <div class="mc-actions">
+          <button class="btn btn-primary" onclick='editarTestimonio(${JSON.stringify(t)})'>Editar</button>
+          <button class="btn btn-danger" onclick="eliminarTestimonio(${t.id})">Eliminar</button>
+        </div>
+      </div>
+    `).join('');
+  } catch { alert('Error cargando testimonios'); }
+}
+
+function mostrarModalTestimonio() {
+  document.getElementById('modalTestimonioTitle').textContent = 'Nuevo Testimonio';
+  document.getElementById('testimonioId').value = '';
+  document.getElementById('tAutor').value = '';
+  document.getElementById('tTexto').value = '';
+  document.getElementById('tFoto').value = '';
+  document.getElementById('tOrden').value = '1';
+  document.getElementById('tActivo').value = '1';
+  document.getElementById('modalTestimonio').classList.add('show');
+}
+
+function editarTestimonio(t) {
+  document.getElementById('modalTestimonioTitle').textContent = 'Editar Testimonio';
+  document.getElementById('testimonioId').value = t.id;
+  document.getElementById('tAutor').value = t.autor;
+  document.getElementById('tTexto').value = t.texto;
+  document.getElementById('tFoto').value = t.foto_url || '';
+  document.getElementById('tOrden').value = t.orden;
+  document.getElementById('tActivo').value = t.activo ? '1' : '0';
+  document.getElementById('modalTestimonio').classList.add('show');
+}
+
+async function guardarTestimonio() {
+  const id = document.getElementById('testimonioId').value;
+  const body = {
+    autor: document.getElementById('tAutor').value.trim(),
+    texto: document.getElementById('tTexto').value.trim(),
+    foto_url: document.getElementById('tFoto').value.trim() || null,
+    orden: parseInt(document.getElementById('tOrden').value) || 1,
+    activo: document.getElementById('tActivo').value === '1'
+  };
+  if (!body.autor || !body.texto) return alert('Autor y texto son obligatorios');
+  try {
+    const res = await fetch(id ? `${API}/testimonios/${id}` : `${API}/testimonios`, {
+      method: id ? 'PUT' : 'POST',
+      headers: headers(),
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (res.ok) { cerrarModal('modalTestimonio'); cargarTestimonios(); }
+    else alert(data.error);
+  } catch { alert('Error de conexión'); }
+}
+
+async function eliminarTestimonio(id) {
+  if (!confirm('¿Eliminar este testimonio?')) return;
+  try {
+    const res = await fetch(`${API}/testimonios/${id}`, { method: 'DELETE', headers: headers() });
+    const data = await res.json();
+    if (res.ok) cargarTestimonios(); else alert(data.error);
+  } catch { alert('Error de conexión'); }
+}
 
 // CONFIG EMAIL
 async function cargarConfig() {
