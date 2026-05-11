@@ -350,13 +350,16 @@
   <div class="modal">
     <h3 id="modalTestimonioTitle">Nuevo Testimonio</h3>
     <input type="hidden" id="testimonioId">
-    <label>Autor <span style="color:#c8e6f0">*</span></label>
+    <label>Autor</label>
     <input type="text" id="tAutor" placeholder="María, 28 años">
-    <label>Texto del testimonio <span style="color:#c8e6f0">*</span></label>
+    <label>Texto del testimonio</label>
     <textarea id="tTexto" placeholder="Escriba el testimonio..."></textarea>
-    <label>URL de foto (opcional)</label>
-    <input type="text" id="tFoto" placeholder="https://ejemplo.com/foto.jpg">
-    <small style="color:#666;font-size:.75rem;display:block;margin-top:4px">Ingrese una URL de imagen o deje vacío</small>
+    <label>Foto</label>
+    <input type="file" id="tFoto" accept="image/*" style="padding:8px">
+    <div id="tFotoPreview" style="margin-top:8px;display:none">
+      <img id="tFotoImg" style="width:60px;height:60px;border-radius:50%;object-fit:cover;border:1px solid #333">
+      <button type="button" class="btn btn-danger" onclick="eliminarFotoTestimonio()" style="margin-left:8px;font-size:.75rem">Quitar foto</button>
+    </div>
     <label>Orden</label>
     <input type="number" id="tOrden" placeholder="1" min="1">
     <label>Activo</label>
@@ -673,38 +676,64 @@ function mostrarModalTestimonio() {
   document.getElementById('tFoto').value = '';
   document.getElementById('tOrden').value = '1';
   document.getElementById('tActivo').value = '1';
+  document.getElementById('tFotoPreview').style.display = 'none';
   document.getElementById('modalTestimonio').classList.add('show');
 }
+
+let eliminarFotoFlag = false;
 
 function editarTestimonio(t) {
   document.getElementById('modalTestimonioTitle').textContent = 'Editar Testimonio';
   document.getElementById('testimonioId').value = t.id;
-  document.getElementById('tAutor').value = t.autor;
-  document.getElementById('tTexto').value = t.texto;
-  document.getElementById('tFoto').value = t.foto_url || '';
+  document.getElementById('tAutor').value = t.autor || '';
+  document.getElementById('tTexto').value = t.texto || '';
+  document.getElementById('tFoto').value = '';
   document.getElementById('tOrden').value = t.orden;
   document.getElementById('tActivo').value = t.activo ? '1' : '0';
+  eliminarFotoFlag = false;
+  if (t.foto_url) {
+    document.getElementById('tFotoPreview').style.display = 'block';
+    document.getElementById('tFotoImg').src = t.foto_url;
+  } else {
+    document.getElementById('tFotoPreview').style.display = 'none';
+  }
   document.getElementById('modalTestimonio').classList.add('show');
+}
+
+function eliminarFotoTestimonio() {
+  eliminarFotoFlag = true;
+  document.getElementById('tFotoPreview').style.display = 'none';
+  document.getElementById('tFoto').value = '';
 }
 
 async function guardarTestimonio() {
   const id = document.getElementById('testimonioId').value;
-  const body = {
-    autor: document.getElementById('tAutor').value.trim(),
-    texto: document.getElementById('tTexto').value.trim(),
-    foto_url: document.getElementById('tFoto').value.trim() || null,
-    orden: parseInt(document.getElementById('tOrden').value) || 1,
-    activo: document.getElementById('tActivo').value === '1'
-  };
-  if (!body.autor || !body.texto) return alert('Autor y texto son obligatorios');
+  const autor = document.getElementById('tAutor').value.trim();
+  const texto = document.getElementById('tTexto').value.trim();
+  const fotoFile = document.getElementById('tFoto').files[0];
+  const orden = document.getElementById('tOrden').value || '1';
+  const activo = document.getElementById('tActivo').value;
+
+  if (!autor && !texto && !fotoFile && !id) {
+    return alert('Debe proporcionar al menos un campo (autor, texto o foto)');
+  }
+
+  const formData = new FormData();
+  formData.append('autor', autor);
+  formData.append('texto', texto);
+  formData.append('orden', orden);
+  formData.append('activo', activo === '1' ? 'true' : 'false');
+  if (fotoFile) formData.append('foto', fotoFile);
+  if (eliminarFotoFlag) formData.append('eliminar_foto', 'true');
+
   try {
     const res = await fetch(id ? `${API}/testimonios/${id}` : `${API}/testimonios`, {
       method: id ? 'PUT' : 'POST',
-      headers: headers(),
-      body: JSON.stringify(body)
+      headers: { 'Authorization': `Bearer ${token}` },
+      body: formData
     });
     const data = await res.json();
-    if (res.ok) { cerrarModal('modalTestimonio'); cargarTestimonios(); }
+    if (res.ok) { cerrarModal('modalTestimonio'); cargarTestimonios(); eliminarFotoFlag = false; }
     else alert(data.error);
   } catch { alert('Error de conexión'); }
 }
