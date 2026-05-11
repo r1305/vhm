@@ -241,6 +241,21 @@
   </div>
 </div>
 
+<!-- MODAL CORREO PRUEBA -->
+<div class="modal-overlay" id="modalCorreoPrueba">
+  <div class="modal">
+    <h3>📧 Enviar Correo de Prueba</h3>
+    <label>Correo de destino</label>
+    <input type="email" id="emailPrueba" placeholder="ejemplo@correo.com">
+    <label>Mensaje de prueba</label>
+    <textarea id="mensajePrueba" placeholder="Escriba el mensaje que desea enviar como prueba..." style="min-height:80px"></textarea>
+    <div class="modal-actions">
+      <button class="btn" style="background:#1a1a1a;color:#aaa;border:1px solid #333" onclick="cerrarModal('modalCorreoPrueba')">Cancelar</button>
+      <button class="btn btn-primary" onclick="enviarCorreoPrueba()">Enviar Correo</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const API = '/api';
 let token = localStorage.getItem('token');
@@ -510,15 +525,47 @@ async function guardarConfig() {
   } catch { mostrarMsgConfig('❌ Error de conexión', false); }
 }
 
-async function probarConfig() {
+function probarConfig() {
+  document.getElementById('modalCorreoPrueba').classList.add('show');
+}
+
+async function enviarCorreoPrueba() {
+  const email = document.getElementById('emailPrueba').value.trim();
+  const mensaje = document.getElementById('mensajePrueba').value.trim();
+  
+  if (!email) {
+    alert('Por favor ingrese un correo de destino');
+    return;
+  }
+  
+  if (!mensaje) {
+    alert('Por favor ingrese un mensaje');
+    return;
+  }
+  
   const btn = event.target;
-  btn.disabled = true; btn.textContent = 'Enviando...';
+  btn.disabled = true; 
+  btn.textContent = 'Enviando...';
+  
   try {
-    const res = await fetch(`${API}/config-email/test`, { method: 'POST', headers: headers() });
+    const res = await fetch(`${API}/config-email/test`, { 
+      method: 'POST', 
+      headers: headers(), 
+      body: JSON.stringify({ email, mensaje })
+    });
     const d = await res.json();
     mostrarMsgConfig(res.ok ? '✅ ' + d.message : '❌ ' + d.error, res.ok);
-  } catch { mostrarMsgConfig('❌ Error de conexión', false); }
-  finally { btn.disabled = false; btn.textContent = 'Enviar Correo de Prueba'; }
+    if (res.ok) {
+      cerrarModal('modalCorreoPrueba');
+      document.getElementById('emailPrueba').value = '';
+      document.getElementById('mensajePrueba').value = '';
+    }
+  } catch { 
+    mostrarMsgConfig('❌ Error de conexión', false); 
+  } finally { 
+    btn.disabled = false; 
+    btn.textContent = 'Enviar Correo'; 
+  }
 }
 
 function mostrarMsgConfig(texto, ok) {
