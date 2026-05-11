@@ -337,6 +337,7 @@ async function cargarReclamos() {
         <td>
           <button class="btn btn-primary" onclick="verDetalle(${r.id})">Ver</button>
           <a class="btn btn-success" href="/api/reclamos/${r.id}/pdf" target="_blank" style="text-decoration:none">PDF</a>
+          ${r.respuesta ? `<button class="btn" style="background:#2a4a2a;color:#6fcf6f;border:1px solid #4a6a4a" onclick="reenviarCorreo(${r.id})">📧 Reenviar</button>` : ''}
           ${isSuperAdmin() ? `<button class="btn btn-danger" onclick="eliminarReclamo(${r.id})">🗑</button>` : ''}
         </td>
       </tr>
@@ -354,6 +355,7 @@ async function cargarReclamos() {
         <div class="mc-actions">
           <button class="btn btn-primary" onclick="verDetalle(${r.id})">Ver / Responder</button>
           <a class="btn btn-success" href="/api/reclamos/${r.id}/pdf" target="_blank" style="text-decoration:none">📄 PDF</a>
+          ${r.respuesta ? `<button class="btn" style="background:#2a4a2a;color:#6fcf6f;border:1px solid #4a6a4a" onclick="reenviarCorreo(${r.id})">📧 Reenviar</button>` : ''}
           ${isSuperAdmin() ? `<button class="btn btn-danger" onclick="eliminarReclamo(${r.id})">🗑 Eliminar</button>` : ''}
         </div>
       </div>
@@ -565,6 +567,28 @@ async function enviarCorreoPrueba() {
   } finally { 
     btn.disabled = false; 
     btn.textContent = 'Enviar Correo'; 
+  }
+}
+
+async function reenviarCorreo(id) {
+  if (!confirm('¿Reenviar la respuesta por correo al cliente?')) return;
+  const btn = event.target;
+  const textoOriginal = btn.textContent;
+  btn.disabled = true; 
+  btn.textContent = 'Enviando...';
+  try {
+    const res = await fetch(`${API}/reclamos/${id}/reenviar`, { method: 'POST', headers: headers() });
+    const data = await res.json();
+    if (res.ok) {
+      alert(`✅ ${data.message}`);
+    } else {
+      alert(`❌ ${data.error}`);
+    }
+  } catch {
+    alert('❌ Error de conexión');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = textoOriginal;
   }
 }
 
