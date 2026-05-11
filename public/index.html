@@ -241,9 +241,9 @@
     }
     const html = testimonios.map(t => `
       <div class="testimonial">
-        ${t.foto_url ? `<img src="${t.foto_url}" alt="${t.autor}">` : ''}
-        "${t.texto}"
-        <div class="author">— ${t.autor}</div>
+        ${t.foto_url ? `<img src="${t.foto_url}" alt="${t.autor || 'Testimonio'}">` : ''}
+        ${t.texto ? `"${t.texto}"` : ''}
+        ${t.autor ? `<div class="author">— ${t.autor}</div>` : ''}
       </div>
     `).join('');
     // Duplicar para loop infinito
