@@ -28,7 +28,8 @@
     .topbar button { background: #1a1a1a; border: 1px solid #333; color: #c8e6f0; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: .85rem; }
     .topbar button:hover { border-color: #c8e6f0; }
 
-    .tabs { display: flex; background: #0d0d0d; border-bottom: 1px solid #222; padding: 0 16px; overflow-x: auto; }
+    .tabs { display: flex; background: #0d0d0d; border-bottom: 1px solid #222; padding: 0 16px; overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; }
+    .tabs::-webkit-scrollbar { display: none; }
     .tabs button { padding: 12px 16px; border: none; background: none; cursor: pointer; font-size: .9rem; border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; color: #888; }
     .tabs button.active { border-bottom-color: #c8e6f0; color: #c8e6f0; font-weight: 600; }
 
@@ -391,7 +392,11 @@ function switchTab(tab) {
   if (tab === 'usuarios') cargarUsuarios();
   if (tab === 'reclamos') cargarReclamos();
   if (tab === 'config') {
-    switchConfigTab('email');
+    // Activar el primer sub-tab manualmente
+    document.querySelectorAll('#panelConfig .tabs button').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.config-subpanel').forEach(p => p.classList.remove('active'));
+    document.querySelector('#panelConfig .tabs button').classList.add('active');
+    document.getElementById('configEmail').classList.add('active');
     cargarConfig();
   }
 }
