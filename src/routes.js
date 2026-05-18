@@ -144,10 +144,9 @@ router.get('/:id/pdf', async (req, res) => {
     doc.font('Helvetica').fontSize(8).fillColor('#666666').text('Conforme al D.S. N° 011-2011-PCM y sus modificatorias', leftM, 48, { width: pageW, align: 'center' });
 
     doc.font('Helvetica-Bold').fontSize(9).fillColor('#000000').text(`N° Reclamo: ${r.numero_reclamo}`, leftM, 65);
-    doc.font('Helvetica').fontSize(8).text(`Fecha: ${formatFechaHora(r.fecha_registro)}   |   Estado: ${r.estado}`, leftM, 77);
 
     // === FIELDSET 1: Identificación del Consumidor ===
-    let y = 95;
+    let y = 85;
     const fs1Start = y;
     y += 16;
     const x1 = leftM + pad;
