@@ -1,21 +1,38 @@
 const nodemailer = require('nodemailer');
 const pool = require('./db');
 
+let cachedTransporter = null;
+let cachedConfig = null;
+let cacheTime = 0;
+const CACHE_TTL = 300000; // 5 minutos
+
 async function getConfig() {
+  const now = Date.now();
+  if (cachedConfig && (now - cacheTime) < CACHE_TTL) return cachedConfig;
   const [rows] = await pool.execute('SELECT * FROM config_email WHERE id = 1');
   if (rows.length === 0) throw new Error('Configuración de email no encontrada');
-  return rows[0];
+  cachedConfig = rows[0];
+  cacheTime = now;
+  cachedTransporter = null; // invalidar transporter si cambió config
+  return cachedConfig;
+}
+
+function getTransporter(cfg) {
+  if (cachedTransporter) return cachedTransporter;
+  cachedTransporter = nodemailer.createTransport({
+    host: cfg.smtp_host,
+    port: cfg.smtp_port,
+    secure: cfg.smtp_secure === 1,
+    auth: { user: cfg.smtp_user, pass: cfg.smtp_pass },
+    pool: true,
+    maxConnections: 2
+  });
+  return cachedTransporter;
 }
 
 async function enviarNotificacion(destinatario, numeroReclamo, respuesta) {
   const cfg = await getConfig();
-
-  const transporter = nodemailer.createTransport({
-    host: cfg.smtp_host,
-    port: cfg.smtp_port,
-    secure: cfg.smtp_secure === 1,
-    auth: { user: cfg.smtp_user, pass: cfg.smtp_pass }
-  });
+  const transporter = getTransporter(cfg);
 
   return transporter.sendMail({
     from: `"${cfg.nombre_from}" <${cfg.email_from}>`,
@@ -36,4 +53,11 @@ async function enviarNotificacion(destinatario, numeroReclamo, respuesta) {
   });
 }
 
-module.exports = { enviarNotificacion, getConfig };
+// Invalidar cache cuando se actualiza la config
+function invalidateCache() {
+  cachedConfig = null;
+  cachedTransporter = null;
+  cacheTime = 0;
+}
+
+module.exports = { enviarNotificacion, getConfig, invalidateCache };
