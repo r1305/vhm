@@ -35,6 +35,8 @@ router.put('/', soloSuperAdmin, async (req, res) => {
     if (smtp_pass) { campos.push('smtp_pass = ?'); valores.push(smtp_pass); }
 
     await pool.execute(`UPDATE config_email SET ${campos.join(', ')} WHERE id = 1`, valores);
+    const { invalidateCache } = require('./mailer');
+    invalidateCache();
     res.json({ message: 'Configuración guardada' });
   } catch (err) {
     console.error(err);

@@ -7,7 +7,14 @@ const pool = mysql.createPool({
   password: '$vhm2026$',
   database: 'gsqorodg_vhm',
   waitForConnections: true,
-  connectionLimit: 10
+  connectionLimit: 5,
+  maxIdle: 2,
+  idleTimeout: 60000,
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 10000
 });
+
+process.on('SIGTERM', () => pool.end());
+process.on('SIGINT', () => pool.end());
 
 module.exports = pool;
