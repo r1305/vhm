@@ -383,7 +383,6 @@
             <button class="btn btn-primary" onclick="guardarConfig()" style="padding:10px 20px">Guardar Configuración</button>
             <button class="btn btn-success" onclick="probarConfig()" style="padding:10px 20px">Enviar Correo de Prueba</button>
           </div>
-          <div id="cfgMsg" style="margin-top:12px;padding:10px;border-radius:4px;display:none;font-size:.85rem"></div>
         </div>
       </div>
       
@@ -1628,12 +1627,7 @@ function mostrarMsgWa(texto, ok) {
 }
 
 function mostrarMsgConfig(texto, ok) {
-  const el = document.getElementById('cfgMsg');
-  el.textContent = texto;
-  el.style.display = 'block';
-  el.style.background = ok ? '#0a2a0a' : '#2a0a0a';
-  el.style.color = ok ? '#6fcf6f' : '#f08080';
-  el.style.border = ok ? '1px solid #2a5a2a' : '1px solid #5a2a2a';
+  toast(texto.replace(/^[✅❌]\s*/, ''), ok ? 'success' : 'error');
 }
 
 function sortVideos(column) {
