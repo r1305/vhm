@@ -77,7 +77,9 @@ app.use((req, res, next) => {
     const isPublicEndpoint = req.path.includes('/api/reclamos') && !req.path.includes('/responder') && !req.path.includes('/reenviar')
       && req.method === 'POST' && !req.path.includes('/:id');
     const isClaraChat = req.path.includes('/api/clara/chat');
-    if (!isPublicEndpoint && !isClaraChat) {
+    const isAuthLogin = req.path.includes('/api/auth/login');
+    const isPublicVideoAction = req.path.includes('/api/videos/') && (req.path.includes('/vista') || req.path.includes('/like'));
+    if (!isPublicEndpoint && !isClaraChat && !isAuthLogin && !isPublicVideoAction) {
       const headerToken = req.headers['x-csrf-token'] || req.headers['csrf-token'];
       const cookieToken = req.cookies?.csrf_token;
       if (!validateCsrfToken(headerToken) || !validateCsrfToken(cookieToken) || headerToken !== cookieToken) {
