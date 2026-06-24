@@ -156,7 +156,7 @@
   <div class="links">
     <a href="#servicios">Servicios</a>
     <a href="#nosotros">Nosotros</a>
-    <a href="#testimonios">Testimonios</a>
+    <a href="#testimonios" id="nav-testimonios">Testimonios</a>
   </div>
 </nav>
 
@@ -240,6 +240,8 @@
     const section = document.querySelector('.testimonials-section');
     if (result.seccion_activa === false || !result.data || !result.data.length) {
       section.style.display = 'none';
+      var navTestimonios = document.getElementById('nav-testimonios');
+      if (navTestimonios) navTestimonios.style.display = 'none';
       return;
     }
     const testimonios = result.data;
