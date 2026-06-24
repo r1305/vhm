@@ -105,9 +105,69 @@
       .mobile-cards { display: none !important; }
       .table-wrapper { display: block !important; }
     }
+
+    #toast-container {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-width: 380px;
+      width: calc(100% - 32px);
+      pointer-events: none;
+    }
+    .toast {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: .85rem;
+      line-height: 1.4;
+      box-shadow: 0 4px 20px rgba(0,0,0,.5);
+      pointer-events: auto;
+      animation: toast-in .3s ease;
+      transition: opacity .3s, transform .3s;
+    }
+    .toast.removing {
+      opacity: 0;
+      transform: translateX(100%);
+    }
+    .toast-success { background: #0a2a0a; border: 1px solid #2a5a2a; color: #6fcf6f; }
+    .toast-error { background: #2a0a0a; border: 1px solid #5a2a2a; color: #f08080; }
+    .toast-info { background: #0a2540; border: 1px solid #2a4a6a; color: #64b5f6; }
+    .toast-msg { flex: 1; }
+    .toast-close {
+      background: none;
+      border: none;
+      color: inherit;
+      opacity: .6;
+      cursor: pointer;
+      font-size: 1rem;
+      padding: 0;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+    .toast-close:hover { opacity: 1; }
+    .toast-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      height: 3px;
+      border-radius: 0 0 8px 8px;
+      background: currentColor;
+      opacity: .4;
+      animation: toast-countdown linear forwards;
+    }
+    @keyframes toast-in { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
+    @keyframes toast-countdown { from { width: 100%; } to { width: 0; } }
   </style>
 </head>
 <body>
+
+<div id="toast-container"></div>
 
 <div class="login-container" id="loginSection">
   <div class="login-box">
@@ -255,7 +315,6 @@
         <label style="display:block;color:#c8e6f0;margin:16px 0 6px">Texto del propósito <span style="color:#666;font-size:.8rem">(empieza con "Cada recurso...")</span></label>
         <textarea id="lPacto" rows="4" style="width:100%;background:#1a1a1a;color:#f5f0eb;border:1px solid #333;border-radius:8px;padding:10px;font-family:inherit;font-size:.9rem;resize:vertical"></textarea>
         <div style="margin-top:16px"><button class="btn btn-primary" onclick="guardarLanding()">Guardar cambios</button></div>
-        <div id="landingMsg" style="margin-top:12px;font-size:.85rem;display:none"></div>
       </div>
       </div>
 
@@ -584,7 +643,7 @@ async function login() {
     localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(data.user));
     initAdmin();
-  } catch { alert('Error de conexión'); }
+  } catch { toast('Error de conexión', 'error'); }
   finally {
     btn.disabled = false;
     spinner.style.display = 'none';
@@ -618,6 +677,22 @@ function getCookie(name) {
 function headers() {
   const csrf = getCookie('csrf_token') || '';
   return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'X-CSRF-Token': csrf };
+}
+
+function toast(message, type = 'info', duration = 10000) {
+  const container = document.getElementById('toast-container');
+  const el = document.createElement('div');
+  el.className = `toast toast-${type}`;
+  el.style.position = 'relative';
+  el.innerHTML = `<span class="toast-msg">${escapeHtml(message)}</span><button class="toast-close" onclick="this.parentElement.remove()">&times;</button>`;
+  if (duration > 0) {
+    const bar = document.createElement('div');
+    bar.className = 'toast-bar';
+    bar.style.animationDuration = duration + 'ms';
+    el.appendChild(bar);
+    setTimeout(() => { el.classList.add('removing'); setTimeout(() => el.remove(), 300); }, duration);
+  }
+  container.appendChild(el);
 }
 
 function switchTab(tab) {
@@ -700,7 +775,7 @@ async function cargarReclamos() {
     document.getElementById('paginaInfo').textContent = `${data.page} / ${data.totalPages}`;
     document.getElementById('btnPrev').disabled = data.page <= 1;
     document.getElementById('btnNext').disabled = data.page >= data.totalPages;
-  } catch { alert('Error cargando reclamos'); }
+  } catch { toast('Error cargando reclamos', 'error'); }
 }
 
 function cambiarPagina(dir) { currentPage += dir; cargarReclamos(); }
@@ -737,15 +812,15 @@ async function verDetalle(id) {
 
 async function enviarRespuesta() {
   const respuesta = document.getElementById('txtRespuesta').value.trim();
-  if (!respuesta) return alert('Escriba una respuesta');
+  if (!respuesta) return toast('Escriba una respuesta', 'error');
   const btn = event.target;
   btn.disabled = true; btn.textContent = 'Enviando...';
   try {
     const res = await fetch(`${API}/reclamos/${reclamoSeleccionado.id}/responder`, { method: 'POST', headers: headers(), body: JSON.stringify({ respuesta }) });
     const data = await res.json();
-    if (res.ok) { alert(`Respuesta registrada. ${data.emailEnviado ? 'Email enviado.' : 'No se pudo enviar el email.'}`); cerrarModal('modalDetalle'); cargarReclamos(); }
-    else { alert(data.error); }
-  } catch { alert('Error de conexión'); }
+    if (res.ok) { toast(`Respuesta registrada. ${data.emailEnviado ? 'Email enviado.' : 'No se pudo enviar el email.'}`, 'success'); cerrarModal('modalDetalle'); cargarReclamos(); }
+    else { toast(data.error, 'error'); }
+  } catch { toast('Error de conexión', 'error'); }
   finally { btn.disabled = false; btn.textContent = 'Enviar Respuesta y Notificar'; }
 }
 
@@ -754,8 +829,8 @@ async function eliminarReclamo(id) {
   try {
     const res = await fetch(`${API}/reclamos/${id}`, { method: 'DELETE', headers: headers() });
     const data = await res.json();
-    if (res.ok) cargarReclamos(); else alert(data.error);
-  } catch { alert('Error de conexión'); }
+    if (res.ok) cargarReclamos(); else toast(data.error, 'error');
+  } catch { toast('Error de conexión', 'error'); }
 }
 
 async function cargarUsuarios() {
@@ -812,17 +887,17 @@ async function guardarUsuario() {
   const body = { username: document.getElementById('uUsername').value, nombre: document.getElementById('uNombre').value, email: document.getElementById('uEmail').value, rol: document.getElementById('uRol').value };
   const pass = document.getElementById('uPassword').value;
   if (pass) body.password = pass;
-  if (!id && !pass) return alert('La contraseña es obligatoria para nuevos usuarios');
+  if (!id && !pass) return toast('La contraseña es obligatoria para nuevos usuarios', 'error');
   const res = await fetch(id ? `${API}/usuarios/${id}` : `${API}/usuarios`, { method: id ? 'PUT' : 'POST', headers: headers(), body: JSON.stringify(body) });
   const data = await res.json();
-  if (res.ok) { cerrarModal('modalUsuario'); cargarUsuarios(); } else alert(data.error);
+  if (res.ok) { cerrarModal('modalUsuario'); cargarUsuarios(); } else toast(data.error, 'error');
 }
 
 async function eliminarUsuario(id) {
   if (!confirm('¿Eliminar este usuario?')) return;
   const res = await fetch(`${API}/usuarios/${id}`, { method: 'DELETE', headers: headers() });
   const data = await res.json();
-  if (res.ok) cargarUsuarios(); else alert(data.error);
+  if (res.ok) cargarUsuarios(); else toast(data.error, 'error');
 }
 
 function cerrarModal(id) { document.getElementById(id).classList.remove('show'); }
@@ -876,7 +951,7 @@ async function cargarTestimonios() {
         </div>
       </div>
     `).join('');
-  } catch { alert('Error cargando testimonios'); }
+  } catch { toast('Error cargando testimonios', 'error'); }
 }
 
 async function toggleSeccionTestimonios() {
@@ -888,8 +963,8 @@ async function toggleSeccionTestimonios() {
       method: 'PUT', headers: headers(), body: JSON.stringify({ seccion_activa: nuevaVal })
     });
     if (res.ok) cargarTestimonios();
-    else { const d = await res.json(); alert(d.error); }
-  } catch { alert('Error de conexión'); }
+    else { const d = await res.json(); toast(d.error, 'error'); }
+  } catch { toast('Error de conexión', 'error'); }
 }
 
 function mostrarModalTestimonio() {
@@ -936,7 +1011,7 @@ async function guardarTestimonio() {
   const activo = document.getElementById('tActivo').value;
 
   if (!autor && !texto && !fotoFile && !id) {
-    return alert('Debe proporcionar al menos un campo (autor, texto o foto)');
+    return toast('Debe proporcionar al menos un campo (autor, texto o foto)', 'error');
   }
 
   const formData = new FormData();
@@ -954,8 +1029,8 @@ async function guardarTestimonio() {
     });
     const data = await res.json();
     if (res.ok) { cerrarModal('modalTestimonio'); cargarTestimonios(); eliminarFotoFlag = false; }
-    else alert(data.error);
-  } catch { alert('Error de conexión'); }
+    else toast(data.error, 'error');
+  } catch { toast('Error de conexión', 'error'); }
 }
 
 async function eliminarTestimonio(id) {
@@ -963,8 +1038,8 @@ async function eliminarTestimonio(id) {
   try {
     const res = await fetch(`${API}/testimonios/${id}`, { method: 'DELETE', headers: headers() });
     const data = await res.json();
-    if (res.ok) cargarTestimonios(); else alert(data.error);
-  } catch { alert('Error de conexión'); }
+    if (res.ok) cargarTestimonios(); else toast(data.error, 'error');
+  } catch { toast('Error de conexión', 'error'); }
 }
 
 // ===== VIDEOS =====
@@ -1012,24 +1087,21 @@ async function cargarLanding() {
     const cfg = await res.json();
     document.getElementById('lIntro').value = cfg.intro || '';
     document.getElementById('lPacto').value = cfg.pacto || '';
-  } catch { alert('No se pudo cargar el landing'); }
+  } catch { toast('No se pudo cargar el landing', 'error'); }
 }
 
 async function guardarLanding() {
   const intro = document.getElementById('lIntro').value.trim();
   const pacto = document.getElementById('lPacto').value.trim();
-  if (!intro || !pacto) return alert('Ambos textos son obligatorios');
+  if (!intro || !pacto) return toast('Ambos textos son obligatorios', 'error');
   try {
     const res = await fetch(`${API}/videos/landing`, {
       method: 'PUT', headers: headers(), body: JSON.stringify({ intro, pacto })
     });
     if (res.status === 401) return logout();
     const d = await res.json();
-    const msg = document.getElementById('landingMsg');
-    msg.style.display = 'block';
-    msg.style.color = res.ok ? '#7CFC9E' : '#ff8a8a';
-    msg.textContent = res.ok ? '✅ Cambios guardados' : ('❌ ' + (d.error || 'Error al guardar'));
-  } catch { alert('Error de conexión'); }
+    toast(res.ok ? 'Cambios guardados' : (d.error || 'Error al guardar'), res.ok ? 'success' : 'error');
+  } catch { toast('Error de conexión', 'error'); }
 }
 
 function escapeHtml(s) {
@@ -1073,7 +1145,7 @@ async function cargarVideos() {
     document.getElementById('videoPageInfo').textContent = `Página ${data.page} de ${data.totalPages}`;
     document.getElementById('vidPrevPage').disabled = data.page === 1;
     document.getElementById('vidNextPage').disabled = data.page === data.totalPages;
-  } catch { alert('Error cargando videos'); }
+  } catch { toast('Error cargando videos', 'error'); }
 }
 
 async function cargarSelectCategorias() {
@@ -1133,9 +1205,9 @@ async function guardarVideo() {
   const id = document.getElementById('videoId').value;
   const titulo = document.getElementById('vTitulo').value.trim();
   const video_url = document.getElementById('vVideoUrl').value.trim();
-  if (!video_url) return alert('El enlace del video es obligatorio');
+  if (!video_url) return toast('El enlace del video es obligatorio', 'error');
   const esLoom = /loom\.com\/(?:share|embed)\/[0-9a-f]{32}/i.test(video_url);
-  if (!titulo && !esLoom) return alert('El título es obligatorio (solo se autocompleta con enlaces de Loom)');
+  if (!titulo && !esLoom) return toast('El título es obligatorio (solo se autocompleta con enlaces de Loom)', 'error');
 
   const formData = new FormData();
   formData.append('titulo', titulo);
@@ -1157,8 +1229,8 @@ async function guardarVideo() {
     });
     const data = await res.json();
     if (res.ok) { cerrarModal('modalVideo'); cargarVideos(); eliminarThumbFlag = false; }
-    else alert(data.error);
-  } catch { alert('Error de conexión'); }
+    else toast(data.error, 'error');
+  } catch { toast('Error de conexión', 'error'); }
 }
 
 async function eliminarVideo(id) {
@@ -1166,8 +1238,8 @@ async function eliminarVideo(id) {
   try {
     const res = await fetch(`${API}/videos/${id}`, { method: 'DELETE', headers: headers() });
     const data = await res.json();
-    if (res.ok) cargarVideos(); else alert(data.error);
-  } catch { alert('Error de conexión'); }
+    if (res.ok) cargarVideos(); else toast(data.error, 'error');
+  } catch { toast('Error de conexión', 'error'); }
 }
 
 // ===== CATEGORÍAS =====
@@ -1202,7 +1274,7 @@ async function cargarCategorias() {
         </div>
       </div>
     `).join('');
-  } catch { alert('Error cargando categorías'); }
+  } catch { toast('Error cargando categorías', 'error'); }
 }
 
 function mostrarModalCategoria() {
@@ -1228,7 +1300,7 @@ function editarCategoria(c) {
 async function guardarCategoria() {
   const id = document.getElementById('categoriaId').value;
   const nombre = document.getElementById('cNombre').value.trim();
-  if (!nombre) return alert('El nombre es obligatorio');
+  if (!nombre) return toast('El nombre es obligatorio', 'error');
   const body = {
     nombre,
     descripcion: document.getElementById('cDescripcion').value.trim(),
@@ -1240,8 +1312,8 @@ async function guardarCategoria() {
       method: id ? 'PUT' : 'POST', headers: headers(), body: JSON.stringify(body)
     });
     const data = await res.json();
-    if (res.ok) { cerrarModal('modalCategoria'); cargarCategorias(); } else alert(data.error);
-  } catch { alert('Error de conexión'); }
+    if (res.ok) { cerrarModal('modalCategoria'); cargarCategorias(); } else toast(data.error, 'error');
+  } catch { toast('Error de conexión', 'error'); }
 }
 
 async function eliminarCategoria(id) {
@@ -1249,8 +1321,8 @@ async function eliminarCategoria(id) {
   try {
     const res = await fetch(`${API}/videos/categorias/${id}`, { method: 'DELETE', headers: headers() });
     const data = await res.json();
-    if (res.ok) cargarCategorias(); else alert(data.error);
-  } catch { alert('Error de conexión'); }
+    if (res.ok) cargarCategorias(); else toast(data.error, 'error');
+  } catch { toast('Error de conexión', 'error'); }
 }
 
 // ===== EVENTOS (calendario La Tribu) =====
@@ -1298,7 +1370,7 @@ async function cargarEventos() {
         </div>
       </div>
     `).join('');
-  } catch { alert('No se pudieron cargar los eventos'); }
+  } catch { toast('No se pudieron cargar los eventos', 'error'); }
 }
 
 function mostrarModalEvento() {
@@ -1355,7 +1427,7 @@ async function guardarEvento() {
     activo: document.getElementById('eActivo').value === '1'
   };
   if (!body.nombre || !body.fecha || !body.hora_inicio || !body.lugar) {
-    return alert('Completa nombre, fecha, hora de inicio y lugar');
+    return toast('Completa nombre, fecha, hora de inicio y lugar', 'error');
   }
   const btn = document.getElementById('btnGuardarEvento');
   guardandoEvento = true;
@@ -1367,8 +1439,8 @@ async function guardarEvento() {
     if (res.status === 401) return logout();
     const d = await res.json();
     if (res.ok) { cerrarModal('modalEvento'); cargarEventos(); }
-    else alert(d.error || 'Error al guardar');
-  } catch { alert('Error de conexión'); }
+    else toast(d.error || 'Error al guardar', 'error');
+  } catch { toast('Error de conexión', 'error'); }
   finally {
     guardandoEvento = false;
     if (btn) { btn.disabled = false; btn.textContent = 'Guardar'; }
@@ -1380,8 +1452,8 @@ async function eliminarEvento(id) {
   try {
     const res = await fetch(`${API}/eventos/${id}`, { method: 'DELETE', headers: headers() });
     const data = await res.json();
-    if (res.ok) cargarEventos(); else alert(data.error);
-  } catch { alert('Error de conexión'); }
+    if (res.ok) cargarEventos(); else toast(data.error, 'error');
+  } catch { toast('Error de conexión', 'error'); }
 }
 
 // CONFIG EMAIL
@@ -1428,12 +1500,12 @@ async function enviarCorreoPrueba() {
   const mensaje = document.getElementById('mensajePrueba').value.trim();
   
   if (!email) {
-    alert('Por favor ingrese un correo de destino');
+    toast('Por favor ingrese un correo de destino', 'error');
     return;
   }
   
   if (!mensaje) {
-    alert('Por favor ingrese un mensaje');
+    toast('Por favor ingrese un mensaje', 'error');
     return;
   }
   
@@ -1472,12 +1544,12 @@ async function reenviarCorreo(id) {
     const res = await fetch(`${API}/reclamos/${id}/reenviar`, { method: 'POST', headers: headers() });
     const data = await res.json();
     if (res.ok) {
-      alert(`✅ ${data.message}`);
+      toast(data.message, 'success');
     } else {
-      alert(`❌ ${data.error}`);
+      toast(data.error, 'error');
     }
   } catch {
-    alert('❌ Error de conexión');
+    toast('Error de conexión', 'error');
   } finally {
     btn.disabled = false;
     btn.textContent = textoOriginal;
@@ -1622,7 +1694,7 @@ async function inicializarFiltroCategorias() {
     const sel = document.getElementById('videoCategoryFilter');
     sel.innerHTML = '<option value="">Todas las categorías</option>' +
       categorias.map(c => `<option value="${c.id}">${escapeHtml(c.nombre)}</option>`).join('');
-  } catch { alert('Error cargando categorías'); }
+  } catch { toast('Error cargando categorías', 'error'); }
 }
 </script>
 
