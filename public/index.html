@@ -4,7 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>VHM - Bienestar, Relaciones & Superación Personal</title>
-  <link rel="icon" type="image/jpeg" href="/logo_vhm.jpeg">
+  <script src="__app_base__.js"></script>
+  <link rel="icon" type="image/jpeg" href="logo_vhm.jpeg">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: system-ui, sans-serif; color: #f5f0eb; background: #000; }
@@ -128,7 +129,7 @@
 // Cargar pixel de Meta si está configurado
 (async function() {
   try {
-    const response = await fetch('/api/pixel-config');
+    const response = await fetch((window.__APP_BASE__ || '') + '/api/pixel-config');
     const config = await response.json();
     if (config.pixel_id && config.activo) {
       // Cargar pixel de Meta
@@ -155,15 +156,19 @@
   <div class="links">
     <a href="#servicios">Servicios</a>
     <a href="#nosotros">Nosotros</a>
+    <a href="latribu">La Tribu</a>
     <a href="#testimonios">Testimonios</a>
-    <a href="/reclamo">Libro de Reclamaciones</a>
+    <a href="reclamo">Libro de Reclamaciones</a>
   </div>
 </nav>
 
 <div class="hero">
-  <img src="/logo_vhm.jpeg" alt="VHM">
+  <img src="logo_vhm.jpeg" alt="VHM">
   <p class="tagline">Tu camino hacia el bienestar emocional comienza aquí. Te acompañamos en el proceso de sanar, crecer y redescubrirte después de una ruptura amorosa.</p>
-  <a href="#servicios" class="cta">Conoce nuestros servicios</a>
+  <div style="display:flex;gap:14px;flex-wrap:wrap;justify-content:center">
+    <a href="#servicios" class="cta">Conoce nuestros servicios</a>
+    <a href="latribu" class="cta" style="background:transparent;color:#c8e6f0;border:1px solid #c8e6f0">🛖 La Tribu</a>
+  </div>
 </div>
 
 <div class="services-section">
@@ -224,7 +229,7 @@
 
 <footer>
   <p>&copy; <script>document.write(new Date().getFullYear())</script> VHM - Bienestar, Relaciones & Superación Personal. Todos los derechos reservados.</p>
-  <p style="margin-top:8px"><a href="/reclamo">Libro de Reclamaciones</a> | <a href="/consulta">Consultar Reclamo</a></p>
+  <p style="margin-top:8px"><a href="reclamo">Libro de Reclamaciones</a> | <a href="consulta">Consultar Reclamo</a></p>
 </footer>
 
 <noscript><img height="1" width="1" style="display:none" id="fb-pixel-noscript" /></noscript>
@@ -232,13 +237,15 @@
 // Cargar testimonios
 (async function() {
   try {
-    const response = await fetch('/api/testimonios');
-    const testimonios = await response.json();
-    const track = document.getElementById('carouselTrack');
-    if (!testimonios.length) {
-      track.innerHTML = '<div class="testimonial">"Próximamente testimonios de nuestros clientes."</div>';
+    const response = await fetch((window.__APP_BASE__ || '') + '/api/testimonios');
+    const result = await response.json();
+    const section = document.querySelector('.testimonials-section');
+    if (result.seccion_activa === false || !result.data || !result.data.length) {
+      section.style.display = 'none';
       return;
     }
+    const testimonios = result.data;
+    const track = document.getElementById('carouselTrack');
     const html = testimonios.map(t => `
       <div class="testimonial">
         ${t.foto_url ? `<img src="${t.foto_url}" alt="${t.autor || 'Testimonio'}">` : ''}
@@ -248,7 +255,6 @@
     `).join('');
     track.innerHTML = html;
 
-    // Verificar si el contenido excede el ancho visible
     requestAnimationFrame(() => {
       if (track.scrollWidth > track.parentElement.clientWidth) {
         track.innerHTML = html + html;
@@ -267,7 +273,7 @@
 // Actualizar noscript del pixel si está disponible
 (async function() {
   try {
-    const response = await fetch('/api/pixel-config');
+    const response = await fetch((window.__APP_BASE__ || '') + '/api/pixel-config');
     const config = await response.json();
     if (config.pixel_id && config.activo) {
       document.getElementById('fb-pixel-noscript').src = `https://www.facebook.com/tr?id=${config.pixel_id}&ev=PageView&noscript=1`;
@@ -278,7 +284,7 @@
 // Botón flotante de WhatsApp
 (async function() {
   try {
-    const response = await fetch('/api/whatsapp-config');
+    const response = await fetch((window.__APP_BASE__ || '') + '/api/whatsapp-config');
     const config = await response.json();
     if (config.numero && config.activo) {
       const mensaje = config.mensaje ? encodeURIComponent(config.mensaje) : '';
@@ -290,7 +296,7 @@
       btn.rel = 'noopener noreferrer';
       btn.setAttribute('aria-label', 'Contactar por WhatsApp');
       btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>`;
-      btn.style.cssText = 'position:fixed;bottom:24px;right:24px;width:60px;height:60px;background:#25D366;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(37,211,102,.4);z-index:9999;transition:transform .2s';
+      btn.style.cssText = 'position:fixed;bottom:96px;right:24px;width:60px;height:60px;background:#25D366;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(37,211,102,.4);z-index:9998;transition:transform .2s';
       btn.onmouseenter = () => btn.style.transform = 'scale(1.1)';
       btn.onmouseleave = () => btn.style.transform = 'scale(1)';
       document.body.appendChild(btn);
@@ -300,6 +306,8 @@
   }
 })();
 </script>
+
+<script src="clara-chat.js"></script>
 
 </body>
 </html>

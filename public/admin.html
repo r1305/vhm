@@ -4,7 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Administración - VHM</title>
-  <link rel="icon" type="image/jpeg" href="/logo_vhm.jpeg">
+  <script src="__app_base__.js"></script>
+  <link rel="icon" type="image/jpeg" href="logo_vhm.jpeg">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: system-ui, sans-serif; background: #0a0a0a; color: #f5f0eb; }
@@ -89,6 +90,8 @@
 
     .config-subpanel { display: none; }
     .config-subpanel.active { display: block; }
+    .tribu-main-section { display: none; }
+    .tribu-main-section.active { display: block; }
 
     @media (max-width: 768px) {
       .topbar h1 { font-size: .9rem; }
@@ -128,6 +131,7 @@
     <button class="active" onclick="switchTab('reclamos')">Reclamos</button>
     <button onclick="switchTab('usuarios')">Usuarios</button>
     <button id="tabTestimonios" style="display:none" onclick="switchTab('testimonios')">⭐ Testimonios</button>
+    <button id="tabVideos" style="display:none" onclick="switchTab('videos')">🎬 La Tribu</button>
     <button id="tabConfig" style="display:none" onclick="switchTab('config')">⚙️ Configuración</button>
   </div>
   <div class="content">
@@ -165,16 +169,109 @@
 
     <!-- PANEL TESTIMONIOS -->
     <div class="panel" id="panelTestimonios">
-      <button class="btn btn-primary" onclick="mostrarModalTestimonio()" style="margin-bottom:12px">+ Nuevo Testimonio</button>
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="mostrarModalTestimonio()">+ Nuevo Testimonio</button>
+        <button class="btn" id="btnToggleTestimonios" style="background:#1a1a1a;color:#c8e6f0;border:1px solid #333" onclick="toggleSeccionTestimonios()">⏳</button>
+      </div>
       <div class="table-wrapper">
         <table>
           <thead>
-            <tr><th>Foto</th><th>Autor</th><th>Texto</th><th>Orden</th><th>Activo</th><th>Acciones</th></tr>
+            <tr><th>Foto</th><th>Autor</th><th>Texto</th><th>Activo</th><th>Acciones</th></tr>
           </thead>
           <tbody id="testimoniosBody"></tbody>
         </table>
       </div>
       <div class="mobile-cards" id="testimoniosMobile"></div>
+    </div>
+
+    <!-- PANEL LA TRIBU -->
+    <div class="panel" id="panelVideos">
+      <div class="tabs" id="tribuMainTabs" style="background:#111;border-bottom:1px solid #222;margin:-16px -16px 20px -16px;padding:0 16px">
+        <button class="active" onclick="switchTribuMainTab('camino')">Camino Interior</button>
+        <button onclick="switchTribuMainTab('eventos')">Eventos</button>
+      </div>
+
+      <!-- SECCIÓN CAMINO INTERIOR -->
+      <div class="tribu-main-section active" id="tribuCamino">
+      <div class="tabs" id="caminoSubTabs" style="background:#0d0d0d;border-bottom:1px solid #1a1a1a;margin:0 -16px 20px -16px;padding:0 16px">
+        <button class="active" onclick="switchVideoTab('lista')">🎬 Videos</button>
+        <button onclick="switchVideoTab('categorias')">🗂️ Categorías</button>
+        <button onclick="switchVideoTab('landing')">📝 Landing</button>
+      </div>
+
+      <!-- SUB-PANEL LISTA DE VIDEOS -->
+      <div class="config-subpanel active" id="videoLista">
+        <div style="margin-bottom:12px; display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+          <input type="text" id="videoSearch" placeholder="Buscar por título..." style="padding:8px; width:200px; border:1px solid #333; border-radius:4px; background:#1a1a1a; color:#f5f0eb;">
+          <select id="videoCategoryFilter" style="padding:8px; border:1px solid #333; border-radius:4px; background:#1a1a1a; color:#f5f0eb;">
+            <option value="">Todas las categorías</option>
+          </select>
+          <button class="btn btn-primary" id="videoSearchBtn" style="margin-bottom:0;">Buscar</button>
+        </div>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Miniatura</th>
+                <th onclick="sortVideos('titulo')">Título <span id="sortTitulo"></span></th>
+                <th onclick="sortVideos('categoria_nombre')">Categoría <span id="sortCategoria"></span></th>
+                <th onclick="sortVideos('duracion')">Duración <span id="sortDuracion"></span></th>
+                <th onclick="sortVideos('vistas')">Vistas <span id="sortVistas"></span></th>
+                <th onclick="sortVideos('likes')">Likes <span id="sortLikes"></span></th>
+                <th>Activo</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="videosBody"></tbody>
+          </table>
+        </div>
+        <div class="pagination" style="margin-top:12px; display:flex; justify-content:center; align-items:center; gap:8px;">
+          <button id="vidPrevPage" class="btn" onclick="changeVideoPage(-1)">← Anterior</button>
+          <span id="videoPageInfo"></span>
+          <button id="vidNextPage" class="btn" onclick="changeVideoPage(1)">Siguiente →</button>
+        </div>
+        <div class="mobile-cards" id="videosMobile"></div>
+      </div>
+
+      <!-- SUB-PANEL CATEGORÍAS -->
+      <div class="config-subpanel" id="videoCategorias">
+        <button class="btn btn-primary" onclick="mostrarModalCategoria()" style="margin-bottom:12px">+ Nueva Categoría</button>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr><th>Nombre</th><th>Descripción</th><th>Videos</th><th>Orden</th><th>Activo</th><th>Acciones</th></tr>
+            </thead>
+            <tbody id="categoriasBody"></tbody>
+          </table>
+        </div>
+        <div class="mobile-cards" id="categoriasMobile"></div>
+      </div>
+
+      <!-- SUB-PANEL LANDING -->
+      <div class="config-subpanel" id="videoLanding">
+        <p style="color:#888;font-size:.85rem;margin-bottom:16px">Edita los textos que aparecen en la pestaña <strong style="color:#c8e6f0">Camino Interior</strong> de La Tribu.</p>
+        <label style="display:block;color:#c8e6f0;margin-bottom:6px">Texto introductorio <span style="color:#666;font-size:.8rem">(empieza con "Cada masterclass...")</span></label>
+        <textarea id="lIntro" rows="4" style="width:100%;background:#1a1a1a;color:#f5f0eb;border:1px solid #333;border-radius:8px;padding:10px;font-family:inherit;font-size:.9rem;resize:vertical"></textarea>
+        <label style="display:block;color:#c8e6f0;margin:16px 0 6px">Texto del propósito <span style="color:#666;font-size:.8rem">(empieza con "Cada recurso...")</span></label>
+        <textarea id="lPacto" rows="4" style="width:100%;background:#1a1a1a;color:#f5f0eb;border:1px solid #333;border-radius:8px;padding:10px;font-family:inherit;font-size:.9rem;resize:vertical"></textarea>
+        <div style="margin-top:16px"><button class="btn btn-primary" onclick="guardarLanding()">Guardar cambios</button></div>
+        <div id="landingMsg" style="margin-top:12px;font-size:.85rem;display:none"></div>
+      </div>
+      </div>
+
+      <!-- SECCIÓN EVENTOS -->
+      <div class="tribu-main-section" id="tribuEventos">
+        <button class="btn btn-primary" onclick="mostrarModalEvento()" style="margin-bottom:12px">+ Nuevo Evento</button>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr><th>Nombre</th><th>Fecha</th><th>Inicio</th><th>Fin</th><th>Lugar</th><th>Activo</th><th>Acciones</th></tr>
+            </thead>
+            <tbody id="eventosBody"></tbody>
+          </table>
+        </div>
+        <div class="mobile-cards" id="eventosMobile"></div>
+      </div>
     </div>
 
     <!-- PANEL CONFIGURACIÓN -->
@@ -360,8 +457,6 @@
       <img id="tFotoImg" style="width:60px;height:60px;border-radius:50%;object-fit:cover;border:1px solid #333">
       <button type="button" class="btn btn-danger" onclick="eliminarFotoTestimonio()" style="margin-left:8px;font-size:.75rem">Quitar foto</button>
     </div>
-    <label>Orden</label>
-    <input type="number" id="tOrden" placeholder="1" min="1">
     <label>Activo</label>
     <select id="tActivo">
       <option value="1">Sí</option>
@@ -374,11 +469,96 @@
   </div>
 </div>
 
+<!-- MODAL VIDEO -->
+<div class="modal-overlay" id="modalVideo">
+  <div class="modal">
+    <h3 id="modalVideoTitle">Nuevo Video</h3>
+    <input type="hidden" id="videoId">
+    <label>Título <span style="color:#666;font-size:.8rem">(opcional con Loom)</span></label>
+    <input type="text" id="vTitulo" placeholder="Déjalo vacío para usar el título de Loom">
+    <label>Subtítulo / etiqueta</label>
+    <input type="text" id="vSubtitulo" placeholder="Masterclass completa + Ronda de preguntas">
+    <label>Categoría</label>
+    <select id="vCategoria"><option value="">— Sin categoría —</option></select>
+    <label>Enlace del video (Loom, YouTube, Vimeo o MP4)</label>
+    <input type="text" id="vVideoUrl" placeholder="https://www.loom.com/share/...">
+    <small style="color:#666;font-size:.75rem;margin-top:4px;display:block">Si es de Loom o YouTube, la miniatura (y la duración en Loom) se obtienen automáticamente. Deja la duración vacía para autocompletarla.</small>
+    <label>Duración</label>
+    <input type="text" id="vDuracion" placeholder="1h 25min">
+    <label>Descripción</label>
+    <textarea id="vDescripcion" placeholder="Breve descripción del recurso..."></textarea>
+    <label>Miniatura (opcional)</label>
+    <input type="file" id="vThumbnail" accept="image/*" style="padding:8px">
+    <div id="vThumbPreview" style="margin-top:8px;display:none">
+      <img id="vThumbImg" style="width:120px;height:68px;border-radius:6px;object-fit:cover;border:1px solid #333">
+      <button type="button" class="btn btn-danger" onclick="eliminarThumbVideo()" style="margin-left:8px;font-size:.75rem">Quitar miniatura</button>
+    </div>
+    <label>Activo</label>
+    <select id="vActivo"><option value="1">Sí</option><option value="0">No</option></select>
+    <div class="modal-actions">
+      <button class="btn" style="background:#1a1a1a;color:#aaa;border:1px solid #333" onclick="cerrarModal('modalVideo')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarVideo()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EVENTO -->
+<div class="modal-overlay" id="modalEvento">
+  <div class="modal">
+    <h3 id="modalEventoTitle">Nuevo Evento</h3>
+    <input type="hidden" id="eventoId">
+    <label>Nombre</label>
+    <input type="text" id="eNombre" placeholder="Encuentro de la tribu">
+    <label>Fecha</label>
+    <input type="date" id="eFecha">
+    <label>Hora de inicio</label>
+    <input type="time" id="eHoraInicio">
+    <label>Hora de fin <span style="color:#666;font-size:.8rem">(opcional)</span></label>
+    <input type="time" id="eHoraFin">
+    <label>Lugar</label>
+    <input type="text" id="eLugar" placeholder="Centro VHM, Sala principal">
+    <label>Link <span style="color:#666;font-size:.8rem">(opcional)</span></label>
+    <input type="url" id="eUbicacion" placeholder="https://maps.google.com/...">
+    <label>Activo</label>
+    <select id="eActivo"><option value="1">Sí</option><option value="0">No</option></select>
+    <div class="modal-actions">
+      <button type="button" class="btn" style="background:#1a1a1a;color:#aaa;border:1px solid #333" onclick="cerrarModal('modalEvento')">Cancelar</button>
+      <button type="button" class="btn btn-primary" id="btnGuardarEvento" onclick="guardarEvento()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CATEGORÍA -->
+<div class="modal-overlay" id="modalCategoria">
+  <div class="modal">
+    <h3 id="modalCategoriaTitle">Nueva Categoría</h3>
+    <input type="hidden" id="categoriaId">
+    <label>Nombre</label>
+    <input type="text" id="cNombre" placeholder="Sanación Emocional">
+    <label>Descripción</label>
+    <textarea id="cDescripcion" placeholder="Herramientas para entender, soltar y sanar..."></textarea>
+    <label>Orden</label>
+    <input type="number" id="cOrden" placeholder="1" min="1">
+    <label>Activo</label>
+    <select id="cActivo"><option value="1">Sí</option><option value="0">No</option></select>
+    <div class="modal-actions">
+      <button class="btn" style="background:#1a1a1a;color:#aaa;border:1px solid #333" onclick="cerrarModal('modalCategoria')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarCategoria()">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <script>
-const API = '/api';
+const API = (window.__APP_BASE__ || '') + '/api';
 let token = localStorage.getItem('token');
 let currentPage = 1;
 let reclamoSeleccionado = null;
+let videoCurrentPage = 1;
+let videoSearch = '';
+let videoCategory = '';
+let videoSort = 'titulo';
+let videoOrder = 'asc';
+const videoLimit = 10;
 
 function isSuperAdmin() {
   return (JSON.parse(localStorage.getItem('user') || '{}')).rol === 'SUPER_ADMIN';
@@ -416,6 +596,7 @@ function initAdmin() {
   document.getElementById('loginSection').style.display = 'none';
   document.getElementById('adminSection').style.display = 'block';
   document.getElementById('currentUser').textContent = (JSON.parse(localStorage.getItem('user') || '{}')).nombre;
+  document.getElementById('tabVideos').style.display = 'block';
   if (isSuperAdmin()) {
     document.getElementById('tabConfig').style.display = 'block';
     document.getElementById('tabTestimonios').style.display = 'block';
@@ -439,6 +620,15 @@ function switchTab(tab) {
   if (tab === 'usuarios') cargarUsuarios();
   if (tab === 'reclamos') cargarReclamos();
   if (tab === 'testimonios') cargarTestimonios();
+  if (tab === 'videos') {
+    switchTribuMainTab('camino', true);
+    document.querySelectorAll('#caminoSubTabs button').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('#tribuCamino .config-subpanel').forEach(p => p.classList.remove('active'));
+    document.querySelector('#caminoSubTabs button').classList.add('active');
+    document.getElementById('videoLista').classList.add('active');
+    inicializarFiltroCategorias();
+    cargarVideos();
+  }
   if (tab === 'config') {
     // Activar el primer sub-tab manualmente
     document.querySelectorAll('#panelConfig .tabs button').forEach(b => b.classList.remove('active'));
@@ -474,7 +664,7 @@ async function cargarReclamos() {
         <td>${r.respuesta ? '✅' : '⏳'}</td>
         <td>
           <button class="btn btn-primary" onclick="verDetalle(${r.id})">Ver</button>
-          <a class="btn btn-success" href="/api/reclamos/${r.id}/pdf" target="_blank" style="text-decoration:none">PDF</a>
+          <a class="btn btn-success" href="${API}/reclamos/${r.id}/pdf" target="_blank" style="text-decoration:none">PDF</a>
           ${r.respuesta ? `<button class="btn" style="background:#2a4a2a;color:#6fcf6f;border:1px solid #4a6a4a" onclick="reenviarCorreo(${r.id})">📧 Reenviar</button>` : ''}
           ${isSuperAdmin() ? `<button class="btn btn-danger" onclick="eliminarReclamo(${r.id})">🗑</button>` : ''}
         </td>
@@ -492,7 +682,7 @@ async function cargarReclamos() {
         <div class="mc-row">📌 ${r.tipo_reclamo} | ${r.respuesta ? '✅ Respondido' : '⏳ Pendiente'}</div>
         <div class="mc-actions">
           <button class="btn btn-primary" onclick="verDetalle(${r.id})">Ver / Responder</button>
-          <a class="btn btn-success" href="/api/reclamos/${r.id}/pdf" target="_blank" style="text-decoration:none">📄 PDF</a>
+          <a class="btn btn-success" href="${API}/reclamos/${r.id}/pdf" target="_blank" style="text-decoration:none">📄 PDF</a>
           ${r.respuesta ? `<button class="btn" style="background:#2a4a2a;color:#6fcf6f;border:1px solid #4a6a4a" onclick="reenviarCorreo(${r.id})">📧 Reenviar</button>` : ''}
           ${isSuperAdmin() ? `<button class="btn btn-danger" onclick="eliminarReclamo(${r.id})">🗑 Eliminar</button>` : ''}
         </div>
@@ -633,16 +823,29 @@ document.querySelectorAll('.modal-overlay').forEach(m => { m.addEventListener('c
 // TESTIMONIOS
 async function cargarTestimonios() {
   try {
-    const res = await fetch(`${API}/testimonios/admin`, { headers: headers() });
-    if (res.status === 401) return logout();
-    const data = await res.json();
+    const [resT, resC] = await Promise.all([
+      fetch(`${API}/testimonios/admin`, { headers: headers() }),
+      fetch(`${API}/testimonios/config`, { headers: headers() })
+    ]);
+    if (resT.status === 401) return logout();
+    const data = await resT.json();
+    const cfg = await resC.json();
+
+    const btn = document.getElementById('btnToggleTestimonios');
+    if (cfg.seccion_activa) {
+      btn.textContent = '👁️ Sección Visible';
+      btn.style.background = '#0a2a0a'; btn.style.color = '#6fcf6f'; btn.style.border = '1px solid #2a5a2a';
+    } else {
+      btn.textContent = '🚫 Sección Oculta';
+      btn.style.background = '#2a0a0a'; btn.style.color = '#f08080'; btn.style.border = '1px solid #5a2a2a';
+    }
+    btn.dataset.activa = cfg.seccion_activa ? '1' : '0';
 
     document.getElementById('testimoniosBody').innerHTML = data.map(t => `
       <tr>
         <td>${t.foto_url ? `<img src="${t.foto_url}" style="width:40px;height:40px;border-radius:50%;object-fit:cover">` : '-'}</td>
         <td style="color:#c8e6f0">${t.autor}</td>
         <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.texto}</td>
-        <td>${t.orden}</td>
         <td>${t.activo ? '✅' : '❌'}</td>
         <td>
           <button class="btn btn-primary" onclick='editarTestimonio(${JSON.stringify(t)})'>Editar</button>
@@ -658,7 +861,7 @@ async function cargarTestimonios() {
           <span>${t.activo ? '✅' : '❌'}</span>
         </div>
         <div class="mc-row" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">💬 ${t.texto}</div>
-        <div class="mc-row">📷 ${t.foto_url ? 'Con foto' : 'Sin foto'} | Orden: ${t.orden}</div>
+        <div class="mc-row">📷 ${t.foto_url ? 'Con foto' : 'Sin foto'}</div>
         <div class="mc-actions">
           <button class="btn btn-primary" onclick='editarTestimonio(${JSON.stringify(t)})'>Editar</button>
           <button class="btn btn-danger" onclick="eliminarTestimonio(${t.id})">Eliminar</button>
@@ -668,13 +871,25 @@ async function cargarTestimonios() {
   } catch { alert('Error cargando testimonios'); }
 }
 
+async function toggleSeccionTestimonios() {
+  const btn = document.getElementById('btnToggleTestimonios');
+  const activa = btn.dataset.activa === '1';
+  const nuevaVal = !activa;
+  try {
+    const res = await fetch(`${API}/testimonios/config`, {
+      method: 'PUT', headers: headers(), body: JSON.stringify({ seccion_activa: nuevaVal })
+    });
+    if (res.ok) cargarTestimonios();
+    else { const d = await res.json(); alert(d.error); }
+  } catch { alert('Error de conexión'); }
+}
+
 function mostrarModalTestimonio() {
   document.getElementById('modalTestimonioTitle').textContent = 'Nuevo Testimonio';
   document.getElementById('testimonioId').value = '';
   document.getElementById('tAutor').value = '';
   document.getElementById('tTexto').value = '';
   document.getElementById('tFoto').value = '';
-  document.getElementById('tOrden').value = '1';
   document.getElementById('tActivo').value = '1';
   document.getElementById('tFotoPreview').style.display = 'none';
   document.getElementById('modalTestimonio').classList.add('show');
@@ -688,7 +903,6 @@ function editarTestimonio(t) {
   document.getElementById('tAutor').value = t.autor || '';
   document.getElementById('tTexto').value = t.texto || '';
   document.getElementById('tFoto').value = '';
-  document.getElementById('tOrden').value = t.orden;
   document.getElementById('tActivo').value = t.activo ? '1' : '0';
   eliminarFotoFlag = false;
   if (t.foto_url) {
@@ -711,7 +925,6 @@ async function guardarTestimonio() {
   const autor = document.getElementById('tAutor').value.trim();
   const texto = document.getElementById('tTexto').value.trim();
   const fotoFile = document.getElementById('tFoto').files[0];
-  const orden = document.getElementById('tOrden').value || '1';
   const activo = document.getElementById('tActivo').value;
 
   if (!autor && !texto && !fotoFile && !id) {
@@ -721,7 +934,6 @@ async function guardarTestimonio() {
   const formData = new FormData();
   formData.append('autor', autor);
   formData.append('texto', texto);
-  formData.append('orden', orden);
   formData.append('activo', activo === '1' ? 'true' : 'false');
   if (fotoFile) formData.append('foto', fotoFile);
   if (eliminarFotoFlag) formData.append('eliminar_foto', 'true');
@@ -744,6 +956,423 @@ async function eliminarTestimonio(id) {
     const res = await fetch(`${API}/testimonios/${id}`, { method: 'DELETE', headers: headers() });
     const data = await res.json();
     if (res.ok) cargarTestimonios(); else alert(data.error);
+  } catch { alert('Error de conexión'); }
+}
+
+// ===== VIDEOS =====
+let categoriasCache = [];
+
+function switchTribuMainTab(subtab, silent) {
+  document.querySelectorAll('#tribuMainTabs button').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tribu-main-section').forEach(s => s.classList.remove('active'));
+  if (!silent && event && event.target) event.target.classList.add('active');
+  else document.querySelector(`#tribuMainTabs button:nth-child(${subtab === 'camino' ? 1 : 2})`).classList.add('active');
+  if (subtab === 'camino') {
+    document.getElementById('tribuCamino').classList.add('active');
+    cargarVideos();
+  }
+  if (subtab === 'eventos') {
+    document.getElementById('tribuEventos').classList.add('active');
+    cargarEventos();
+  }
+}
+
+function switchVideoTab(subtab) {
+  document.querySelectorAll('#caminoSubTabs button').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('#tribuCamino .config-subpanel').forEach(p => p.classList.remove('active'));
+  event.target.classList.add('active');
+  if (subtab === 'lista') {
+    document.getElementById('videoLista').classList.add('active');
+    inicializarFiltroCategorias();
+    cargarVideos();
+  }
+  if (subtab === 'categorias') {
+    document.getElementById('videoCategorias').classList.add('active');
+    cargarCategorias();
+  }
+  if (subtab === 'landing') {
+    document.getElementById('videoLanding').classList.add('active');
+    cargarLanding();
+  }
+}
+
+// ===== LANDING (textos del hero de Camino Interior) =====
+async function cargarLanding() {
+  try {
+    const res = await fetch(`${API}/videos/landing`, { headers: headers() });
+    if (res.status === 401) return logout();
+    const cfg = await res.json();
+    document.getElementById('lIntro').value = cfg.intro || '';
+    document.getElementById('lPacto').value = cfg.pacto || '';
+  } catch { alert('No se pudo cargar el landing'); }
+}
+
+async function guardarLanding() {
+  const intro = document.getElementById('lIntro').value.trim();
+  const pacto = document.getElementById('lPacto').value.trim();
+  if (!intro || !pacto) return alert('Ambos textos son obligatorios');
+  try {
+    const res = await fetch(`${API}/videos/landing`, {
+      method: 'PUT', headers: headers(), body: JSON.stringify({ intro, pacto })
+    });
+    if (res.status === 401) return logout();
+    const d = await res.json();
+    const msg = document.getElementById('landingMsg');
+    msg.style.display = 'block';
+    msg.style.color = res.ok ? '#7CFC9E' : '#ff8a8a';
+    msg.textContent = res.ok ? '✅ Cambios guardados' : ('❌ ' + (d.error || 'Error al guardar'));
+  } catch { alert('Error de conexión'); }
+}
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+async function cargarVideos() {
+  try {
+    const res = await fetch(`${API}/videos/admin?search=${encodeURIComponent(videoSearch)}&categoria_id=${encodeURIComponent(videoCategory)}&sort=${videoSort}&order=${videoOrder}&page=${videoCurrentPage}&limit=${videoLimit}`, { headers: headers() });
+    if (res.status === 401) return logout();
+    const data = await res.json();
+
+    document.getElementById('videosBody').innerHTML = data.data.map(v => `
+      <tr>
+        <td>${v.thumbnail_url ? `<img src="${escapeHtml(v.thumbnail_url)}" style="width:64px;height:36px;border-radius:4px;object-fit:cover">` : '🎬'}</td>
+        <td style="color:#c8e6f0;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(v.titulo)}</td>
+        <td>${escapeHtml(v.categoria_nombre || '—')}</td>
+        <td>${escapeHtml(v.duracion || '—')}</td>
+        <td>${v.vistas}</td>
+        <td>${v.likes}</td>
+        <td>${v.activo ? '✅' : '❌'}</td>
+        <td>
+          <button class="btn btn-primary" onclick='editarVideo(${JSON.stringify(v)})'>Editar</button>
+          <button class="btn btn-danger" onclick="eliminarVideo(${v.id})">Eliminar</button>
+        </td>
+      </tr>
+    `).join('');
+
+    document.getElementById('videosMobile').innerHTML = data.data.map(v => `
+      <div class="mobile-card">
+        <div class="mc-header"><strong>${escapeHtml(v.titulo)}</strong><span>${v.activo ? '✅' : '❌'}</span></div>
+        <div class="mc-row">🗂️ ${escapeHtml(v.categoria_nombre || 'Sin categoría')} | ⏱️ ${escapeHtml(v.duracion || '—')}</div>
+        <div class="mc-row">👁️ ${v.vistas} vistas | ❤️ ${v.likes} likes</div>
+        <div class="mc-actions">
+          <button class="btn btn-primary" onclick='editarVideo(${JSON.stringify(v)})'>Editar</button>
+          <button class="btn btn-danger" onclick="eliminarVideo(${v.id})">Eliminar</button>
+        </div>
+      </div>
+    `).join('');
+
+    document.getElementById('videoPageInfo').textContent = `Página ${data.page} de ${data.totalPages}`;
+    document.getElementById('vidPrevPage').disabled = data.page === 1;
+    document.getElementById('vidNextPage').disabled = data.page === data.totalPages;
+  } catch { alert('Error cargando videos'); }
+}
+
+async function cargarSelectCategorias() {
+  try {
+    const res = await fetch(`${API}/videos/categorias/admin`, { headers: headers() });
+    categoriasCache = await res.json();
+    const sel = document.getElementById('vCategoria');
+    sel.innerHTML = '<option value="">— Sin categoría —</option>' +
+      categoriasCache.map(c => `<option value="${c.id}">${escapeHtml(c.nombre)}</option>`).join('');
+  } catch {}
+}
+
+let eliminarThumbFlag = false;
+
+async function mostrarModalVideo() {
+  await cargarSelectCategorias();
+  document.getElementById('modalVideoTitle').textContent = 'Nuevo Video';
+  document.getElementById('videoId').value = '';
+  ['vTitulo','vSubtitulo','vVideoUrl','vDuracion','vDescripcion'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('vCategoria').value = '';
+  document.getElementById('vThumbnail').value = '';
+  document.getElementById('vActivo').value = '1';
+  document.getElementById('vThumbPreview').style.display = 'none';
+  eliminarThumbFlag = false;
+  document.getElementById('modalVideo').classList.add('show');
+}
+
+async function editarVideo(v) {
+  await cargarSelectCategorias();
+  document.getElementById('modalVideoTitle').textContent = 'Editar Video';
+  document.getElementById('videoId').value = v.id;
+  document.getElementById('vTitulo').value = v.titulo || '';
+  document.getElementById('vSubtitulo').value = v.subtitulo || '';
+  document.getElementById('vCategoria').value = v.categoria_id || '';
+  document.getElementById('vVideoUrl').value = v.video_url || '';
+  document.getElementById('vDuracion').value = v.duracion || '';
+  document.getElementById('vDescripcion').value = v.descripcion || '';
+  document.getElementById('vThumbnail').value = '';
+  document.getElementById('vActivo').value = v.activo ? '1' : '0';
+  eliminarThumbFlag = false;
+  if (v.thumbnail_url) {
+    document.getElementById('vThumbPreview').style.display = 'block';
+    document.getElementById('vThumbImg').src = v.thumbnail_url;
+  } else {
+    document.getElementById('vThumbPreview').style.display = 'none';
+  }
+  document.getElementById('modalVideo').classList.add('show');
+}
+
+function eliminarThumbVideo() {
+  eliminarThumbFlag = true;
+  document.getElementById('vThumbPreview').style.display = 'none';
+  document.getElementById('vThumbnail').value = '';
+}
+
+async function guardarVideo() {
+  const id = document.getElementById('videoId').value;
+  const titulo = document.getElementById('vTitulo').value.trim();
+  const video_url = document.getElementById('vVideoUrl').value.trim();
+  if (!video_url) return alert('El enlace del video es obligatorio');
+  const esLoom = /loom\.com\/(?:share|embed)\/[0-9a-f]{32}/i.test(video_url);
+  if (!titulo && !esLoom) return alert('El título es obligatorio (solo se autocompleta con enlaces de Loom)');
+
+  const formData = new FormData();
+  formData.append('titulo', titulo);
+  formData.append('subtitulo', document.getElementById('vSubtitulo').value.trim());
+  formData.append('categoria_id', document.getElementById('vCategoria').value);
+  formData.append('video_url', video_url);
+  formData.append('duracion', document.getElementById('vDuracion').value.trim());
+  formData.append('descripcion', document.getElementById('vDescripcion').value.trim());
+  formData.append('activo', document.getElementById('vActivo').value);
+  const file = document.getElementById('vThumbnail').files[0];
+  if (file) formData.append('thumbnail', file);
+  if (eliminarThumbFlag) formData.append('eliminar_thumbnail', 'true');
+
+  try {
+    const res = await fetch(id ? `${API}/videos/${id}` : `${API}/videos`, {
+      method: id ? 'PUT' : 'POST',
+      headers: { 'Authorization': `Bearer ${token}` },
+      body: formData
+    });
+    const data = await res.json();
+    if (res.ok) { cerrarModal('modalVideo'); cargarVideos(); eliminarThumbFlag = false; }
+    else alert(data.error);
+  } catch { alert('Error de conexión'); }
+}
+
+async function eliminarVideo(id) {
+  if (!confirm('¿Eliminar este video?')) return;
+  try {
+    const res = await fetch(`${API}/videos/${id}`, { method: 'DELETE', headers: headers() });
+    const data = await res.json();
+    if (res.ok) cargarVideos(); else alert(data.error);
+  } catch { alert('Error de conexión'); }
+}
+
+// ===== CATEGORÍAS =====
+async function cargarCategorias() {
+  try {
+    const res = await fetch(`${API}/videos/categorias/admin`, { headers: headers() });
+    if (res.status === 401) return logout();
+    const data = await res.json();
+
+    document.getElementById('categoriasBody').innerHTML = data.map(c => `
+      <tr>
+        <td style="color:#c8e6f0">${escapeHtml(c.nombre)}</td>
+        <td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(c.descripcion || '—')}</td>
+        <td>${c.total_videos}</td>
+        <td>${c.orden}</td>
+        <td>${c.activo ? '✅' : '❌'}</td>
+        <td>
+          <button class="btn btn-primary" onclick='editarCategoria(${JSON.stringify(c)})'>Editar</button>
+          <button class="btn btn-danger" onclick="eliminarCategoria(${c.id})">Eliminar</button>
+        </td>
+      </tr>
+    `).join('');
+
+    document.getElementById('categoriasMobile').innerHTML = data.map(c => `
+      <div class="mobile-card">
+        <div class="mc-header"><strong>${escapeHtml(c.nombre)}</strong><span>${c.activo ? '✅' : '❌'}</span></div>
+        <div class="mc-row">${escapeHtml(c.descripcion || 'Sin descripción')}</div>
+        <div class="mc-row">🎬 ${c.total_videos} videos | Orden: ${c.orden}</div>
+        <div class="mc-actions">
+          <button class="btn btn-primary" onclick='editarCategoria(${JSON.stringify(c)})'>Editar</button>
+          <button class="btn btn-danger" onclick="eliminarCategoria(${c.id})">Eliminar</button>
+        </div>
+      </div>
+    `).join('');
+  } catch { alert('Error cargando categorías'); }
+}
+
+function mostrarModalCategoria() {
+  document.getElementById('modalCategoriaTitle').textContent = 'Nueva Categoría';
+  document.getElementById('categoriaId').value = '';
+  document.getElementById('cNombre').value = '';
+  document.getElementById('cDescripcion').value = '';
+  document.getElementById('cOrden').value = '1';
+  document.getElementById('cActivo').value = '1';
+  document.getElementById('modalCategoria').classList.add('show');
+}
+
+function editarCategoria(c) {
+  document.getElementById('modalCategoriaTitle').textContent = 'Editar Categoría';
+  document.getElementById('categoriaId').value = c.id;
+  document.getElementById('cNombre').value = c.nombre || '';
+  document.getElementById('cDescripcion').value = c.descripcion || '';
+  document.getElementById('cOrden').value = c.orden || 1;
+  document.getElementById('cActivo').value = c.activo ? '1' : '0';
+  document.getElementById('modalCategoria').classList.add('show');
+}
+
+async function guardarCategoria() {
+  const id = document.getElementById('categoriaId').value;
+  const nombre = document.getElementById('cNombre').value.trim();
+  if (!nombre) return alert('El nombre es obligatorio');
+  const body = {
+    nombre,
+    descripcion: document.getElementById('cDescripcion').value.trim(),
+    orden: parseInt(document.getElementById('cOrden').value) || 1,
+    activo: document.getElementById('cActivo').value === '1'
+  };
+  try {
+    const res = await fetch(id ? `${API}/videos/categorias/${id}` : `${API}/videos/categorias`, {
+      method: id ? 'PUT' : 'POST', headers: headers(), body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (res.ok) { cerrarModal('modalCategoria'); cargarCategorias(); } else alert(data.error);
+  } catch { alert('Error de conexión'); }
+}
+
+async function eliminarCategoria(id) {
+  if (!confirm('¿Eliminar esta categoría? Los videos asociados quedarán sin categoría.')) return;
+  try {
+    const res = await fetch(`${API}/videos/categorias/${id}`, { method: 'DELETE', headers: headers() });
+    const data = await res.json();
+    if (res.ok) cargarCategorias(); else alert(data.error);
+  } catch { alert('Error de conexión'); }
+}
+
+// ===== EVENTOS (calendario La Tribu) =====
+let eventosCache = {};
+let guardandoEvento = false;
+
+function fmtHoraAdmin(t) {
+  if (!t) return '—';
+  return String(t).slice(0, 5);
+}
+
+async function cargarEventos() {
+  try {
+    const res = await fetch(`${API}/eventos/admin`, { headers: headers() });
+    if (res.status === 401) return logout();
+    const data = await res.json();
+    eventosCache = {};
+    data.forEach(e => { eventosCache[e.id] = e; });
+
+    document.getElementById('eventosBody').innerHTML = data.map(e => `
+      <tr>
+        <td style="color:#c8e6f0">${escapeHtml(e.nombre)}</td>
+        <td>${escapeHtml(String(e.fecha).slice(0, 10))}</td>
+        <td>${fmtHoraAdmin(e.hora_inicio)}</td>
+        <td>${fmtHoraAdmin(e.hora_fin)}</td>
+        <td>${escapeHtml(e.lugar)}</td>
+        <td>${e.activo ? '✅' : '❌'}</td>
+        <td>
+          <button type="button" class="btn btn-primary" onclick="editarEvento(${e.id})">Editar</button>
+          <button type="button" class="btn" style="background:#1a1a1a;color:#c8e6f0;border:1px solid #333" onclick="copiarEvento(${e.id})">Copiar</button>
+          <button type="button" class="btn btn-danger" onclick="eliminarEvento(${e.id})">Eliminar</button>
+        </td>
+      </tr>
+    `).join('');
+
+    document.getElementById('eventosMobile').innerHTML = data.map(e => `
+      <div class="mobile-card">
+        <div class="mc-header"><strong>${escapeHtml(e.nombre)}</strong><span>${e.activo ? '✅' : '❌'}</span></div>
+        <div class="mc-row">📅 ${escapeHtml(String(e.fecha).slice(0, 10))} · 🕐 ${fmtHoraAdmin(e.hora_inicio)}${e.hora_fin ? ' – ' + fmtHoraAdmin(e.hora_fin) : ''}</div>
+        <div class="mc-row">📍 ${escapeHtml(e.lugar)}</div>
+        <div class="mc-actions">
+          <button type="button" class="btn btn-primary" onclick="editarEvento(${e.id})">Editar</button>
+          <button type="button" class="btn" style="background:#1a1a1a;color:#c8e6f0;border:1px solid #333" onclick="copiarEvento(${e.id})">Copiar</button>
+          <button type="button" class="btn btn-danger" onclick="eliminarEvento(${e.id})">Eliminar</button>
+        </div>
+      </div>
+    `).join('');
+  } catch { alert('No se pudieron cargar los eventos'); }
+}
+
+function mostrarModalEvento() {
+  document.getElementById('modalEventoTitle').textContent = 'Nuevo Evento';
+  document.getElementById('eventoId').value = '';
+  ['eNombre','eLugar','eUbicacion'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('eFecha').value = '';
+  document.getElementById('eHoraInicio').value = '';
+  document.getElementById('eHoraFin').value = '';
+  document.getElementById('eActivo').value = '1';
+  document.getElementById('modalEvento').classList.add('show');
+}
+
+function copiarEvento(id) {
+  const e = eventosCache[id];
+  if (!e) return;
+  document.getElementById('modalEventoTitle').textContent = 'Nuevo Evento (copia)';
+  document.getElementById('eventoId').value = '';
+  document.getElementById('eNombre').value = e.nombre || '';
+  document.getElementById('eFecha').value = '';
+  document.getElementById('eHoraInicio').value = fmtHoraAdmin(e.hora_inicio);
+  document.getElementById('eHoraFin').value = e.hora_fin ? fmtHoraAdmin(e.hora_fin) : '';
+  document.getElementById('eLugar').value = e.lugar || '';
+  document.getElementById('eUbicacion').value = e.ubicacion || '';
+  document.getElementById('eActivo').value = e.activo ? '1' : '0';
+  document.getElementById('modalEvento').classList.add('show');
+}
+
+function editarEvento(id) {
+  const e = eventosCache[id];
+  if (!e) return;
+  document.getElementById('modalEventoTitle').textContent = 'Editar Evento';
+  document.getElementById('eventoId').value = e.id;
+  document.getElementById('eNombre').value = e.nombre || '';
+  document.getElementById('eFecha').value = String(e.fecha).slice(0, 10);
+  document.getElementById('eHoraInicio').value = fmtHoraAdmin(e.hora_inicio);
+  document.getElementById('eHoraFin').value = e.hora_fin ? fmtHoraAdmin(e.hora_fin) : '';
+  document.getElementById('eLugar').value = e.lugar || '';
+  document.getElementById('eUbicacion').value = e.ubicacion || '';
+  document.getElementById('eActivo').value = e.activo ? '1' : '0';
+  document.getElementById('modalEvento').classList.add('show');
+}
+
+async function guardarEvento() {
+  if (guardandoEvento) return;
+  const id = document.getElementById('eventoId').value;
+  const body = {
+    nombre: document.getElementById('eNombre').value.trim(),
+    fecha: document.getElementById('eFecha').value,
+    hora_inicio: document.getElementById('eHoraInicio').value,
+    hora_fin: document.getElementById('eHoraFin').value || null,
+    lugar: document.getElementById('eLugar').value.trim(),
+    ubicacion: document.getElementById('eUbicacion').value.trim() || null,
+    activo: document.getElementById('eActivo').value === '1'
+  };
+  if (!body.nombre || !body.fecha || !body.hora_inicio || !body.lugar) {
+    return alert('Completa nombre, fecha, hora de inicio y lugar');
+  }
+  const btn = document.getElementById('btnGuardarEvento');
+  guardandoEvento = true;
+  if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
+  try {
+    const res = await fetch(id ? `${API}/eventos/${id}` : `${API}/eventos`, {
+      method: id ? 'PUT' : 'POST', headers: headers(), body: JSON.stringify(body)
+    });
+    if (res.status === 401) return logout();
+    const d = await res.json();
+    if (res.ok) { cerrarModal('modalEvento'); cargarEventos(); }
+    else alert(d.error || 'Error al guardar');
+  } catch { alert('Error de conexión'); }
+  finally {
+    guardandoEvento = false;
+    if (btn) { btn.disabled = false; btn.textContent = 'Guardar'; }
+  }
+}
+
+async function eliminarEvento(id) {
+  if (!confirm('¿Eliminar este evento?')) return;
+  try {
+    const res = await fetch(`${API}/eventos/${id}`, { method: 'DELETE', headers: headers() });
+    const data = await res.json();
+    if (res.ok) cargarEventos(); else alert(data.error);
   } catch { alert('Error de conexión'); }
 }
 
@@ -926,6 +1555,68 @@ function mostrarMsgConfig(texto, ok) {
   el.style.color = ok ? '#6fcf6f' : '#f08080';
   el.style.border = ok ? '1px solid #2a5a2a' : '1px solid #5a2a2a';
 }
+
+function sortVideos(column) {
+  if (videoSort === column) {
+    videoOrder = videoOrder === 'asc' ? 'desc' : 'asc';
+  } else {
+    videoSort = column;
+    videoOrder = 'asc';
+  }
+  updateSortArrows();
+  videoCurrentPage = 1;
+  cargarVideos();
+}
+
+function changeVideoPage(delta) {
+  videoCurrentPage += delta;
+  if (videoCurrentPage < 1) videoCurrentPage = 1;
+  cargarVideos();
+}
+
+function updateSortArrows() {
+  document.getElementById('sortTitulo').textContent = '';
+  document.getElementById('sortCategoria').textContent = '';
+  document.getElementById('sortDuracion').textContent = '';
+  document.getElementById('sortVistas').textContent = '';
+  document.getElementById('sortLikes').textContent = '';
+  const arrow = videoOrder === 'asc' ? '▲' : '▼';
+  if (videoSort === 'titulo') document.getElementById('sortTitulo').textContent = arrow;
+  else if (videoSort === 'categoria_nombre') document.getElementById('sortCategoria').textContent = arrow;
+  else if (videoSort === 'duracion') document.getElementById('sortDuracion').textContent = arrow;
+  else if (videoSort === 'vistas') document.getElementById('sortVistas').textContent = arrow;
+  else if (videoSort === 'likes') document.getElementById('sortLikes').textContent = arrow;
+}
+
+document.getElementById('videoSearchBtn').addEventListener('click', () => {
+  videoSearch = document.getElementById('videoSearch').value.trim();
+  videoCurrentPage = 1;
+  cargarVideos();
+});
+document.getElementById('videoSearch').addEventListener('keypress', e => {
+  if (e.key === 'Enter') {
+    videoSearch = document.getElementById('videoSearch').value.trim();
+    videoCurrentPage = 1;
+    cargarVideos();
+  }
+});
+document.getElementById('videoCategoryFilter').addEventListener('change', () => {
+  videoCategory = document.getElementById('videoCategoryFilter').value;
+  videoCurrentPage = 1;
+  cargarVideos();
+});
+
+async function inicializarFiltroCategorias() {
+  try {
+    const res = await fetch(`${API}/videos/categorias/admin`, { headers: headers() });
+    if (res.status === 401) return logout();
+    const categorias = await res.json();
+    const sel = document.getElementById('videoCategoryFilter');
+    sel.innerHTML = '<option value="">Todas las categorías</option>' +
+      categorias.map(c => `<option value="${c.id}">${escapeHtml(c.nombre)}</option>`).join('');
+  } catch { alert('Error cargando categorías'); }
+}
 </script>
+
 </body>
 </html>

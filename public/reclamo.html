@@ -4,7 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Libro de Reclamaciones - VHM</title>
-  <link rel="icon" type="image/jpeg" href="/logo_vhm.jpeg">
+  <script src="__app_base__.js"></script>
+  <link rel="icon" type="image/jpeg" href="logo_vhm.jpeg">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: system-ui, sans-serif; background: #0a0a0a; padding: 20px; color: #f5f0eb; }
@@ -48,8 +49,8 @@
   <h1>📋 LIBRO DE RECLAMACIONES</h1>
   <p class="subtitle">Conforme al D.S. N° 011-2011-PCM y sus modificatorias</p>
   <div class="nav-links">
-    <a href="/">← Volver a VHM</a>
-    <a href="/consulta">🔍 Consultar estado de mi reclamo</a>
+    <a href="./">← Volver a VHM</a>
+    <a href="consulta">🔍 Consultar estado de mi reclamo</a>
   </div>
 
   <form id="formReclamo">
@@ -197,7 +198,7 @@
     data.menor_edad = chkMenor.checked;
 
     try {
-      const res = await fetch('/api/reclamos', {
+      const res = await fetch((window.__APP_BASE__ || '') + '/api/reclamos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)

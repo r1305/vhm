@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>La Tribu - VHM</title>
+  <script src="__app_base__.js"></script>
+  <link rel="icon" type="image/jpeg" href="logo_vhm.jpeg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --violet: #8b5cf6;
+      --purple: #a855f7;
+      --pink: #ec4899;
+      --coral: #fb7185;
+      --amber: #fbbf24;
+      --teal: #2dd4bf;
+      --sky: #38bdf8;
+      --bg: #07070d;
+      --panel: #101019;
+      --line: rgba(168,85,247,.18);
+      --txt: #ece9f5;
+      --muted: #9a93b3;
+      --grad-warm: linear-gradient(135deg, #a855f7 0%, #ec4899 50%, #fb7185 100%);
+      --grad-cool: linear-gradient(135deg, #8b5cf6 0%, #38bdf8 55%, #2dd4bf 100%);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Nunito', system-ui, sans-serif;
+      color: var(--txt);
+      background:
+        radial-gradient(780px 460px at 88% -8%, rgba(236,72,153,.16), transparent 60%),
+        radial-gradient(720px 460px at 2% 4%, rgba(56,189,248,.13), transparent 58%),
+        radial-gradient(680px 520px at 50% 118%, rgba(45,212,191,.12), transparent 60%),
+        var(--bg);
+      background-attachment: fixed;
+      min-height: 100vh;
+    }
+    a { text-decoration: none; }
+    ::selection { background: rgba(168,85,247,.35); }
+
+    /* NAV */
+    nav {
+      position: fixed; top: 0; width: 100%; padding: 14px 22px;
+      display: flex; justify-content: space-between; align-items: center;
+      z-index: 100; background: rgba(7,7,13,.78); backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--line);
+    }
+    nav .logo {
+      font-family: 'Fraunces', serif; font-weight: 700; font-size: 1.4rem; letter-spacing: 1px;
+      background: var(--grad-warm); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    nav .links { display: flex; flex-wrap: wrap; gap: 4px 22px; align-items: center; }
+    nav .links a { color: var(--muted); font-size: .9rem; font-weight: 700; transition: color .2s; }
+    nav .links a:hover { color: #fff; }
+    nav .menu-toggle { display: none; background: none; border: none; color: var(--purple); font-size: 1.6rem; cursor: pointer; }
+
+    /* HERO */
+    .hero {
+      position: relative; overflow: hidden;
+      padding: 132px 20px 72px; text-align: center;
+      background:
+        radial-gradient(620px 320px at 50% -10%, rgba(168,85,247,.35), transparent 70%),
+        linear-gradient(180deg, #0d0b16 0%, #07070d 100%);
+      border-bottom: 1px solid var(--line);
+    }
+    .hero::before, .hero::after {
+      content: ''; position: absolute; border-radius: 50%; filter: blur(80px); opacity: .4;
+      animation: float 13s ease-in-out infinite; pointer-events: none;
+    }
+    .hero::before { width: 320px; height: 320px; background: #ec4899; top: -110px; left: -60px; }
+    .hero::after { width: 300px; height: 300px; background: #38bdf8; bottom: -130px; right: -50px; animation-delay: -6s; }
+    @keyframes float { 0%,100% { transform: translateY(0) scale(1); } 50% { transform: translateY(28px) scale(1.1); } }
+    .hero > * { position: relative; z-index: 1; }
+    .hero .eyebrow {
+      display: inline-block; font-size: .72rem; letter-spacing: 3px; text-transform: uppercase; font-weight: 800;
+      padding: 7px 16px; border-radius: 30px; color: #fbe3f0;
+      background: rgba(236,72,153,.12); border: 1px solid rgba(236,72,153,.4);
+      margin-bottom: 22px;
+    }
+    .hero h1 {
+      font-family: 'Fraunces', serif; font-weight: 700; font-size: 3.3rem; margin-bottom: 14px; line-height: 1.08; color: #fff;
+    }
+    .hero h1 span {
+      font-style: italic;
+      background: var(--grad-warm); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .hero .subtitle { font-size: 1.05rem; font-weight: 700; margin-bottom: 26px; color: #c9b8ee; }
+    .hero .intro { max-width: 720px; margin: 0 auto 18px; line-height: 1.8; font-size: 1rem; color: #cfc8e0; }
+    .hero .pact { max-width: 700px; margin: 0 auto; line-height: 1.7; font-size: .92rem; font-style: italic; color: var(--muted); }
+    .pills { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 30px; }
+    .pill {
+      padding: 9px 20px; border-radius: 30px; font-size: .85rem; font-weight: 800; color: #f3eafc;
+      background: rgba(168,85,247,.1); border: 1px solid rgba(168,85,247,.4);
+      transition: transform .2s, background .2s, box-shadow .2s;
+    }
+    .pill:hover { transform: translateY(-3px); background: rgba(168,85,247,.22); box-shadow: 0 8px 22px -8px rgba(168,85,247,.7); }
+
+    /* SECTIONS */
+    .section { padding: 52px 22px; max-width: 1160px; margin: 0 auto; }
+    .cat-block { margin-bottom: 56px; }
+    .cat-title {
+      font-family: 'Fraunces', serif; font-size: 1.85rem; font-weight: 700; margin-bottom: 6px; color: #fff;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .cat-title::before { content: ''; width: 38px; height: 5px; border-radius: 5px; background: var(--grad-warm); box-shadow: 0 0 14px rgba(236,72,153,.7); }
+    .cat-desc { color: var(--muted); font-size: .98rem; margin-bottom: 26px; max-width: 640px; line-height: 1.6; }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 26px; }
+    .card {
+      background: var(--panel); border: 1px solid var(--line); border-radius: 20px; overflow: hidden;
+      cursor: pointer; transition: transform .25s, box-shadow .25s, border-color .25s; display: flex; flex-direction: column;
+      position: relative;
+    }
+    .card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: var(--grad-warm); z-index: 2; }
+    .card:nth-child(3n+2)::before { background: var(--grad-cool); }
+    .card:nth-child(3n)::before { background: linear-gradient(135deg, #fbbf24, #fb7185); }
+    .card:hover { transform: translateY(-8px); border-color: rgba(236,72,153,.55); box-shadow: 0 24px 48px -24px rgba(236,72,153,.55), 0 0 0 1px rgba(236,72,153,.2); }
+    .thumb {
+      position: relative; aspect-ratio: 16/9;
+      background-color: #16121f;
+      background-image: url('logo_vhm.jpeg'); background-size: 42%; background-position: center; background-repeat: no-repeat;
+    }
+    .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .thumb .play { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: linear-gradient(180deg, rgba(7,7,13,.1), rgba(236,72,153,.4)); opacity: 0; transition: opacity .25s; }
+    .card:hover .thumb .play { opacity: 1; }
+    .thumb .play span {
+      width: 62px; height: 62px; border-radius: 50%; background: #fff; color: var(--pink);
+      display: flex; align-items: center; justify-content: center; font-size: 1.5rem; padding-left: 4px;
+      box-shadow: 0 8px 26px rgba(236,72,153,.65);
+    }
+    .thumb .dur { position: absolute; bottom: 10px; right: 10px; background: rgba(7,7,13,.85); color: #fff; font-size: .74rem; font-weight: 700; padding: 4px 9px; border-radius: 20px; border: 1px solid rgba(255,255,255,.12); }
+    .card-body { padding: 18px 18px 16px; flex: 1; display: flex; flex-direction: column; }
+    .card-body h3 { font-family: 'Fraunces', serif; font-size: 1.12rem; font-weight: 600; margin-bottom: 7px; line-height: 1.3; color: #f4f1fb; }
+    .card-body .sub { font-size: .88rem; color: var(--muted); margin-bottom: 14px; flex: 1; line-height: 1.5; }
+    .card-meta { display: flex; align-items: center; justify-content: space-between; font-size: .82rem; color: var(--muted); font-weight: 700; border-top: 1px solid rgba(168,85,247,.14); padding-top: 12px; }
+    .like-btn { background: none; border: none; color: var(--muted); cursor: pointer; font-size: .9rem; font-weight: 700; display: flex; align-items: center; gap: 6px; padding: 4px; transition: color .2s; }
+    .like-btn.liked, .like-btn:hover { color: var(--coral); }
+
+    .empty {
+      text-align: center; color: var(--muted); padding: 70px 20px; font-size: 1.05rem; font-weight: 600;
+      background: rgba(168,85,247,.04); border-radius: 20px; border: 1px dashed rgba(168,85,247,.35);
+    }
+
+    /* MODAL PLAYER */
+    .player-overlay { display: none; position: fixed; inset: 0; background: rgba(7,7,13,.85); backdrop-filter: blur(8px); z-index: 1000; padding: 20px; overflow-y: auto; }
+    .player-overlay.show { display: flex; align-items: flex-start; justify-content: center; }
+    .player-box { background: var(--panel); border: 1px solid var(--line); border-radius: 22px; width: 100%; max-width: 880px; margin: auto; overflow: hidden; box-shadow: 0 40px 90px -30px rgba(236,72,153,.4); }
+    .player-frame { position: relative; aspect-ratio: 16/9; background: #000; }
+    .player-frame iframe, .player-frame video { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+    .player-info { padding: 24px 28px 30px; }
+    .player-info h2 { font-family: 'Fraunces', serif; font-weight: 600; font-size: 1.5rem; margin-bottom: 8px; color: #fff; }
+    .player-info .p-sub { color: #c9b8ee; font-weight: 700; font-size: .95rem; margin-bottom: 16px; }
+    .player-info .p-desc { color: var(--muted); line-height: 1.8; font-size: .95rem; margin-bottom: 20px; white-space: pre-wrap; }
+    .player-actions { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; color: var(--muted); font-size: .9rem; font-weight: 700; border-top: 1px solid rgba(168,85,247,.16); padding-top: 18px; }
+    .player-actions .like-btn { font-size: 1.05rem; }
+    .close-btn { position: absolute; top: 16px; right: 18px; z-index: 5; background: rgba(7,7,13,.7); color: #fff; border: 1px solid rgba(255,255,255,.2); width: 40px; height: 40px; border-radius: 50%; cursor: pointer; font-size: 1.4rem; transition: transform .2s, background .2s; }
+    .close-btn:hover { transform: rotate(90deg); background: var(--pink); }
+
+    footer {
+      position: relative; margin-top: 30px; background: #0a0a12; color: var(--muted);
+      text-align: center; padding: 40px 20px; font-size: .9rem; font-weight: 600;
+      border-top: 1px solid var(--line);
+    }
+    footer::before { content: ''; position: absolute; top: -1px; left: 0; right: 0; height: 3px; background: var(--grad-warm); }
+    footer a { color: #d9cdfb; text-decoration: underline; text-underline-offset: 3px; }
+    footer a:hover { color: #fff; }
+
+    /* TABS LA TRIBU */
+    .tribu-tabs-wrap { max-width: 1160px; margin: 0 auto; padding: 0 22px; }
+    .tribu-tabs {
+      display: flex; gap: 8px; margin-top: -28px; position: relative; z-index: 2;
+    }
+    .tribu-tab {
+      flex: 1; max-width: 220px; padding: 14px 20px; border: none; border-radius: 14px 14px 0 0;
+      font-family: inherit; font-weight: 800; font-size: .95rem; cursor: pointer;
+      background: rgba(16,16,25,.85); color: var(--muted); border: 1px solid var(--line); border-bottom: none;
+      transition: background .2s, color .2s;
+    }
+    .tribu-tab.active {
+      background: var(--panel); color: #fff;
+      border-color: rgba(236,72,153,.45);
+      box-shadow: 0 -4px 20px -8px rgba(236,72,153,.5);
+    }
+    .tribu-panel { display: none; }
+    .tribu-panel.active { display: block; }
+    .camino-intro { max-width: 1160px; margin: 0 auto; padding: 28px 22px 0; }
+    .camino-intro .intro, .camino-intro .pact { text-align: center; }
+
+    /* CALENDARIO */
+    .cal-wrap { max-width: 960px; margin: 0 auto; padding: 32px 22px 50px; }
+    .cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; flex-wrap: wrap; gap: 12px; }
+    .cal-header h2 { font-family: 'Fraunces', serif; font-size: 1.6rem; color: #fff; text-transform: capitalize; }
+    .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+    .cal-dow { text-align: center; font-size: .75rem; font-weight: 800; color: var(--muted); padding: 8px 4px; text-transform: uppercase; letter-spacing: .5px; }
+    .cal-day {
+      min-height: 88px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+      padding: 8px; display: flex; flex-direction: column; gap: 4px;
+    }
+    .cal-day.other { opacity: .35; pointer-events: none; }
+    .cal-day.today { border-color: rgba(236,72,153,.55); box-shadow: 0 0 0 1px rgba(236,72,153,.25); }
+    .cal-day-num { font-size: .82rem; font-weight: 800; color: #fff; }
+    .cal-ev {
+      font-size: .68rem; font-weight: 700; padding: 4px 6px; border-radius: 6px;
+      background: rgba(168,85,247,.2); color: #e9d5ff; line-height: 1.2;
+      white-space: normal; overflow: visible; text-overflow: clip; cursor: pointer;
+    }
+    .cal-ev:hover { background: rgba(236,72,153,.35); }
+    .cal-icon { position: relative; display: inline-block; width: 24px; height: 24px; }
+    .cal-icon-inner { font-size: 1.2rem; line-height: 1; }
+    .cal-badge {
+      position: absolute;
+      top: -4px;
+      right: -4px;
+      background: #c8e6f0;
+      color: #000;
+      border-radius: 50%;
+      padding: 2px 4px;
+      font-size: 0.6rem;
+      line-height: 1;
+    }
+    .cal-events-desktop { display: block; }
+    .cal-events-mobile { display: none; }
+    .cal-empty { text-align: center; color: var(--muted); padding: 40px 20px; }
+
+    /* MODAL EVENTO */
+    .evt-overlay { display: none; position: fixed; inset: 0; background: rgba(7,7,13,.85); backdrop-filter: blur(8px); z-index: 1000; padding: 20px; align-items: center; justify-content: center; }
+    .evt-overlay.show { display: flex; }
+    .evt-box { background: var(--panel); border: 1px solid var(--line); border-radius: 22px; width: 100%; max-width: 480px; padding: 28px 28px 24px; position: relative; box-shadow: 0 40px 90px -30px rgba(236,72,153,.4); }
+    .evt-box h2 { font-family: 'Fraunces', serif; font-size: 1.45rem; color: #fff; margin-bottom: 18px; padding-right: 36px; line-height: 1.25; }
+    .evt-row { display: flex; gap: 10px; margin-bottom: 12px; font-size: .92rem; color: var(--muted); line-height: 1.5; }
+    .evt-row .evt-icon { flex: none; width: 22px; text-align: center; }
+    .evt-row .evt-val { color: #ece9f5; }
+    .evt-link { color: #c9b8ee; font-weight: 700; word-break: break-all; text-decoration: underline; text-underline-offset: 3px; }
+    .evt-link:hover { color: #fff; }
+    .evt-close { position: absolute; top: 16px; right: 18px; background: rgba(7,7,13,.7); color: #fff; border: 1px solid rgba(255,255,255,.2); width: 36px; height: 36px; border-radius: 50%; cursor: pointer; font-size: 1.3rem; line-height: 1; }
+    .evt-close:hover { background: var(--pink); }
+
+    @media (max-width: 768px) {
+      .hero { padding-top: 112px; }
+      .hero h1 { font-size: 2.2rem; }
+      .cat-title { font-size: 1.5rem; }
+      nav .links { display: none; flex-direction: column; position: absolute; top: 100%; left: 0; right: 0; background: rgba(7,7,13,.97); padding: 18px; gap: 14px; border-bottom: 1px solid var(--line); }
+      nav .links.open { display: flex; }
+      nav .links a { font-size: 1.05rem; }
+      nav .menu-toggle { display: block; }
+      .tribu-tab { font-size: .85rem; padding: 12px 10px; }
+      .cal-day { height: 90px; }
+      .cal-ev { font-size: .68rem; }
+      .cal-grid { gap: 12px; }
+      .cal-dow { height: 90px; }
+      .cal-events-desktop { display: none; }
+      .cal-events-mobile { display: block; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="." class="logo">VHM</a>
+  <button class="menu-toggle" onclick="document.querySelector('.links').classList.toggle('open')">☰</button>
+  <div class="links">
+    <a href=".">Inicio</a>
+    <a href="latribu">La Tribu</a>
+    <a href="reclamo">Libro de Reclamaciones</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="eyebrow">✦ Comunidad VHM</div>
+  <h1>La <span>Tribu</span></h1>
+</header>
+
+<div class="tribu-tabs-wrap">
+  <div class="tribu-tabs">
+    <button type="button" class="tribu-tab active" data-tab="camino" onclick="switchTribuTab('camino')">Camino Interior</button>
+    <button type="button" class="tribu-tab" data-tab="calendario" onclick="switchTribuTab('calendario')">Calendario</button>
+  </div>
+</div>
+
+<div id="tabCamino" class="tribu-panel active">
+  <div class="camino-intro">
+    <p class="intro" id="heroIntro">Cada masterclass que encontrarás aquí nació de historias reales. No estás entrando a ver "contenido": estás entrando a un espacio pensado para devolverte claridad, fuerza y dirección cuando más lo necesitas.</p>
+    <p class="pact" id="heroPacto">Cada recurso tiene un propósito: ayudarte a entender, soltar, ordenar, sanar y avanzar. Lo importante no es la velocidad, sino tu constancia.</p>
+  </div>
+  <main class="section" id="contenido">
+    <div class="empty" id="loading">Cargando recursos...</div>
+  </main>
+</div>
+
+<div id="tabCalendario" class="tribu-panel">
+  <div class="cal-wrap">
+    <div class="cal-header">
+      <h2 id="calMesTitulo"></h2>
+    </div>
+    <div class="cal-grid" id="calDow"></div>
+    <div class="cal-grid" id="calGrid" style="margin-top:8px"></div>
+    <div class="cal-empty" id="calLoading">Cargando eventos...</div>
+  </div>
+</div>
+
+<!-- MODAL REPRODUCTOR -->
+<div class="player-overlay" id="playerOverlay">
+  <div class="player-box">
+    <div class="player-frame">
+      <button class="close-btn" onclick="cerrarPlayer()">&times;</button>
+      <div id="playerMount"></div>
+    </div>
+    <div class="player-info">
+      <h2 id="pTitulo"></h2>
+      <div class="p-sub" id="pSub"></div>
+      <div class="p-desc" id="pDesc"></div>
+      <div class="player-actions">
+        <button class="like-btn" id="pLike" onclick="toggleLike()">🤍 <span id="pLikeCount">0</span></button>
+        <span id="pVistas"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EVENTO -->
+<div class="evt-overlay" id="evtOverlay">
+  <div class="evt-box">
+    <button type="button" class="evt-close" onclick="cerrarEvento()" aria-label="Cerrar">&times;</button>
+    <h2 id="evtNombre"></h2>
+    <div class="evt-row"><span class="evt-icon">📅</span><span class="evt-val" id="evtFecha"></span></div>
+    <div class="evt-row"><span class="evt-icon">🕐</span><span class="evt-val" id="evtHora"></span></div>
+    <div class="evt-row"><span class="evt-icon">📍</span><span class="evt-val" id="evtLugar"></span></div>
+    <div class="evt-row" id="evtLinkRow"><span class="evt-icon">🔗</span><span class="evt-val"><a id="evtLink" class="evt-link" href="#" target="_blank" rel="noopener noreferrer">Abrir link</a></span></div>
+  </div>
+</div>
+
+<footer>
+  <p>&copy; <script>document.write(new Date().getFullYear())</script> VHM - Bienestar, Relaciones & Superación Personal.</p>
+  <p style="margin-top:8px"><a href=".">Volver al inicio</a> | <a href="reclamo">Libro de Reclamaciones</a></p>
+</footer>
+
+<script>
+const API = (window.__APP_BASE__ || '') + '/api';
+let videosData = [];
+let videoActual = null;
+let eventosMes = [];
+const MESES_ES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+const DOW_ES = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+
+function switchTribuTab(tab) {
+  document.querySelectorAll('.tribu-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.getElementById('tabCamino').classList.toggle('active', tab === 'camino');
+  document.getElementById('tabCalendario').classList.toggle('active', tab === 'calendario');
+  if (tab === 'calendario') cargarCalendario();
+}
+
+function fmtHora(t) {
+  if (!t) return '';
+  const p = String(t).slice(0, 5);
+  return p;
+}
+
+async function cargarCalendario() {
+  const loading = document.getElementById('calLoading');
+  loading.style.display = 'block';
+  const now = new Date();
+  const mes = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  document.getElementById('calMesTitulo').textContent = `${MESES_ES[now.getMonth()]} ${now.getFullYear()}`;
+
+  document.getElementById('calDow').innerHTML = DOW_ES.map(d => `<div class="cal-dow">${d}</div>`).join('');
+
+  try {
+    const res = await fetch(`${API}/eventos?mes=${mes}`);
+    eventosMes = await res.json();
+    renderCalendario(now.getFullYear(), now.getMonth());
+    loading.style.display = 'none';
+  } catch {
+    loading.textContent = 'No se pudieron cargar los eventos.';
+  }
+}
+
+function renderCalendario(year, month) {
+  const grid = document.getElementById('calGrid');
+  const first = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  let startDow = first.getDay();
+  startDow = startDow === 0 ? 6 : startDow - 1;
+  const today = new Date();
+  const hoyStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+  let html = '';
+  for (let i = 0; i < startDow; i++) {
+    html += '<div class="cal-day other"></div>';
+  }
+  for (let d = 1; d <= lastDay; d++) {
+    const fechaStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const evs = eventosMes.filter(e => String(e.fecha).slice(0, 10) === fechaStr);
+    const isToday = fechaStr === hoyStr;
+    html += `<div class="cal-day${isToday ? ' today' : ''}">
+      <div class="cal-day-num">${d}</div>
+      <div class="cal-events-desktop">
+        ${evs.map(e => `<div class="cal-ev" title="${escapeHtml(e.nombre)}" onclick="verEvento(${e.id})">${escapeHtml(e.nombre)}</div>`).join('')}
+      </div>
+      <div class="cal-events-mobile">
+        ${evs.length > 0 ? ('<div class="cal-icon" title="' +
+            evs.map(e=>escapeHtml(e.nombre)).join('\\n') +
+            '" onclick="verEvento(' + evs[0].id + ')"><span class="cal-icon-inner">📅</span>' +
+            (evs.length > 1 ? '<span class="cal-badge">' +
+                evs.length +
+                '</span>' : '') +
+            '</div>') : ''}
+      </div>
+    </div>`;
+  }
+  grid.innerHTML = html;
+}
+
+function verEvento(id) {
+  const ev = eventosMes.find(x => x.id === id);
+  if (!ev) return;
+  const fin = ev.hora_fin ? ` – ${fmtHora(ev.hora_fin)}` : '';
+  document.getElementById('evtNombre').textContent = ev.nombre;
+  document.getElementById('evtFecha').textContent = String(ev.fecha).slice(0, 10);
+  document.getElementById('evtHora').textContent = `${fmtHora(ev.hora_inicio)}${fin}`;
+  document.getElementById('evtLugar').textContent = ev.lugar;
+  const linkRow = document.getElementById('evtLinkRow');
+  const linkEl = document.getElementById('evtLink');
+  if (ev.ubicacion) {
+    linkEl.href = ev.ubicacion;
+    linkEl.textContent = ev.ubicacion;
+    linkRow.style.display = 'flex';
+  } else {
+    linkRow.style.display = 'none';
+  }
+  document.getElementById('evtOverlay').classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+
+function cerrarEvento() {
+  document.getElementById('evtOverlay').classList.remove('show');
+  document.body.style.overflow = '';
+}
+
+document.getElementById('evtOverlay').addEventListener('click', e => {
+  if (e.target.id === 'evtOverlay') cerrarEvento();
+});
+
+function getLikedSet() {
+  try { return new Set(JSON.parse(localStorage.getItem('vhm_liked_videos') || '[]')); }
+  catch { return new Set(); }
+}
+function saveLikedSet(set) {
+  localStorage.setItem('vhm_liked_videos', JSON.stringify([...set]));
+}
+function esLiked(id) { return getLikedSet().has(id); }
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function buildEmbed(url) {
+  let m = String(url).match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/|live\/)|youtu\.be\/)([\w-]{11})/);
+  if (m) return { type: 'iframe', src: `https://www.youtube.com/embed/${m[1]}?autoplay=1&rel=0` };
+  m = String(url).match(/vimeo\.com\/(?:video\/)?(\d+)/);
+  if (m) return { type: 'iframe', src: `https://player.vimeo.com/video/${m[1]}?autoplay=1` };
+  m = String(url).match(/loom\.com\/(?:share|embed)\/([0-9a-f]{32})/i);
+  if (m) return { type: 'iframe', src: `https://www.loom.com/embed/${m[1]}?autoplay=true` };
+  return { type: 'video', src: url };
+}
+
+function cardHtml(v) {
+  const liked = esLiked(v.id);
+  return `
+    <div class="card" onclick="abrirVideo(${v.id})">
+      <div class="thumb">
+        ${v.thumbnail_url ? `<img src="${escapeHtml(v.thumbnail_url)}" alt="${escapeHtml(v.titulo)}" loading="lazy">` : ''}
+        <div class="play"><span>&#9654;</span></div>
+        ${v.duracion ? `<div class="dur">${escapeHtml(v.duracion)}</div>` : ''}
+      </div>
+      <div class="card-body">
+        <h3>${escapeHtml(v.titulo)}</h3>
+        ${v.subtitulo ? `<div class="sub">${escapeHtml(v.subtitulo)}</div>` : '<div class="sub"></div>'}
+        <div class="card-meta">
+          <span>👁️ ${v.vistas} vistas</span>
+          <button class="like-btn ${liked ? 'liked' : ''}" onclick="event.stopPropagation();likeRapido(${v.id}, this)">
+            ${liked ? '❤️' : '🤍'} <span>${v.likes}</span>
+          </button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function cargar() {
+  try {
+    const [vRes, cRes] = await Promise.all([
+      fetch(`${API}/videos`),
+      fetch(`${API}/videos/categorias`)
+    ]);
+    videosData = await vRes.json();
+    const categorias = await cRes.json();
+    const cont = document.getElementById('contenido');
+
+    if (!videosData.length) {
+      cont.innerHTML = '<div class="empty">Próximamente nuevos recursos disponibles.</div>';
+      return;
+    }
+
+    let html = '';
+    categorias.forEach(cat => {
+      const videosCat = videosData.filter(v => v.categoria_id === cat.id);
+      if (!videosCat.length) return;
+      html += `
+        <div class="cat-block">
+          <h2 class="cat-title">${escapeHtml(cat.nombre)}</h2>
+          ${cat.descripcion ? `<p class="cat-desc">${escapeHtml(cat.descripcion)}</p>` : ''}
+          <div class="grid">${videosCat.map(cardHtml).join('')}</div>
+        </div>`;
+    });
+
+    const sinCategoria = videosData.filter(v => !v.categoria_id);
+    if (sinCategoria.length) {
+      html += `
+        <div class="cat-block">
+          <h2 class="cat-title">Otros recursos</h2>
+          <div class="grid">${sinCategoria.map(cardHtml).join('')}</div>
+        </div>`;
+    }
+
+    cont.innerHTML = html;
+  } catch (e) {
+    document.getElementById('contenido').innerHTML = '<div class="empty">No se pudieron cargar los recursos.</div>';
+  }
+}
+
+async function abrirVideo(id) {
+  const v = videosData.find(x => x.id === id);
+  if (!v) return;
+  videoActual = v;
+
+  const embed = buildEmbed(v.video_url);
+  const mount = document.getElementById('playerMount');
+  mount.innerHTML = embed.type === 'iframe'
+    ? `<iframe src="${escapeHtml(embed.src)}" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>`
+    : `<video src="${escapeHtml(embed.src)}" controls autoplay></video>`;
+
+  document.getElementById('pTitulo').textContent = v.titulo;
+  document.getElementById('pSub').textContent = v.subtitulo || '';
+  document.getElementById('pDesc').textContent = v.descripcion || '';
+  actualizarBotonLike();
+  document.getElementById('pVistas').textContent = `👁️ ${v.vistas} vistas`;
+  document.getElementById('playerOverlay').classList.add('show');
+  document.body.style.overflow = 'hidden';
+
+  // Registrar vista
+  try {
+    const res = await fetch(`${API}/videos/${id}/vista`, { method: 'POST' });
+    const d = await res.json();
+    if (d.vistas != null) {
+      v.vistas = d.vistas;
+      document.getElementById('pVistas').textContent = `👁️ ${d.vistas} vistas`;
+    }
+  } catch {}
+}
+
+function cerrarPlayer() {
+  document.getElementById('playerMount').innerHTML = '';
+  document.getElementById('playerOverlay').classList.remove('show');
+  document.body.style.overflow = '';
+  videoActual = null;
+  cargar();
+}
+
+function actualizarBotonLike() {
+  if (!videoActual) return;
+  const liked = esLiked(videoActual.id);
+  const btn = document.getElementById('pLike');
+  btn.classList.toggle('liked', liked);
+  btn.querySelector('#pLikeCount').textContent = videoActual.likes;
+  btn.childNodes[0].nodeValue = liked ? '❤️ ' : '🤍 ';
+}
+
+async function toggleLike() {
+  if (!videoActual) return;
+  const set = getLikedSet();
+  const yaLiked = set.has(videoActual.id);
+  try {
+    const res = await fetch(`${API}/videos/${videoActual.id}/like`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ quitar: yaLiked })
+    });
+    const d = await res.json();
+    if (d.likes != null) videoActual.likes = d.likes;
+    if (yaLiked) set.delete(videoActual.id); else set.add(videoActual.id);
+    saveLikedSet(set);
+    actualizarBotonLike();
+  } catch {}
+}
+
+async function likeRapido(id, btn) {
+  const v = videosData.find(x => x.id === id);
+  if (!v) return;
+  const set = getLikedSet();
+  const yaLiked = set.has(id);
+  try {
+    const res = await fetch(`${API}/videos/${id}/like`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ quitar: yaLiked })
+    });
+    const d = await res.json();
+    if (d.likes != null) v.likes = d.likes;
+    if (yaLiked) set.delete(id); else set.add(id);
+    saveLikedSet(set);
+    btn.classList.toggle('liked', !yaLiked);
+    btn.childNodes[0].nodeValue = (!yaLiked ? '❤️' : '🤍') + ' ';
+    btn.querySelector('span').textContent = v.likes;
+  } catch {}
+}
+
+document.getElementById('playerOverlay').addEventListener('click', e => {
+  if (e.target.id === 'playerOverlay') cerrarPlayer();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    cerrarPlayer();
+    cerrarEvento();
+  }
+});
+
+cargar();
+
+// Carga los textos del hero desde la configuración (editables desde el admin).
+(async function cargarLanding() {
+  try {
+    const res = await fetch(`${API}/videos/landing`);
+    const cfg = await res.json();
+    if (cfg.intro) document.getElementById('heroIntro').textContent = cfg.intro;
+    if (cfg.pacto) document.getElementById('heroPacto').textContent = cfg.pacto;
+  } catch {}
+})();
+
+// Botón flotante de WhatsApp (igual que el landing principal)
+(async function() {
+  try {
+    const response = await fetch(API + '/whatsapp-config');
+    const config = await response.json();
+    if (config.numero && config.activo) {
+      const mensaje = config.mensaje ? encodeURIComponent(config.mensaje) : '';
+      const url = `https://wa.me/${config.numero}${mensaje ? '?text=' + mensaje : ''}`;
+      const btn = document.createElement('a');
+      btn.href = url; btn.target = '_blank'; btn.rel = 'noopener noreferrer';
+      btn.setAttribute('aria-label', 'Contactar por WhatsApp');
+      btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>`;
+      btn.style.cssText = 'position:fixed;bottom:96px;right:24px;width:60px;height:60px;background:#25D366;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(37,211,102,.4);z-index:9998;transition:transform .2s';
+      btn.onmouseenter = () => btn.style.transform = 'scale(1.1)';
+      btn.onmouseleave = () => btn.style.transform = 'scale(1)';
+      document.body.appendChild(btn);
+    }
+  } catch (e) {}
+})();
+</script>
+
+<script src="clara-chat.js"></script>
+
+</body>
+</html>
