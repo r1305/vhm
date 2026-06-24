@@ -1,12 +1,18 @@
 const { Router } = require('express');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const multer = require('multer');
 const pool = require('./db');
 const { authMiddleware } = require('./auth');
 const { ensureVideoSchema, LANDING_INTRO_DEFAULT, LANDING_PACTO_DEFAULT } = require('./ensureSchema');
 
 const router = Router();
+
+function requireSuperAdmin(req, res, next) {
+  if (req.user && req.user.rol === 'SUPER_ADMIN') return next();
+  return res.status(403).json({ error: 'Acceso restringido al Super Admin' });
+}
 
 // Garantiza que las tablas existan antes de atender cualquier ruta.
 // Evita errores 500 por carrera al iniciar (auto-migración diferida).
@@ -20,7 +26,8 @@ router.use(async (req, res, next) => {
   }
 });
 
-// --- Subida de miniaturas (igual patrón que testimonios) ---
+// --- Subida de miniaturas con nombres aleatorios seguros ---
+const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     const dir = path.join(__dirname, '../public/uploads');
@@ -28,8 +35,8 @@ const storage = multer.diskStorage({
     cb(null, dir);
   },
   filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, `video_${Date.now()}${ext}`);
+    const ext = path.extname(file.originalname).toLowerCase();
+    cb(null, `video_${crypto.randomBytes(16).toString('hex')}${ext}`);
   }
 });
 
@@ -37,8 +44,7 @@ const upload = multer({
   storage,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
   fileFilter: (req, file, cb) => {
-    const allowed = /\.(jpg|jpeg|png|webp|gif)$/i;
-    if (allowed.test(path.extname(file.originalname))) cb(null, true);
+    if (ALLOWED_MIME_TYPES.has(file.mimetype)) cb(null, true);
     else cb(new Error('Solo se permiten imágenes (jpg, png, webp, gif)'));
   }
 });
@@ -153,7 +159,7 @@ router.get('/landing', async (req, res) => {
 });
 
 // Actualizar textos del landing (admin)
-router.put('/landing', authMiddleware, async (req, res) => {
+router.put('/landing', authMiddleware, requireSuperAdmin, async (req, res) => {
   try {
     const intro = String((req.body && req.body.intro) || '').trim();
     const pacto = String((req.body && req.body.pacto) || '').trim();
@@ -254,7 +260,7 @@ router.get('/categorias/admin', authMiddleware, async (req, res) => {
   }
 });
 
-router.post('/categorias', authMiddleware, async (req, res) => {
+router.post('/categorias', authMiddleware, requireSuperAdmin, async (req, res) => {
   try {
     const { nombre, descripcion, orden, activo } = req.body;
     if (!nombre) return res.status(400).json({ error: 'El nombre es obligatorio' });
@@ -269,7 +275,7 @@ router.post('/categorias', authMiddleware, async (req, res) => {
   }
 });
 
-router.put('/categorias/:id', authMiddleware, async (req, res) => {
+router.put('/categorias/:id', authMiddleware, requireSuperAdmin, async (req, res) => {
   try {
     const { nombre, descripcion, orden, activo } = req.body;
     if (!nombre) return res.status(400).json({ error: 'El nombre es obligatorio' });
@@ -285,7 +291,7 @@ router.put('/categorias/:id', authMiddleware, async (req, res) => {
   }
 });
 
-router.delete('/categorias/:id', authMiddleware, async (req, res) => {
+router.delete('/categorias/:id', authMiddleware, requireSuperAdmin, async (req, res) => {
   try {
     // Los videos asociados quedan sin categoría (ON DELETE SET NULL)
     const [result] = await pool.execute('DELETE FROM video_categorias WHERE id = ?', [req.params.id]);
@@ -305,22 +311,21 @@ router.get('/admin', authMiddleware, async (req, res) => {
     const offset = (page - 1) * limit;
     const search = (req.query.search || '').trim();
     const categoriaId = req.query.categoria_id || '';
-    const sort = ['titulo','categoria_nombre','duracion','vistas','likes'].includes(req.query.sort) ? req.query.sort : 'titulo';
-    const order = req.query.order === 'desc' ? 'DESC' : 'ASC';
+    const SORT_COLUMNS = { titulo: 'v.titulo', categoria_nombre: 'c.nombre', duracion: 'v.duracion', vistas: 'v.vistas', likes: 'v.likes' };
+    const sortCol = SORT_COLUMNS[req.query.sort] || 'v.titulo';
+    const orderDir = req.query.order === 'desc' ? 'DESC' : 'ASC';
 
     let where = '1=1';
     const params = [];
     if (search) { where += ' AND v.titulo LIKE ?'; params.push(`%${search}%`); }
     if (categoriaId) { where += ' AND v.categoria_id = ?'; params.push(categoriaId); }
 
-    const sortCol = sort === 'categoria_nombre' ? 'c.nombre' : `v.${sort}`;
-
     const [countRows] = await pool.query(`SELECT COUNT(*) AS total FROM videos v LEFT JOIN video_categorias c ON c.id = v.categoria_id WHERE ${where}`, params);
     const total = countRows[0].total;
     const totalPages = Math.max(1, Math.ceil(total / limit));
 
     const [rows] = await pool.query(
-      `SELECT v.*, c.nombre AS categoria_nombre FROM videos v LEFT JOIN video_categorias c ON c.id = v.categoria_id WHERE ${where} ORDER BY ${sortCol} ${order} LIMIT ? OFFSET ?`,
+      `SELECT v.*, c.nombre AS categoria_nombre FROM videos v LEFT JOIN video_categorias c ON c.id = v.categoria_id WHERE ${where} ORDER BY ${sortCol} ${orderDir} LIMIT ? OFFSET ?`,
       [...params, limit, offset]
     );
     res.json({ data: rows, page, totalPages, total });
@@ -330,7 +335,7 @@ router.get('/admin', authMiddleware, async (req, res) => {
   }
 });
 
-router.post('/', authMiddleware, upload.single('thumbnail'), async (req, res) => {
+router.post('/', authMiddleware, requireSuperAdmin, upload.single('thumbnail'), async (req, res) => {
   try {
     const { categoria_id, titulo, subtitulo, descripcion, video_url, duracion, activo, thumbnail_url } = req.body;
     if (!video_url) return res.status(400).json({ error: 'El enlace del video es obligatorio' });
@@ -376,7 +381,7 @@ router.post('/', authMiddleware, upload.single('thumbnail'), async (req, res) =>
   }
 });
 
-router.put('/:id', authMiddleware, upload.single('thumbnail'), async (req, res) => {
+router.put('/:id', authMiddleware, requireSuperAdmin, upload.single('thumbnail'), async (req, res) => {
   try {
     const { categoria_id, titulo, subtitulo, descripcion, video_url, duracion, activo, thumbnail_url, eliminar_thumbnail } = req.body;
     if (!video_url) return res.status(400).json({ error: 'El enlace del video es obligatorio' });
@@ -442,7 +447,7 @@ router.put('/:id', authMiddleware, upload.single('thumbnail'), async (req, res) 
   }
 });
 
-router.delete('/:id', authMiddleware, async (req, res) => {
+router.delete('/:id', authMiddleware, requireSuperAdmin, async (req, res) => {
   try {
     const [existing] = await pool.execute('SELECT thumbnail_url FROM videos WHERE id = ?', [req.params.id]);
     if (existing.length > 0) eliminarArchivoLocal(existing[0].thumbnail_url);

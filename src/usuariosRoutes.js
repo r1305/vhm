@@ -6,7 +6,12 @@ const { authMiddleware } = require('./auth');
 const router = Router();
 router.use(authMiddleware);
 
-// Listar usuarios
+function requireSuperAdmin(req, res, next) {
+  if (req.user && req.user.rol === 'SUPER_ADMIN') return next();
+  return res.status(403).json({ error: 'Acceso restringido al Super Admin' });
+}
+
+// Listar usuarios (cualquier autenticado puede ver)
 router.get('/', async (req, res) => {
   try {
     const [rows] = await pool.execute('SELECT id, username, nombre, email, rol, activo, es_protegido, fecha_creacion FROM usuarios ORDER BY id');
@@ -17,17 +22,22 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Crear usuario
-router.post('/', async (req, res) => {
+// Crear usuario (solo Super Admin)
+router.post('/', requireSuperAdmin, async (req, res) => {
   try {
     const { username, password, nombre, email, rol } = req.body;
     if (!username || !password || !nombre || !email) {
       return res.status(400).json({ error: 'Todos los campos son obligatorios' });
     }
-    const hash = await bcrypt.hash(password, 10);
+    if (typeof password !== 'string' || password.length < 8) {
+      return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres' });
+    }
+    const validRoles = ['ADMIN', 'SUPER_ADMIN'];
+    const userRole = validRoles.includes(rol) ? rol : 'ADMIN';
+    const hash = await bcrypt.hash(password, 12);
     const [result] = await pool.execute(
       'INSERT INTO usuarios (username, password, nombre, email, rol) VALUES (?, ?, ?, ?, ?)',
-      [username, hash, nombre, email, rol || 'ADMIN']
+      [username, hash, nombre, email, userRole]
     );
     res.status(201).json({ id: result.insertId, message: 'Usuario creado' });
   } catch (err) {
@@ -37,8 +47,8 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Actualizar usuario
-router.put('/:id', async (req, res) => {
+// Actualizar usuario (solo Super Admin, excepto cambio de contraseña propio)
+router.put('/:id', requireSuperAdmin, async (req, res) => {
   try {
     const [user] = await pool.execute('SELECT es_protegido FROM usuarios WHERE id = ?', [req.params.id]);
     if (user.length === 0) return res.status(404).json({ error: 'Usuario no encontrado' });
@@ -64,8 +74,8 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// Eliminar usuario
-router.delete('/:id', async (req, res) => {
+// Eliminar usuario (solo Super Admin)
+router.delete('/:id', requireSuperAdmin, async (req, res) => {
   try {
     const [user] = await pool.execute('SELECT es_protegido FROM usuarios WHERE id = ?', [req.params.id]);
     if (user.length === 0) return res.status(404).json({ error: 'Usuario no encontrado' });

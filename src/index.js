@@ -1,6 +1,7 @@
 require('dotenv').config();
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const express = require('express');
 const cors = require('cors');
 const { rewriteRootPaths } = require('../lib/mount');
@@ -27,12 +28,63 @@ try {
 
 const corsOrigin = process.env.CORS_ORIGIN;
 app.use(cors(corsOrigin ? { origin: corsOrigin.split(',').map((o) => o.trim()) } : {}));
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
+app.use(require('cookie-parser')());
+
+// Security headers
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; connect-src 'self'; frame-ancestors 'none'");
+  if (process.env.NODE_ENV === 'production') {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
+  next();
+});
 
 // Base path para montaje bajo un prefijo (ej. /site)
 const BASE_PATH = (process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
 app.use((req, res, next) => {
   res.locals.basePath = BASE_PATH;
+  next();
+});
+
+// CSRF protection (double-submit cookie pattern) - must be after BASE_PATH
+const CSRF_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
+function generateCsrfToken() {
+  const token = crypto.randomBytes(32).toString('hex');
+  const sig = crypto.createHmac('sha256', CSRF_SECRET).update(token).digest('hex').slice(0, 16);
+  return `${token}.${sig}`;
+}
+function validateCsrfToken(token) {
+  if (!token || typeof token !== 'string') return false;
+  const [val, sig] = token.split('.');
+  if (!val || !sig) return false;
+  const expected = crypto.createHmac('sha256', CSRF_SECRET).update(val).digest('hex').slice(0, 16);
+  try { return crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected)); } catch { return false; }
+}
+app.use((req, res, next) => {
+  // Set CSRF cookie on GET requests
+  if (req.method === 'GET' && !req.cookies?.csrf_token) {
+    const token = generateCsrfToken();
+    res.cookie('csrf_token', token, { httpOnly: false, sameSite: 'strict', path: BASE_PATH || '/' });
+  }
+  // Validate CSRF on state-changing methods (skip public POST to reclamos and clara chat)
+  if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {
+    const isPublicEndpoint = req.path.includes('/api/reclamos') && !req.path.includes('/responder') && !req.path.includes('/reenviar')
+      && req.method === 'POST' && !req.path.includes('/:id');
+    const isClaraChat = req.path.includes('/api/clara/chat');
+    if (!isPublicEndpoint && !isClaraChat) {
+      const headerToken = req.headers['x-csrf-token'] || req.headers['csrf-token'];
+      const cookieToken = req.cookies?.csrf_token;
+      if (!validateCsrfToken(headerToken) || !validateCsrfToken(cookieToken) || headerToken !== cookieToken) {
+        return res.status(403).json({ error: 'Token CSRF inválido' });
+      }
+    }
+  }
   next();
 });
 

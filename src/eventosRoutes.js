@@ -5,6 +5,11 @@ const { ensureVideoSchema } = require('./ensureSchema');
 
 const router = Router();
 
+function requireSuperAdmin(req, res, next) {
+  if (req.user && req.user.rol === 'SUPER_ADMIN') return next();
+  return res.status(403).json({ error: 'Acceso restringido al Super Admin' });
+}
+
 router.use(async (req, res, next) => {
   try {
     await ensureVideoSchema();
@@ -97,7 +102,7 @@ router.get('/admin', authMiddleware, async (req, res) => {
   }
 });
 
-router.post('/', authMiddleware, async (req, res) => {
+router.post('/', authMiddleware, requireSuperAdmin, async (req, res) => {
   try {
     const datos = normalizarBody(req.body);
     if (datos.error) return res.status(400).json({ error: datos.error });
@@ -114,7 +119,7 @@ router.post('/', authMiddleware, async (req, res) => {
   }
 });
 
-router.put('/:id', authMiddleware, async (req, res) => {
+router.put('/:id', authMiddleware, requireSuperAdmin, async (req, res) => {
   try {
     const datos = normalizarBody(req.body);
     if (datos.error) return res.status(400).json({ error: datos.error });
@@ -132,7 +137,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
   }
 });
 
-router.delete('/:id', authMiddleware, async (req, res) => {
+router.delete('/:id', authMiddleware, requireSuperAdmin, async (req, res) => {
   try {
     const [result] = await pool.execute('DELETE FROM tribu_eventos WHERE id = ?', [req.params.id]);
     if (result.affectedRows === 0) return res.status(404).json({ error: 'Evento no encontrado' });

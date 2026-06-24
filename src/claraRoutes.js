@@ -18,6 +18,29 @@ function chatHabilitado() {
   return !!process.env.OPENAI_API_KEY;
 }
 
+// Rate limiter en memoria: max 15 mensajes por IP en 5 minutos
+const chatRateMap = new Map();
+const CHAT_MAX = 15;
+const CHAT_WINDOW = 5 * 60 * 1000;
+
+function chatRateLimit(ip) {
+  const now = Date.now();
+  const entry = chatRateMap.get(ip);
+  if (!entry || now - entry.start > CHAT_WINDOW) {
+    chatRateMap.set(ip, { count: 1, start: now });
+    return true;
+  }
+  entry.count++;
+  return entry.count <= CHAT_MAX;
+}
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of chatRateMap) {
+    if (now - entry.start > CHAT_WINDOW) chatRateMap.delete(key);
+  }
+}, 5 * 60 * 1000).unref();
+
 router.get('/config', (req, res) => {
   res.json({ enabled: chatHabilitado(), nombre: 'Clara', titulo: 'Tu Guía 24/7' });
 });
@@ -28,6 +51,11 @@ router.get('/config', (req, res) => {
 router.post('/chat', async (req, res) => {
   if (!chatHabilitado()) {
     return res.status(503).json({ error: 'El chat con IA aún no está disponible. Vuelve pronto.' });
+  }
+
+  const ip = req.ip || req.connection.remoteAddress || 'unknown';
+  if (!chatRateLimit(ip)) {
+    return res.status(429).json({ error: 'Demasiadas peticiones. Espera unos minutos antes de intentar de nuevo.' });
   }
 
   const entrada = (req.body && req.body.mensajes) || [];
