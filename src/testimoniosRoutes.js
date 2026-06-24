@@ -30,14 +30,50 @@ const upload = multer({
   }
 });
 
-// Ruta pública - obtener testimonios activos
+// Asegurar tabla de config de testimonios
+async function ensureTestimoniosConfig() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS testimonios_config (
+      id INT PRIMARY KEY DEFAULT 1,
+      seccion_activa BOOLEAN DEFAULT TRUE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+  const [rows] = await pool.query('SELECT id FROM testimonios_config WHERE id = 1');
+  if (rows.length === 0) await pool.query('INSERT INTO testimonios_config (id, seccion_activa) VALUES (1, TRUE)');
+}
+ensureTestimoniosConfig().catch(() => {});
+
+// Ruta pública - obtener testimonios activos (incluye visibilidad de sección)
 router.get('/', async (req, res) => {
   try {
-    const [rows] = await pool.execute('SELECT id, autor, texto, foto_url FROM testimonios WHERE activo = 1 ORDER BY orden ASC');
-    res.json(rows);
+    const [cfg] = await pool.query('SELECT seccion_activa FROM testimonios_config WHERE id = 1');
+    if (cfg.length && !cfg[0].seccion_activa) return res.json({ seccion_activa: false, data: [] });
+    const [rows] = await pool.execute('SELECT id, autor, texto, foto_url FROM testimonios WHERE activo = 1 ORDER BY id ASC');
+    res.json({ seccion_activa: true, data: rows });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error al obtener testimonios' });
+  }
+});
+
+// Config visibilidad sección testimonios
+router.get('/config', authMiddleware, async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT seccion_activa FROM testimonios_config WHERE id = 1');
+    res.json({ seccion_activa: rows.length ? !!rows[0].seccion_activa : true });
+  } catch (err) {
+    res.status(500).json({ error: 'Error al obtener config' });
+  }
+});
+
+router.put('/config', authMiddleware, async (req, res) => {
+  try {
+    if (req.user.rol !== 'SUPER_ADMIN') return res.status(403).json({ error: 'Acceso restringido' });
+    const activa = req.body.seccion_activa === true || req.body.seccion_activa === 'true' || req.body.seccion_activa === 1;
+    await pool.query('UPDATE testimonios_config SET seccion_activa = ? WHERE id = 1', [activa ? 1 : 0]);
+    res.json({ message: activa ? 'Sección habilitada' : 'Sección deshabilitada', seccion_activa: activa });
+  } catch (err) {
+    res.status(500).json({ error: 'Error al guardar config' });
   }
 });
 
@@ -45,7 +81,7 @@ router.get('/', async (req, res) => {
 router.get('/admin', authMiddleware, async (req, res) => {
   try {
     if (req.user.rol !== 'SUPER_ADMIN') return res.status(403).json({ error: 'Acceso restringido' });
-    const [rows] = await pool.execute('SELECT * FROM testimonios ORDER BY orden ASC');
+    const [rows] = await pool.execute('SELECT * FROM testimonios ORDER BY id ASC');
     res.json(rows);
   } catch (err) {
     console.error(err);
@@ -65,8 +101,8 @@ router.post('/', authMiddleware, upload.single('foto'), async (req, res) => {
     }
 
     const [result] = await pool.execute(
-      'INSERT INTO testimonios (autor, texto, foto_url, orden, activo) VALUES (?, ?, ?, ?, ?)',
-      [autor || null, texto || null, foto_url, parseInt(orden) || 1, activo === 'true' || activo === '1' ? 1 : 0]
+      'INSERT INTO testimonios (autor, texto, foto_url, activo) VALUES (?, ?, ?, ?)',
+      [autor || null, texto || null, foto_url, activo === 'true' || activo === '1' ? 1 : 0]
     );
     res.status(201).json({ id: result.insertId, message: 'Testimonio creado' });
   } catch (err) {
@@ -106,8 +142,8 @@ router.put('/:id', authMiddleware, upload.single('foto'), async (req, res) => {
     }
 
     const [result] = await pool.execute(
-      'UPDATE testimonios SET autor = ?, texto = ?, foto_url = ?, orden = ?, activo = ? WHERE id = ?',
-      [autor || null, texto || null, foto_url, parseInt(orden) || 1, activo === 'true' || activo === '1' ? 1 : 0, req.params.id]
+      'UPDATE testimonios SET autor = ?, texto = ?, foto_url = ?, activo = ? WHERE id = ?',
+      [autor || null, texto || null, foto_url, activo === 'true' || activo === '1' ? 1 : 0, req.params.id]
     );
     if (result.affectedRows === 0) return res.status(404).json({ error: 'Testimonio no encontrado' });
     res.json({ message: 'Testimonio actualizado' });

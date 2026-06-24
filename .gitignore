@@ -1,5 +1,7 @@
 node_modules/
-server.log
+.env
+*.log
 backend.zip
+migrate-db.js
 public/uploads/*
 !public/uploads/.gitkeep

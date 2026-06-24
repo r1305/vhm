@@ -4,7 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Consulta de Reclamos - VHM</title>
-  <link rel="icon" type="image/jpeg" href="/logo_vhm.jpeg">
+  <script src="__app_base__.js"></script>
+  <link rel="icon" type="image/jpeg" href="logo_vhm.jpeg">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: system-ui, sans-serif; background: #0a0a0a; padding: 20px; color: #f5f0eb; }
@@ -58,7 +59,7 @@
   <h1>🔍 Consulta de Reclamos</h1>
   <p class="subtitle">Ingrese su número de documento para consultar el estado de sus reclamos</p>
   <div class="nav-links">
-    <a href="/reclamo">← Registrar nuevo reclamo</a>
+    <a href="reclamo">← Registrar nuevo reclamo</a>
   </div>
   <div class="search-box">
     <div class="field">
@@ -78,7 +79,7 @@
     document.getElementById('noResults').style.display = 'none';
     document.getElementById('results').style.display = 'none';
     try {
-      const res = await fetch(`/api/reclamos/consulta/${encodeURIComponent(doc)}`);
+      const res = await fetch(`${window.__APP_BASE__ || ''}/api/reclamos/consulta/${encodeURIComponent(doc)}`);
       const data = await res.json();
       if (data.length === 0) { document.getElementById('noResults').style.display = 'block'; return; }
       document.getElementById('results').style.display = 'block';
@@ -100,7 +101,7 @@
             <p><strong>Pedido:</strong> ${r.pedido_consumidor}</p>
           </div>
           ${r.respuesta ? `<div class="respuesta-box"><h4>✅ Respuesta del proveedor</h4><p>${r.respuesta}</p><p class="fecha">Respondido el: ${new Date(r.fecha_respuesta).toLocaleString('es-PE')}</p></div>` : ''}
-          <a class="btn-pdf" href="/api/reclamos/${r.id}/pdf" target="_blank">📄 Descargar PDF</a>
+          <a class="btn-pdf" href="${window.__APP_BASE__ || ''}/api/reclamos/${r.id}/pdf" target="_blank">📄 Descargar PDF</a>
         </div>
       `).join('');
     } catch { alert('Error al consultar. Intente nuevamente.'); }
