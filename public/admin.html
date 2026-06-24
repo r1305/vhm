@@ -610,7 +610,15 @@ function logout() {
   document.getElementById('adminSection').style.display = 'none';
 }
 
-function headers() { return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }; }
+function getCookie(name) {
+  const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+  return match ? match[1] : null;
+}
+
+function headers() {
+  const csrf = getCookie('csrf_token') || '';
+  return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'X-CSRF-Token': csrf };
+}
 
 function switchTab(tab) {
   document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
