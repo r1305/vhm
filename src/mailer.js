@@ -6,6 +6,15 @@ let cachedConfig = null;
 let cacheTime = 0;
 const CACHE_TTL = 300000; // 5 minutos
 
+function escapeHtml(str) {
+  return String(str == null ? '' : str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 async function getConfig() {
   const now = Date.now();
   if (cachedConfig && (now - cacheTime) < CACHE_TTL) return cachedConfig;
@@ -34,6 +43,10 @@ async function enviarNotificacion(destinatario, numeroReclamo, respuesta) {
   const cfg = await getConfig();
   const transporter = getTransporter(cfg);
 
+  const safeNumero = escapeHtml(numeroReclamo);
+  const safeRespuesta = escapeHtml(respuesta);
+  const safeNombre = escapeHtml(cfg.nombre_from);
+
   return transporter.sendMail({
     from: `"${cfg.nombre_from}" <${cfg.email_from}>`,
     to: destinatario,
@@ -42,12 +55,12 @@ async function enviarNotificacion(destinatario, numeroReclamo, respuesta) {
       <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:20px;background:#000;color:#f5f0eb;">
         <h2 style="color:#c8e6f0;">Respuesta a su Reclamo</h2>
         <p>Estimado(a) cliente,</p>
-        <p>Le informamos que su reclamo <strong>N° ${numeroReclamo}</strong> ha sido atendido.</p>
+        <p>Le informamos que su reclamo <strong>N° ${safeNumero}</strong> ha sido atendido.</p>
         <div style="background:#111;border:1px solid #222;padding:15px;border-radius:6px;margin:15px 0;">
           <strong style="color:#c8e6f0;">Respuesta:</strong>
-          <p style="margin-top:8px;">${respuesta}</p>
+          <p style="margin-top:8px;">${safeRespuesta}</p>
         </div>
-        <p>Atentamente,<br>${cfg.nombre_from}</p>
+        <p>Atentamente,<br>${safeNombre}</p>
       </div>
     `
   });

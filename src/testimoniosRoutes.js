@@ -1,13 +1,15 @@
 const { Router } = require('express');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const multer = require('multer');
 const pool = require('./db');
 const { authMiddleware } = require('./auth');
 
 const router = Router();
 
-// Configurar multer para subida de fotos
+// Configurar multer para subida de fotos con nombres aleatorios seguros
+const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     const dir = path.join(__dirname, '../public/uploads');
@@ -15,8 +17,8 @@ const storage = multer.diskStorage({
     cb(null, dir);
   },
   filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, `testimonio_${Date.now()}${ext}`);
+    const ext = path.extname(file.originalname).toLowerCase();
+    cb(null, `testimonio_${crypto.randomBytes(16).toString('hex')}${ext}`);
   }
 });
 
@@ -24,8 +26,7 @@ const upload = multer({
   storage,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
   fileFilter: (req, file, cb) => {
-    const allowed = /\.(jpg|jpeg|png|webp|gif)$/i;
-    if (allowed.test(path.extname(file.originalname))) cb(null, true);
+    if (ALLOWED_MIME_TYPES.has(file.mimetype)) cb(null, true);
     else cb(new Error('Solo se permiten imágenes (jpg, png, webp, gif)'));
   }
 });

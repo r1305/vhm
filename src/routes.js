@@ -1,4 +1,5 @@
 const { Router } = require('express');
+const crypto = require('crypto');
 const PDFDocument = require('pdfkit');
 const pool = require('./db');
 const { authMiddleware } = require('./auth');
@@ -6,18 +7,53 @@ const { enviarNotificacion } = require('./mailer');
 
 const router = Router();
 
+// Rate limiter en memoria para endpoints públicos sensibles
+const rateLimitMap = new Map();
+function rateLimit(key, maxRequests, windowMs) {
+  const now = Date.now();
+  const entry = rateLimitMap.get(key);
+  if (!entry || now - entry.start > windowMs) {
+    rateLimitMap.set(key, { count: 1, start: now });
+    return true;
+  }
+  entry.count++;
+  return entry.count <= maxRequests;
+}
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of rateLimitMap) {
+    if (now - entry.start > 15 * 60 * 1000) rateLimitMap.delete(key);
+  }
+}, 5 * 60 * 1000).unref();
+
 function generarNumeroReclamo() {
   const f = new Date();
   const y = f.getFullYear();
   const m = String(f.getMonth() + 1).padStart(2, '0');
   const d = String(f.getDate()).padStart(2, '0');
-  const rand = Math.floor(Math.random() * 9000 + 1000);
+  const rand = crypto.randomInt(1000, 10000);
   return `REC-${y}${m}${d}-${rand}`;
 }
 
-// PUBLIC - Registrar reclamo
+function sanitizeString(val, maxLen = 500) {
+  if (typeof val !== 'string') return val;
+  return val.trim().slice(0, maxLen);
+}
+
+function sanitizeEmail(val) {
+  if (typeof val !== 'string') return val;
+  const trimmed = val.trim().slice(0, 254);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) return null;
+  return trimmed;
+}
+
+// PUBLIC - Registrar reclamo (rate limited)
 router.post('/', async (req, res) => {
   try {
+    const ip = req.ip || req.connection.remoteAddress || 'unknown';
+    if (!rateLimit(`reclamo:${ip}`, 10, 60 * 1000)) {
+      return res.status(429).json({ error: 'Demasiados reclamos. Espera un momento.' });
+    }
     const {
       tipo_documento, numero_documento, nombres, apellidos,
       email, telefono, direccion, departamento, provincia, distrito,
@@ -26,11 +62,34 @@ router.post('/', async (req, res) => {
       tipo_reclamo, detalle_reclamo, pedido_consumidor, fecha_incidente
     } = req.body;
 
+    // Sanitizar y limitar longitud de entrada
+    const safeTipoDoc = sanitizeString(tipo_documento, 20);
+    const safeNumDoc = sanitizeString(numero_documento, 20);
+    const safeNombres = sanitizeString(nombres, 100);
+    const safeApellidos = sanitizeString(apellidos, 100);
+    const safeEmail = sanitizeEmail(email);
+    const safeTelefono = sanitizeString(telefono, 20);
+    const safeDireccion = sanitizeString(direccion, 200);
+    const safeDepartamento = sanitizeString(departamento, 50);
+    const safeProvincia = sanitizeString(provincia, 50);
+    const safeDistrito = sanitizeString(distrito, 50);
+    const safeNombreApoderado = sanitizeString(nombre_apoderado, 100);
+    const safeTipoBien = sanitizeString(tipo_bien, 50);
+    const safeDescBien = sanitizeString(descripcion_bien, 500);
+    const safeTipoReclamo = sanitizeString(tipo_reclamo, 20);
+    const safeDetalle = sanitizeString(detalle_reclamo, 2000);
+    const safePedido = sanitizeString(pedido_consumidor, 2000);
+    const safeFecha = sanitizeString(fecha_incidente, 10);
+
+    if (!safeEmail) {
+      return res.status(400).json({ error: 'Email inválido' });
+    }
+
     const obligatorios = {
-      tipo_documento, numero_documento, nombres, apellidos,
-      email, telefono, direccion, departamento, provincia, distrito,
-      tipo_bien, monto_reclamado, descripcion_bien,
-      tipo_reclamo, detalle_reclamo, pedido_consumidor, fecha_incidente
+      tipo_documento: safeTipoDoc, numero_documento: safeNumDoc, nombres: safeNombres, apellidos: safeApellidos,
+      email: safeEmail, telefono: safeTelefono, direccion: safeDireccion, departamento: safeDepartamento, provincia: safeProvincia, distrito: safeDistrito,
+      tipo_bien: safeTipoBien, monto_reclamado, descripcion_bien: safeDescBien,
+      tipo_reclamo: safeTipoReclamo, detalle_reclamo: safeDetalle, pedido_consumidor: safePedido, fecha_incidente: safeFecha
     };
 
     const faltantes = Object.entries(obligatorios)
@@ -49,11 +108,11 @@ router.post('/', async (req, res) => {
         menor_edad, nombre_apoderado, tipo_bien, monto_reclamado, descripcion_bien,
         tipo_reclamo, detalle_reclamo, pedido_consumidor, fecha_incidente, numero_reclamo)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [tipo_documento, numero_documento, nombres, apellidos,
-       email, telefono, direccion, departamento, provincia, distrito,
-       menor_edad ? 1 : 0, nombre_apoderado || null,
-       tipo_bien, monto_reclamado, descripcion_bien,
-       tipo_reclamo, detalle_reclamo, pedido_consumidor, fecha_incidente, numero_reclamo]
+      [safeTipoDoc, safeNumDoc, safeNombres, safeApellidos,
+       safeEmail, safeTelefono, safeDireccion, safeDepartamento, safeProvincia, safeDistrito,
+       menor_edad ? 1 : 0, safeNombreApoderado || null,
+       safeTipoBien, monto_reclamado, safeDescBien,
+       safeTipoReclamo, safeDetalle, safePedido, safeFecha, numero_reclamo]
     );
 
     res.status(201).json({ id: result.insertId, numero_reclamo });
@@ -66,12 +125,20 @@ router.post('/', async (req, res) => {
   }
 });
 
-// PUBLIC - Consultar reclamos por número de documento
+// PUBLIC - Consultar reclamos por número de documento (rate limited)
 router.get('/consulta/:numero_documento', async (req, res) => {
   try {
+    const ip = req.ip || req.connection.remoteAddress || 'unknown';
+    if (!rateLimit(`consulta:${ip}`, 20, 60 * 1000)) {
+      return res.status(429).json({ error: 'Demasiadas peticiones. Espera un momento.' });
+    }
+    const doc = String(req.params.numero_documento || '').trim();
+    if (!doc || doc.length > 20) {
+      return res.status(400).json({ error: 'Número de documento inválido' });
+    }
     const [rows] = await pool.execute(
       'SELECT id, numero_reclamo, fecha_registro, tipo_reclamo, tipo_bien, descripcion_bien, detalle_reclamo, pedido_consumidor, estado, respuesta, fecha_respuesta, monto_reclamado, fecha_incidente, nombres, apellidos, email, telefono, direccion, departamento, provincia, distrito, tipo_documento, numero_documento FROM reclamos WHERE numero_documento = ? ORDER BY fecha_registro DESC',
-      [req.params.numero_documento]
+      [doc]
     );
     res.json(rows);
   } catch (err) {
@@ -80,8 +147,8 @@ router.get('/consulta/:numero_documento', async (req, res) => {
   }
 });
 
-// PUBLIC/ADMIN - Descargar PDF de un reclamo (diseño tipo formulario)
-router.get('/:id/pdf', async (req, res) => {
+// ADMIN - Descargar PDF de un reclamo (requiere autenticación)
+router.get('/:id/pdf', authMiddleware, async (req, res) => {
   try {
     const [rows] = await pool.execute('SELECT * FROM reclamos WHERE id = ?', [req.params.id]);
     if (rows.length === 0) return res.status(404).json({ error: 'Reclamo no encontrado' });
