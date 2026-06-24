@@ -324,10 +324,10 @@ router.get('/', authMiddleware, async (req, res) => {
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 10));
     const offset = (page - 1) * limit;
 
-    const [[{ total }]] = await pool.execute('SELECT COUNT(*) as total FROM reclamos');
-    const [rows] = await pool.execute(
+    const [[{ total }]] = await pool.query('SELECT COUNT(*) as total FROM reclamos');
+    const [rows] = await pool.query(
       'SELECT * FROM reclamos ORDER BY fecha_registro DESC LIMIT ? OFFSET ?',
-      [String(limit), String(offset)]
+      [limit, offset]
     );
 
     res.json({ data: rows, total, page, limit, totalPages: Math.ceil(total / limit) });
