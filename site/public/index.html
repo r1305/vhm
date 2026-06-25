@@ -76,7 +76,6 @@
       background: #111;
       border: 1px solid #1a1a1a;
       border-radius: 10px;
-      padding: 24px;
       font-style: italic;
       font-size: .9rem;
       color: #bbb;
@@ -84,8 +83,31 @@
       min-width: 300px;
       max-width: 350px;
       flex-shrink: 0;
+      overflow: hidden;
     }
-    .testimonial img { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; margin-bottom: 12px; }
+    /* Con texto: padding normal */
+    .testimonial.has-text { padding: 24px; }
+    /* Solo foto: imagen ocupa todo el card */
+    .testimonial.only-photo { padding: 0; }
+    .testimonial.only-photo img {
+      width: 100%;
+      height: 100%;
+      min-height: 220px;
+      max-height: 320px;
+      border-radius: 0;
+      object-fit: cover;
+      display: block;
+      margin: 0;
+    }
+    /* Con texto: foto pequeña circular */
+    .testimonial.has-text img {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      object-fit: cover;
+      margin-bottom: 12px;
+      display: block;
+    }
     .testimonial .author { font-style: normal; font-weight: 600; color: #c8e6f0; margin-top: 12px; }
 
     footer {
@@ -246,13 +268,17 @@
     }
     const testimonios = result.data;
     const track = document.getElementById('carouselTrack');
-    const html = testimonios.map(t => `
-      <div class="testimonial">
-        ${t.foto_url ? `<img src="${t.foto_url}" alt="${t.autor || 'Testimonio'}">` : ''}
-        ${t.texto ? `"${t.texto}"` : ''}
-        ${t.autor ? `<div class="author">— ${t.autor}</div>` : ''}
-      </div>
-    `).join('');
+    const html = testimonios.map(t => {
+      const soloFoto = t.foto_url && !t.texto && !t.autor;
+      const clase = soloFoto ? 'testimonial only-photo' : 'testimonial has-text';
+      return `
+        <div class="${clase}">
+          ${t.foto_url ? `<img src="${t.foto_url}" alt="${t.autor || 'Testimonio'}">` : ''}
+          ${t.texto ? `"${t.texto}"` : ''}
+          ${t.autor ? `<div class="author">— ${t.autor}</div>` : ''}
+        </div>
+      `;
+    }).join('');
     track.innerHTML = html;
 
     requestAnimationFrame(() => {
