@@ -21,9 +21,11 @@ function validarUrl(str) {
 }
 
 function parseFecha(str) {
+  // Validar solo formato AAAA-MM-DD sin convertir a Date (evita desfase de timezone)
   if (!/^\d{4}-\d{2}-\d{2}$/.test(str)) return null;
-  const d = new Date(`${str}T12:00:00`);
-  return Number.isNaN(d.getTime()) ? null : str;
+  const [y, m, d] = str.split('-').map(Number);
+  if (m < 1 || m > 12 || d < 1 || d > 31) return null;
+  return str; // devolver el string tal cual, sin pasar por Date
 }
 
 function parseHora(str) {
