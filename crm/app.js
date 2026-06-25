@@ -49,6 +49,9 @@ function sendHtml(res, file) {
   res.type('html').send(html);
 }
 
+// Config publica (sin auth) — debe ir antes del router principal
+app.get(`${BASE}/api/config/public`, require('./routes/config'));
+
 const router = express.Router();
 
 router.get('/health', (_, res) => res.json({ ok: true, service: 'vhm-crm' }));

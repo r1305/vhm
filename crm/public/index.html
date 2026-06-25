@@ -301,7 +301,13 @@
           <div class="card" style="grid-column:1/-1">
             <div class="card-header"><span><i class="fas fa-globe" style="color:var(--primary)"></i> Widget para vhm.com.pe</span></div>
             <div class="card-body">
-              <p style="font-size:13px;margin-bottom:12px">El widget está activo en el sitio. Captura leads y suscriptores automáticamente con UTMs.</p>
+              <div class="form-group" style="max-width:400px">
+                <label class="form-label">Texto del botón flotante</label>
+                <input class="form-control" id="widget-btn-texto" placeholder="💜 Quiero una sesión gratuita">
+                <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Se actualiza en el sitio web automáticamente al guardar.</div>
+              </div>
+              <button class="btn btn-primary btn-sm" id="btnSaveWidget"><i class="fas fa-save"></i> Guardar texto</button>
+              <hr style="margin:16px 0;border-color:var(--border)">
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
                 <div>
                   <p style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:6px">Botón flotante activo</p>
