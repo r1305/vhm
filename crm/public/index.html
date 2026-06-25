@@ -360,17 +360,74 @@
 
       <!-- REPORTES (admin) -->
       <div class="view" id="view-reportes">
-        <div class="kpi-grid" id="reporteKpis"></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:4px">
-          <div class="card">
-            <div class="card-header">Leads por fuente</div>
-            <div id="reporteLeadsFuente"></div>
-          </div>
-          <div class="card">
-            <div class="card-header">Citas de hoy</div>
-            <div id="reporteCitasHoy"></div>
+        <!-- Filtros de fecha -->
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-body" style="padding:14px 18px">
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+              <div style="display:flex;align-items:center;gap:8px">
+                <label class="form-label" style="margin:0;white-space:nowrap">Desde</label>
+                <input type="date" class="form-control" id="rptDesde" style="width:150px">
+              </div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <label class="form-label" style="margin:0;white-space:nowrap">Hasta</label>
+                <input type="date" class="form-control" id="rptHasta" style="width:150px">
+              </div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap">
+                <button class="btn btn-outline btn-sm" data-rpt-preset="hoy">Hoy</button>
+                <button class="btn btn-outline btn-sm" data-rpt-preset="semana">Esta semana</button>
+                <button class="btn btn-outline btn-sm" data-rpt-preset="mes">Este mes</button>
+                <button class="btn btn-outline btn-sm" data-rpt-preset="mes3">3 meses</button>
+              </div>
+              <button class="btn btn-primary btn-sm" id="btnAplicarFiltro"><i class="fas fa-search"></i> Aplicar</button>
+            </div>
           </div>
         </div>
+
+        <!-- KPIs principales -->
+        <div class="kpi-grid" id="reporteKpis"></div>
+
+        <!-- Fila 1: Citas por día + Leads por fuente -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
+          <div class="card">
+            <div class="card-header"><i class="fas fa-calendar-check" style="color:var(--primary)"></i> Citas por día</div>
+            <div class="card-body" id="grafCitasDia"></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><i class="fas fa-bullseye" style="color:var(--primary)"></i> Leads por fuente</div>
+            <div class="card-body" id="grafLeadsFuente"></div>
+          </div>
+        </div>
+
+        <!-- Fila 2: Ingresos por día + Por método -->
+        <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-top:16px">
+          <div class="card">
+            <div class="card-header"><i class="fas fa-dollar-sign" style="color:var(--success)"></i> Ingresos por día</div>
+            <div class="card-body" id="grafIngresosDia"></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><i class="fas fa-credit-card" style="color:var(--success)"></i> Por método de pago</div>
+            <div class="card-body" id="grafMetodoPago"></div>
+          </div>
+        </div>
+
+        <!-- Fila 3: Por terapeuta + Por estado + Modalidad -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-top:16px">
+          <div class="card">
+            <div class="card-header"><i class="fas fa-user-md" style="color:var(--primary)"></i> Citas por terapeuta</div>
+            <div class="card-body" id="grafTerapeuta"></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><i class="fas fa-chart-pie" style="color:var(--warning)"></i> Por estado de cita</div>
+            <div class="card-body" id="grafEstadoCita"></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><i class="fas fa-video" style="color:var(--info)"></i> Modalidad</div>
+            <div class="card-body" id="grafModalidad"></div>
+          </div>
+        </div>
+
+        <!-- Acciones -->
+        <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap" id="rptAcciones"></div>
       </div>
 
     </main>
