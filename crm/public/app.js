@@ -179,6 +179,7 @@
     espera:          'Lista de espera',
     marketing:       'Email Marketing',
     asignacion:      'Asignación automática',
+    integraciones:   'Integraciones',
     terapeutas:      'Terapeutas',
     reportes:        'Reportes',
   };

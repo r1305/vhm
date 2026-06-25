@@ -37,10 +37,8 @@ app.use(cors({
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Archivos estáticos — accesibles desde BASE/
 app.use(BASE, express.static(path.join(__dirname, 'public'), { maxAge: '1h', index: false }));
 
-// Inyecta __APP_BASE__ en el HTML
 function sendHtml(res, file) {
   const fs = require('fs');
   const fp = path.join(__dirname, 'public', file);
@@ -51,7 +49,6 @@ function sendHtml(res, file) {
   res.type('html').send(html);
 }
 
-// ── Router montado bajo BASE ──────────────────────────────────
 const router = express.Router();
 
 router.get('/health', (_, res) => res.json({ ok: true, service: 'vhm-crm' }));
@@ -61,6 +58,9 @@ router.get ('/api/leads/webhook/meta',   leadsRouter);
 router.post('/api/leads/webhook/meta',   leadsRouter);
 router.post('/api/leads/webhook/tiktok', leadsRouter);
 router.post('/api/leads/web',            leadsRouter);
+
+// Suscripcion publica newsletter
+router.post('/api/marketing/suscribir', require('./routes/marketing'));
 
 const citasRouter = require('./routes/citas');
 router.post('/api/citas/agendar',     citasRouter);
@@ -75,6 +75,7 @@ router.use('/api/leads',      leadsRouter);
 router.use('/api/pagos',      require('./routes/pagos'));
 router.use('/api/reportes',   require('./routes/reportes'));
 router.use('/api/marketing',  require('./routes/marketing'));
+router.use('/api/config',     require('./routes/config'));
 
 router.get('/', (req, res) => sendHtml(res, 'index.html'));
 router.get('*', (req, res) => {
@@ -83,12 +84,38 @@ router.get('*', (req, res) => {
 });
 
 app.use(BASE, router);
-
-// Redirigir raíz al panel
 app.get('/', (_, res) => res.redirect(BASE + '/'));
 
-// ── Arranque ──────────────────────────────────────────────────
-ensureSchema().catch(err => console.error('[crm] Schema error:', err.message));
+// Cargar config de BD al arrancar (webhook tokens, SMTP, WA)
+async function loadConfigFromDB() {
+  try {
+    const dbPool = require('./lib/db');
+    const [rows] = await dbPool.execute('SELECT clave, valor FROM configuracion');
+    const map = {
+      meta_verify_token:   'META_WEBHOOK_VERIFY_TOKEN',
+      meta_access_token:   'META_PAGE_ACCESS_TOKEN',
+      meta_app_secret:     'META_APP_SECRET',
+      tiktok_app_secret:   'TIKTOK_APP_SECRET',
+      tiktok_verify_token: 'TIKTOK_WEBHOOK_VERIFY_TOKEN',
+      smtp_host:    'SMTP_HOST',    smtp_port:   'SMTP_PORT',
+      smtp_user:    'SMTP_USER',    smtp_pass:   'SMTP_PASS',
+      smtp_from:    'SMTP_FROM',    smtp_secure: 'SMTP_SECURE',
+      wa_account_sid: 'WA_ACCOUNT_SID',
+      wa_auth_token:  'WA_AUTH_TOKEN',
+      wa_from:        'WA_FROM',
+    };
+    for (const r of rows) {
+      if (r.valor && map[r.clave]) process.env[map[r.clave]] = r.valor;
+    }
+    console.log('[crm] Config cargada desde BD');
+  } catch (err) {
+    console.warn('[crm] No se pudo cargar config:', err.message);
+  }
+}
+
+ensureSchema()
+  .then(() => loadConfigFromDB())
+  .catch(err => console.error('[crm] Schema error:', err.message));
 
 if (typeof PhusionPassenger !== 'undefined') {
   PhusionPassenger.configure({ autoInstall: false });
