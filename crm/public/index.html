@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>VHM CRM</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="app.css">
+  <script>(function(){var t=localStorage.getItem('crm-theme')||'light';document.documentElement.setAttribute('data-theme',t);})();</script>
+</head>
+<body>
+
+<!-- ── LOGIN ──────────────────────────────────────────── -->
+<div id="loginPage" class="login-page">
+  <div class="login-card">
+    <div class="login-brand">
+      <div class="login-logo"><i class="fas fa-heart-pulse"></i></div>
+      <h1>VHM CRM</h1>
+      <p>Centro de Psicología — Panel clínico</p>
+    </div>
+    <div id="loginError" class="badge badge-red" style="display:none;margin-bottom:12px;padding:8px 12px;border-radius:6px;width:100%;text-align:center;font-size:13px;"></div>
+    <div class="form-group">
+      <label class="form-label">Correo electrónico</label>
+      <input type="email" id="loginEmail" class="form-control" placeholder="correo@vhm.com.pe" autocomplete="email">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Contraseña</label>
+      <input type="password" id="loginPassword" class="form-control" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;padding:10px" id="loginBtn">
+      <i class="fas fa-right-to-bracket"></i> Ingresar
+    </button>
+  </div>
+</div>
+
+<!-- ── APP ────────────────────────────────────────────── -->
+<div id="appPage" class="crm-app" style="display:none">
+
+  <!-- Sidebar -->
+  <aside class="crm-sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="sidebar-logo"><i class="fas fa-heart-pulse"></i></div>
+      <span>VHM CRM</span>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section">Principal</div>
+      <button class="nav-item active" data-view="dashboard"><i class="fas fa-gauge-high"></i> Dashboard</button>
+      <button class="nav-item" data-view="agenda"><i class="fas fa-calendar-days"></i> Agenda</button>
+      <button class="nav-item" data-view="pacientes"><i class="fas fa-users"></i> Pacientes</button>
+      <button class="nav-item" data-view="leads"><i class="fas fa-bullseye"></i> Leads</button>
+
+      <div class="nav-section">Clínico</div>
+      <button class="nav-item" data-view="historial"><i class="fas fa-file-medical"></i> Historial</button>
+      <button class="nav-item" data-view="consentimientos"><i class="fas fa-file-signature"></i> Consentimientos</button>
+
+      <div class="nav-section">Administración</div>
+      <button class="nav-item" data-view="pagos"><i class="fas fa-credit-card"></i> Pagos</button>
+      <button class="nav-item" data-view="espera"><i class="fas fa-hourglass-half"></i> Lista de espera</button>
+      <button class="nav-item nav-admin" data-view="terapeutas" style="display:none"><i class="fas fa-user-md"></i> Terapeutas</button>
+      <button class="nav-item nav-admin" data-view="reportes" style="display:none"><i class="fas fa-chart-bar"></i> Reportes</button>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-badge">
+        <div class="user-avatar" id="userAvatar">?</div>
+        <div class="user-info">
+          <div class="user-name" id="userName">—</div>
+          <div class="user-role" id="userRole">—</div>
+        </div>
+        <button class="btn-icon" id="logoutBtn" title="Salir"><i class="fas fa-right-from-bracket"></i></button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="crm-main">
+    <header class="crm-topbar">
+      <button class="btn-icon" id="sidebarToggle" style="display:none"><i class="fas fa-bars"></i></button>
+      <h1 class="page-title" id="pageTitle">Dashboard</h1>
+      <button class="theme-btn" id="themeBtn" title="Cambiar tema"><i class="fas fa-moon"></i></button>
+    </header>
+
+    <main class="crm-content">
+
+      <!-- DASHBOARD -->
+      <div class="view active" id="view-dashboard">
+        <div class="kpi-grid" id="kpiGrid"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px" class="dash-grid">
+          <div class="card">
+            <div class="card-header"><span><i class="fas fa-calendar-day" style="color:var(--primary)"></i> Citas de hoy</span></div>
+            <div id="citasHoyList"></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><span><i class="fas fa-bullseye" style="color:var(--primary)"></i> Leads recientes</span></div>
+            <div id="leadsRecentesList"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AGENDA -->
+      <div class="view" id="view-agenda">
+        <div class="view-toolbar">
+          <select class="form-select" id="agendaTerapeuta" style="max-width:200px"></select>
+          <button class="btn btn-primary btn-sm" id="btnNuevaCita"><i class="fas fa-plus"></i> Nueva cita</button>
+        </div>
+        <div class="cal-strip" id="calStrip"></div>
+        <div style="margin-top:16px">
+          <div class="timeline" id="agendaTimeline"></div>
+        </div>
+      </div>
+
+      <!-- PACIENTES -->
+      <div class="view" id="view-pacientes">
+        <div class="view-toolbar">
+          <input type="search" class="form-control search-input" id="buscarPaciente" placeholder="Buscar paciente…">
+          <select class="form-select" id="filtroPacienteEstado" style="max-width:160px">
+            <option value="">Todos</option>
+            <option value="activo">Activo</option>
+            <option value="prospecto">Prospecto</option>
+            <option value="alta">Alta</option>
+            <option value="inactivo">Inactivo</option>
+            <option value="lista_espera">Lista de espera</option>
+          </select>
+          <button class="btn btn-primary btn-sm" id="btnNuevoPaciente"><i class="fas fa-plus"></i> Nuevo</button>
+        </div>
+        <div class="card">
+          <div class="table-responsive">
+            <table class="table">
+              <thead><tr>
+                <th>Paciente</th><th>Contacto</th><th>Terapeuta</th>
+                <th>Estado</th><th>Fuente</th><th></th>
+              </tr></thead>
+              <tbody id="tablaPacientes"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- LEADS -->
+      <div class="view" id="view-leads">
+        <div class="view-toolbar">
+          <select class="form-select" id="filtroLeadEstado" style="max-width:160px">
+            <option value="">Todos</option>
+            <option value="nuevo">Nuevo</option>
+            <option value="contactado">Contactado</option>
+            <option value="agendado">Agendado</option>
+            <option value="convertido">Convertido</option>
+            <option value="descartado">Descartado</option>
+          </select>
+          <button class="btn btn-primary btn-sm" id="btnNuevoLead"><i class="fas fa-plus"></i> Nuevo lead</button>
+        </div>
+        <div class="card">
+          <table class="table">
+            <thead><tr>
+              <th>Lead</th><th>Fuente</th><th>Estado</th><th>Fecha</th><th></th>
+            </tr></thead>
+            <tbody id="tablaLeads"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- HISTORIAL -->
+      <div class="view" id="view-historial">
+        <div class="view-toolbar">
+          <select class="form-select" id="historialPacienteSelect" style="max-width:280px">
+            <option value="">— Seleccionar paciente —</option>
+          </select>
+          <button class="btn btn-primary btn-sm" id="btnNuevaNota" disabled><i class="fas fa-plus"></i> Nota</button>
+        </div>
+        <div id="historialContent"><div class="list-empty">Selecciona un paciente para ver su historial</div></div>
+      </div>
+
+      <!-- CONSENTIMIENTOS -->
+      <div class="view" id="view-consentimientos">
+        <div class="view-toolbar">
+          <select class="form-select" id="consPacienteSelect" style="max-width:280px">
+            <option value="">— Seleccionar paciente —</option>
+          </select>
+          <button class="btn btn-primary btn-sm" id="btnNuevoConsentimiento" disabled><i class="fas fa-file-signature"></i> Registrar</button>
+        </div>
+        <div id="consContent"><div class="list-empty">Selecciona un paciente</div></div>
+      </div>
+
+      <!-- PAGOS -->
+      <div class="view" id="view-pagos">
+        <div class="view-toolbar">
+          <select class="form-select" id="pagosPacienteSelect" style="max-width:280px">
+            <option value="">— Todos los pacientes —</option>
+          </select>
+          <button class="btn btn-primary btn-sm" id="btnNuevoPago"><i class="fas fa-plus"></i> Registrar pago</button>
+          <button class="btn btn-outline btn-sm" id="btnNuevoPack"><i class="fas fa-box"></i> Nuevo pack</button>
+        </div>
+        <div class="card">
+          <table class="table">
+            <thead><tr><th>Paciente</th><th>Monto</th><th>Método</th><th>Estado</th><th>Fecha</th></tr></thead>
+            <tbody id="tablaPagos"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- LISTA ESPERA -->
+      <div class="view" id="view-espera">
+        <div class="view-toolbar">
+          <button class="btn btn-primary btn-sm" id="btnNuevoEspera"><i class="fas fa-plus"></i> Agregar a lista</button>
+        </div>
+        <div class="card" id="listaEsperaContent"></div>
+      </div>
+
+      <!-- TERAPEUTAS (admin) -->
+      <div class="view" id="view-terapeutas">
+        <div class="view-toolbar">
+          <button class="btn btn-primary btn-sm" id="btnNuevoTerapeuta"><i class="fas fa-plus"></i> Nuevo terapeuta</button>
+        </div>
+        <div class="card">
+          <table class="table">
+            <thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Especialidad</th><th>Estado</th><th></th></tr></thead>
+            <tbody id="tablaTerapeutas"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- REPORTES (admin) -->
+      <div class="view" id="view-reportes">
+        <div class="kpi-grid" id="reporteKpis"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:4px">
+          <div class="card">
+            <div class="card-header">Leads por fuente</div>
+            <div id="reporteLeadsFuente"></div>
+          </div>
+          <div class="card">
+            <div class="card-header">Citas de hoy</div>
+            <div id="reporteCitasHoy"></div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- ── MODAL ───────────────────────────────────────────── -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" id="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modalTitle">Formulario</span>
+      <button class="btn-icon" id="modalClose"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" id="modalCancel">Cancelar</button>
+      <button class="btn btn-primary" id="modalSave">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toastContainer"></div>
+
+<script src="app.js"></script>
+<script src="part2.js"></script>
+<script src="part3.js"></script>
+<script src="part4.js"></script>
+<script src="part5.js"></script>
+</body>
+</html>

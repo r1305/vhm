@@ -1,0 +1,469 @@
+/* ═══════════════════════════════════════════════════════
+   VHM CRM — part2.js  Dashboard · Agenda · Pacientes
+   ═══════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+
+  /* esperamos a que CRM esté listo */
+  function ready(fn) {
+    if (window.CRM) return fn();
+    document.addEventListener('DOMContentLoaded', fn);
+  }
+
+  ready(function () {
+    const { api, toast, esc, fmtDate, fmtMoney, badge, fullName,
+            openModal, closeModal, viewLoaders,
+            ESTADO_PACIENTE, ESTADO_CITA, FUENTE_ICON,
+            getUser, isAdmin } = window.CRM;
+
+    /* ══════════════════════════════════════════════════
+       DASHBOARD
+    ══════════════════════════════════════════════════ */
+    async function loadDashboard() {
+      try {
+        const d = await api('/reportes/dashboard');
+        const k = d.kpis || {};
+
+        document.getElementById('kpiGrid').innerHTML = `
+          <div class="kpi-card accent">
+            <div class="kpi-label">Pacientes activos</div>
+            <div class="kpi-value">${k.pacientes_activos || 0}</div>
+            <div class="kpi-sub">${k.prospectos || 0} prospectos</div>
+          </div>
+          <div class="kpi-card success">
+            <div class="kpi-label">Citas hoy</div>
+            <div class="kpi-value">${k.citas_hoy || 0}</div>
+            <div class="kpi-sub">${k.citas_semana || 0} esta semana</div>
+          </div>
+          <div class="kpi-card warning">
+            <div class="kpi-label">Leads nuevos</div>
+            <div class="kpi-value">${k.leads_nuevos || 0}</div>
+          </div>
+          <div class="kpi-card info">
+            <div class="kpi-label">Ingresos mes</div>
+            <div class="kpi-value" style="font-size:1.2rem">${fmtMoney(k.ingresos_mes)}</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Lista de espera</div>
+            <div class="kpi-value">${k.lista_espera || 0}</div>
+          </div>`;
+
+        document.getElementById('citasHoyList').innerHTML = (d.citasHoy || []).length
+          ? d.citasHoy.map(c => `
+            <div class="list-item">
+              <div class="list-icon"><i class="fas fa-clock"></i></div>
+              <div class="flex-grow-1">
+                <div class="list-title">${esc(c.hora_inicio?.slice(0,5))} — ${esc(fullName(c))}</div>
+                <div class="list-meta">${esc(c.terapeuta_nombre)} · ${esc(c.modalidad)}</div>
+              </div>
+              ${badge(c.estado, ESTADO_CITA)}
+            </div>`).join('')
+          : '<div class="list-empty">Sin citas hoy</div>';
+
+        /* leads recientes */
+        const leads = await api('/leads?limit=6');
+        document.getElementById('leadsRecentesList').innerHTML = (leads || []).length
+          ? leads.map(l => `
+            <div class="list-item">
+              <div class="list-icon"><i class="${FUENTE_ICON[l.fuente] || 'fas fa-circle-dot'}"></i></div>
+              <div class="flex-grow-1">
+                <div class="list-title">${esc(fullName(l) || 'Sin nombre')}</div>
+                <div class="list-meta">${esc(l.fuente_detalle || l.fuente)} · ${fmtDate(l.created_at)}</div>
+              </div>
+              ${badge(l.estado, window.CRM.ESTADO_LEAD)}
+            </div>`).join('')
+          : '<div class="list-empty">Sin leads recientes</div>';
+
+      } catch (err) { toast(err.message, 'danger'); }
+    }
+    viewLoaders['dashboard'] = loadDashboard;
+
+    /* ══════════════════════════════════════════════════
+       AGENDA
+    ══════════════════════════════════════════════════ */
+    let agendaFechaActual = new Date();
+    let agendaTerapeutaId = null;
+    let pacientesCache = [];
+
+    function buildCalStrip() {
+      const strip = document.getElementById('calStrip');
+      const hoy   = new Date();
+      strip.innerHTML = '';
+      for (let i = -2; i <= 9; i++) {
+        const d = new Date(hoy); d.setDate(hoy.getDate() + i);
+        const iso = d.toISOString().slice(0,10);
+        const isHoy = iso === agendaFechaActual.toISOString().slice(0,10);
+        const dias = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+        const div = document.createElement('div');
+        div.className = `cal-day${isHoy ? ' active' : ''}`;
+        div.dataset.fecha = iso;
+        div.innerHTML = `<div class="day-name">${dias[d.getDay()]}</div><div class="day-num">${d.getDate()}</div>`;
+        div.addEventListener('click', () => {
+          document.querySelectorAll('.cal-day').forEach(c => c.classList.remove('active'));
+          div.classList.add('active');
+          agendaFechaActual = d;
+          loadAgenda();
+        });
+        strip.appendChild(div);
+      }
+    }
+
+    async function loadAgenda() {
+      try {
+        const fecha = agendaFechaActual.toISOString().slice(0,10);
+        const qs = new URLSearchParams({ fecha });
+        if (agendaTerapeutaId) qs.set('terapeuta_id', agendaTerapeutaId);
+        const citas = await api(`/citas?${qs}`);
+        const tl = document.getElementById('agendaTimeline');
+        tl.innerHTML = citas.length
+          ? citas.map(c => `
+            <div class="timeline-item">
+              <div class="timeline-time">${esc(c.hora_inicio?.slice(0,5))}</div>
+              <div class="timeline-body">
+                <div class="timeline-name">${esc(c.paciente_nombre||'')} ${esc(c.paciente_apellido||'')}</div>
+                <div class="timeline-sub">${esc(c.terapeuta_nombre)} · ${esc(c.tipo)} · ${esc(c.modalidad)}</div>
+              </div>
+              ${badge(c.estado, ESTADO_CITA)}
+              <div style="display:flex;gap:4px;margin-left:8px">
+                <button class="btn-icon" data-cita-estado="${c.id}" data-actual="${c.estado}" title="Cambiar estado"><i class="fas fa-pen"></i></button>
+                <button class="btn-icon" data-send-rec="${c.id}" title="Enviar recordatorio"><i class="fas fa-bell"></i></button>
+              </div>
+            </div>`).join('')
+          : '<div class="list-empty">Sin citas para este día</div>';
+
+        tl.querySelectorAll('[data-cita-estado]').forEach(btn => {
+          btn.addEventListener('click', () => showCambioEstadoCita(btn.dataset.citaEstado, btn.dataset.actual));
+        });
+        tl.querySelectorAll('[data-send-rec]').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            try { await api(`/citas/${btn.dataset.sendRec}/recordatorio`, { method: 'POST' }); toast('Recordatorio enviado'); }
+            catch (e) { toast(e.message, 'danger'); }
+          });
+        });
+      } catch (err) { toast(err.message, 'danger'); }
+    }
+
+    async function loadAgendaTerapeutas() {
+      try {
+        const ts = await api('/terapeutas');
+        const sel = document.getElementById('agendaTerapeuta');
+        sel.innerHTML = `<option value="">Todos los terapeutas</option>` +
+          ts.map(t => `<option value="${t.id}">${esc(fullName(t))}</option>`).join('');
+        if (!isAdmin() && getUser()) {
+          sel.value = getUser().id;
+          agendaTerapeutaId = getUser().id;
+        }
+      } catch {}
+    }
+
+    document.getElementById('agendaTerapeuta').addEventListener('change', e => {
+      agendaTerapeutaId = e.target.value || null;
+      loadAgenda();
+    });
+
+    function showNuevaCita() {
+      openModal('Nueva cita', `
+        <div class="form-group">
+          <label class="form-label">Paciente *</label>
+          <select class="form-select" id="f_paciente_id">
+            <option value="">— Seleccionar —</option>
+            ${pacientesCache.map(p => `<option value="${p.id}">${esc(fullName(p))}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Terapeuta *</label>
+            <select class="form-select" id="f_terapeuta_id"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Fecha *</label>
+            <input type="date" class="form-control" id="f_fecha" value="${agendaFechaActual.toISOString().slice(0,10)}">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Hora inicio *</label>
+            <input type="time" class="form-control" id="f_hora_inicio">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Hora fin *</label>
+            <input type="time" class="form-control" id="f_hora_fin">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Modalidad</label>
+            <select class="form-select" id="f_modalidad">
+              <option value="presencial">Presencial</option>
+              <option value="videollamada">Videollamada</option>
+              <option value="telefono">Teléfono</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Tipo</label>
+            <select class="form-select" id="f_tipo">
+              <option value="primera_vez">Primera vez</option>
+              <option value="seguimiento" selected>Seguimiento</option>
+              <option value="evaluacion">Evaluación</option>
+              <option value="urgencia">Urgencia</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Monto (S/)</label>
+          <input type="number" step="0.01" min="0" class="form-control" id="f_monto" placeholder="0.00">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notas</label>
+          <textarea class="form-control" id="f_notas" rows="2"></textarea>
+        </div>`, async () => {
+        const body = {
+          paciente_id:  document.getElementById('f_paciente_id').value,
+          terapeuta_id: document.getElementById('f_terapeuta_id').value,
+          fecha:        document.getElementById('f_fecha').value,
+          hora_inicio:  document.getElementById('f_hora_inicio').value,
+          hora_fin:     document.getElementById('f_hora_fin').value,
+          modalidad:    document.getElementById('f_modalidad').value,
+          tipo:         document.getElementById('f_tipo').value,
+          monto:        document.getElementById('f_monto').value || null,
+          notas:        document.getElementById('f_notas').value,
+        };
+        if (!body.paciente_id || !body.terapeuta_id || !body.fecha || !body.hora_inicio || !body.hora_fin)
+          throw new Error('Completa todos los campos requeridos');
+        await api('/citas', { method: 'POST', body });
+        toast('Cita creada');
+        loadAgenda();
+      });
+
+      // cargar terapeutas en el select del modal
+      api('/terapeutas').then(ts => {
+        const sel = document.getElementById('f_terapeuta_id');
+        if (!sel) return;
+        sel.innerHTML = ts.map(t => `<option value="${t.id}">${esc(fullName(t))}</option>`).join('');
+        if (!isAdmin()) sel.value = getUser()?.id;
+      }).catch(() => {});
+    }
+
+    function showCambioEstadoCita(id, actual) {
+      openModal('Cambiar estado', `
+        <div class="form-group">
+          <label class="form-label">Nuevo estado</label>
+          <select class="form-select" id="f_estado_cita">
+            ${Object.entries(ESTADO_CITA).map(([k, v]) =>
+              `<option value="${k}" ${k === actual ? 'selected' : ''}>${v.label}</option>`).join('')}
+          </select>
+        </div>`, async () => {
+        await api(`/citas/${id}/estado`, { method: 'PATCH', body: { estado: document.getElementById('f_estado_cita').value } });
+        toast('Estado actualizado');
+        loadAgenda();
+      });
+    }
+
+    document.getElementById('btnNuevaCita').addEventListener('click', showNuevaCita);
+
+    viewLoaders['agenda'] = async () => {
+      if (!pacientesCache.length) {
+        const ps = await api('/pacientes').catch(() => []);
+        pacientesCache = ps;
+      }
+      buildCalStrip();
+      await loadAgendaTerapeutas();
+      await loadAgenda();
+    };
+
+    /* ══════════════════════════════════════════════════
+       PACIENTES
+    ══════════════════════════════════════════════════ */
+    let terapeutasCache = [];
+
+    async function loadPacientes() {
+      try {
+        const q      = document.getElementById('buscarPaciente').value;
+        const estado = document.getElementById('filtroPacienteEstado').value;
+        const qs     = new URLSearchParams();
+        if (q)      qs.set('q', q);
+        if (estado) qs.set('estado', estado);
+        const data = await api(`/pacientes?${qs}`);
+        pacientesCache = data;
+        document.getElementById('tablaPacientes').innerHTML = data.length
+          ? data.map(p => `
+            <tr>
+              <td>
+                <strong>${esc(fullName(p))}</strong>
+                <div style="font-size:11px;color:var(--text-muted)">${esc(p.motivo_consulta || '')}</div>
+              </td>
+              <td>
+                ${p.email ? `<div>${esc(p.email)}</div>` : ''}
+                ${p.telefono ? `<div>${esc(p.telefono)}</div>` : ''}
+              </td>
+              <td>${esc(p.terapeuta_nombre || '—')}</td>
+              <td>${badge(p.estado, ESTADO_PACIENTE)}</td>
+              <td>${esc(p.fuente || '—')}</td>
+              <td style="white-space:nowrap">
+                <button class="btn-icon" data-ver-paciente="${p.id}" title="Ver detalle"><i class="fas fa-eye"></i></button>
+                <button class="btn-icon" data-edit-paciente="${p.id}" title="Editar"><i class="fas fa-pen"></i></button>
+              </td>
+            </tr>`).join('')
+          : '<tr><td colspan="6" class="list-empty">Sin pacientes</td></tr>';
+
+        document.querySelectorAll('[data-edit-paciente]').forEach(btn => {
+          btn.addEventListener('click', () => showPacienteForm(data.find(p => p.id == btn.dataset.editPaciente)));
+        });
+        document.querySelectorAll('[data-ver-paciente]').forEach(btn => {
+          btn.addEventListener('click', () => showPacienteDetalle(data.find(p => p.id == btn.dataset.verPaciente)));
+        });
+      } catch (err) { toast(err.message, 'danger'); }
+    }
+
+    async function ensureTerapeutasCache() {
+      if (!terapeutasCache.length) terapeutasCache = await api('/terapeutas').catch(() => []);
+    }
+
+    function pacienteFormHtml(p = null) {
+      const tsOpts = terapeutasCache.map(t =>
+        `<option value="${t.id}" ${p?.terapeuta_id == t.id ? 'selected' : ''}>${esc(fullName(t))}</option>`).join('');
+      return `
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Nombre *</label>
+            <input class="form-control" id="f_nombre" value="${esc(p?.nombre || '')}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Apellido *</label>
+            <input class="form-control" id="f_apellido" value="${esc(p?.apellido || '')}">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Email</label>
+            <input type="email" class="form-control" id="f_email" value="${esc(p?.email || '')}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Teléfono</label>
+            <input class="form-control" id="f_telefono" value="${esc(p?.telefono || '')}">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Fecha de nacimiento</label>
+            <input type="date" class="form-control" id="f_nacimiento" value="${p?.fecha_nacimiento ? String(p.fecha_nacimiento).slice(0,10) : ''}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Género</label>
+            <select class="form-select" id="f_genero">
+              <option value="">— Sin especificar —</option>
+              <option value="masculino" ${p?.genero === 'masculino' ? 'selected' : ''}>Masculino</option>
+              <option value="femenino"  ${p?.genero === 'femenino'  ? 'selected' : ''}>Femenino</option>
+              <option value="otro"      ${p?.genero === 'otro'      ? 'selected' : ''}>Otro</option>
+              <option value="prefiero_no_decir" ${p?.genero === 'prefiero_no_decir' ? 'selected' : ''}>Prefiero no decir</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Estado</label>
+            <select class="form-select" id="f_estado">
+              ${Object.entries(ESTADO_PACIENTE).map(([k, v]) =>
+                `<option value="${k}" ${(p?.estado || 'prospecto') === k ? 'selected' : ''}>${v.label}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Terapeuta</label>
+            <select class="form-select" id="f_terapeuta_id">
+              <option value="">— Sin asignar —</option>${tsOpts}
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Fuente</label>
+          <select class="form-select" id="f_fuente">
+            <option value="">— Sin especificar —</option>
+            ${['instagram','tiktok','web','whatsapp','referido','otro'].map(f =>
+              `<option value="${f}" ${p?.fuente === f ? 'selected' : ''}>${f}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Motivo de consulta</label>
+          <textarea class="form-control" id="f_motivo" rows="2">${esc(p?.motivo_consulta || '')}</textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notas internas</label>
+          <textarea class="form-control" id="f_notas" rows="2">${esc(p?.notas_internas || '')}</textarea>
+        </div>`;
+    }
+
+    async function showPacienteForm(p = null) {
+      await ensureTerapeutasCache();
+      openModal(p ? 'Editar paciente' : 'Nuevo paciente', pacienteFormHtml(p), async () => {
+        const body = {
+          nombre:          document.getElementById('f_nombre').value,
+          apellido:        document.getElementById('f_apellido').value,
+          email:           document.getElementById('f_email').value,
+          telefono:        document.getElementById('f_telefono').value,
+          fecha_nacimiento:document.getElementById('f_nacimiento').value || null,
+          genero:          document.getElementById('f_genero').value || null,
+          estado:          document.getElementById('f_estado').value,
+          terapeuta_id:    document.getElementById('f_terapeuta_id').value || null,
+          fuente:          document.getElementById('f_fuente').value || null,
+          motivo_consulta: document.getElementById('f_motivo').value,
+          notas_internas:  document.getElementById('f_notas').value,
+        };
+        if (!body.nombre || !body.apellido) throw new Error('Nombre y apellido requeridos');
+        if (p) await api(`/pacientes/${p.id}`, { method: 'PUT', body });
+        else   await api('/pacientes', { method: 'POST', body });
+        toast(p ? 'Paciente actualizado' : 'Paciente creado');
+        loadPacientes();
+      }, { large: true });
+    }
+
+    function showPacienteDetalle(p) {
+      if (!p) return;
+      openModal(`${fullName(p)}`, `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">
+          <div><span style="color:var(--text-muted)">Email:</span> ${esc(p.email || '—')}</div>
+          <div><span style="color:var(--text-muted)">Teléfono:</span> ${esc(p.telefono || '—')}</div>
+          <div><span style="color:var(--text-muted)">Estado:</span> ${badge(p.estado, ESTADO_PACIENTE)}</div>
+          <div><span style="color:var(--text-muted)">Terapeuta:</span> ${esc(p.terapeuta_nombre || '—')}</div>
+          <div><span style="color:var(--text-muted)">Fuente:</span> ${esc(p.fuente || '—')}</div>
+          <div><span style="color:var(--text-muted)">Registro:</span> ${fmtDate(p.created_at)}</div>
+        </div>
+        ${p.motivo_consulta ? `<div style="margin-top:12px"><strong>Motivo:</strong><p style="margin-top:4px;font-size:13px">${esc(p.motivo_consulta)}</p></div>` : ''}
+        <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-outline btn-sm" id="btnVerHistorial"><i class="fas fa-file-medical"></i> Ver historial</button>
+          <button class="btn btn-outline btn-sm" id="btnVerCitas"><i class="fas fa-calendar"></i> Ver citas</button>
+        </div>`, null);
+
+      document.getElementById('btnVerHistorial')?.addEventListener('click', () => {
+        closeModal();
+        window.CRM.switchView('historial');
+        const sel = document.getElementById('historialPacienteSelect');
+        if (sel) { sel.value = p.id; sel.dispatchEvent(new Event('change')); }
+      });
+      document.getElementById('btnVerCitas')?.addEventListener('click', () => {
+        closeModal();
+        window.CRM.switchView('agenda');
+      });
+
+      // ocultar footer
+      document.getElementById('modalSave').style.display = 'none';
+    }
+
+    let searchTimer;
+    document.getElementById('buscarPaciente').addEventListener('input', () => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(loadPacientes, 300);
+    });
+    document.getElementById('filtroPacienteEstado').addEventListener('change', loadPacientes);
+    document.getElementById('btnNuevoPaciente').addEventListener('click', () => showPacienteForm());
+
+    viewLoaders['pacientes'] = loadPacientes;
+
+    /* restaurar botón guardar al abrir modal */
+    const origOpenModal = window.CRM.openModal;
+    window.CRM.openModal = function (...args) {
+      document.getElementById('modalSave').style.display = '';
+      return origOpenModal(...args);
+    };
+
+  }); // ready
+})();
