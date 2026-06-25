@@ -1023,7 +1023,7 @@ async function guardarTestimonio() {
   try {
     const res = await fetch(id ? `${API}/testimonios/${id}` : `${API}/testimonios`, {
       method: id ? 'PUT' : 'POST',
-      headers: { 'Authorization': `Bearer ${token}` },
+      headers: { 'Authorization': `Bearer ${token}`, 'X-CSRF-Token': getCookie('csrf_token') || '' },
       body: formData
     });
     const data = await res.json();
@@ -1223,7 +1223,7 @@ async function guardarVideo() {
   try {
     const res = await fetch(id ? `${API}/videos/${id}` : `${API}/videos`, {
       method: id ? 'PUT' : 'POST',
-      headers: { 'Authorization': `Bearer ${token}` },
+      headers: { 'Authorization': `Bearer ${token}`, 'X-CSRF-Token': getCookie('csrf_token') || '' },
       body: formData
     });
     const data = await res.json();
