@@ -180,6 +180,7 @@
     marketing:       'Email Marketing',
     asignacion:      'Asignación automática',
     integraciones:   'Integraciones',
+    analitica:       'Analítica web',
     terapeutas:      'Terapeutas',
     reportes:        'Reportes',
   };

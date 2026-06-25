@@ -56,6 +56,7 @@
       <div class="nav-section">Administración</div>
       <button class="nav-item" data-view="pagos"><i class="fas fa-credit-card"></i> Pagos</button>
       <button class="nav-item" data-view="espera"><i class="fas fa-hourglass-half"></i> Lista de espera</button>
+      <button class="nav-item nav-admin" data-view="analitica" style="display:none"><i class="fas fa-chart-line"></i> Analítica web</button>
       <button class="nav-item nav-admin" data-view="marketing" style="display:none"><i class="fas fa-envelope-open-text"></i> Marketing</button>
       <button class="nav-item nav-admin" data-view="asignacion" style="display:none"><i class="fas fa-sitemap"></i> Asignación auto</button>
       <button class="nav-item nav-admin" data-view="integraciones" style="display:none"><i class="fas fa-plug"></i> Integraciones</button>
@@ -206,6 +207,65 @@
           <button class="btn btn-primary btn-sm" id="btnNuevoEspera"><i class="fas fa-plus"></i> Agregar a lista</button>
         </div>
         <div class="card" id="listaEsperaContent"></div>
+      </div>
+
+      <!-- ANALÍTICA WEB -->
+      <div class="view" id="view-analitica">
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-body" style="padding:14px 18px">
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+              <div style="display:flex;align-items:center;gap:8px">
+                <label class="form-label" style="margin:0;white-space:nowrap">Desde</label>
+                <input type="date" class="form-control" id="anaDesde" style="width:150px">
+              </div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <label class="form-label" style="margin:0;white-space:nowrap">Hasta</label>
+                <input type="date" class="form-control" id="anaHasta" style="width:150px">
+              </div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap">
+                <button class="btn btn-outline btn-sm" data-ana-preset="hoy">Hoy</button>
+                <button class="btn btn-outline btn-sm" data-ana-preset="semana">Esta semana</button>
+                <button class="btn btn-outline btn-sm" data-ana-preset="mes">Este mes</button>
+              </div>
+              <button class="btn btn-primary btn-sm" id="btnAplicarAna"><i class="fas fa-search"></i> Aplicar</button>
+            </div>
+          </div>
+        </div>
+        <div class="kpi-grid" id="anaKpis"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
+          <div class="card">
+            <div class="card-header"><i class="fas fa-chart-area" style="color:var(--primary)"></i> Sesiones por día</div>
+            <div class="card-body" id="anaSesionesDia"></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><i class="fas fa-map-pin" style="color:var(--primary)"></i> Fuentes de tráfico</div>
+            <div class="card-body" id="anaFuentes"></div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:16px;margin-top:16px">
+          <div class="card">
+            <div class="card-header"><i class="fas fa-file" style="color:var(--primary)"></i> Páginas más visitadas</div>
+            <div class="card-body" id="anaTopPaginas"></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><i class="fas fa-mobile-alt" style="color:var(--info)"></i> Dispositivos</div>
+            <div class="card-body" id="anaDispositivos"></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><i class="fas fa-globe" style="color:var(--info)"></i> Navegadores</div>
+            <div class="card-body" id="anaNavegadores"></div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
+          <div class="card">
+            <div class="card-header"><i class="fas fa-mouse-pointer" style="color:var(--warning)"></i> Top clicks</div>
+            <div class="card-body" id="anaTopClicks"></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><i class="fas fa-bolt" style="color:var(--warning)"></i> Eventos recientes</div>
+            <div class="card-body" id="anaEventosRecientes"></div>
+          </div>
+        </div>
       </div>
 
       <!-- MARKETING -->
