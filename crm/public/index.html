@@ -58,6 +58,7 @@
       <button class="nav-item" data-view="espera"><i class="fas fa-hourglass-half"></i> Lista de espera</button>
       <button class="nav-item nav-admin" data-view="marketing" style="display:none"><i class="fas fa-envelope-open-text"></i> Marketing</button>
       <button class="nav-item nav-admin" data-view="asignacion" style="display:none"><i class="fas fa-sitemap"></i> Asignación auto</button>
+      <button class="nav-item nav-admin" data-view="integraciones" style="display:none"><i class="fas fa-plug"></i> Integraciones</button>
       <button class="nav-item nav-admin" data-view="terapeutas" style="display:none"><i class="fas fa-user-md"></i> Terapeutas</button>
       <button class="nav-item nav-admin" data-view="reportes" style="display:none"><i class="fas fa-chart-bar"></i> Reportes</button>
     </nav>
@@ -231,6 +232,96 @@
               <tbody id="tablaSuscriptores"></tbody>
             </table>
           </div>
+        </div>
+      </div>
+
+      <!-- INTEGRACIONES -->
+      <div class="view" id="view-integraciones">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+
+          <!-- Instagram / Meta -->
+          <div class="card">
+            <div class="card-header">
+              <span><i class="fa-brands fa-instagram" style="color:#E1306C"></i> Instagram / Meta Lead Ads</span>
+              <span class="badge badge-green" id="meta-status">Configurar</span>
+            </div>
+            <div class="card-body">
+              <div class="form-group">
+                <label class="form-label">Verify Token (tú lo eliges)</label>
+                <input class="form-control" id="meta-verify-token" placeholder="token_secreto_meta">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Page Access Token</label>
+                <input type="password" class="form-control" id="meta-access-token" placeholder="EAAxxxxx...">
+              </div>
+              <div class="form-group">
+                <label class="form-label">App Secret</label>
+                <input type="password" class="form-control" id="meta-app-secret" placeholder="App Secret de Meta for Developers">
+              </div>
+              <button class="btn btn-primary btn-sm" id="btnSaveMeta"><i class="fas fa-save"></i> Guardar</button>
+              <hr style="margin:14px 0;border-color:var(--border)">
+              <p style="font-size:12px;color:var(--text-muted)"><strong>Webhook URL:</strong></p>
+              <code id="meta-webhook-url" style="font-size:11px;word-break:break-all;background:var(--bg);padding:6px 8px;border-radius:6px;display:block;margin-top:4px"></code>
+              <p style="font-size:11px;color:var(--text-muted);margin-top:10px">
+                1. Ve a <strong>Meta for Developers</strong> → tu app → Webhooks<br>
+                2. Suscribe al objeto <strong>page</strong>, campo <strong>leadgen</strong><br>
+                3. Pega la URL y el Verify Token de arriba
+              </p>
+            </div>
+          </div>
+
+          <!-- TikTok -->
+          <div class="card">
+            <div class="card-header">
+              <span><i class="fa-brands fa-tiktok"></i> TikTok Lead Generation</span>
+              <span class="badge badge-green" id="tiktok-status">Configurar</span>
+            </div>
+            <div class="card-body">
+              <div class="form-group">
+                <label class="form-label">App Secret</label>
+                <input type="password" class="form-control" id="tiktok-app-secret" placeholder="App Secret TikTok for Business">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Verify Token (tú lo eliges)</label>
+                <input class="form-control" id="tiktok-verify-token" placeholder="token_secreto_tiktok">
+              </div>
+              <button class="btn btn-primary btn-sm" id="btnSaveTiktok"><i class="fas fa-save"></i> Guardar</button>
+              <hr style="margin:14px 0;border-color:var(--border)">
+              <p style="font-size:12px;color:var(--text-muted)"><strong>Webhook URL:</strong></p>
+              <code id="tiktok-webhook-url" style="font-size:11px;word-break:break-all;background:var(--bg);padding:6px 8px;border-radius:6px;display:block;margin-top:4px"></code>
+              <p style="font-size:11px;color:var(--text-muted);margin-top:10px">
+                1. Ve a <strong>TikTok for Business</strong> → tu app → Events<br>
+                2. Sección <strong>Lead Generation Webhook</strong><br>
+                3. Pega la URL y el App Secret de arriba
+              </p>
+            </div>
+          </div>
+
+          <!-- Widget Web -->
+          <div class="card" style="grid-column:1/-1">
+            <div class="card-header"><span><i class="fas fa-globe" style="color:var(--primary)"></i> Widget para vhm.com.pe</span></div>
+            <div class="card-body">
+              <p style="font-size:13px;margin-bottom:12px">El widget está activo en el sitio. Captura leads y suscriptores automáticamente con UTMs.</p>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+                <div>
+                  <p style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:6px">Botón flotante activo</p>
+                  <p style="font-size:12px;color:var(--text-muted)">"💜 Quiero una sesión gratuita" aparece en todas las páginas del sitio.</p>
+                  <p style="font-size:12px;color:var(--text-muted);margin-top:8px">Para abrir el widget desde un enlace personalizado, agrega en cualquier botón del sitio:</p>
+                  <code style="font-size:11px;background:var(--bg);padding:6px 8px;border-radius:6px;display:block;margin-top:4px">onclick="VHMWidget.agendar()"</code>
+                </div>
+                <div>
+                  <p style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:6px">UTMs que captura automáticamente</p>
+                  <div style="font-size:12px;color:var(--text-muted);line-height:2">
+                    <code>?utm_source=instagram</code><br>
+                    <code>?utm_source=tiktok&amp;utm_campaign=reel_ansiedad</code><br>
+                    <code>?utm_content=video_123</code>
+                  </div>
+                  <p style="font-size:11px;color:var(--text-muted);margin-top:8px">Los UTMs se guardan en el lead y puedes verlos en la vista de Leads.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
 
