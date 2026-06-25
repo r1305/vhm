@@ -254,6 +254,8 @@
         if (cfg.meta_app_secret)     document.getElementById('meta-app-secret').value    = cfg.meta_app_secret;
         if (cfg.tiktok_app_secret)   document.getElementById('tiktok-app-secret').value  = cfg.tiktok_app_secret;
         if (cfg.tiktok_verify_token) document.getElementById('tiktok-verify-token').value = cfg.tiktok_verify_token;
+        const widgetEl = document.getElementById('widget-btn-texto');
+        if (widgetEl) widgetEl.value = cfg.widget_btn_texto || '';
 
         // Actualizar badges de estado
         const metaOk = cfg.meta_verify_token && cfg.meta_access_token;
@@ -296,6 +298,16 @@
         });
         toast('Configuracion de TikTok guardada');
         loadIntegraciones();
+      } catch (err) { toast(err.message, 'danger'); }
+    });
+
+    // Guardar texto del boton widget
+    document.getElementById('btnSaveWidget')?.addEventListener('click', async () => {
+      try {
+        const texto = document.getElementById('widget-btn-texto').value.trim();
+        if (!texto) { toast('El texto no puede estar vacío', 'danger'); return; }
+        await api('/config', { method: 'POST', body: { widget_btn_texto: texto } });
+        toast('Texto del botón actualizado');
       } catch (err) { toast(err.message, 'danger'); }
     });
 

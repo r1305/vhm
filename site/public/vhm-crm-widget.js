@@ -10,6 +10,16 @@
   'use strict';
 
   const CRM_BASE = 'https://vhm.com.pe/crm';
+  const DEFAULT_BTN_TEXTO = '\uD83D\uDC9C Quiero una sesi\u00f3n gratuita';
+
+  // Cargar texto del botón desde el CRM
+  async function loadBtnTexto() {
+    try {
+      const r = await fetch(`${CRM_BASE}/api/config/public`);
+      const d = await r.json();
+      return d.widget_btn_texto || DEFAULT_BTN_TEXTO;
+    } catch { return DEFAULT_BTN_TEXTO; }
+  }
 
   // ── Leer UTMs de la URL ──────────────────────────────────────
   function getUTMs() {
@@ -232,6 +242,12 @@
   const wrapper = document.createElement('div');
   wrapper.innerHTML = html;
   document.body.appendChild(wrapper);
+
+  // Aplicar texto configurable al boton
+  loadBtnTexto().then(texto => {
+    const btn = document.getElementById('vhm-widget-btn');
+    if (btn) btn.innerHTML = texto;
+  });
 
   // ── Lógica ───────────────────────────────────────────────────
   const overlay = document.getElementById('vhm-widget-overlay');
