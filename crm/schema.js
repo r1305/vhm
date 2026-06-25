@@ -10,7 +10,8 @@ async function ensureSchema() {
         id          INT AUTO_INCREMENT PRIMARY KEY,
         nombre      VARCHAR(120) NOT NULL,
         apellido    VARCHAR(120) NOT NULL,
-        email       VARCHAR(150) NOT NULL UNIQUE,
+        username    VARCHAR(50)  NOT NULL UNIQUE,
+        email       VARCHAR(150) DEFAULT NULL,
         password    VARCHAR(255) NOT NULL,
         rol         ENUM('superadmin','terapeuta','recepcion') NOT NULL DEFAULT 'terapeuta',
         especialidad VARCHAR(200) DEFAULT NULL,
@@ -221,16 +222,16 @@ async function ensureSchema() {
     // ── Seed: terapeuta superadmin por defecto ─────────────────────
     const bcrypt = require('bcryptjs');
     const [[existing]] = await conn.execute(
-      "SELECT id FROM terapeutas WHERE email = 'admin@vhm.com.pe' LIMIT 1"
+      "SELECT id FROM terapeutas WHERE username = 'CRM' LIMIT 1"
     );
     if (!existing) {
       const hash = await bcrypt.hash('$CRM$2026', 10);
       await conn.execute(
-        `INSERT INTO terapeutas (nombre, apellido, email, password, rol)
-         VALUES ('CRM', 'Admin', 'admin@vhm.com.pe', ?, 'superadmin')`,
+        `INSERT INTO terapeutas (nombre, apellido, username, email, password, rol)
+         VALUES ('CRM', 'Admin', 'CRM', 'admin@vhm.com.pe', ?, 'superadmin')`,
         [hash]
       );
-      console.log('[crm] Superadmin creado: admin@vhm.com.pe / $CRM$2026');
+      console.log('[crm] Superadmin creado: CRM / $CRM$2026');
     }
 
     console.log('[crm] Schema OK');

@@ -6,12 +6,12 @@ const { signToken, auth } = require('../lib/auth');
 const router = Router();
 
 router.post('/login', async (req, res) => {
-  const { email, password } = req.body || {};
-  if (!email || !password) return res.status(400).json({ error: 'Email y contraseña requeridos' });
+  const { username, password } = req.body || {};
+  if (!username || !password) return res.status(400).json({ error: 'Usuario y contraseña requeridos' });
   try {
     const [[user]] = await pool.execute(
-      'SELECT id, nombre, apellido, email, password, rol, especialidad FROM terapeutas WHERE email = ? AND activo = 1 LIMIT 1',
-      [String(email).trim()]
+      'SELECT id, nombre, apellido, username, email, password, rol, especialidad FROM terapeutas WHERE username = ? AND activo = 1 LIMIT 1',
+      [String(username).trim()]
     );
     if (!user || !(await bcrypt.compare(password, user.password))) {
       return res.status(401).json({ error: 'Credenciales incorrectas' });
@@ -27,7 +27,7 @@ router.post('/login', async (req, res) => {
 router.get('/me', auth, async (req, res) => {
   try {
     const [[user]] = await pool.execute(
-      'SELECT id, nombre, apellido, email, rol, especialidad, bio FROM terapeutas WHERE id = ? LIMIT 1',
+      'SELECT id, nombre, apellido, username, email, rol, especialidad, bio FROM terapeutas WHERE id = ? LIMIT 1',
       [req.user.id]
     );
     if (!user) return res.status(404).json({ error: 'No encontrado' });

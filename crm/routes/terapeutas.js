@@ -17,18 +17,18 @@ router.get('/', auth, async (req, res) => {
 });
 
 router.post('/', authAdmin, async (req, res) => {
-  const { nombre, apellido, email, password, rol = 'terapeuta', especialidad } = req.body || {};
-  if (!nombre || !apellido || !email || !password)
-    return res.status(400).json({ error: 'nombre, apellido, email y password requeridos' });
+  const { nombre, apellido, username, email, password, rol = 'terapeuta', especialidad } = req.body || {};
+  if (!nombre || !apellido || !username || !password)
+    return res.status(400).json({ error: 'nombre, apellido, username y password requeridos' });
   try {
     const hash = await bcrypt.hash(password, 10);
     const [r] = await pool.execute(
-      'INSERT INTO terapeutas (nombre, apellido, email, password, rol, especialidad) VALUES (?,?,?,?,?,?)',
-      [t(nombre,120), t(apellido,120), t(email,150), hash, rol, t(especialidad,200)]
+      'INSERT INTO terapeutas (nombre, apellido, username, email, password, rol, especialidad) VALUES (?,?,?,?,?,?,?)',
+      [t(nombre,120), t(apellido,120), t(username,50), t(email,150), hash, rol, t(especialidad,200)]
     );
     res.status(201).json({ id: r.insertId });
   } catch (err) {
-    if (err.code === 'ER_DUP_ENTRY') return res.status(409).json({ error: 'Email ya existe' });
+    if (err.code === 'ER_DUP_ENTRY') return res.status(409).json({ error: 'El username ya existe' });
     res.status(500).json({ error: 'Error al crear terapeuta' });
   }
 });
