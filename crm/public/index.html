@@ -56,6 +56,8 @@
       <div class="nav-section">Administración</div>
       <button class="nav-item" data-view="pagos"><i class="fas fa-credit-card"></i> Pagos</button>
       <button class="nav-item" data-view="espera"><i class="fas fa-hourglass-half"></i> Lista de espera</button>
+      <button class="nav-item nav-admin" data-view="marketing" style="display:none"><i class="fas fa-envelope-open-text"></i> Marketing</button>
+      <button class="nav-item nav-admin" data-view="asignacion" style="display:none"><i class="fas fa-sitemap"></i> Asignación auto</button>
       <button class="nav-item nav-admin" data-view="terapeutas" style="display:none"><i class="fas fa-user-md"></i> Terapeutas</button>
       <button class="nav-item nav-admin" data-view="reportes" style="display:none"><i class="fas fa-chart-bar"></i> Reportes</button>
     </nav>
@@ -205,7 +207,48 @@
         <div class="card" id="listaEsperaContent"></div>
       </div>
 
-      <!-- TERAPEUTAS (admin) -->
+      <!-- MARKETING -->
+      <div class="view" id="view-marketing">
+        <ul class="nav nav-tabs mb-3" id="mktTabs" style="border-bottom:1px solid var(--border);display:flex;gap:4px;padding-bottom:0">
+          <li><button class="btn btn-sm btn-primary" data-mkt="campanas" id="mktBtnCampanas">Campañas</button></li>
+          <li style="margin-left:6px"><button class="btn btn-sm btn-outline" data-mkt="suscriptores" id="mktBtnSuscriptores">Suscriptores</button></li>
+        </ul>
+        <div id="mktCampanas">
+          <div class="view-toolbar">
+            <button class="btn btn-primary btn-sm" id="btnNuevaCampana"><i class="fas fa-plus"></i> Nueva campaña</button>
+          </div>
+          <div class="card">
+            <table class="table">
+              <thead><tr><th>Nombre</th><th>Asunto</th><th>Segmento</th><th>Estado</th><th>Enviados</th><th></th></tr></thead>
+              <tbody id="tablaCampanas"></tbody>
+            </table>
+          </div>
+        </div>
+        <div id="mktSuscriptores" style="display:none">
+          <div class="card">
+            <table class="table">
+              <thead><tr><th>Email</th><th>Nombre</th><th>Segmento</th><th>Estado</th><th>Fecha</th><th></th></tr></thead>
+              <tbody id="tablaSuscriptores"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ASIGNACIÓN AUTO -->
+      <div class="view" id="view-asignacion">
+        <div class="view-toolbar">
+          <button class="btn btn-primary btn-sm" id="btnNuevaRegla"><i class="fas fa-plus"></i> Nueva regla</button>
+        </div>
+        <div class="card">
+          <div class="card-body" style="font-size:13px;color:var(--text-muted);margin-bottom:8px">
+            Define palabras clave para asignar automáticamente el terapeuta correcto cuando llega un lead.
+          </div>
+          <table class="table">
+            <thead><tr><th>Keyword</th><th>Terapeuta</th><th>Prioridad</th><th></th></tr></thead>
+            <tbody id="tablaReglas"></tbody>
+          </table>
+        </div>
+      </div>
       <div class="view" id="view-terapeutas">
         <div class="view-toolbar">
           <button class="btn btn-primary btn-sm" id="btnNuevoTerapeuta"><i class="fas fa-plus"></i> Nuevo terapeuta</button>
@@ -259,5 +302,6 @@
 <script src="part3.js"></script>
 <script src="part4.js"></script>
 <script src="part5.js"></script>
+<script src="part6.js"></script>
 </body>
 </html>

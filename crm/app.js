@@ -74,6 +74,7 @@ router.use('/api/historial',  require('./routes/historial'));
 router.use('/api/leads',      leadsRouter);
 router.use('/api/pagos',      require('./routes/pagos'));
 router.use('/api/reportes',   require('./routes/reportes'));
+router.use('/api/marketing',  require('./routes/marketing'));
 
 router.get('/', (req, res) => sendHtml(res, 'index.html'));
 router.get('*', (req, res) => {
