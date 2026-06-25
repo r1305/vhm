@@ -1,0 +1,26 @@
+{
+  "name": "libro-reclamaciones-backend",
+  "version": "1.0.0",
+  "description": "Backend para Libro de Reclamaciones Virtual",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "node --watch src/index.js"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "compression": "^1.8.1",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^17.4.2",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.3",
+    "multer": "^2.1.1",
+    "mysql2": "^3.9.0",
+    "nodemailer": "^8.0.7",
+    "pdfkit": "^0.18.0"
+  }
+}
