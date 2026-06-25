@@ -129,11 +129,17 @@ async function enriquecerMedia(videoUrl, { thumb, duracion, titulo } = {}) {
 }
 
 function eliminarArchivoLocal(thumbUrl) {
-  // Solo borra archivos subidos localmente (/uploads/...), no URLs externas
-  if (thumbUrl && thumbUrl.startsWith('/uploads/')) {
-    const filePath = path.join(__dirname, '../public', thumbUrl);
-    if (fs.existsSync(filePath)) {
-      try { fs.unlinkSync(filePath); } catch (_) { /* ignore */ }
+  // Solo borra archivos subidos localmente, no URLs externas
+  const BASE = (process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
+  const prefix = BASE ? `${BASE}/uploads/` : '/uploads/';
+  if (thumbUrl && thumbUrl.includes('/uploads/')) {
+    // Extrae solo la parte /uploads/archivo.ext para buscar en el filesystem
+    const match = thumbUrl.match(/\/uploads\/[^?#]+/);
+    if (match) {
+      const filePath = path.join(__dirname, '../public', match[0]);
+      if (fs.existsSync(filePath)) {
+        try { fs.unlinkSync(filePath); } catch (_) { /* ignore */ }
+      }
     }
   }
 }
@@ -342,7 +348,8 @@ router.post('/', authMiddleware, requireSuperAdmin, upload.single('thumbnail'), 
 
     // Prioridad: archivo subido > URL manual > miniatura/duración/título
     // automáticos del enlace (YouTube o Loom).
-    const thumbInicial = req.file ? `/uploads/${req.file.filename}` : (thumbnail_url || null);
+    const BASE = (process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
+    const thumbInicial = req.file ? `${BASE}/uploads/${req.file.filename}` : (thumbnail_url || null);
     const media = await enriquecerMedia(video_url, {
       thumb: thumbInicial,
       duracion: duracion || null,
@@ -393,7 +400,8 @@ router.put('/:id', authMiddleware, requireSuperAdmin, upload.single('thumbnail')
 
     if (req.file) {
       eliminarArchivoLocal(thumb);
-      thumb = `/uploads/${req.file.filename}`;
+      const BASE = (process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
+      thumb = `${BASE}/uploads/${req.file.filename}`;
     } else if (eliminar_thumbnail === 'true' || eliminar_thumbnail === '1') {
       eliminarArchivoLocal(thumb);
       thumb = autoThumbnail(video_url);

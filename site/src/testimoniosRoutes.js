@@ -95,7 +95,8 @@ router.post('/', authMiddleware, upload.single('foto'), async (req, res) => {
   try {
     if (req.user.rol !== 'SUPER_ADMIN') return res.status(403).json({ error: 'Acceso restringido' });
     const { autor, texto, orden, activo } = req.body;
-    const foto_url = req.file ? `/uploads/${req.file.filename}` : null;
+    const BASE = (process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
+    const foto_url = req.file ? `${BASE}/uploads/${req.file.filename}` : null;
 
     if (!autor && !texto && !foto_url) {
       return res.status(400).json({ error: 'Debe proporcionar al menos un campo (autor, texto o foto)' });
@@ -127,16 +128,17 @@ router.put('/:id', authMiddleware, upload.single('foto'), async (req, res) => {
     // Si se sube nueva foto, eliminar la anterior
     if (req.file) {
       if (foto_url) {
-        const oldPath = path.join(__dirname, '../public', foto_url);
+        const oldPath = path.join(__dirname, '../public', foto_url.replace(/^\/[^/]+/, ''));
         if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
       }
-      foto_url = `/uploads/${req.file.filename}`;
+      const BASE = (process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
+      foto_url = `${BASE}/uploads/${req.file.filename}`;
     }
 
     // Si se pide eliminar foto
     if (eliminar_foto === 'true' || eliminar_foto === '1') {
       if (foto_url) {
-        const oldPath = path.join(__dirname, '../public', foto_url);
+        const oldPath = path.join(__dirname, '../public', foto_url.replace(/^\/[^/]+/, ''));
         if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
       }
       foto_url = null;
@@ -162,7 +164,7 @@ router.delete('/:id', authMiddleware, async (req, res) => {
     // Eliminar foto si existe
     const [existing] = await pool.execute('SELECT foto_url FROM testimonios WHERE id = ?', [req.params.id]);
     if (existing.length > 0 && existing[0].foto_url) {
-      const filePath = path.join(__dirname, '../public', existing[0].foto_url);
+      const filePath = path.join(__dirname, '../public', existing[0].foto_url.replace(/^\/[^/]+/, ''));
       if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
     }
 
