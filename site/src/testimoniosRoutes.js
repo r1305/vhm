@@ -8,7 +8,6 @@ const { authMiddleware } = require('./auth');
 
 const router = Router();
 
-// Configurar multer para subida de fotos con nombres aleatorios seguros
 const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -24,14 +23,19 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (ALLOWED_MIME_TYPES.has(file.mimetype)) cb(null, true);
     else cb(new Error('Solo se permiten imágenes (jpg, png, webp, gif)'));
   }
 });
 
-// Asegurar tabla de config de testimonios
+// ADMIN y SUPER_ADMIN tienen los mismos permisos de escritura
+function requireAdmin(req, res, next) {
+  if (req.user && (req.user.rol === 'SUPER_ADMIN' || req.user.rol === 'ADMIN')) return next();
+  return res.status(403).json({ error: 'Acceso restringido a administradores' });
+}
+
 async function ensureTestimoniosConfig() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS testimonios_config (
@@ -44,7 +48,7 @@ async function ensureTestimoniosConfig() {
 }
 ensureTestimoniosConfig().catch(() => {});
 
-// Ruta pública - obtener testimonios activos (incluye visibilidad de sección)
+// Ruta pública
 router.get('/', async (req, res) => {
   try {
     const [cfg] = await pool.query('SELECT seccion_activa FROM testimonios_config WHERE id = 1');
@@ -57,7 +61,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Config visibilidad sección testimonios
+// Config visibilidad sección
 router.get('/config', authMiddleware, async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT seccion_activa FROM testimonios_config WHERE id = 1');
@@ -67,9 +71,8 @@ router.get('/config', authMiddleware, async (req, res) => {
   }
 });
 
-router.put('/config', authMiddleware, async (req, res) => {
+router.put('/config', authMiddleware, requireAdmin, async (req, res) => {
   try {
-    if (req.user.rol !== 'SUPER_ADMIN') return res.status(403).json({ error: 'Acceso restringido' });
     const activa = req.body.seccion_activa === true || req.body.seccion_activa === 'true' || req.body.seccion_activa === 1;
     await pool.query('UPDATE testimonios_config SET seccion_activa = ? WHERE id = 1', [activa ? 1 : 0]);
     res.json({ message: activa ? 'Sección habilitada' : 'Sección deshabilitada', seccion_activa: activa });
@@ -78,10 +81,9 @@ router.put('/config', authMiddleware, async (req, res) => {
   }
 });
 
-// Ruta admin - obtener todos los testimonios
-router.get('/admin', authMiddleware, async (req, res) => {
+// Listar todos (admin)
+router.get('/admin', authMiddleware, requireAdmin, async (req, res) => {
   try {
-    if (req.user.rol !== 'SUPER_ADMIN') return res.status(403).json({ error: 'Acceso restringido' });
     const [rows] = await pool.execute('SELECT * FROM testimonios ORDER BY id ASC');
     res.json(rows);
   } catch (err) {
@@ -90,17 +92,15 @@ router.get('/admin', authMiddleware, async (req, res) => {
   }
 });
 
-// Crear testimonio
-router.post('/', authMiddleware, upload.single('foto'), async (req, res) => {
+// Crear
+router.post('/', authMiddleware, requireAdmin, upload.single('foto'), async (req, res) => {
   try {
-    if (req.user.rol !== 'SUPER_ADMIN') return res.status(403).json({ error: 'Acceso restringido' });
-    const { autor, texto, orden, activo } = req.body;
+    const { autor, texto, activo } = req.body;
     const BASE = (process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
     const foto_url = req.file ? `${BASE}/uploads/${req.file.filename}` : null;
 
-    if (!autor && !texto && !foto_url) {
+    if (!autor && !texto && !foto_url)
       return res.status(400).json({ error: 'Debe proporcionar al menos un campo (autor, texto o foto)' });
-    }
 
     const [result] = await pool.execute(
       'INSERT INTO testimonios (autor, texto, foto_url, activo) VALUES (?, ?, ?, ?)',
@@ -113,33 +113,34 @@ router.post('/', authMiddleware, upload.single('foto'), async (req, res) => {
   }
 });
 
-// Actualizar testimonio
-router.put('/:id', authMiddleware, upload.single('foto'), async (req, res) => {
+// Actualizar
+router.put('/:id', authMiddleware, requireAdmin, upload.single('foto'), async (req, res) => {
   try {
-    if (req.user.rol !== 'SUPER_ADMIN') return res.status(403).json({ error: 'Acceso restringido' });
-    const { autor, texto, orden, activo, eliminar_foto } = req.body;
-
-    // Obtener testimonio actual
+    const { autor, texto, activo, eliminar_foto } = req.body;
     const [existing] = await pool.execute('SELECT foto_url FROM testimonios WHERE id = ?', [req.params.id]);
     if (existing.length === 0) return res.status(404).json({ error: 'Testimonio no encontrado' });
 
     let foto_url = existing[0].foto_url;
 
-    // Si se sube nueva foto, eliminar la anterior
     if (req.file) {
       if (foto_url) {
-        const oldPath = path.join(__dirname, '../public', foto_url.replace(/^\/[^/]+/, ''));
-        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+        const match = foto_url.match(/\/uploads\/[^?#]+/);
+        if (match) {
+          const oldPath = path.join(__dirname, '../public', match[0]);
+          if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+        }
       }
       const BASE = (process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
       foto_url = `${BASE}/uploads/${req.file.filename}`;
     }
 
-    // Si se pide eliminar foto
     if (eliminar_foto === 'true' || eliminar_foto === '1') {
       if (foto_url) {
-        const oldPath = path.join(__dirname, '../public', foto_url.replace(/^\/[^/]+/, ''));
-        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+        const match = foto_url.match(/\/uploads\/[^?#]+/);
+        if (match) {
+          const oldPath = path.join(__dirname, '../public', match[0]);
+          if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+        }
       }
       foto_url = null;
     }
@@ -156,18 +157,17 @@ router.put('/:id', authMiddleware, upload.single('foto'), async (req, res) => {
   }
 });
 
-// Eliminar testimonio
-router.delete('/:id', authMiddleware, async (req, res) => {
+// Eliminar
+router.delete('/:id', authMiddleware, requireAdmin, async (req, res) => {
   try {
-    if (req.user.rol !== 'SUPER_ADMIN') return res.status(403).json({ error: 'Acceso restringido' });
-
-    // Eliminar foto si existe
     const [existing] = await pool.execute('SELECT foto_url FROM testimonios WHERE id = ?', [req.params.id]);
     if (existing.length > 0 && existing[0].foto_url) {
-      const filePath = path.join(__dirname, '../public', existing[0].foto_url.replace(/^\/[^/]+/, ''));
-      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      const match = existing[0].foto_url.match(/\/uploads\/[^?#]+/);
+      if (match) {
+        const filePath = path.join(__dirname, '../public', match[0]);
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      }
     }
-
     const [result] = await pool.execute('DELETE FROM testimonios WHERE id = ?', [req.params.id]);
     if (result.affectedRows === 0) return res.status(404).json({ error: 'Testimonio no encontrado' });
     res.json({ message: 'Testimonio eliminado' });

@@ -9,9 +9,9 @@ const { ensureVideoSchema, LANDING_INTRO_DEFAULT, LANDING_PACTO_DEFAULT } = requ
 
 const router = Router();
 
-function requireSuperAdmin(req, res, next) {
-  if (req.user && req.user.rol === 'SUPER_ADMIN') return next();
-  return res.status(403).json({ error: 'Acceso restringido al Super Admin' });
+function requireAdmin(req, res, next) {
+  if (req.user && (req.user.rol === 'SUPER_ADMIN' || req.user.rol === 'ADMIN')) return next();
+  return res.status(403).json({ error: 'Acceso restringido a administradores' });
 }
 
 // Garantiza que las tablas existan antes de atender cualquier ruta.
@@ -165,7 +165,7 @@ router.get('/landing', async (req, res) => {
 });
 
 // Actualizar textos del landing (admin)
-router.put('/landing', authMiddleware, requireSuperAdmin, async (req, res) => {
+router.put('/landing', authMiddleware, requireAdmin, async (req, res) => {
   try {
     const intro = String((req.body && req.body.intro) || '').trim();
     const pacto = String((req.body && req.body.pacto) || '').trim();
@@ -266,7 +266,7 @@ router.get('/categorias/admin', authMiddleware, async (req, res) => {
   }
 });
 
-router.post('/categorias', authMiddleware, requireSuperAdmin, async (req, res) => {
+router.post('/categorias', authMiddleware, requireAdmin, async (req, res) => {
   try {
     const { nombre, descripcion, orden, activo } = req.body;
     if (!nombre) return res.status(400).json({ error: 'El nombre es obligatorio' });
@@ -281,7 +281,7 @@ router.post('/categorias', authMiddleware, requireSuperAdmin, async (req, res) =
   }
 });
 
-router.put('/categorias/:id', authMiddleware, requireSuperAdmin, async (req, res) => {
+router.put('/categorias/:id', authMiddleware, requireAdmin, async (req, res) => {
   try {
     const { nombre, descripcion, orden, activo } = req.body;
     if (!nombre) return res.status(400).json({ error: 'El nombre es obligatorio' });
@@ -297,7 +297,7 @@ router.put('/categorias/:id', authMiddleware, requireSuperAdmin, async (req, res
   }
 });
 
-router.delete('/categorias/:id', authMiddleware, requireSuperAdmin, async (req, res) => {
+router.delete('/categorias/:id', authMiddleware, requireAdmin, async (req, res) => {
   try {
     // Los videos asociados quedan sin categoría (ON DELETE SET NULL)
     const [result] = await pool.execute('DELETE FROM video_categorias WHERE id = ?', [req.params.id]);
@@ -341,7 +341,7 @@ router.get('/admin', authMiddleware, async (req, res) => {
   }
 });
 
-router.post('/', authMiddleware, requireSuperAdmin, upload.single('thumbnail'), async (req, res) => {
+router.post('/', authMiddleware, requireAdmin, upload.single('thumbnail'), async (req, res) => {
   try {
     const { categoria_id, titulo, subtitulo, descripcion, video_url, duracion, activo, thumbnail_url } = req.body;
     if (!video_url) return res.status(400).json({ error: 'El enlace del video es obligatorio' });
@@ -388,7 +388,7 @@ router.post('/', authMiddleware, requireSuperAdmin, upload.single('thumbnail'), 
   }
 });
 
-router.put('/:id', authMiddleware, requireSuperAdmin, upload.single('thumbnail'), async (req, res) => {
+router.put('/:id', authMiddleware, requireAdmin, upload.single('thumbnail'), async (req, res) => {
   try {
     const { categoria_id, titulo, subtitulo, descripcion, video_url, duracion, activo, thumbnail_url, eliminar_thumbnail } = req.body;
     if (!video_url) return res.status(400).json({ error: 'El enlace del video es obligatorio' });
@@ -455,7 +455,7 @@ router.put('/:id', authMiddleware, requireSuperAdmin, upload.single('thumbnail')
   }
 });
 
-router.delete('/:id', authMiddleware, requireSuperAdmin, async (req, res) => {
+router.delete('/:id', authMiddleware, requireAdmin, async (req, res) => {
   try {
     const [existing] = await pool.execute('SELECT thumbnail_url FROM videos WHERE id = ?', [req.params.id]);
     if (existing.length > 0) eliminarArchivoLocal(existing[0].thumbnail_url);
