@@ -1,5 +1,6 @@
 require('dotenv').config();
-const path    = require('path');
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 const express = require('express');
 const cors    = require('cors');
 
@@ -12,15 +13,24 @@ app.set('trust proxy', 1);
 
 try { app.use(require('compression')({ threshold: 1024 })); } catch (_) {}
 
-// CORS — permite el propio dominio y vhm.com.pe
+// CORS — permite el propio dominio, vhm.com.pe y localhost en desarrollo
 const allowedOrigins = [
   'https://vhm.com.pe',
   'https://www.vhm.com.pe',
+  'http://localhost:3001',
+  'http://localhost:3000',
+  'http://127.0.0.1:3001',
+  'http://127.0.0.1:3000',
   ...(process.env.CORS_EXTRA || '').split(',').map(o => o.trim()).filter(Boolean),
 ];
 app.use(cors({
   origin: (origin, cb) => {
-    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+    // sin origin = petición directa (curl, Postman, mismo proceso)
+    if (!origin) return cb(null, true);
+    if (allowedOrigins.includes(origin)) return cb(null, true);
+    // en desarrollo permitir cualquier localhost
+    if (process.env.NODE_ENV !== 'production' && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin))
+      return cb(null, true);
     cb(new Error('CORS no permitido'));
   },
   credentials: true,

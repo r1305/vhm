@@ -1,4 +1,7 @@
 require('dotenv').config();
+const path = require('path');
+// Garantizar que se carga el .env de esta carpeta
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 const mysql = require('mysql2/promise');
 
 const pool = mysql.createPool({
