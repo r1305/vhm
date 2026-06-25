@@ -5,7 +5,118 @@ const { sendRecordatorioCita, sendFollowUp } = require('../lib/mailer');
 
 const router = Router();
 
-// Dashboard KPIs
+// ── Helper: validar y sanitizar rango de fechas ───────────────
+function parseDateRange(query) {
+  const today = new Date().toISOString().slice(0, 10);
+  const desde = /^\d{4}-\d{2}-\d{2}$/.test(query.desde) ? query.desde : today;
+  const hasta = /^\d{4}-\d{2}-\d{2}$/.test(query.hasta) ? query.hasta : today;
+  return { desde, hasta };
+}
+
+// ── Reportes con filtro de fecha ──────────────────────────────
+router.get('/stats', auth, async (req, res) => {
+  try {
+    const { desde, hasta } = parseDateRange(req.query);
+    const hastaFin = `${hasta} 23:59:59`;
+
+    const [[kpis]] = await pool.execute(`
+      SELECT
+        (SELECT COUNT(*) FROM citas
+          WHERE fecha BETWEEN ? AND ? AND estado NOT IN ('cancelada','no_show')) AS citas_periodo,
+        (SELECT COUNT(*) FROM citas
+          WHERE fecha BETWEEN ? AND ? AND estado='realizada') AS citas_realizadas,
+        (SELECT COUNT(*) FROM citas
+          WHERE fecha BETWEEN ? AND ? AND estado='cancelada') AS citas_canceladas,
+        (SELECT COUNT(*) FROM citas
+          WHERE fecha BETWEEN ? AND ? AND estado='no_show') AS no_shows,
+        (SELECT COUNT(*) FROM leads
+          WHERE DATE(created_at) BETWEEN ? AND ?) AS leads_periodo,
+        (SELECT COUNT(*) FROM leads
+          WHERE DATE(created_at) BETWEEN ? AND ? AND estado='convertido') AS leads_convertidos,
+        (SELECT COALESCE(SUM(monto),0) FROM pagos
+          WHERE DATE(created_at) BETWEEN ? AND ? AND estado='completado') AS ingresos,
+        (SELECT COUNT(*) FROM pacientes
+          WHERE DATE(created_at) BETWEEN ? AND ?) AS pacientes_nuevos,
+        (SELECT COUNT(*) FROM pacientes WHERE estado='activo') AS pacientes_activos,
+        (SELECT COUNT(*) FROM pacientes WHERE estado='prospecto') AS prospectos
+    `, [
+      desde, hasta, desde, hasta, desde, hasta, desde, hasta,
+      desde, hasta, desde, hasta, desde, hasta, desde, hasta
+    ]);
+
+    // Citas por estado (dona)
+    const [citasPorEstado] = await pool.execute(`
+      SELECT estado, COUNT(*) AS total
+      FROM citas WHERE fecha BETWEEN ? AND ?
+      GROUP BY estado ORDER BY total DESC
+    `, [desde, hasta]);
+
+    // Citas por terapeuta
+    const [citasPorTerapeuta] = await pool.execute(`
+      SELECT t.nombre, t.apellido, COUNT(c.id) AS total,
+             SUM(CASE WHEN c.estado='realizada' THEN 1 ELSE 0 END) AS realizadas
+      FROM citas c JOIN terapeutas t ON c.terapeuta_id=t.id
+      WHERE c.fecha BETWEEN ? AND ?
+      GROUP BY t.id ORDER BY total DESC
+    `, [desde, hasta]);
+
+    // Citas por día del período
+    const [citasPorDia] = await pool.execute(`
+      SELECT fecha, COUNT(*) AS total
+      FROM citas WHERE fecha BETWEEN ? AND ?
+      GROUP BY fecha ORDER BY fecha ASC
+    `, [desde, hasta]);
+
+    // Leads por fuente
+    const [leadsPorFuente] = await pool.execute(`
+      SELECT fuente, COUNT(*) AS total,
+             SUM(CASE WHEN estado='convertido' THEN 1 ELSE 0 END) AS convertidos
+      FROM leads WHERE DATE(created_at) BETWEEN ? AND ?
+      GROUP BY fuente ORDER BY total DESC
+    `, [desde, hasta]);
+
+    // Ingresos por día
+    const [ingresosPorDia] = await pool.execute(`
+      SELECT DATE(created_at) AS dia, COALESCE(SUM(monto),0) AS total
+      FROM pagos WHERE DATE(created_at) BETWEEN ? AND ? AND estado='completado'
+      GROUP BY DATE(created_at) ORDER BY dia ASC
+    `, [desde, hasta]);
+
+    // Ingresos por método de pago
+    const [ingresosPorMetodo] = await pool.execute(`
+      SELECT metodo, COUNT(*) AS cantidad, COALESCE(SUM(monto),0) AS total
+      FROM pagos WHERE DATE(created_at) BETWEEN ? AND ? AND estado='completado'
+      GROUP BY metodo ORDER BY total DESC
+    `, [desde, hasta]);
+
+    // Modalidad de citas
+    const [citasPorModalidad] = await pool.execute(`
+      SELECT modalidad, COUNT(*) AS total
+      FROM citas WHERE fecha BETWEEN ? AND ?
+      GROUP BY modalidad ORDER BY total DESC
+    `, [desde, hasta]);
+
+    // Tasa de no-show
+    const totalCitas = (kpis.citas_realizadas || 0) + (kpis.no_shows || 0);
+    kpis.tasa_asistencia = totalCitas > 0
+      ? Math.round((kpis.citas_realizadas / totalCitas) * 100)
+      : null;
+    kpis.tasa_conversion_leads = kpis.leads_periodo > 0
+      ? Math.round((kpis.leads_convertidos / kpis.leads_periodo) * 100)
+      : null;
+    kpis.ingreso_promedio_cita = kpis.citas_realizadas > 0
+      ? Math.round((kpis.ingresos / kpis.citas_realizadas) * 100) / 100
+      : 0;
+
+    res.json({
+      desde, hasta, kpis,
+      citasPorEstado, citasPorTerapeuta, citasPorDia,
+      leadsPorFuente, ingresosPorDia, ingresosPorMetodo, citasPorModalidad,
+    });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Dashboard KPIs (mantener para compatibilidad)
 router.get('/dashboard', auth, async (req, res) => {
   try {
     const [[kpis]] = await pool.execute(`
