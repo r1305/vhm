@@ -8,6 +8,7 @@ const pool = mysql.createPool({
   user: siteEnv('DB_USER'),
   password: siteEnv('DB_PASSWORD'),
   database: siteEnv('DB_NAME'),
+  timezone: '-05:00',
   waitForConnections: true,
   connectionLimit: parseInt(process.env.DB_POOL_MAX || '3', 10),
   maxIdle: parseInt(process.env.DB_POOL_IDLE_MAX || '1', 10),

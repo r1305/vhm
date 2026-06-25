@@ -1,5 +1,9 @@
 require('dotenv').config();
 const express = require('express');
+
+// Forzar GMT-5 (Lima) en todo el proceso antes de cualquier operacion de fecha
+process.env.TZ = 'America/Lima';
+
 const vhmApp = require('./src/index');
 
 const MOUNT_PATH = process.env.APP_MOUNT_PATH || '/site';
