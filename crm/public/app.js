@@ -177,6 +177,8 @@
     consentimientos: 'Consentimientos',
     pagos:           'Pagos',
     espera:          'Lista de espera',
+    marketing:       'Email Marketing',
+    asignacion:      'Asignación automática',
     terapeutas:      'Terapeutas',
     reportes:        'Reportes',
   };

@@ -4,7 +4,6 @@ async function ensureSchema() {
   const conn = await pool.getConnection();
   try {
 
-    // ── Terapeutas / usuarios del sistema ─────────────────────────
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS terapeutas (
         id          INT AUTO_INCREMENT PRIMARY KEY,
@@ -21,7 +20,6 @@ async function ensureSchema() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
 
-    // ── Pacientes ──────────────────────────────────────────────────
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS pacientes (
         id              INT AUTO_INCREMENT PRIMARY KEY,
@@ -46,7 +44,6 @@ async function ensureSchema() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
 
-    // ── Disponibilidad semanal del terapeuta ───────────────────────
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS disponibilidad (
         id           INT AUTO_INCREMENT PRIMARY KEY,
@@ -59,7 +56,6 @@ async function ensureSchema() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
 
-    // ── Citas ──────────────────────────────────────────────────────
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS citas (
         id              INT AUTO_INCREMENT PRIMARY KEY,
@@ -86,7 +82,6 @@ async function ensureSchema() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
 
-    // ── Historial clínico (notas de sesión) ────────────────────────
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS historial_clinico (
         id           INT AUTO_INCREMENT PRIMARY KEY,
@@ -94,17 +89,16 @@ async function ensureSchema() {
         terapeuta_id INT NOT NULL,
         cita_id      INT DEFAULT NULL,
         fecha        DATE NOT NULL,
-        nota         TEXT NOT NULL COMMENT 'encriptado en app layer',
+        nota         TEXT NOT NULL,
         tipo         ENUM('evolucion','evaluacion','derivacion','alta','otro') NOT NULL DEFAULT 'evolucion',
         privado      TINYINT(1) NOT NULL DEFAULT 1,
         created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (paciente_id)  REFERENCES pacientes(id)  ON DELETE CASCADE,
         FOREIGN KEY (terapeuta_id) REFERENCES terapeutas(id) ON DELETE CASCADE,
-        FOREIGN KEY (cita_id)      REFERENCES citas(id)       ON DELETE SET NULL
+        FOREIGN KEY (cita_id)      REFERENCES citas(id)      ON DELETE SET NULL
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
 
-    // ── Lista de espera ────────────────────────────────────────────
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS lista_espera (
         id           INT AUTO_INCREMENT PRIMARY KEY,
@@ -120,7 +114,6 @@ async function ensureSchema() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
 
-    // ── Pagos ──────────────────────────────────────────────────────
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS pagos (
         id           INT AUTO_INCREMENT PRIMARY KEY,
@@ -138,7 +131,6 @@ async function ensureSchema() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
 
-    // ── Packs / suscripciones de sesiones ─────────────────────────
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS packs (
         id           INT AUTO_INCREMENT PRIMARY KEY,
@@ -155,29 +147,38 @@ async function ensureSchema() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
 
-    // ── Leads (prospectos de redes sociales y web) ─────────────────
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS leads (
-        id           INT AUTO_INCREMENT PRIMARY KEY,
-        nombre       VARCHAR(120) DEFAULT NULL,
-        apellido     VARCHAR(120) DEFAULT NULL,
-        email        VARCHAR(150) DEFAULT NULL,
-        telefono     VARCHAR(30)  DEFAULT NULL,
-        fuente       ENUM('instagram','tiktok','web','whatsapp','referido','otro') NOT NULL DEFAULT 'web',
-        fuente_detalle VARCHAR(300) DEFAULT NULL COMMENT 'URL del post/reel/video de origen',
-        mensaje      TEXT         DEFAULT NULL,
-        estado       ENUM('nuevo','contactado','agendado','convertido','descartado') NOT NULL DEFAULT 'nuevo',
-        terapeuta_id INT          DEFAULT NULL,
-        paciente_id  INT          DEFAULT NULL COMMENT 'si fue convertido',
-        notas        TEXT         DEFAULT NULL,
-        created_at   TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
-        updated_at   TIMESTAMP    DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        id              INT AUTO_INCREMENT PRIMARY KEY,
+        nombre          VARCHAR(120) DEFAULT NULL,
+        apellido        VARCHAR(120) DEFAULT NULL,
+        email           VARCHAR(150) DEFAULT NULL,
+        telefono        VARCHAR(30)  DEFAULT NULL,
+        fuente          ENUM('instagram','tiktok','web','whatsapp','referido','otro') NOT NULL DEFAULT 'web',
+        fuente_detalle  VARCHAR(300) DEFAULT NULL,
+        mensaje         TEXT         DEFAULT NULL,
+        estado          ENUM('nuevo','contactado','agendado','convertido','descartado') NOT NULL DEFAULT 'nuevo',
+        terapeuta_id    INT          DEFAULT NULL,
+        paciente_id     INT          DEFAULT NULL,
+        notas           TEXT         DEFAULT NULL,
+        utm_source      VARCHAR(200) DEFAULT NULL,
+        utm_medium      VARCHAR(200) DEFAULT NULL,
+        utm_campaign    VARCHAR(200) DEFAULT NULL,
+        utm_content     VARCHAR(200) DEFAULT NULL,
+        utm_term        VARCHAR(200) DEFAULT NULL,
+        created_at      TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+        updated_at      TIMESTAMP    DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         FOREIGN KEY (terapeuta_id) REFERENCES terapeutas(id) ON DELETE SET NULL,
         FOREIGN KEY (paciente_id)  REFERENCES pacientes(id)  ON DELETE SET NULL
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
 
-    // ── Consentimientos informados ─────────────────────────────────
+    // Agregar columnas UTM si la tabla ya existía sin ellas
+    for (const col of ['utm_source','utm_medium','utm_campaign','utm_content','utm_term']) {
+      try { await conn.execute(`ALTER TABLE leads ADD COLUMN ${col} VARCHAR(200) DEFAULT NULL`); }
+      catch (_) {}
+    }
+
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS consentimientos (
         id           INT AUTO_INCREMENT PRIMARY KEY,
@@ -192,25 +193,23 @@ async function ensureSchema() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
 
-    // ── Recordatorios / follow-ups automáticos ─────────────────────
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS recordatorios (
-        id           INT AUTO_INCREMENT PRIMARY KEY,
-        paciente_id  INT NOT NULL,
-        cita_id      INT DEFAULT NULL,
-        tipo         ENUM('recordatorio_cita','seguimiento','reactivacion','newsletter') NOT NULL,
-        canal        ENUM('email','whatsapp','ambos') NOT NULL DEFAULT 'email',
-        mensaje      TEXT DEFAULT NULL,
+        id            INT AUTO_INCREMENT PRIMARY KEY,
+        paciente_id   INT NOT NULL,
+        cita_id       INT DEFAULT NULL,
+        tipo          ENUM('recordatorio_cita','seguimiento','reactivacion','newsletter') NOT NULL,
+        canal         ENUM('email','whatsapp','ambos') NOT NULL DEFAULT 'email',
+        mensaje       TEXT DEFAULT NULL,
         programado_at DATETIME NOT NULL,
-        enviado      TINYINT(1) NOT NULL DEFAULT 0,
-        enviado_at   TIMESTAMP NULL DEFAULT NULL,
-        created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        enviado       TINYINT(1) NOT NULL DEFAULT 0,
+        enviado_at    TIMESTAMP NULL DEFAULT NULL,
+        created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (paciente_id) REFERENCES pacientes(id) ON DELETE CASCADE,
         FOREIGN KEY (cita_id)     REFERENCES citas(id)     ON DELETE SET NULL
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
 
-    // ── Configuración general (clave-valor) ────────────────────────
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS configuracion (
         clave      VARCHAR(100) PRIMARY KEY,
@@ -219,7 +218,53 @@ async function ensureSchema() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
 
-    // ── Seed: terapeuta superadmin por defecto ─────────────────────
+    // ── Punto 2: Reglas de asignación automática ───────────────────
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS asignacion_reglas (
+        id           INT AUTO_INCREMENT PRIMARY KEY,
+        terapeuta_id INT NOT NULL,
+        keyword      VARCHAR(100) NOT NULL COMMENT 'palabra clave en motivo_consulta',
+        prioridad    INT NOT NULL DEFAULT 1,
+        activo       TINYINT(1) NOT NULL DEFAULT 1,
+        created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (terapeuta_id) REFERENCES terapeutas(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
+    // ── Punto 4: Suscriptores newsletter ──────────────────────────
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS suscriptores (
+        id          INT AUTO_INCREMENT PRIMARY KEY,
+        email       VARCHAR(150) NOT NULL UNIQUE,
+        nombre      VARCHAR(120) DEFAULT NULL,
+        paciente_id INT DEFAULT NULL,
+        segmento    VARCHAR(80)  DEFAULT NULL,
+        activo      TINYINT(1) NOT NULL DEFAULT 1,
+        ip_origen   VARCHAR(45) DEFAULT NULL,
+        created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (paciente_id) REFERENCES pacientes(id) ON DELETE SET NULL
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
+    // ── Punto 4: Campañas de email marketing ──────────────────────
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS campanas_email (
+        id             INT AUTO_INCREMENT PRIMARY KEY,
+        nombre         VARCHAR(200) NOT NULL,
+        asunto         VARCHAR(300) NOT NULL,
+        cuerpo_html    LONGTEXT NOT NULL,
+        segmento       VARCHAR(80) DEFAULT NULL,
+        estado         ENUM('borrador','enviando','completada','cancelada') NOT NULL DEFAULT 'borrador',
+        total_enviados INT NOT NULL DEFAULT 0,
+        total_abiertos INT NOT NULL DEFAULT 0,
+        enviada_at     DATETIME DEFAULT NULL,
+        propietario_id INT DEFAULT NULL,
+        created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (propietario_id) REFERENCES terapeutas(id) ON DELETE SET NULL
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
+    // ── Seed superadmin ────────────────────────────────────────────
     const bcrypt = require('bcryptjs');
     const [[existing]] = await conn.execute(
       "SELECT id FROM terapeutas WHERE username = 'CRM' LIMIT 1"
