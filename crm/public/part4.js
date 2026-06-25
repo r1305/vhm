@@ -258,7 +258,7 @@
                   <strong>${esc(fullName(t))}</strong>
                 </div>
               </td>
-              <td>${esc(t.email)}</td>
+              <td>${esc(t.username)}</td>
               <td><span class="badge badge-purple">${esc(t.rol)}</span></td>
               <td>${esc(t.especialidad || '—')}</td>
               <td>${t.activo
@@ -289,7 +289,11 @@
           </div>
         </div>
         <div class="form-group">
-          <label class="form-label">Email *</label>
+          <label class="form-label">Usuario *</label>
+          <input class="form-control" id="f_username" value="${esc(t?.username || '')}" ${t ? 'readonly style="background:var(--bg)"' : ''} placeholder="usuario">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
           <input type="email" class="form-control" id="f_email" value="${esc(t?.email || '')}">
         </div>
         <div class="form-group">
@@ -323,12 +327,13 @@
           <textarea class="form-control" id="f_bio" rows="2">${esc(t?.bio || '')}</textarea>
         </div>`, async () => {
         const body = {
-          nombre:      document.getElementById('f_nombre').value,
-          apellido:    document.getElementById('f_apellido').value,
-          email:       document.getElementById('f_email').value,
-          rol:         document.getElementById('f_rol').value,
-          especialidad:document.getElementById('f_especialidad').value || null,
-          bio:         document.getElementById('f_bio').value || null,
+          nombre:       document.getElementById('f_nombre').value,
+          apellido:     document.getElementById('f_apellido').value,
+          username:     document.getElementById('f_username')?.value || undefined,
+          email:        document.getElementById('f_email').value || null,
+          rol:          document.getElementById('f_rol').value,
+          especialidad: document.getElementById('f_especialidad').value || null,
+          bio:          document.getElementById('f_bio').value || null,
         };
         const pass = document.getElementById('f_password').value;
         if (pass) body.password = pass;
@@ -337,6 +342,7 @@
           await api(`/terapeutas/${t.id}`, { method: 'PUT', body });
         } else {
           if (!pass) throw new Error('La contraseña es requerida para nuevos terapeutas');
+          if (!body.username) throw new Error('El usuario es requerido');
           body.password = pass;
           await api('/terapeutas', { method: 'POST', body });
         }

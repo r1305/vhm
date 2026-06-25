@@ -201,15 +201,15 @@
 
   /* ── Login ───────────────────────────────────────── */
   async function login() {
-    const email    = document.getElementById('loginEmail').value.trim();
+    const username = document.getElementById('loginUsername').value.trim();
     const password = document.getElementById('loginPassword').value;
     const errEl    = document.getElementById('loginError');
     errEl.style.display = 'none';
-    if (!email || !password) { errEl.textContent = 'Ingresa tu correo y contraseña'; errEl.style.display = 'block'; return; }
+    if (!username || !password) { errEl.textContent = 'Ingresa tu usuario y contraseña'; errEl.style.display = 'block'; return; }
     const btn = document.getElementById('loginBtn');
     btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Ingresando…';
     try {
-      const data = await api('/auth/login', { method: 'POST', body: { email, password } });
+      const data = await api('/auth/login', { method: 'POST', body: { username, password } });
       setToken(data.token);
       _user = data.user;
       showApp();
@@ -223,6 +223,7 @@
 
   document.getElementById('loginBtn').addEventListener('click', login);
   document.getElementById('loginPassword').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+  document.getElementById('loginUsername').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
 
   /* ── Logout ──────────────────────────────────────── */
   function logout() {
