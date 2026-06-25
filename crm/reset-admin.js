@@ -7,7 +7,7 @@ const bcrypt = require('bcryptjs');
 const pool   = require('./lib/db');
 
 async function main() {
-  const hash = await bcrypt.hash('***REMOVED***', 10);
+  const hash = await bcrypt.hash('***REMOVED***$', 10);
 
   // Agregar columna username si no existe (por si la tabla fue creada antes)
   try {
@@ -39,7 +39,7 @@ async function main() {
   }
 
   console.log('Usuario: CRM');
-  console.log('Contraseña: ***REMOVED***');
+  console.log('Contraseña: ***REMOVED***$');
   await pool.end();
 }
 
