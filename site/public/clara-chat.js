@@ -34,7 +34,7 @@
 
   // ---------- Estilos ----------
   var css = '' +
-    '.clara-launcher{position:fixed;bottom:24px;right:24px;width:62px;height:62px;border-radius:50%;border:none;cursor:pointer;z-index:9998;' +
+    '.clara-launcher{position:fixed;bottom:100px;right:24px;width:62px;height:62px;border-radius:50%;border:none;cursor:pointer;z-index:9998;' +
     'background:linear-gradient(135deg,#a855f7 0%,#ec4899 55%,#fb7185 100%);box-shadow:0 10px 30px -8px rgba(236,72,153,.7);' +
     'display:flex;align-items:center;justify-content:center;transition:transform .2s, box-shadow .2s;animation:claraPulse 2.6s ease-in-out infinite;}' +
     '.clara-launcher:hover{transform:scale(1.08);box-shadow:0 14px 36px -8px rgba(236,72,153,.85);}' +
@@ -42,7 +42,7 @@
     '.clara-launcher .clara-badge{position:absolute;top:-2px;right:-2px;width:16px;height:16px;border-radius:50%;background:#2dd4bf;border:2px solid #07070d;}' +
     '@keyframes claraPulse{0%,100%{box-shadow:0 10px 30px -8px rgba(236,72,153,.7),0 0 0 0 rgba(236,72,153,.45);}50%{box-shadow:0 10px 30px -8px rgba(236,72,153,.7),0 0 0 12px rgba(236,72,153,0);}}' +
 
-    '.clara-panel{position:fixed;bottom:98px;right:24px;width:370px;max-width:calc(100vw - 32px);height:560px;max-height:calc(100vh - 130px);' +
+    '.clara-panel{position:fixed;bottom:174px;right:24px;width:370px;max-width:calc(100vw - 32px);height:560px;max-height:calc(100vh - 200px);' +
     'background:#101019;border:1px solid rgba(168,85,247,.25);border-radius:20px;z-index:9999;overflow:hidden;display:none;flex-direction:column;' +
     'box-shadow:0 30px 70px -20px rgba(0,0,0,.7);font-family:"Nunito",system-ui,sans-serif;color:#ece9f5;}' +
     '.clara-panel.open{display:flex;animation:claraIn .25s ease;}' +
@@ -82,7 +82,7 @@
     '.clara-send:disabled{opacity:.5;cursor:default;}' +
     '.clara-disclaimer{font-size:.68rem;color:#6f6885;text-align:center;padding:0 12px 10px;background:#101019;}' +
 
-    '@media (max-width:520px){.clara-panel{right:12px;left:12px;width:auto;bottom:90px;height:calc(100vh - 120px);}}';
+    '@media (max-width:520px){.clara-panel{right:12px;left:12px;width:auto;bottom:166px;height:calc(100vh - 200px);}}';
 
   var style = el('style');
   style.textContent = css;
