@@ -622,6 +622,11 @@ function isSuperAdmin() {
   return (JSON.parse(localStorage.getItem('user') || '{}')).rol === 'SUPER_ADMIN';
 }
 
+function isAdmin() {
+  const rol = (JSON.parse(localStorage.getItem('user') || '{}')).rol;
+  return rol === 'SUPER_ADMIN' || rol === 'ADMIN';
+}
+
 if (token) initAdmin();
 
 async function login() {
@@ -655,7 +660,7 @@ function initAdmin() {
   document.getElementById('adminSection').style.display = 'block';
   document.getElementById('currentUser').textContent = (JSON.parse(localStorage.getItem('user') || '{}')).nombre;
   document.getElementById('tabVideos').style.display = 'block';
-  if (isSuperAdmin()) {
+  if (isAdmin()) {
     document.getElementById('tabConfig').style.display = 'block';
     document.getElementById('tabTestimonios').style.display = 'block';
   }
@@ -842,7 +847,8 @@ async function cargarUsuarios() {
       <td style="color:#c8e6f0">${u.username}</td>
       <td>${u.nombre}</td><td>${u.email}</td><td>${u.rol}</td>
       <td>${u.activo ? '✅' : '❌'}</td>
-      <td>${u.es_protegido ? '<em style="font-size:.8rem;color:#555">Protegido</em>' : `
+      <td>${u.es_protegido ? '<em style="font-size:.8rem;color:#555">Protegido</em>' :
+        u.rol === 'SUPER_ADMIN' && !isSuperAdmin() ? '<em style="font-size:.8rem;color:#555">Sin permiso</em>' : `
         <button class="btn btn-primary" onclick='editarUsuario(${JSON.stringify(u)})'>Editar</button>
         <button class="btn btn-danger" onclick="eliminarUsuario(${u.id})">Eliminar</button>
       `}</td>
@@ -855,7 +861,8 @@ async function cargarUsuarios() {
       <div class="mc-row">👤 ${u.nombre}</div>
       <div class="mc-row">📧 ${u.email}</div>
       <div class="mc-row">${u.activo ? '✅ Activo' : '❌ Inactivo'}</div>
-      <div class="mc-actions">${u.es_protegido ? '<em style="font-size:.8rem;color:#555">Protegido</em>' : `
+      <div class="mc-actions">${u.es_protegido ? '<em style="font-size:.8rem;color:#555">Protegido</em>' :
+        u.rol === 'SUPER_ADMIN' && !isSuperAdmin() ? '<em style="font-size:.8rem;color:#555">Sin permiso</em>' : `
         <button class="btn btn-primary" onclick='editarUsuario(${JSON.stringify(u)})'>Editar</button>
         <button class="btn btn-danger" onclick="eliminarUsuario(${u.id})">Eliminar</button>
       `}</div>
@@ -867,6 +874,10 @@ function mostrarModalUsuario() {
   document.getElementById('modalUsuarioTitle').textContent = 'Nuevo Usuario';
   ['usuarioId','uUsername','uNombre','uEmail','uPassword'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('uUsername').disabled = false;
+  // Opciones de rol segun permisos
+  const rolSel = document.getElementById('uRol');
+  rolSel.innerHTML = '<option value="ADMIN">Administrador</option>' +
+    (isSuperAdmin() ? '<option value="SUPER_ADMIN">Super Admin</option>' : '');
   document.getElementById('modalUsuario').classList.add('show');
 }
 
@@ -878,6 +889,11 @@ function editarUsuario(u) {
   document.getElementById('uNombre').value = u.nombre;
   document.getElementById('uEmail').value = u.email;
   document.getElementById('uPassword').value = '';
+  // Opciones de rol segun permisos
+  const rolSel = document.getElementById('uRol');
+  rolSel.innerHTML = '<option value="ADMIN">Administrador</option>' +
+    (isSuperAdmin() ? '<option value="SUPER_ADMIN">Super Admin</option>' : '');
+  rolSel.value = u.rol;
   document.getElementById('modalUsuario').classList.add('show');
 }
 
