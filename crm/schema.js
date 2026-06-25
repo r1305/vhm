@@ -264,7 +264,48 @@ async function ensureSchema() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
 
-    // ── Seed superadmin ────────────────────────────────────────────
+    // ── Tracker web ───────────────────────────────────────────────────
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS web_sesiones (
+        id           VARCHAR(36) PRIMARY KEY,
+        visitor_id   VARCHAR(64) NOT NULL COMMENT 'hash anonimo persistente en localStorage',
+        pagina       VARCHAR(500) NOT NULL,
+        referrer     VARCHAR(500) DEFAULT NULL,
+        utm_source   VARCHAR(200) DEFAULT NULL,
+        utm_medium   VARCHAR(200) DEFAULT NULL,
+        utm_campaign VARCHAR(200) DEFAULT NULL,
+        utm_content  VARCHAR(200) DEFAULT NULL,
+        dispositivo  ENUM('desktop','mobile','tablet') NOT NULL DEFAULT 'desktop',
+        navegador    VARCHAR(80)  DEFAULT NULL,
+        pais         VARCHAR(80)  DEFAULT NULL,
+        duracion_seg INT DEFAULT NULL COMMENT 'se actualiza al salir',
+        scroll_max   TINYINT DEFAULT 0 COMMENT 'porcentaje maximo scrolleado',
+        lead_id      INT DEFAULT NULL,
+        created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        KEY idx_ws_visitor (visitor_id),
+        KEY idx_ws_fecha (created_at),
+        FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE SET NULL
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS web_eventos (
+        id           INT AUTO_INCREMENT PRIMARY KEY,
+        sesion_id    VARCHAR(36) NOT NULL,
+        visitor_id   VARCHAR(64) NOT NULL,
+        tipo         ENUM('pageview','click','scroll','form_start','form_submit','conversion','custom') NOT NULL,
+        elemento     VARCHAR(300) DEFAULT NULL COMMENT 'selector CSS o texto del elemento',
+        pagina       VARCHAR(500) DEFAULT NULL,
+        valor        VARCHAR(500) DEFAULT NULL COMMENT 'datos extra del evento',
+        created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        KEY idx_we_sesion (sesion_id),
+        KEY idx_we_tipo (tipo),
+        KEY idx_we_fecha (created_at)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
+    // Seed superadmin ────────────────────────────────────────────
     const bcrypt = require('bcryptjs');
     const [[existing]] = await conn.execute(
       "SELECT id FROM terapeutas WHERE username = 'CRM' LIMIT 1"

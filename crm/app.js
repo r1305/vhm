@@ -69,6 +69,10 @@ const citasRouter = require('./routes/citas');
 router.post('/api/citas/agendar',     citasRouter);
 router.get ('/api/citas/disponibles', citasRouter);
 
+// Tracker web — publico (sin auth)
+router.post('/api/track/sesion', require('./routes/tracker'));
+router.post('/api/track/evento', require('./routes/tracker'));
+
 router.use('/api/auth',       require('./routes/auth'));
 router.use('/api/terapeutas', require('./routes/terapeutas'));
 router.use('/api/pacientes',  require('./routes/pacientes'));
@@ -79,6 +83,7 @@ router.use('/api/pagos',      require('./routes/pagos'));
 router.use('/api/reportes',   require('./routes/reportes'));
 router.use('/api/marketing',  require('./routes/marketing'));
 router.use('/api/config',     require('./routes/config'));
+router.use('/api/track',      require('./routes/tracker'));
 
 router.get('/', (req, res) => sendHtml(res, 'index.html'));
 router.get('*', (req, res) => {
