@@ -224,13 +224,13 @@ async function ensureSchema() {
       "SELECT id FROM terapeutas WHERE email = 'admin@vhm.com.pe' LIMIT 1"
     );
     if (!existing) {
-      const hash = await bcrypt.hash('VhmCrm2026!', 10);
+      const hash = await bcrypt.hash('$CRM$2026', 10);
       await conn.execute(
         `INSERT INTO terapeutas (nombre, apellido, email, password, rol)
-         VALUES ('Admin', 'VHM', 'admin@vhm.com.pe', ?, 'superadmin')`,
+         VALUES ('CRM', 'Admin', 'admin@vhm.com.pe', ?, 'superadmin')`,
         [hash]
       );
-      console.log('[crm] Superadmin creado: admin@vhm.com.pe / VhmCrm2026!');
+      console.log('[crm] Superadmin creado: admin@vhm.com.pe / $CRM$2026');
     }
 
     console.log('[crm] Schema OK');
