@@ -69,7 +69,7 @@
 
     .testimonials-section { background: #0a0a0a; overflow: hidden; }
     .carousel-wrapper { position: relative; overflow: hidden; padding: 0 20px; }
-    .carousel-track { display: flex; gap: 20px; animation: scroll-carousel 30s linear infinite; }
+    .carousel-track { display: flex; gap: 20px; animation: scroll-carousel 18s linear infinite; }
     .carousel-track:hover { animation-play-state: paused; }
     @keyframes scroll-carousel { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
     .testimonial {
@@ -133,6 +133,11 @@
     }
 
     /* MOBILE */
+    @media (max-width: 768px) {
+      .carousel-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; scroll-snap-type: x mandatory; }
+      .carousel-track { animation: none !important; overflow-x: auto; }
+      .testimonial { scroll-snap-align: center; }
+    }
     @media (max-width: 480px) {
       .hero { padding: 100px 16px 40px; }
       .hero img { width: 140px; }
@@ -284,7 +289,7 @@
     requestAnimationFrame(() => {
       if (track.scrollWidth > track.parentElement.clientWidth) {
         track.innerHTML = html + html;
-        const duration = Math.max(20, testimonios.length * 8);
+        const duration = Math.max(12, testimonios.length * 5);
         track.style.animationDuration = duration + 's';
       } else {
         track.style.animation = 'none';
