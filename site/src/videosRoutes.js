@@ -256,8 +256,11 @@ router.post('/:id/like', async (req, res) => {
 router.get('/categorias/admin', authMiddleware, async (req, res) => {
   try {
     const [rows] = await pool.execute(
-      `SELECT c.*, (SELECT COUNT(*) FROM videos v WHERE v.categoria_id = c.id) AS total_videos
-         FROM video_categorias c ORDER BY c.orden ASC, c.nombre ASC`
+      `SELECT c.*, u.nombre AS creado_por_nombre,
+              (SELECT COUNT(*) FROM videos v WHERE v.categoria_id = c.id) AS total_videos
+         FROM video_categorias c
+         LEFT JOIN usuarios u ON c.creado_por = u.id
+         ORDER BY c.orden ASC, c.nombre ASC`
     );
     res.json(rows);
   } catch (err) {
@@ -271,8 +274,8 @@ router.post('/categorias', authMiddleware, requireAdmin, async (req, res) => {
     const { nombre, descripcion, orden, activo } = req.body;
     if (!nombre) return res.status(400).json({ error: 'El nombre es obligatorio' });
     const [result] = await pool.execute(
-      'INSERT INTO video_categorias (nombre, descripcion, orden, activo) VALUES (?, ?, ?, ?)',
-      [nombre, descripcion || null, parseInt(orden) || 1, activo === false || activo === 'false' || activo === '0' ? 0 : 1]
+      'INSERT INTO video_categorias (nombre, descripcion, orden, activo, creado_por) VALUES (?, ?, ?, ?, ?)',
+      [nombre, descripcion || null, parseInt(orden) || 1, activo === false || activo === 'false' || activo === '0' ? 0 : 1, req.user.id]
     );
     res.status(201).json({ id: result.insertId, message: 'Categoría creada' });
   } catch (err) {
@@ -331,7 +334,11 @@ router.get('/admin', authMiddleware, async (req, res) => {
     const totalPages = Math.max(1, Math.ceil(total / limit));
 
     const [rows] = await pool.query(
-      `SELECT v.*, c.nombre AS categoria_nombre FROM videos v LEFT JOIN video_categorias c ON c.id = v.categoria_id WHERE ${where} ORDER BY ${sortCol} ${orderDir} LIMIT ? OFFSET ?`,
+      `SELECT v.*, c.nombre AS categoria_nombre, u.nombre AS creado_por_nombre
+       FROM videos v
+       LEFT JOIN video_categorias c ON c.id = v.categoria_id
+       LEFT JOIN usuarios u ON v.creado_por = u.id
+       WHERE ${where} ORDER BY ${sortCol} ${orderDir} LIMIT ? OFFSET ?`,
       [...params, limit, offset]
     );
     res.json({ data: rows, page, totalPages, total });
@@ -367,8 +374,8 @@ router.post('/', authMiddleware, requireAdmin, upload.single('thumbnail'), async
     const ordenFinal = ordRows[0] ? ordRows[0].siguiente : 1;
 
     const [result] = await pool.execute(
-      `INSERT INTO videos (categoria_id, titulo, subtitulo, descripcion, video_url, thumbnail_url, duracion, orden, activo)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO videos (categoria_id, titulo, subtitulo, descripcion, video_url, thumbnail_url, duracion, orden, activo, creado_por)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         catId,
         media.titulo,
@@ -378,7 +385,8 @@ router.post('/', authMiddleware, requireAdmin, upload.single('thumbnail'), async
         media.thumb,
         media.duracion || null,
         ordenFinal,
-        activo === 'false' || activo === '0' || activo === false ? 0 : 1
+        activo === 'false' || activo === '0' || activo === false ? 0 : 1,
+        req.user.id
       ]
     );
     res.status(201).json({ id: result.insertId, message: 'Video creado' });

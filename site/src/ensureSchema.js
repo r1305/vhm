@@ -102,6 +102,14 @@ async function crearEsquema() {
 
   // Permite link opcional en instalaciones previas.
   await pool.query('ALTER TABLE tribu_eventos MODIFY ubicacion VARCHAR(500) NULL').catch(() => {});
+
+  // ── Agregar columna creado_por a tablas existentes (migración) ──
+  const tablasConCreador = ['testimonios', 'videos', 'video_categorias', 'tribu_eventos'];
+  for (const tabla of tablasConCreador) {
+    await pool.query(`ALTER TABLE \`${tabla}\` ADD COLUMN creado_por INT NULL`).catch(() => {});
+  }
+  // Columna respondido_por en reclamos (quién respondió)
+  await pool.query('ALTER TABLE reclamos ADD COLUMN respondido_por INT NULL').catch(() => {});
 }
 
 // Renumera el campo "orden" de los videos por categoría (según fecha de subida)

@@ -84,7 +84,12 @@ router.put('/config', authMiddleware, requireAdmin, async (req, res) => {
 // Listar todos (admin)
 router.get('/admin', authMiddleware, requireAdmin, async (req, res) => {
   try {
-    const [rows] = await pool.execute('SELECT * FROM testimonios ORDER BY id ASC');
+    const [rows] = await pool.execute(
+      `SELECT t.*, u.nombre AS creado_por_nombre
+       FROM testimonios t
+       LEFT JOIN usuarios u ON t.creado_por = u.id
+       ORDER BY t.id ASC`
+    );
     res.json(rows);
   } catch (err) {
     console.error(err);
@@ -103,8 +108,8 @@ router.post('/', authMiddleware, requireAdmin, upload.single('foto'), async (req
       return res.status(400).json({ error: 'Debe proporcionar al menos un campo (autor, texto o foto)' });
 
     const [result] = await pool.execute(
-      'INSERT INTO testimonios (autor, texto, foto_url, activo) VALUES (?, ?, ?, ?)',
-      [autor || null, texto || null, foto_url, activo === 'true' || activo === '1' ? 1 : 0]
+      'INSERT INTO testimonios (autor, texto, foto_url, activo, creado_por) VALUES (?, ?, ?, ?, ?)',
+      [autor || null, texto || null, foto_url, activo === 'true' || activo === '1' ? 1 : 0, req.user.id]
     );
     res.status(201).json({ id: result.insertId, message: 'Testimonio creado' });
   } catch (err) {
