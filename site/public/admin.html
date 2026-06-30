@@ -200,7 +200,7 @@
         <table>
           <thead>
             <tr>
-              <th>N° Reclamo</th><th>Fecha</th><th>Cliente</th><th>Tipo</th><th>Estado</th><th>Respuesta</th><th>Acciones</th>
+              <th>N° Reclamo</th><th>Fecha</th><th>Cliente</th><th>Tipo</th><th>Estado</th><th>Respuesta</th><th>Respondido por</th><th>Acciones</th>
             </tr>
           </thead>
           <tbody id="reclamosBody"></tbody>
@@ -236,7 +236,7 @@
       <div class="table-wrapper">
         <table>
           <thead>
-            <tr><th>Foto</th><th>Autor</th><th>Texto</th><th>Activo</th><th>Acciones</th></tr>
+            <tr><th>Foto</th><th>Autor</th><th>Texto</th><th>Creado por</th><th>Activo</th><th>Acciones</th></tr>
           </thead>
           <tbody id="testimoniosBody"></tbody>
         </table>
@@ -279,6 +279,7 @@
                 <th onclick="sortVideos('vistas')">Vistas <span id="sortVistas"></span></th>
                 <th onclick="sortVideos('likes')">Likes <span id="sortLikes"></span></th>
                 <th>Activo</th>
+                <th>Creado por</th>
                 <th>Acciones</th>
               </tr>
             </thead>
@@ -299,7 +300,7 @@
         <div class="table-wrapper">
           <table>
             <thead>
-              <tr><th>Nombre</th><th>Descripción</th><th>Videos</th><th>Orden</th><th>Activo</th><th>Acciones</th></tr>
+              <tr><th>Nombre</th><th>Descripción</th><th>Videos</th><th>Orden</th><th>Creado por</th><th>Activo</th><th>Acciones</th></tr>
             </thead>
             <tbody id="categoriasBody"></tbody>
           </table>
@@ -324,7 +325,7 @@
         <div class="table-wrapper">
           <table>
             <thead>
-              <tr><th>Nombre</th><th>Fecha</th><th>Inicio</th><th>Fin</th><th>Lugar</th><th>Activo</th><th>Acciones</th></tr>
+              <tr><th>Nombre</th><th>Fecha</th><th>Inicio</th><th>Fin</th><th>Lugar</th><th>Creado por</th><th>Activo</th><th>Acciones</th></tr>
             </thead>
             <tbody id="eventosBody"></tbody>
           </table>
@@ -749,6 +750,7 @@ async function cargarReclamos() {
         <td>${r.tipo_reclamo}</td>
         <td><span class="badge badge-${r.estado.toLowerCase()}">${r.estado}</span></td>
         <td>${r.respuesta ? '✅' : '⏳'}</td>
+        <td>${r.respondido_por_nombre || '—'}</td>
         <td>
           <button class="btn btn-primary" onclick="verDetalle(${r.id})">Ver</button>
           <a class="btn btn-success" href="${API}/reclamos/${r.id}/pdf" target="_blank" style="text-decoration:none">PDF</a>
@@ -944,6 +946,7 @@ async function cargarTestimonios() {
         <td>${t.foto_url ? `<img src="${t.foto_url}" style="width:40px;height:40px;border-radius:50%;object-fit:cover">` : '-'}</td>
         <td style="color:#c8e6f0">${t.autor}</td>
         <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.texto}</td>
+        <td style="font-size:.8rem;color:#aaa">${t.creado_por_nombre || '—'}</td>
         <td>${t.activo ? '✅' : '❌'}</td>
         <td>
           <button class="btn btn-primary" onclick='editarTestimonio(${JSON.stringify(t)})'>Editar</button>
@@ -1138,6 +1141,7 @@ async function cargarVideos() {
         <td>${v.vistas}</td>
         <td>${v.likes}</td>
         <td>${v.activo ? '✅' : '❌'}</td>
+        <td style="font-size:.8rem;color:#aaa">${escapeHtml(v.creado_por_nombre || '—')}</td>
         <td>
           <button class="btn btn-primary" onclick='editarVideo(${JSON.stringify(v)})'>Editar</button>
           <button class="btn btn-danger" onclick="eliminarVideo(${v.id})">Eliminar</button>
@@ -1270,6 +1274,7 @@ async function cargarCategorias() {
         <td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(c.descripcion || '—')}</td>
         <td>${c.total_videos}</td>
         <td>${c.orden}</td>
+        <td style="font-size:.8rem;color:#aaa">${escapeHtml(c.creado_por_nombre || '—')}</td>
         <td>${c.activo ? '✅' : '❌'}</td>
         <td>
           <button class="btn btn-primary" onclick='editarCategoria(${JSON.stringify(c)})'>Editar</button>
@@ -1364,6 +1369,7 @@ async function cargarEventos() {
         <td>${fmtHoraAdmin(e.hora_inicio)}</td>
         <td>${fmtHoraAdmin(e.hora_fin)}</td>
         <td>${escapeHtml(e.lugar)}</td>
+        <td style="font-size:.8rem;color:#aaa">${escapeHtml(e.creado_por_nombre || '—')}</td>
         <td>${e.activo ? '✅' : '❌'}</td>
         <td>
           <button type="button" class="btn btn-primary" onclick="editarEvento(${e.id})">Editar</button>

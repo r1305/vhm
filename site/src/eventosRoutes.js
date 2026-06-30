@@ -76,8 +76,11 @@ router.get('/', async (req, res) => {
 router.get('/admin', authMiddleware, async (req, res) => {
   try {
     const [rows] = await pool.execute(
-      `SELECT id, nombre, fecha, hora_inicio, hora_fin, lugar, ubicacion, activo, fecha_creacion
-       FROM tribu_eventos ORDER BY fecha DESC, hora_inicio ASC`
+      `SELECT e.id, e.nombre, e.fecha, e.hora_inicio, e.hora_fin, e.lugar, e.ubicacion,
+              e.activo, e.fecha_creacion, u.nombre AS creado_por_nombre
+       FROM tribu_eventos e
+       LEFT JOIN usuarios u ON e.creado_por = u.id
+       ORDER BY e.fecha DESC, e.hora_inicio ASC`
     );
     res.json(rows);
   } catch (err) { res.status(500).json({ error: 'Error al obtener eventos' }); }
@@ -89,9 +92,9 @@ router.post('/', authMiddleware, requireAdmin, async (req, res) => {
     const datos = normalizarBody(req.body);
     if (datos.error) return res.status(400).json({ error: datos.error });
     const [result] = await pool.execute(
-      `INSERT INTO tribu_eventos (nombre, fecha, hora_inicio, hora_fin, lugar, ubicacion, activo)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [datos.nombre, datos.fecha, datos.hora_inicio, datos.hora_fin, datos.lugar, datos.ubicacion, datos.activo]
+      `INSERT INTO tribu_eventos (nombre, fecha, hora_inicio, hora_fin, lugar, ubicacion, activo, creado_por)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [datos.nombre, datos.fecha, datos.hora_inicio, datos.hora_fin, datos.lugar, datos.ubicacion, datos.activo, req.user.id]
     );
     res.status(201).json({ id: result.insertId, message: 'Evento creado' });
   } catch (err) { res.status(500).json({ error: 'Error al crear evento' }); }

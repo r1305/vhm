@@ -326,7 +326,10 @@ router.get('/', authMiddleware, async (req, res) => {
 
     const [[{ total }]] = await pool.query('SELECT COUNT(*) as total FROM reclamos');
     const [rows] = await pool.query(
-      'SELECT * FROM reclamos ORDER BY fecha_registro DESC LIMIT ? OFFSET ?',
+      `SELECT r.*, u.nombre AS respondido_por_nombre
+       FROM reclamos r
+       LEFT JOIN usuarios u ON r.respondido_por = u.id
+       ORDER BY r.fecha_registro DESC LIMIT ? OFFSET ?`,
       [limit, offset]
     );
 
@@ -340,7 +343,13 @@ router.get('/', authMiddleware, async (req, res) => {
 // Obtener reclamo por ID
 router.get('/:id', authMiddleware, async (req, res) => {
   try {
-    const [rows] = await pool.execute('SELECT * FROM reclamos WHERE id = ?', [req.params.id]);
+    const [rows] = await pool.execute(
+      `SELECT r.*, u.nombre AS respondido_por_nombre
+       FROM reclamos r
+       LEFT JOIN usuarios u ON r.respondido_por = u.id
+       WHERE r.id = ?`,
+      [req.params.id]
+    );
     if (rows.length === 0) return res.status(404).json({ error: 'Reclamo no encontrado' });
     res.json(rows[0]);
   } catch (err) {
@@ -366,8 +375,8 @@ router.post('/:id/responder', authMiddleware, async (req, res) => {
     }
 
     await pool.execute(
-      'UPDATE reclamos SET respuesta = ?, estado = ?, fecha_respuesta = NOW() WHERE id = ?',
-      [respuesta, 'RESUELTO', req.params.id]
+      'UPDATE reclamos SET respuesta = ?, estado = ?, fecha_respuesta = NOW(), respondido_por = ? WHERE id = ?',
+      [respuesta, 'RESUELTO', req.user.id, req.params.id]
     );
 
     // Intentar enviar email
