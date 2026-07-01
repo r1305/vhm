@@ -340,6 +340,7 @@
         <button class="active" onclick="switchConfigTab('email')">📧 Email SMTP</button>
         <button onclick="switchConfigTab('pixel')">📊 Pixel Meta</button>
         <button onclick="switchConfigTab('whatsapp')">💬 WhatsApp</button>
+        <button onclick="switchConfigTab('redes')">🌐 Redes Sociales</button>
       </div>
       
       <!-- SUB-PANEL EMAIL -->
@@ -445,6 +446,34 @@
             <button class="btn btn-primary" onclick="guardarWhatsappConfig()" style="padding:10px 20px">Guardar Configuración</button>
           </div>
           <div id="waMsg" style="margin-top:12px;padding:10px;border-radius:4px;display:none;font-size:.85rem"></div>
+        </div>
+      </div>
+
+      <!-- SUB-PANEL REDES SOCIALES -->
+      <div class="config-subpanel" id="configRedes">
+        <div style="max-width:560px">
+          <h3 style="color:#c8e6f0;margin-bottom:20px">🌐 Redes Sociales</h3>
+          <p style="color:#888;font-size:.85rem;margin-bottom:16px">Ingresa los links de tus redes sociales. Solo se mostrarán en la landing las que tengan un enlace.</p>
+          <div class="form-group-cfg">
+            <label>📷 Instagram</label>
+            <input type="url" id="redesInstagram" placeholder="https://www.instagram.com/tu_usuario">
+          </div>
+          <div class="form-group-cfg">
+            <label>👍 Facebook</label>
+            <input type="url" id="redesFacebook" placeholder="https://www.facebook.com/tu_pagina">
+          </div>
+          <div class="form-group-cfg">
+            <label>▶️ YouTube</label>
+            <input type="url" id="redesYoutube" placeholder="https://www.youtube.com/@tu_canal">
+          </div>
+          <div class="form-group-cfg">
+            <label>🎵 TikTok</label>
+            <input type="url" id="redesTiktok" placeholder="https://www.tiktok.com/@tu_usuario">
+          </div>
+          <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap">
+            <button class="btn btn-primary" onclick="guardarRedesConfig()" style="padding:10px 20px">Guardar Redes</button>
+          </div>
+          <div id="redesMsg" style="margin-top:12px;padding:10px;border-radius:4px;display:none;font-size:.85rem"></div>
         </div>
       </div>
     </div>
@@ -734,6 +763,7 @@ function switchConfigTab(subtab) {
   document.getElementById(`config${subtab.charAt(0).toUpperCase() + subtab.slice(1)}`).classList.add('active');
   if (subtab === 'pixel') cargarPixelConfig();
   if (subtab === 'whatsapp') cargarWhatsappConfig();
+  if (subtab === 'redes') cargarRedesConfig();
 }
 
 async function cargarReclamos() {
@@ -1701,6 +1731,32 @@ document.getElementById('videoCategoryFilter').addEventListener('change', () => 
   videoCurrentPage = 1;
   cargarVideos();
 });
+
+// REDES SOCIALES
+async function cargarRedesConfig() {
+  try {
+    const res = await fetch(`${API}/config-redes`, { headers: headers() });
+    const d = await res.json();
+    document.getElementById('redesInstagram').value = d.instagram || '';
+    document.getElementById('redesFacebook').value = d.facebook || '';
+    document.getElementById('redesYoutube').value = d.youtube || '';
+    document.getElementById('redesTiktok').value = d.tiktok || '';
+  } catch { toast('Error al cargar redes sociales', 'error'); }
+}
+
+async function guardarRedesConfig() {
+  const body = {
+    instagram: document.getElementById('redesInstagram').value.trim(),
+    facebook: document.getElementById('redesFacebook').value.trim(),
+    youtube: document.getElementById('redesYoutube').value.trim(),
+    tiktok: document.getElementById('redesTiktok').value.trim(),
+  };
+  try {
+    const res = await fetch(`${API}/config-redes`, { method: 'PUT', headers: headers(), body: JSON.stringify(body) });
+    const d = await res.json();
+    toast(res.ok ? d.message : (d.error || 'Error'), res.ok ? 'success' : 'error');
+  } catch { toast('Error de conexion', 'error'); }
+}
 
 async function inicializarFiltroCategorias() {
   try {
