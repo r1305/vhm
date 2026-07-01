@@ -23,7 +23,7 @@ if (typeof PhusionPassenger !== 'undefined') {
   PhusionPassenger.configure({ autoInstall: false });
   shell.listen('passenger');
 } else if (require.main === module) {
-  const PORT = process.env.PORT || 3000;
+  const PORT = process.env.PORT || 3001;
   shell.listen(PORT, () => {
     console.log(`[vhm] http://localhost:${PORT}${MOUNT_PATH}/`);
   });

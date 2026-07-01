@@ -166,12 +166,24 @@ app.get('/api/whatsapp-config', async (req, res) => {
   }
 });
 
+// Ruta pública para obtener redes sociales
+app.get('/api/redes', async (req, res) => {
+  try {
+    const pool = require('./db');
+    const [rows] = await pool.execute('SELECT instagram, facebook, youtube, tiktok FROM config_redes WHERE id = 1');
+    res.json(rows[0] || {});
+  } catch (err) {
+    res.json({});
+  }
+});
+
 app.use('/api/auth', authRoutes);
 app.use('/api/reclamos', reclamosRoutes);
 app.use('/api/usuarios', usuariosRoutes);
 app.use('/api/config-email', configEmailRoutes);
 app.use('/api/config-pixel', configPixelRoutes);
 app.use('/api/config-whatsapp', configWhatsappRoutes);
+app.use('/api/config-redes', require('./configRedesRoutes'));
 app.use('/api/testimonios', testimoniosRoutes);
 app.use('/api/videos', videosRoutes);
 app.use('/api/clara', claraRoutes);
