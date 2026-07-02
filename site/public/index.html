@@ -259,6 +259,25 @@
 </footer>
 
 <noscript><img height="1" width="1" style="display:none" id="fb-pixel-noscript" /></noscript>
+
+<script>
+// Cargar verificación de dominio de Facebook (meta tag)
+(async function() {
+  try {
+    const response = await fetch((window.__APP_BASE__ || '') + '/api/config-facebook-verification/public');
+    const data = await response.json();
+    if (data.value) {
+      const meta = document.createElement('meta');
+      meta.name = 'facebook-domain-verification';
+      meta.content = data.value;
+      document.head.appendChild(meta);
+    }
+  } catch (e) {
+    console.log('No se pudo cargar la verificación de dominio de Facebook');
+  }
+})();
+</script>
+
 <script>
 // Cargar testimonios
 (async function() {
