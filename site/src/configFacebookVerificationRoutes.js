@@ -3,12 +3,26 @@ const pool = require('./db');
 const { authMiddleware } = require('./auth');
 
 const router = Router();
-router.use(authMiddleware);
 
 function requireAdmin(req, res, next) {
   if (req.user && (req.user.rol === 'SUPER_ADMIN' || req.user.rol === 'ADMIN')) return next();
   return res.status(403).json({ error: 'Acceso restringido a administradores' });
 }
+
+// RUTA PÚBLICA - debe ir ANTES del authMiddleware
+router.get('/public', async (req, res) => {
+  try {
+    const [rows] = await pool.execute(
+      'SELECT facebook_domain_verification FROM config_facebook_verification WHERE id = 1 AND facebook_domain_verification IS NOT NULL AND facebook_domain_verification != \'\''
+    );
+    res.json({ value: rows[0]?.facebook_domain_verification || null });
+  } catch (err) {
+    res.json({ value: null });
+  }
+});
+
+// Middleware de autenticación para las rutas protegidas
+router.use(authMiddleware);
 
 // GET - Obtener configuración
 router.get('/', requireAdmin, async (req, res) => {
@@ -53,18 +67,6 @@ router.put('/', requireAdmin, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error al guardar verificación de Facebook' });
-  }
-});
-
-// RUTA PÚBLICA - para que la landing lea el valor sin autenticación
-router.get('/public', async (req, res) => {
-  try {
-    const [rows] = await pool.execute(
-      'SELECT facebook_domain_verification FROM config_facebook_verification WHERE id = 1 AND facebook_domain_verification IS NOT NULL AND facebook_domain_verification != \'\''
-    );
-    res.json({ value: rows[0]?.facebook_domain_verification || null });
-  } catch (err) {
-    res.json({ value: null });
   }
 });
 
