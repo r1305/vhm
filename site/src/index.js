@@ -15,6 +15,7 @@ const testimoniosRoutes = require('./testimoniosRoutes');
 const videosRoutes = require('./videosRoutes');
 const claraRoutes = require('./claraRoutes');
 const eventosRoutes = require('./eventosRoutes');
+const configFacebookVerificationRoutes = require('./configFacebookVerificationRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -188,6 +189,7 @@ app.use('/api/testimonios', testimoniosRoutes);
 app.use('/api/videos', videosRoutes);
 app.use('/api/clara', claraRoutes);
 app.use('/api/eventos', eventosRoutes);
+app.use('/api/config-facebook-verification', configFacebookVerificationRoutes);
 
 // Auto-migración: crea las tablas del módulo de videos si faltan.
 require('./ensureSchema').ensureVideoSchema()

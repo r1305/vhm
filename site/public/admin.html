@@ -888,6 +888,7 @@
         <button onclick="switchConfigTab('pixel')">📊 Pixel Meta</button>
         <button onclick="switchConfigTab('whatsapp')">💬 WhatsApp</button>
         <button onclick="switchConfigTab('redes')">🌐 Redes Sociales</button>
+        <button onclick="switchConfigTab('facebook')">🔗 Facebook</button>
       </div>
 
       <!-- Email -->
@@ -1023,6 +1024,33 @@
               <button class="btn btn-primary" onclick="guardarRedesConfig()">💾 Guardar redes</button>
             </div>
             <div id="redesMsg" class="msg-box"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Facebook Domain Verification -->
+      <div class="sub-panel" id="configFacebook">
+        <div class="config-grid">
+          <div class="config-section">
+            <h3>🔗 Verificación de Dominio (Meta)</h3>
+            <div class="form-group">
+              <label>Meta Domain Verification ID</label>
+              <input type="text" id="fbDomainVerification" placeholder="334wyp3xdemukzfa4bjajet3wbw4w6">
+              <div class="field-hint">Código de verificación de dominio proporcionado por Meta (Facebook/Instagram). Se inyecta como <code>&lt;meta name="facebook-domain-verification"&gt;</code> en el landing.</div>
+            </div>
+            <div style="font-size:.8rem;color:#aaa" id="fbVerificationFechaActualizacion"></div>
+            <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap">
+              <button class="btn btn-primary" onclick="guardarFacebookVerificationConfig()">💾 Guardar</button>
+            </div>
+            <div id="fbVerificationMsg" class="msg-box"></div>
+            <div class="info-box" style="margin-top:20px">
+              <h4>ℹ️ ¿Cómo obtener este código?</h4>
+              <p>1. Ve al <a href="https://developers.facebook.com" target="_blank" rel="noopener noreferrer">Panel de Desarrolladores de Meta</a>.</p>
+              <p>2. Selecciona tu aplicación.</p>
+              <p>3. Ve a <strong>Configuración → Básico</strong>.</p>
+              <p>4. En "Verificación de dominio", agrega tu dominio y copia el código meta.</p>
+              <p>5. Pega solo el valor del <code>content</code> en el campo de arriba.</p>
+            </div>
           </div>
         </div>
       </div>
@@ -2251,6 +2279,31 @@ async function guardarRedesConfig() {
   } catch { toast('Error de conexión', 'error'); }
 }
 
+// ==================== CONFIG FACEBOOK VERIFICATION ====================
+async function cargarFacebookVerificationConfig() {
+  try {
+    const res = await fetch(`${API}/config-facebook-verification`, { headers: headers() });
+    const d = await res.json();
+    document.getElementById('fbDomainVerification').value = d.facebook_domain_verification || '';
+    if (d.fecha_actualizacion) document.getElementById('fbVerificationFechaActualizacion').textContent = `Última actualización: ${new Date(d.fecha_actualizacion).toLocaleString('es-PE')}`;
+  } catch { mostrarMsgFbVerification('Error al cargar', false); }
+}
+
+async function guardarFacebookVerificationConfig() {
+  const body = { facebook_domain_verification: document.getElementById('fbDomainVerification').value.trim() };
+  try {
+    const res = await fetch(`${API}/config-facebook-verification`, { method:'PUT', headers: headers(), body: JSON.stringify(body) });
+    const d = await res.json();
+    mostrarMsgFbVerification(res.ok ? d.message : d.error, res.ok);
+    if (res.ok) cargarFacebookVerificationConfig();
+  } catch { mostrarMsgFbVerification('Error de conexión', false); }
+}
+
+function mostrarMsgFbVerification(texto, ok) {
+  const el = document.getElementById('fbVerificationMsg');
+  el.textContent = texto; el.className = `msg-box ${ok ? 'success' : 'error'}`;
+}
+
 // ==================== CONFIG SUB-TABS ====================
 function switchConfigTab(tab) {
   document.querySelectorAll('#panelConfig .sub-tabs button').forEach(b => b.classList.remove('active'));
@@ -2260,6 +2313,7 @@ function switchConfigTab(tab) {
   if (tab === 'pixel') cargarPixelConfig();
   if (tab === 'whatsapp') cargarWhatsappConfig();
   if (tab === 'redes') cargarRedesConfig();
+  if (tab === 'facebook') cargarFacebookVerificationConfig();
 }
 
 // ==================== VIDEO SORT ====================
