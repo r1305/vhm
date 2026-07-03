@@ -104,6 +104,11 @@
     return `${p.nombre || ''} ${p.apellido || ''}`.trim();
   }
 
+  function isAdmin() {
+    const rol = _user?.rol;
+    return rol === 'superadmin' || rol === 'recepcion';
+  }
+
   /* ── Modal ───────────────────────────────────────── */
   let _modalSave = null;
 
@@ -185,9 +190,66 @@
     reportes:        'Reportes',
   };
 
+  // ==================== ROUTER (Hash-based) ====================
+  const ROUTE_VIEWS = {
+    '': 'dashboard',           // default
+    'dashboard': 'dashboard',
+    'agenda': 'agenda',
+    'pacientes': 'pacientes',
+    'leads': 'leads',
+    'historial': 'historial',
+    'consentimientos': 'consentimientos',
+    'pagos': 'pagos',
+    'espera': 'espera',
+    'marketing': 'marketing',
+    'asignacion': 'asignacion',
+    'integraciones': 'integraciones',
+    'analitica': 'analitica',
+    'terapeutas': 'terapeutas',
+    'reportes': 'reportes',
+  };
+
+  // Vistas que requieren permisos de admin (superadmin o recepcion)
+  const ADMIN_ONLY_VIEWS = ['marketing', 'asignacion', 'integraciones', 'analitica', 'terapeutas', 'reportes'];
+
+  function navigateTo(view) {
+    // Validar permisos
+    if (ADMIN_ONLY_VIEWS.includes(view) && !isAdmin()) {
+      toast('No tienes permisos para acceder a esta sección', 'danger');
+      return false;
+    }
+
+    const hash = `#${view}`;
+    if (window.location.hash !== hash) {
+      window.location.hash = hash;
+    }
+    return true;
+  }
+
+  function handleHashChange() {
+    const hash = window.location.hash.slice(1); // quita el #
+    const view = ROUTE_VIEWS[hash] || 'dashboard';
+
+    // Si la vista requiere permisos y no los tiene, redirigir al default
+    if (ADMIN_ONLY_VIEWS.includes(view) && !isAdmin()) {
+      window.location.hash = '#dashboard';
+      return;
+    }
+
+    switchView(view, false); // false = no actualizar hash (ya lo tenemos)
+  }
+
+  function initRouter() {
+    // Escuchar cambios de hash
+    window.addEventListener('hashchange', handleHashChange);
+
+    // Manejar hash inicial al cargar
+    handleHashChange();
+  }
+
   const viewLoaders = {};   // registrados por cada módulo
 
-  function switchView(name) {
+  function switchView(name, updateHash = true) {
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     const panel = document.getElementById(`view-${name}`);
@@ -200,7 +262,7 @@
   }
 
   document.querySelectorAll('.nav-item[data-view]').forEach(btn => {
-    btn.addEventListener('click', () => switchView(btn.dataset.view));
+    btn.addEventListener('click', () => navigateTo(btn.dataset.view));
   });
 
   /* ── Login ───────────────────────────────────────── */
@@ -232,6 +294,7 @@
   /* ── Logout ──────────────────────────────────────── */
   function logout() {
     clearToken(); _user = null;
+    window.location.hash = '#dashboard'; // resetear hash
     document.getElementById('appPage').style.display = 'none';
     document.getElementById('loginPage').style.display = 'flex';
     document.getElementById('loginPassword').value = '';
@@ -250,7 +313,7 @@
     document.querySelectorAll('.nav-admin').forEach(el => {
       el.style.display = isAdmin ? 'flex' : 'none';
     });
-    switchView('dashboard');
+    initRouter();
   }
 
   /* ── Auto-login si hay token ─────────────────────── */
@@ -266,7 +329,7 @@
   /* ── Exponer globals para los demás módulos ──────── */
   window.CRM = {
     api, toast, esc, fmtDate, fmtMoney, badge, fullName, openModal, closeModal,
-    switchView, viewLoaders,
+    switchView, viewLoaders, navigateTo,
     ESTADO_PACIENTE, ESTADO_LEAD, FUENTE_ICON, ESTADO_CITA,
     getUser: () => _user,
     isAdmin: () => ['superadmin', 'recepcion'].includes(_user?.rol),
