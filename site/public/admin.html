@@ -632,22 +632,22 @@
   </div>
   <nav class="sidebar-nav">
     <div class="nav-label">Principal</div>
-    <button class="nav-item active" data-panel="reclamos" onclick="switchPanel('reclamos')">
+    <button class="nav-item active" data-panel="reclamos" onclick="navigateTo('reclamos')">
       <span class="nav-icon">📋</span> Reclamos
       <span class="nav-badge" id="reclamosBadge">0</span>
     </button>
-    <button class="nav-item" data-panel="testimonios" onclick="switchPanel('testimonios')" style="display:none" id="navTestimonios">
+    <button class="nav-item" data-panel="testimonios" onclick="navigateTo('testimonios')" style="display:none" id="navTestimonios">
       <span class="nav-icon">⭐</span> Testimonios
     </button>
-    <button class="nav-item" data-panel="videos" onclick="switchPanel('videos')" id="navVideos">
+    <button class="nav-item" data-panel="videos" onclick="navigateTo('videos')" id="navVideos">
       <span class="nav-icon">🎬</span> La Tribu
     </button>
 
     <div class="nav-label">Configuración</div>
-    <button class="nav-item" data-panel="usuarios" onclick="switchPanel('usuarios')">
+    <button class="nav-item" data-panel="usuarios" onclick="navigateTo('usuarios')">
       <span class="nav-icon">👥</span> Usuarios
     </button>
-    <button class="nav-item" data-panel="config" onclick="switchPanel('config')" style="display:none" id="navConfig">
+    <button class="nav-item" data-panel="config" onclick="navigateTo('config')" style="display:none" id="navConfig">
       <span class="nav-icon">⚙️</span> Ajustes
     </button>
   </nav>
@@ -1308,6 +1308,61 @@ const PANEL_NAMES = {
   config: '⚙️ Configuración'
 };
 
+// ==================== ROUTER (Hash-based) ====================
+const ROUTE_PANELS = {
+  '': 'reclamos',           // default
+  'reclamos': 'reclamos',
+  'testimonios': 'testimonios',
+  'videos': 'videos',
+  'usuarios': 'usuarios',
+  'config': 'config'
+};
+
+// Paneles que requieren permisos de admin
+const ADMIN_ONLY_PANELS = ['usuarios', 'config', 'testimonios'];
+
+// Paneles que requieren superadmin
+const SUPERADMIN_ONLY_PANELS = ['config']; // config tiene sub-tabs de admin
+
+function navigateTo(panel) {
+  // Validar permisos
+  if (ADMIN_ONLY_PANELS.includes(panel) && !isAdmin()) {
+    toast('No tienes permisos para acceder a esta sección', 'error');
+    return false;
+  }
+
+  const hash = `#${panel}`;
+  if (window.location.hash !== hash) {
+    window.location.hash = hash;
+  }
+  return true;
+}
+
+function handleHashChange() {
+  const hash = window.location.hash.slice(1); // quita el #
+  const panel = ROUTE_PANELS[hash] || 'reclamos';
+
+  // Si el panel requiere permisos y no los tiene, redirigir al default
+  if (ADMIN_ONLY_PANELS.includes(panel) && !isAdmin()) {
+    window.location.hash = '#reclamos';
+    return;
+  }
+  if (SUPERADMIN_ONLY_PANELS.includes(panel) && !isSuperAdmin()) {
+    window.location.hash = '#reclamos';
+    return;
+  }
+
+  switchPanel(panel, false); // false = no actualizar hash (ya lo tenemos)
+}
+
+function initRouter() {
+  // Escuchar cambios de hash
+  window.addEventListener('hashchange', handleHashChange);
+
+  // Manejar hash inicial al cargar
+  handleHashChange();
+}
+
 // ==================== THEME ====================
 function applyTheme(dark) {
   document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
@@ -1351,7 +1406,7 @@ function closeSidebar() {
 }
 
 // ==================== PANEL SWITCHING ====================
-function switchPanel(panel) {
+function switchPanel(panel, updateHash = true) {
   // sidebar
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.querySelector(`.nav-item[data-panel="${panel}"]`).classList.add('active');
@@ -1361,6 +1416,11 @@ function switchPanel(panel) {
   // title
   document.getElementById('pageTitle').textContent = PANEL_NAMES[panel] || panel;
   closeSidebar();
+
+  // Actualizar URL hash si corresponde
+  if (updateHash) {
+    window.location.hash = `#${panel}`;
+  }
 
   // load
   if (panel === 'reclamos') cargarReclamos();
@@ -1427,11 +1487,12 @@ function initAdmin() {
     document.getElementById('navConfig').style.display = 'block';
     document.getElementById('navTestimonios').style.display = 'block';
   }
-  cargarReclamos();
+  initRouter();
 }
 
 function logout() {
   localStorage.removeItem('token'); localStorage.removeItem('user'); token = null;
+  window.location.hash = '#reclamos'; // resetear hash
   document.getElementById('loginSection').style.display = 'flex';
   document.getElementById('sidebar').style.display = 'none';
   document.getElementById('adminSection').style.display = 'none';
