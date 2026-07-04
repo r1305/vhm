@@ -39,7 +39,7 @@ app.use((req, res, next) => {
   res.setHeader('X-XSS-Protection', '1; mode=block');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; connect-src 'self'; frame-ancestors 'none'");
+  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; connect-src 'self'; frame-ancestors 'none'");
   if (process.env.NODE_ENV === 'production') {
     res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   }
@@ -119,8 +119,26 @@ app.get('/__app_base__.js', (req, res) => {
 
 app.use(express.static(path.join(__dirname, '../public'), { maxAge: '1d', index: false }));
 
+function sendVueAdmin(res) {
+  const base = ((res.locals && res.locals.basePath) || process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
+  const filePath = path.join(__dirname, '../public/admin/index.html');
+  let html = fs.readFileSync(filePath, 'utf8');
+  const inlineBase = `<script>window.__APP_BASE__=${JSON.stringify(base)};</script>`;
+  html = html.replace(/(<head[^>]*>)/i, `$1\n  ${inlineBase}`);
+  // Ensure relative assets resolve from the admin directory
+  html = html.replace(/(<head[^>]*>)/i, `$1\n  <base href="./">`);
+  if (base) {
+    html = rewriteRootPaths(html, base);
+  }
+  res.type('html').send(html);
+}
+
 app.get('/admin', (req, res) => {
-  sendPublicHtml(res, 'admin.html');
+  // Trailing slash so relative assets resolve correctly
+  if (!req.path.endsWith('/')) {
+    return res.redirect(301, req.originalUrl + '/');
+  }
+  sendVueAdmin(res);
 });
 
 app.get('/consulta', (req, res) => {
