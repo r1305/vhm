@@ -240,6 +240,35 @@ router.post('/:id/like', async (req, res) => {
    RUTAS ADMIN (Super Admin)
    ========================================================= */
 
+// --- Estadísticas / dashboard ---
+router.get('/stats', authMiddleware, async (req, res) => {
+  try {
+    let where = '1=1';
+    const params = [];
+    const { fecha_desde, fecha_hasta } = req.query;
+    if (fecha_desde) { where += ' AND v.fecha_creacion >= ?'; params.push(fecha_desde); }
+    if (fecha_hasta) { where += ' AND v.fecha_creacion <= ?'; params.push(fecha_hasta + ' 23:59:59'); }
+    const [rows] = await pool.query(
+      `SELECT v.id, v.titulo, v.subtitulo, v.vistas, v.likes, v.fecha_creacion,
+              c.nombre AS categoria_nombre
+         FROM videos v
+         LEFT JOIN video_categorias c ON c.id = v.categoria_id
+        WHERE ${where}
+        ORDER BY v.vistas DESC`,
+      params
+    );
+    const totalVideos = rows.length;
+    const totalViews = rows.reduce((s, r) => s + (r.vistas || 0), 0);
+    const totalLikes = rows.reduce((s, r) => s + (r.likes || 0), 0);
+    const topByViews = rows.slice(0, 10);
+    const topByLikes = [...rows].sort((a, b) => (b.likes || 0) - (a.likes || 0)).slice(0, 10);
+    res.json({ totalVideos, totalViews, totalLikes, topByViews, topByLikes, fechaDesde: fecha_desde || null, fechaHasta: fecha_hasta || null });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al obtener estadísticas' });
+  }
+});
+
 // --- Categorías (admin) ---
 router.get('/categorias/admin', authMiddleware, async (req, res) => {
   try {
