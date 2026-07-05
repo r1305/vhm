@@ -18,7 +18,7 @@ const eventosRoutes = require('./eventosRoutes');
 const configFacebookVerificationRoutes = require('./configFacebookVerificationRoutes');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 
 app.set('trust proxy', 1);
 
@@ -73,14 +73,12 @@ app.use((req, res, next) => {
     const token = generateCsrfToken();
     res.cookie('csrf_token', token, { httpOnly: false, sameSite: 'strict', path: BASE_PATH || '/' });
   }
-  // Validate CSRF on state-changing methods (skip public POST to reclamos and clara chat)
+  // Validate CSRF on state-changing methods (skip public POST endpoints)
   if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {
-    const isPublicEndpoint = req.path.includes('/api/reclamos') && !req.path.includes('/responder') && !req.path.includes('/reenviar')
-      && req.method === 'POST' && !req.path.includes('/:id');
-    const isClaraChat = req.path.includes('/api/clara/chat');
-    const isAuthLogin = req.path.includes('/api/auth/login');
-    const isPublicVideoAction = req.path.includes('/api/videos/') && (req.path.includes('/vista') || req.path.includes('/like'));
-    if (!isPublicEndpoint && !isClaraChat && !isAuthLogin && !isPublicVideoAction) {
+    const publicPostPaths = ['/api/reclamos', '/api/clara/chat', '/api/auth/login'];
+    const isPublicPost = req.method === 'POST' && publicPostPaths.some(p => req.path === p);
+    const isPublicVideoAction = req.method === 'POST' && req.path.startsWith('/api/videos/') && (req.path.endsWith('/vista') || req.path.endsWith('/like'));
+    if (!isPublicPost && !isPublicVideoAction) {
       const headerToken = req.headers['x-csrf-token'] || req.headers['csrf-token'];
       const cookieToken = req.cookies?.csrf_token;
       if (!validateCsrfToken(headerToken) || !validateCsrfToken(cookieToken) || headerToken !== cookieToken) {
