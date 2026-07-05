@@ -209,14 +209,25 @@ app.use('/api/clara', claraRoutes);
 app.use('/api/eventos', eventosRoutes);
 app.use('/api/config-facebook-verification', configFacebookVerificationRoutes);
 
-// Auto-migración: crea las tablas del módulo de videos si faltan.
-require('./ensureSchema').ensureVideoSchema()
-  .catch((err) => console.error('[vhm] No se pudo asegurar el esquema de videos:', err.message));
+// Error handler global
+app.use((err, req, res, next) => {
+  console.error('[vhm] Error no capturado:', err);
+  res.status(500).json({ error: 'Error interno del servidor' });
+});
 
-if (require.main === module) {
-  app.listen(PORT, () => {
-    console.log(`Servidor corriendo en http://localhost:${PORT}`);
-  });
+async function main() {
+  try {
+    await require('./ensureSchema').ensureVideoSchema();
+  } catch (err) {
+    console.error('[vhm] No se pudo asegurar el esquema de videos:', err.message);
+  }
+  if (require.main === module) {
+    app.listen(PORT, () => {
+      console.log(`Servidor corriendo en http://localhost:${PORT}`);
+    });
+  }
 }
+
+main();
 
 module.exports = app;
