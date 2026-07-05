@@ -5,7 +5,7 @@ const crypto = require('crypto');
 const multer = require('multer');
 const pool = require('./db');
 const { authMiddleware } = require('./auth');
-const { ensureVideoSchema, LANDING_INTRO_DEFAULT, LANDING_PACTO_DEFAULT } = require('./ensureSchema');
+const { LANDING_INTRO_DEFAULT, LANDING_PACTO_DEFAULT } = require('./ensureSchema');
 
 const router = Router();
 
@@ -13,18 +13,6 @@ function requireAdmin(req, res, next) {
   if (req.user && (req.user.rol === 'SUPER_ADMIN' || req.user.rol === 'ADMIN')) return next();
   return res.status(403).json({ error: 'Acceso restringido a administradores' });
 }
-
-// Garantiza que las tablas existan antes de atender cualquier ruta.
-// Evita errores 500 por carrera al iniciar (auto-migración diferida).
-router.use(async (req, res, next) => {
-  try {
-    await ensureVideoSchema();
-    next();
-  } catch (err) {
-    console.error('[vhm] Esquema de videos no disponible:', err.message);
-    res.status(503).json({ error: 'El servicio se está inicializando, intenta de nuevo en unos segundos.' });
-  }
-});
 
 // --- Subida de miniaturas con nombres aleatorios seguros ---
 const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
