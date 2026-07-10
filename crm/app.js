@@ -123,14 +123,15 @@ async function loadConfigFromDB() {
 
 ensureSchema()
   .then(() => loadConfigFromDB())
-  .catch(err => console.error('[crm] Schema error:', err.message));
-
-if (typeof PhusionPassenger !== 'undefined') {
-  PhusionPassenger.configure({ autoInstall: false });
-  app.listen('passenger');
-} else if (require.main === module) {
-  const PORT = process.env.PORT || 3001;
-  app.listen(PORT, () => console.log(`[vhm-crm] http://localhost:${PORT}${BASE}/`));
-}
+  .then(() => {
+    if (typeof PhusionPassenger !== 'undefined') {
+      PhusionPassenger.configure({ autoInstall: false });
+      app.listen('passenger');
+    } else if (require.main === module) {
+      const PORT = process.env.PORT || 3001;
+      app.listen(PORT, () => console.log(`[vhm-crm] http://localhost:${PORT}${BASE}/`));
+    }
+  })
+  .catch(err => console.error('[crm] Init error:', err.message));
 
 module.exports = app;
