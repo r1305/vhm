@@ -1,6 +1,10 @@
 const jwt = require('jsonwebtoken');
 
-const SECRET = process.env.JWT_SECRET || 'crm_dev_secret_change_me';
+const SECRET = process.env.JWT_SECRET;
+if (!SECRET) {
+  console.error('[crm/auth] JWT_SECRET no está configurado. Define JWT_SECRET en .env');
+  if (process.env.NODE_ENV === 'production') process.exit(1);
+}
 
 function signToken(payload) {
   return jwt.sign(payload, SECRET, { expiresIn: '10h' });

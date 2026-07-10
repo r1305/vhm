@@ -305,13 +305,26 @@ async function ensureSchema() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
 
+    // Índices adicionales para consultas frecuentes
+    const indexes = [
+      'CREATE INDEX IF NOT EXISTS idx_leads_created ON leads(created_at)',
+      'CREATE INDEX IF NOT EXISTS idx_leads_fuente ON leads(fuente)',
+      'CREATE INDEX IF NOT EXISTS idx_citas_fecha ON citas(fecha)',
+      'CREATE INDEX IF NOT EXISTS idx_citas_terapeuta ON citas(terapeuta_id)',
+      'CREATE INDEX IF NOT EXISTS idx_pacientes_terapeuta ON pacientes(terapeuta_id)',
+      'CREATE INDEX IF NOT EXISTS idx_pacientes_estado ON pacientes(estado)',
+    ];
+    for (const sql of indexes) {
+      try { await conn.execute(sql); } catch (_) {}
+    }
+
     // Seed superadmin ────────────────────────────────────────────
     const bcrypt = require('bcryptjs');
     const [[existing]] = await conn.execute(
       "SELECT id FROM terapeutas WHERE username = 'CRM' LIMIT 1"
     );
     if (!existing) {
-      const hash = await bcrypt.hash('$CRM$2026$', 10);
+      const hash = await bcrypt.hash('$CRM$2026$', 12);
       await conn.execute(
         `INSERT INTO terapeutas (nombre, apellido, username, email, password, rol)
          VALUES ('CRM', 'Admin', 'CRM', 'admin@vhm.com.pe', ?, 'superadmin')`,

@@ -173,8 +173,18 @@ router.post('/webhook/meta', async (req, res) => {
   }
 });
 
+function verifyTikTokSignature(req) {
+  const signature = req.headers['x-tiktok-webhook-signature'];
+  if (!signature || !process.env.TIKTOK_APP_SECRET) return false;
+  const expected = require('crypto').createHmac('sha256', process.env.TIKTOK_APP_SECRET)
+    .update(JSON.stringify(req.body)).digest('hex');
+  try { return require('crypto').timingSafeEqual(Buffer.from(signature), Buffer.from(expected)); }
+  catch { return false; }
+}
+
 router.post('/webhook/tiktok', async (req, res) => {
   res.sendStatus(200);
+  if (!verifyTikTokSignature(req)) return;
   const events = Array.isArray(req.body) ? req.body : [req.body];
   for (const ev of events) {
     if (ev.type !== 'LEAD_SUBMITTED') continue;
