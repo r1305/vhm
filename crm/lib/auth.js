@@ -1,10 +1,9 @@
 const jwt = require('jsonwebtoken');
 
-const SECRET = process.env.JWT_SECRET;
-if (!SECRET) {
-  console.error('[crm/auth] JWT_SECRET no está configurado. Define JWT_SECRET en .env');
-  if (process.env.NODE_ENV === 'production') process.exit(1);
-}
+const SECRET = process.env.JWT_SECRET || (() => {
+  console.warn('[crm/auth] ⚠️ JWT_SECRET no configurado — usando fallback inseguro. Define JWT_SECRET en .env');
+  return 'crm_dev_secret_change_me';
+})();
 
 function signToken(payload) {
   return jwt.sign(payload, SECRET, { expiresIn: '10h' });
