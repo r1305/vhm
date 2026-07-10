@@ -325,17 +325,6 @@
   }
 })();
 
-// Actualizar noscript del pixel si está disponible
-(async function() {
-  try {
-    const response = await fetch((window.__APP_BASE__ || '') + '/api/pixel-config');
-    const config = await response.json();
-    if (config.pixel_id && config.activo) {
-      document.getElementById('fb-pixel-noscript').src = `https://www.facebook.com/tr?id=${config.pixel_id}&ev=PageView&noscript=1`;
-    }
-  } catch (e) {}
-})();
-
 // Botón flotante de WhatsApp
 (async function() {
   try {
