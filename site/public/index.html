@@ -170,6 +170,10 @@
       'https://connect.facebook.net/en_US/fbevents.js');
       fbq('init', config.pixel_id);
       fbq('track', 'PageView');
+
+      // Actualizar noscript fallback
+      var noscriptImg = document.getElementById('fb-pixel-noscript');
+      if (noscriptImg) noscriptImg.src = 'https://www.facebook.com/tr?id=' + config.pixel_id + '&ev=PageView&noscript=1';
     }
   } catch (e) {
     console.log('No se pudo cargar el pixel de Meta');

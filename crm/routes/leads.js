@@ -132,8 +132,18 @@ router.get('/webhook/meta', (req, res) => {
   res.sendStatus(403);
 });
 
+function verifyMetaSignature(req) {
+  const signature = req.headers['x-hub-signature-256'];
+  if (!signature || !process.env.META_APP_SECRET) return false;
+  const expected = 'sha256=' + require('crypto').createHmac('sha256', process.env.META_APP_SECRET)
+    .update(JSON.stringify(req.body)).digest('hex');
+  try { return require('crypto').timingSafeEqual(Buffer.from(signature), Buffer.from(expected)); }
+  catch { return false; }
+}
+
 router.post('/webhook/meta', async (req, res) => {
   res.sendStatus(200);
+  if (!verifyMetaSignature(req)) return;
   if (req.body.object !== 'page') return;
   for (const entry of req.body.entry || []) {
     for (const change of entry.changes || []) {
@@ -141,7 +151,7 @@ router.post('/webhook/meta', async (req, res) => {
       const leadgenId = change.value?.leadgen_id;
       if (!leadgenId || !process.env.META_PAGE_ACCESS_TOKEN) continue;
       try {
-        const r = await fetch(`https://graph.facebook.com/v19.0/${leadgenId}?access_token=${process.env.META_PAGE_ACCESS_TOKEN}`);
+        const r = await fetch(`https://graph.facebook.com/v22.0/${leadgenId}?access_token=${process.env.META_PAGE_ACCESS_TOKEN}`);
         const data = await r.json();
         const f = {};
         for (const field of data.field_data || []) f[field.name] = field.values?.[0] || '';
