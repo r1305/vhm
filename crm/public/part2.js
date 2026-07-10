@@ -12,7 +12,7 @@
 
   ready(function () {
     const { api, toast, esc, fmtDate, fmtMoney, badge, fullName,
-            openModal, closeModal, viewLoaders,
+            openModal, closeModal, viewLoaders, showLoading,
             ESTADO_PACIENTE, ESTADO_CITA, FUENTE_ICON,
             getUser, isAdmin } = window.CRM;
 
