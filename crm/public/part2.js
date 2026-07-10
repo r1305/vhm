@@ -21,7 +21,9 @@
     ══════════════════════════════════════════════════ */
     async function loadDashboard() {
       try {
+        showLoading(document.getElementById('kpiGrid'), true);
         const d = await api('/reportes/dashboard');
+        showLoading(document.getElementById('kpiGrid'), false);
         const k = d.kpis || {};
 
         document.getElementById('kpiGrid').innerHTML = `

@@ -103,19 +103,27 @@ router.post('/campanas/:id/enviar', authAdmin, async (req, res) => {
     // Enviar en segundo plano
     (async () => {
       let enviados = 0;
-      for (const sub of suscriptores) {
-        try {
-          const html = camp.cuerpo_html.replace(/\{\{nombre\}\}/gi, sub.nombre || 'amigo/a');
-          await sendMail({ to: sub.email, subject: camp.asunto, html });
-          enviados++;
-        } catch (e) { console.error('[crm/campana]', sub.email, e.message); }
-        await new Promise(r => setTimeout(r, 200)); // 5 emails/seg
+      try {
+        for (const sub of suscriptores) {
+          try {
+            const html = camp.cuerpo_html.replace(/\{\{nombre\}\}/gi, sub.nombre || 'amigo/a');
+            await sendMail({ to: sub.email, subject: camp.asunto, html });
+            enviados++;
+          } catch (e) { console.error('[crm/campana]', sub.email, e.message); }
+          await new Promise(r => setTimeout(r, 200)); // 5 emails/seg
+        }
+        await pool.execute(
+          "UPDATE campanas_email SET estado='completada', total_enviados=?, enviada_at=NOW() WHERE id=?",
+          [enviados, camp.id]
+        );
+        console.log(`[crm/campana] ${camp.nombre}: ${enviados}/${suscriptores.length} enviados`);
+      } catch (e) {
+        console.error(`[crm/campana] Error en envío de ${camp.nombre}:`, e.message);
+        await pool.execute(
+          "UPDATE campanas_email SET estado='error', total_enviados=? WHERE id=?",
+          [enviados, camp.id]
+        );
       }
-      await pool.execute(
-        "UPDATE campanas_email SET estado='completada', total_enviados=?, enviada_at=NOW() WHERE id=?",
-        [enviados, camp.id]
-      );
-      console.log(`[crm/campana] ${camp.nombre}: ${enviados}/${suscriptores.length} enviados`);
     })();
 
   } catch (err) { res.status(500).json({ error: err.message }); }

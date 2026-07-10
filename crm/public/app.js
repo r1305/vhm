@@ -327,9 +327,21 @@
   })();
 
   /* ── Exponer globals para los demás módulos ──────── */
+  // Loading state helper
+  function showLoading(el, loading) {
+    if (!el) return;
+    if (loading) {
+      el.dataset.prevHtml = el.innerHTML;
+      el.innerHTML = '<div class="view-loading">Cargando…</div>';
+    } else if (el.dataset.prevHtml !== undefined) {
+      el.innerHTML = el.dataset.prevHtml;
+      delete el.dataset.prevHtml;
+    }
+  }
+
   window.CRM = {
     api, toast, esc, fmtDate, fmtMoney, badge, fullName, openModal, closeModal,
-    switchView, viewLoaders, navigateTo,
+    switchView, viewLoaders, navigateTo, showLoading,
     ESTADO_PACIENTE, ESTADO_LEAD, FUENTE_ICON, ESTADO_CITA,
     getUser: () => _user,
     isAdmin: () => ['superadmin', 'recepcion'].includes(_user?.rol),

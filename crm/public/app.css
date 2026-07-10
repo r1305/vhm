@@ -185,6 +185,11 @@ body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color
 .note-meta { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; display: flex; gap: 10px; }
 .note-text { font-size: 13px; line-height: 1.6; white-space: pre-wrap; }
 
+/* ── Loading spinner ────────── */
+.view-loading { display: flex; align-items: center; justify-content: center; padding: 60px 20px; color: var(--text-muted); font-size: 14px; gap: 10px; }
+.view-loading::before { content: ''; width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin .6s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
 /* ── Responsive ────────────── */
 @media (max-width: 768px) {
   .crm-sidebar { transform: translateX(-100%); }
