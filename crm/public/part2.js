@@ -460,12 +460,5 @@
 
     viewLoaders['pacientes'] = loadPacientes;
 
-    /* restaurar botón guardar al abrir modal */
-    const origOpenModal = window.CRM.openModal;
-    window.CRM.openModal = function (...args) {
-      document.getElementById('modalSave').style.display = '';
-      return origOpenModal(...args);
-    };
-
   }); // ready
 })();

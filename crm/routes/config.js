@@ -12,8 +12,6 @@ const ALLOWED = new Set([
   'widget_btn_texto',
 ]);
 
-const HIDDEN = new Set(['meta_app_secret','meta_access_token','tiktok_app_secret','smtp_pass','wa_auth_token']);
-
 // Endpoint publico — solo claves no sensibles (sin auth)
 router.get('/public', async (req, res) => {
   try {
@@ -28,14 +26,12 @@ router.get('/public', async (req, res) => {
   } catch { res.json({}); }
 });
 
-// Leer config completa (solo admin)
+// Leer config completa (solo admin) — devuelve valores reales
 router.get('/', authAdmin, async (req, res) => {
   try {
     const [rows] = await pool.execute('SELECT clave, valor FROM configuracion ORDER BY clave');
     const data = {};
-    for (const r of rows) {
-      data[r.clave] = HIDDEN.has(r.clave) && r.valor ? '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022' : (r.valor || '');
-    }
+    for (const r of rows) data[r.clave] = r.valor || '';
     res.json(data);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -45,8 +41,7 @@ router.post('/', authAdmin, async (req, res) => {
   try {
     const entries = req.body || {};
     for (const [k, v] of Object.entries(entries)) {
-      if (!ALLOWED.has(k)) continue;
-      if (v === '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022' || v === '') continue;
+      if (!ALLOWED.has(k) || v === '') continue;
       await pool.execute(
         'INSERT INTO configuracion (clave, valor) VALUES (?,?) ON DUPLICATE KEY UPDATE valor=?',
         [k, String(v).trim(), String(v).trim()]

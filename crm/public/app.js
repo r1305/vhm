@@ -11,6 +11,7 @@
   const ESTADO_PACIENTE = {
     activo: { label: 'Activo',       css: 'badge-green'  },
     prospecto: { label: 'Prospecto', css: 'badge-yellow' },
+    confirmado: { label: 'Confirmado', css: 'badge-blue' },
     alta: { label: 'Alta',           css: 'badge-blue'   },
     inactivo: { label: 'Inactivo',   css: 'badge-gray'   },
     lista_espera: { label: 'Espera', css: 'badge-purple' },
@@ -113,6 +114,7 @@
   let _modalSave = null;
 
   function openModal(title, html, onSave, { large = false } = {}) {
+    document.getElementById('modalSave').style.display = '';
     document.getElementById('modalTitle').textContent = title;
     document.getElementById('modalBody').innerHTML = html;
     const modal = document.getElementById('modal');
