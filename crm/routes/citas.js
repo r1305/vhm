@@ -62,6 +62,11 @@ router.post('/', auth, async (req, res) => {
        VALUES (?,?,?,?,?,?,?,?,?)`,
       [pid(paciente_id),pid(terapeuta_id),fecha,hora_inicio,hora_fin,modalidad,tipo,t(notas,2000),monto||null]
     );
+    // Si el paciente es prospecto, pasa a confirmado
+    await pool.execute(
+      `UPDATE pacientes SET estado='confirmado' WHERE id=? AND estado='prospecto'`,
+      [pid(paciente_id)]
+    );
     // Programar recordatorios
     const citaId = r.insertId;
     const fecha48 = new Date(`${fecha}T${hora_inicio}`);
@@ -105,6 +110,11 @@ router.post('/agendar', async (req, res) => {
       `INSERT INTO citas (paciente_id,terapeuta_id,fecha,hora_inicio,hora_fin,modalidad,tipo)
        VALUES (?,?,?,?,?,?,'primera_vez')`,
       [pacienteId, pid(terapeuta_id), fecha, hora_inicio, hora_fin||'', modalidad]
+    );
+    // Si el paciente es prospecto, pasa a confirmado
+    await pool.execute(
+      `UPDATE pacientes SET estado='confirmado' WHERE id=? AND estado='prospecto'`,
+      [pacienteId]
     );
     res.status(201).json({ ok: true, cita_id: rc.insertId, paciente_id: pacienteId });
   } catch { res.status(500).json({ error: 'Error al agendar' }); }

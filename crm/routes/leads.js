@@ -142,21 +142,38 @@ function verifyMetaSignature(req) {
 }
 
 router.post('/webhook/meta', async (req, res) => {
+  console.log('[webhook] POST recibido body keys:', Object.keys(req.body || {}).join(','));
   res.sendStatus(200);
-  if (!verifyMetaSignature(req)) return;
-  if (req.body.object !== 'page') return;
+  if (!verifyMetaSignature(req)) {
+    console.log('[webhook] FIRMA INVALIDA');
+    return;
+  }
+  console.log('[webhook] Firma OK');
+  if (req.body.object !== 'page') {
+    console.log('[webhook] object no es page:', req.body.object);
+    return;
+  }
+  console.log('[webhook] object=page OK');
   for (const entry of req.body.entry || []) {
     for (const change of entry.changes || []) {
       if (change.field !== 'leadgen') continue;
       const leadgenId = change.value?.leadgen_id;
-      if (!leadgenId || !process.env.META_PAGE_ACCESS_TOKEN) continue;
+      console.log('[webhook] leadgen_id:', leadgenId);
+      if (!leadgenId || !process.env.META_PAGE_ACCESS_TOKEN) {
+        console.log('[webhook] Falta leadgenId o token');
+        continue;
+      }
       try {
-        const r = await fetch(`https://graph.facebook.com/v22.0/${leadgenId}?access_token=${process.env.META_PAGE_ACCESS_TOKEN}`);
+        const url = `https://graph.facebook.com/v22.0/${leadgenId}?access_token=${process.env.META_PAGE_ACCESS_TOKEN}`;
+        console.log('[webhook] Fetching Graph API...');
+        const r = await fetch(url);
         const data = await r.json();
+        console.log('[webhook] Graph API status:', r.status, 'has error:', !!data.error);
+        if (!r.ok) { console.log('[webhook] Graph API fallo:', data.error?.message); continue; }
         const f = {};
         for (const field of data.field_data || []) f[field.name] = field.values?.[0] || '';
         const tid = await autoAsignar(f.message || f.motivo_consulta || '');
-        await pool.execute(
+        const [r2] = await pool.execute(
           `INSERT INTO leads (nombre,apellido,email,telefono,fuente,fuente_detalle,mensaje,
             terapeuta_id,utm_source,utm_campaign,utm_content)
            VALUES (?,?,?,?,'instagram',?,?,?,?,?,?)`,
@@ -168,6 +185,7 @@ router.post('/webhook/meta', async (req, res) => {
            tid,
            s(data.ad_name, 200), s(data.form_name, 200), s(data.ad_id, 200)]
         );
+        console.log('[webhook] Lead INSERTADO id:', r2.insertId);
       } catch (err) { console.error('[crm/meta]', err.message); }
     }
   }

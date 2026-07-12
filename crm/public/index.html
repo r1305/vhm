@@ -312,11 +312,17 @@
               </div>
               <div class="form-group">
                 <label class="form-label">Page Access Token</label>
-                <input type="password" class="form-control" id="meta-access-token" placeholder="EAAxxxxx...">
+                <div class="pwd-wrapper">
+                  <input type="password" class="form-control" id="meta-access-token" placeholder="EAAxxxxx...">
+                  <button type="button" class="pwd-toggle" onclick="togglePwd('meta-access-token',this)" tabindex="-1" aria-label="Mostrar/ocultar"><i class="fas fa-eye"></i></button>
+                </div>
               </div>
               <div class="form-group">
                 <label class="form-label">App Secret</label>
-                <input type="password" class="form-control" id="meta-app-secret" placeholder="App Secret de Meta for Developers">
+                <div class="pwd-wrapper">
+                  <input type="password" class="form-control" id="meta-app-secret" placeholder="App Secret de Meta for Developers">
+                  <button type="button" class="pwd-toggle" onclick="togglePwd('meta-app-secret',this)" tabindex="-1" aria-label="Mostrar/ocultar"><i class="fas fa-eye"></i></button>
+                </div>
               </div>
               <button class="btn btn-primary btn-sm" id="btnSaveMeta"><i class="fas fa-save"></i> Guardar</button>
               <hr style="margin:14px 0;border-color:var(--border)">
@@ -339,7 +345,10 @@
             <div class="card-body">
               <div class="form-group">
                 <label class="form-label">App Secret</label>
-                <input type="password" class="form-control" id="tiktok-app-secret" placeholder="App Secret TikTok for Business">
+                <div class="pwd-wrapper">
+                  <input type="password" class="form-control" id="tiktok-app-secret" placeholder="App Secret TikTok for Business">
+                  <button type="button" class="pwd-toggle" onclick="togglePwd('tiktok-app-secret',this)" tabindex="-1" aria-label="Mostrar/ocultar"><i class="fas fa-eye"></i></button>
+                </div>
               </div>
               <div class="form-group">
                 <label class="form-label">Verify Token (tú lo eliges)</label>

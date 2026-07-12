@@ -1,6 +1,13 @@
 /* ═══════════════════════════════════════════════════════
    VHM CRM — part6.js  Marketing · Asignación automática
    ═══════════════════════════════════════════════════════ */
+function togglePwd(id, btn) {
+  var inp = document.getElementById(id);
+  if (!inp) return;
+  var isPwd = inp.type === 'password';
+  inp.type = isPwd ? 'text' : 'password';
+  btn.querySelector('i').className = isPwd ? 'fas fa-eye-slash' : 'fas fa-eye';
+}
 (function () {
   'use strict';
 
@@ -257,14 +264,7 @@
         const widgetEl = document.getElementById('widget-btn-texto');
         if (widgetEl) widgetEl.value = cfg.widget_btn_texto || '';
 
-        // Actualizar badges de estado
-        const metaOk = cfg.meta_verify_token && cfg.meta_access_token;
-        document.getElementById('meta-status').textContent  = metaOk  ? 'Configurado' : 'Sin configurar';
-        document.getElementById('meta-status').className    = `badge ${metaOk  ? 'badge-green' : 'badge-yellow'}`;
-
-        const tiktokOk = cfg.tiktok_app_secret && cfg.tiktok_verify_token;
-        document.getElementById('tiktok-status').textContent = tiktokOk ? 'Configurado' : 'Sin configurar';
-        document.getElementById('tiktok-status').className   = `badge ${tiktokOk ? 'badge-green' : 'badge-yellow'}`;
+        updateBadges(cfg);
       } catch (err) {
         toast('Error cargando config: ' + err.message, 'danger');
       }
@@ -282,9 +282,20 @@
           },
         });
         toast('Configuracion de Instagram guardada');
-        loadIntegraciones();
+        updateBadges({ meta_verify_token: document.getElementById('meta-verify-token').value, meta_access_token: document.getElementById('meta-access-token').value, meta_app_secret: document.getElementById('meta-app-secret').value });
       } catch (err) { toast(err.message, 'danger'); }
     });
+
+    function updateBadges(cfg) {
+      if (cfg) {
+        var metaOk = cfg.meta_verify_token && cfg.meta_access_token;
+        var tiktokOk = cfg.tiktok_app_secret && cfg.tiktok_verify_token;
+        var ms = document.getElementById('meta-status');
+        var ts = document.getElementById('tiktok-status');
+        if (ms) { ms.textContent = metaOk ? 'Configurado' : 'Sin configurar'; ms.className = 'badge ' + (metaOk ? 'badge-green' : 'badge-yellow'); }
+        if (ts) { ts.textContent = tiktokOk ? 'Configurado' : 'Sin configurar'; ts.className = 'badge ' + (tiktokOk ? 'badge-green' : 'badge-yellow'); }
+      }
+    }
 
     // Guardar config TikTok
     document.getElementById('btnSaveTiktok')?.addEventListener('click', async () => {
@@ -297,7 +308,7 @@
           },
         });
         toast('Configuracion de TikTok guardada');
-        loadIntegraciones();
+        updateBadges({ tiktok_app_secret: document.getElementById('tiktok-app-secret').value, tiktok_verify_token: document.getElementById('tiktok-verify-token').value });
       } catch (err) { toast(err.message, 'danger'); }
     });
 

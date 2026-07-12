@@ -190,6 +190,12 @@ body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color
 .view-loading::before { content: ''; width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin .6s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* ── Password toggle ────────── */
+.pwd-wrapper { position: relative; display: flex; align-items: center; }
+.pwd-wrapper .form-control { padding-right: 36px; }
+.pwd-toggle { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 6px; font-size: 15px; line-height: 1; border-radius: 4px; transition: var(--transition); display: flex; align-items: center; justify-content: center; }
+.pwd-toggle:hover { color: var(--primary); background: var(--primary-light); }
+
 /* ── Responsive ────────────── */
 @media (max-width: 768px) {
   .crm-sidebar { transform: translateX(-100%); }
