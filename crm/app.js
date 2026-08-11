@@ -114,6 +114,25 @@ router.post('/api/cron/ejecutar', require('./lib/auth').authAdmin, async (req, r
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+router.post('/api/cron/broadcast', require('./lib/auth').authAdmin, async (req, res) => {
+  const { message } = req.body || {};
+  if (!message) return res.status(400).json({ error: 'message requerido' });
+  try {
+    const db = require('./lib/db');
+    const { sendWhatsAppGreen } = require('./lib/greenapi');
+    const [terapeutas] = await db.execute(
+      "SELECT nombre, telefono FROM terapeutas WHERE activo=1 AND telefono IS NOT NULL AND telefono != ''"
+    );
+    if (!terapeutas.length) return res.json({ ok: true, enviados: 0, omitidos: 0 });
+    res.json({ ok: true, enviados: terapeutas.length });
+    for (const t of terapeutas) {
+      try { await sendWhatsAppGreen({ to: t.telefono, message }); }
+      catch (e) { console.error(`[broadcast] ${t.nombre}:`, e.message); }
+      await new Promise(r => setTimeout(r, 1000));
+    }
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // Test WhatsApp openwa
 router.post('/api/whatsapp/test', require('./lib/auth').authAdmin, async (req, res) => {
   const { sendWhatsAppGreen } = require('./lib/greenapi');

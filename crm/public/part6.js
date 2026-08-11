@@ -409,6 +409,19 @@ function togglePwd(id, btn) {
       } catch (err) { toast(err.message, 'danger'); }
     });
 
+    document.getElementById('btnBroadcast')?.addEventListener('click', async () => {
+      const message = document.getElementById('cron-mensaje-broadcast').value.trim();
+      if (!message) { toast('Escribe un mensaje antes de enviar', 'danger'); return; }
+      const terapeutas = await api('/terapeutas').catch(() => []);
+      const conTelefono = terapeutas.filter(t => t.telefono && t.activo);
+      if (!conTelefono.length) { toast('Ningún terapeuta tiene teléfono registrado', 'danger'); return; }
+      if (!confirm(`¿Enviar este mensaje a ${conTelefono.length} terapeuta(s)?\n\n${message}`)) return;
+      try {
+        const r = await api('/cron/broadcast', { method: 'POST', body: { message } });
+        toast(`Enviando a ${r.enviados} terapeuta(s) en background ✅`);
+      } catch (err) { toast('Error: ' + err.message, 'danger'); }
+    });
+
     document.getElementById('btnEnviarManual')?.addEventListener('click', async () => {
       const to = prompt('Número destino (con código de país, ej: 51999999999):');
       if (!to) return;
