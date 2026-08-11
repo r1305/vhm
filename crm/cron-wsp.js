@@ -111,4 +111,6 @@ async function run() {
   process.exit(0);
 }
 
-run();
+module.exports = { runCronWSP: run };
+
+if (require.main === module) run();

@@ -275,6 +275,19 @@ function togglePwd(id, btn) {
       } catch (err) {
         toast('Error cargando config: ' + err.message, 'danger');
       }
+
+      // Cron config
+      try {
+        const cron = await api('/cron/config');
+        document.getElementById('cron-enabled').checked = !!cron.enabled;
+        document.getElementById('cron-hora').value   = String(cron.hora).padStart(2,'0');
+        document.getElementById('cron-minuto').value = String(cron.minuto).padStart(2,'0');
+        const dias = String(cron.dias).split(',').map(d => d.trim());
+        document.querySelectorAll('.cron-dia').forEach(cb => {
+          cb.checked = dias.includes(cb.value);
+        });
+        updateCronStatus(cron);
+      } catch (_) {}
     }
 
     // Guardar config Meta
@@ -356,6 +369,44 @@ function togglePwd(id, btn) {
         if (r.skipped) toast('OpenWA no configurado — guarda los datos primero', 'danger');
         else toast('Mensaje enviado correctamente ✅');
       } catch (err) { toast('Error: ' + err.message, 'danger'); }
+    });
+
+    // Cron helpers
+    function updateCronStatus(cron) {
+      const el = document.getElementById('cron-status');
+      if (!el) return;
+      if (cron.enabled) {
+        const dias = String(cron.dias).split(',').map(d => ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'][+d]).join(', ');
+        el.textContent = `Activo — ${String(cron.hora).padStart(2,'0')}:${String(cron.minuto).padStart(2,'0')} (${dias})`;
+        el.className = 'badge badge-green';
+      } else {
+        el.textContent = 'Desactivado';
+        el.className = 'badge badge-gray';
+      }
+    }
+
+    document.getElementById('btnSaveCron')?.addEventListener('click', async () => {
+      try {
+        const dias = [...document.querySelectorAll('.cron-dia:checked')].map(cb => cb.value).join(',');
+        if (!dias) { toast('Selecciona al menos un día', 'danger'); return; }
+        const body = {
+          enabled: document.getElementById('cron-enabled').checked ? 1 : 0,
+          hora:    Number(document.getElementById('cron-hora').value),
+          minuto:  Number(document.getElementById('cron-minuto').value),
+          dias,
+        };
+        await api('/cron/config', { method: 'POST', body });
+        updateCronStatus(body);
+        toast('Configuración del cron guardada ✅');
+      } catch (err) { toast(err.message, 'danger'); }
+    });
+
+    document.getElementById('btnEjecutarCron')?.addEventListener('click', async () => {
+      if (!confirm('¿Ejecutar el envío de WhatsApp ahora? Se enviarán las citas de mañana a todos los terapeutas.')) return;
+      try {
+        await api('/cron/ejecutar', { method: 'POST' });
+        toast('Ejecutando en background… revisa los logs del servidor');
+      } catch (err) { toast(err.message, 'danger'); }
     });
 
     viewLoaders['integraciones'] = loadIntegraciones;
