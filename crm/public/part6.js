@@ -409,6 +409,18 @@ function togglePwd(id, btn) {
       } catch (err) { toast(err.message, 'danger'); }
     });
 
+    document.getElementById('btnEnviarManual')?.addEventListener('click', async () => {
+      const to = prompt('Número destino (con código de país, ej: 51999999999):');
+      if (!to) return;
+      const message = prompt('Mensaje a enviar:');
+      if (!message) return;
+      try {
+        const r = await api('/whatsapp/test', { method: 'POST', body: { to, message } });
+        if (r.skipped) toast('OpenWA no configurado — guarda los datos primero', 'danger');
+        else toast('Mensaje enviado ✅');
+      } catch (err) { toast('Error: ' + err.message, 'danger'); }
+    });
+
     viewLoaders['integraciones'] = loadIntegraciones;
   });
 })();
