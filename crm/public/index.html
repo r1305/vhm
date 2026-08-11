@@ -392,47 +392,6 @@
             </div>
           </div>
 
-          <!-- SMS Gateway Android -->
-          <div class="card">
-            <div class="card-header">
-              <span><i class="fas fa-mobile-alt" style="color:#16a34a"></i> SMS Gateway Android</span>
-              <span class="badge badge-yellow" id="sms-status">Sin configurar</span>
-            </div>
-            <div class="card-body">
-              <div class="form-group">
-                <label class="form-label">URL del gateway *</label>
-                <input class="form-control" id="sms-gateway-url" placeholder="http://192.168.1.100:8080/api/v1/message">
-                <div style="font-size:11px;color:var(--text-muted);margin-top:4px">URL local (red WiFi) o cloud de la app Android.</div>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Usuario:Contraseña (Basic Auth)</label>
-                <div class="pwd-wrapper">
-                  <input type="password" class="form-control" id="sms-gateway-token" placeholder="admin:mipassword">
-                  <button type="button" class="pwd-toggle" onclick="togglePwd('sms-gateway-token',this)" tabindex="-1"><i class="fas fa-eye"></i></button>
-                </div>
-                <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Formato <code>usuario:contraseña</code> tal como lo configuras en la app.</div>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Tipo de app</label>
-                <select class="form-select" id="sms-gateway-type">
-                  <option value="capcom">android-sms-gateway (capcom6) — recomendado</option>
-                  <option value="envaya">EnvayaSMS</option>
-                </select>
-              </div>
-              <div style="display:flex;gap:8px;flex-wrap:wrap">
-                <button class="btn btn-primary btn-sm" id="btnSaveSms"><i class="fas fa-save"></i> Guardar</button>
-                <button class="btn btn-outline btn-sm" id="btnTestSms"><i class="fas fa-paper-plane"></i> Probar</button>
-              </div>
-              <hr style="margin:14px 0;border-color:var(--border)">
-              <p style="font-size:11px;color:var(--text-muted)">
-                1. Instala <strong><a href="https://github.com/capcom6/android-sms-gateway" target="_blank">android-sms-gateway</a></strong> (gratis, open source) en un Android con SIM de SMS ilimitados<br>
-                2. Abre la app, activa el servidor local, copia la IP:puerto<br>
-                3. En <em>Credenciales</em> crea un usuario y contraseña<br>
-                4. Pega la URL (<code>http://IP:8080/api/v1/message</code>) y <code>usuario:contraseña</code> arriba
-              </p>
-            </div>
-          </div>
-
           <!-- Widget Web -->
           <div class="card" style="grid-column:1/-1">
             <div class="card-header"><span><i class="fas fa-globe" style="color:var(--primary)"></i> Widget para vhm.com.pe</span></div>
