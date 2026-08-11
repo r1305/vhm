@@ -173,6 +173,9 @@ async function ensureSchema() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
 
+    // Agregar telefono a terapeutas si no existe
+    try { await conn.execute('ALTER TABLE terapeutas ADD COLUMN telefono VARCHAR(30) DEFAULT NULL'); } catch (_) {}
+
     // Agregar columnas UTM si la tabla ya existía sin ellas
     for (const col of ['utm_source','utm_medium','utm_campaign','utm_content','utm_term']) {
       try { await conn.execute(`ALTER TABLE leads ADD COLUMN ${col} VARCHAR(200) DEFAULT NULL`); }

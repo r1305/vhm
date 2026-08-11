@@ -10,21 +10,21 @@ const t = (v, max = 255) => v == null ? null : String(v).trim().slice(0, max) ||
 router.get('/', auth, async (req, res) => {
   try {
     const [rows] = await pool.execute(
-      'SELECT id, nombre, apellido, email, rol, especialidad, activo FROM terapeutas ORDER BY nombre'
+      'SELECT id, nombre, apellido, username, email, telefono, rol, especialidad, activo FROM terapeutas ORDER BY nombre'
     );
     res.json(rows);
   } catch { res.status(500).json({ error: 'Error' }); }
 });
 
 router.post('/', authAdmin, async (req, res) => {
-  const { nombre, apellido, username, email, password, rol = 'terapeuta', especialidad } = req.body || {};
+  const { nombre, apellido, username, email, telefono, password, rol = 'terapeuta', especialidad } = req.body || {};
   if (!nombre || !apellido || !username || !password)
     return res.status(400).json({ error: 'nombre, apellido, username y password requeridos' });
   try {
     const hash = await bcrypt.hash(password, 10);
     const [r] = await pool.execute(
-      'INSERT INTO terapeutas (nombre, apellido, username, email, password, rol, especialidad) VALUES (?,?,?,?,?,?,?)',
-      [t(nombre,120), t(apellido,120), t(username,50), t(email,150), hash, rol, t(especialidad,200)]
+      'INSERT INTO terapeutas (nombre, apellido, username, email, telefono, password, rol, especialidad) VALUES (?,?,?,?,?,?,?,?)',
+      [t(nombre,120), t(apellido,120), t(username,50), t(email,150), t(telefono,30), hash, rol, t(especialidad,200)]
     );
     res.status(201).json({ id: r.insertId });
   } catch (err) {
@@ -34,11 +34,12 @@ router.post('/', authAdmin, async (req, res) => {
 });
 
 router.put('/:id', authAdmin, async (req, res) => {
-  const { nombre, apellido, especialidad, bio, activo, password } = req.body || {};
+  const { nombre, apellido, username, especialidad, bio, activo, password, telefono } = req.body || {};
   const id = parseInt(req.params.id, 10);
   try {
-    const sets = ['nombre=?','apellido=?','especialidad=?','bio=?','activo=?'];
-    const vals = [t(nombre,120), t(apellido,120), t(especialidad,200), t(bio,2000), activo ? 1 : 0];
+    const sets = ['nombre=?','apellido=?','especialidad=?','bio=?','activo=?','telefono=?'];
+    const vals = [t(nombre,120), t(apellido,120), t(especialidad,200), t(bio,2000), activo ? 1 : 0, t(telefono,30)];
+    if (username) { sets.push('username=?'); vals.push(t(username,50)); }
     if (password) { sets.push('password=?'); vals.push(await bcrypt.hash(password, 10)); }
     vals.push(id);
     await pool.execute(`UPDATE terapeutas SET ${sets.join(',')} WHERE id=?`, vals);

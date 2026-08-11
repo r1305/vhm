@@ -85,6 +85,17 @@ router.use('/api/marketing',  require('./routes/marketing'));
 router.use('/api/config',     require('./routes/config'));
 router.use('/api/track',      require('./routes/tracker'));
 
+// Test WhatsApp openwa
+router.post('/api/whatsapp/test', require('./lib/auth').authAdmin, async (req, res) => {
+  const { sendWhatsAppGreen } = require('./lib/greenapi');
+  const { to, message } = req.body || {};
+  if (!to || !message) return res.status(400).json({ error: 'to y message requeridos' });
+  try {
+    const result = await sendWhatsAppGreen({ to, message });
+    res.json(result);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 router.get('/', (req, res) => sendHtml(res, 'index.html'));
 router.get('*', (req, res) => {
   if (req.path.startsWith('/api')) return res.status(404).json({ error: 'Ruta no encontrada' });
@@ -108,9 +119,12 @@ async function loadConfigFromDB() {
       smtp_host:    'SMTP_HOST',    smtp_port:   'SMTP_PORT',
       smtp_user:    'SMTP_USER',    smtp_pass:   'SMTP_PASS',
       smtp_from:    'SMTP_FROM',    smtp_secure: 'SMTP_SECURE',
-      wa_account_sid: 'WA_ACCOUNT_SID',
-      wa_auth_token:  'WA_AUTH_TOKEN',
-      wa_from:        'WA_FROM',
+      sms_gateway_url:   'SMS_GATEWAY_URL',
+      sms_gateway_token: 'SMS_GATEWAY_TOKEN',
+      sms_gateway_type:  'SMS_GATEWAY_TYPE',
+      openwa_url:     'OPENWA_URL',
+      openwa_api_key: 'OPENWA_API_KEY',
+      openwa_session: 'OPENWA_SESSION',
     };
     for (const r of rows) {
       if (r.valor && map[r.clave]) process.env[map[r.clave]] = r.valor;
