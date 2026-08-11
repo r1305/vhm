@@ -412,6 +412,16 @@
         </div>
         <div class="form-row">
           <div class="form-group">
+            <label class="form-label">Fecha de inicio</label>
+            <input type="date" class="form-control" id="f_fecha_inicio" value="${p?.fecha_inicio ? String(p.fecha_inicio).slice(0,10) : ''}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Sesiones</label>
+            <input type="number" min="0" step="1" class="form-control" id="f_sesiones" value="${p?.sesiones ?? ''}" placeholder="0">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
             <label class="form-label">Estado</label>
             <select class="form-select" id="f_estado">
               ${Object.entries(ESTADO_PACIENTE).map(([k, v]) =>
@@ -458,6 +468,8 @@
           fuente:          document.getElementById('f_fuente').value || null,
           motivo_consulta: document.getElementById('f_motivo').value,
           notas_internas:  document.getElementById('f_notas').value,
+          fecha_inicio:    document.getElementById('f_fecha_inicio').value || null,
+          sesiones:        document.getElementById('f_sesiones').value !== '' ? parseInt(document.getElementById('f_sesiones').value, 10) : null,
         };
         if (!body.nombre || !body.apellido) throw new Error('Nombre y apellido requeridos');
         if (p) await api(`/pacientes/${p.id}`, { method: 'PUT', body });

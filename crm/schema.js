@@ -175,6 +175,8 @@ async function ensureSchema() {
 
     // Agregar telefono a terapeutas si no existe
     try { await conn.execute('ALTER TABLE terapeutas ADD COLUMN telefono VARCHAR(30) DEFAULT NULL'); } catch (_) {}
+    try { await conn.execute('ALTER TABLE pacientes ADD COLUMN fecha_inicio DATE DEFAULT NULL'); } catch (_) {}
+    try { await conn.execute('ALTER TABLE pacientes ADD COLUMN sesiones INT DEFAULT NULL'); } catch (_) {}
 
     // Config del cron de WhatsApp
     await conn.execute(`
