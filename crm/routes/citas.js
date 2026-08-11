@@ -2,7 +2,6 @@ const { Router } = require('express');
 const pool = require('../lib/db');
 const { auth, ownerFilter } = require('../lib/auth');
 const { sendRecordatorioCita } = require('../lib/mailer');
-const { sendSMS } = require('../lib/sms');
 
 const router = Router();
 const t = (v, max = 255) => v == null ? null : String(v).trim().slice(0, max) || null;
