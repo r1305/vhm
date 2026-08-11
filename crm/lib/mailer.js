@@ -65,7 +65,7 @@ async function sendWhatsApp({ to, message }) {
   return { ok: true, sid: data.sid };
 }
 
-// Recordatorio de cita — email + WhatsApp según canal
+// Recordatorio de cita — email + WhatsApp + SMS según canal
 async function sendRecordatorioCita(paciente, cita, terapeuta, canal = 'email') {
   const fecha = new Date(cita.fecha).toLocaleDateString('es-PE',
     { weekday: 'long', day: '2-digit', month: 'long' });

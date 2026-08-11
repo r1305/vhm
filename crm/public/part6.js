@@ -264,6 +264,13 @@ function togglePwd(id, btn) {
         const widgetEl = document.getElementById('widget-btn-texto');
         if (widgetEl) widgetEl.value = cfg.widget_btn_texto || '';
 
+        // OpenWA
+        if (cfg.openwa_url)     document.getElementById('openwa-url').value     = cfg.openwa_url;
+        if (cfg.openwa_api_key) document.getElementById('openwa-api-key').value = cfg.openwa_api_key;
+        if (cfg.openwa_session) document.getElementById('openwa-session').value = cfg.openwa_session;
+        const owaStatus = document.getElementById('openwa-status');
+        if (owaStatus && cfg.openwa_url) { owaStatus.textContent = 'Configurado'; owaStatus.className = 'badge badge-green'; }
+
         updateBadges(cfg);
       } catch (err) {
         toast('Error cargando config: ' + err.message, 'danger');
@@ -320,6 +327,35 @@ function togglePwd(id, btn) {
         await api('/config', { method: 'POST', body: { widget_btn_texto: texto } });
         toast('Texto del botón actualizado');
       } catch (err) { toast(err.message, 'danger'); }
+    });
+
+    // Guardar OpenWA
+    document.getElementById('btnSaveOpenwa')?.addEventListener('click', async () => {
+      try {
+        const url = document.getElementById('openwa-url').value.trim();
+        await api('/config', {
+          method: 'POST',
+          body: {
+            openwa_url:     url,
+            openwa_api_key: document.getElementById('openwa-api-key').value.trim(),
+            openwa_session: document.getElementById('openwa-session').value.trim(),
+          },
+        });
+        const owaStatus = document.getElementById('openwa-status');
+        if (owaStatus) { owaStatus.textContent = url ? 'Configurado' : 'Sin configurar'; owaStatus.className = 'badge ' + (url ? 'badge-green' : 'badge-yellow'); }
+        toast('Configuración WhatsApp guardada');
+      } catch (err) { toast(err.message, 'danger'); }
+    });
+
+    // Probar OpenWA
+    document.getElementById('btnTestOpenwa')?.addEventListener('click', async () => {
+      const to = prompt('Número WhatsApp destino (con código de país, ej: 51999999999):');
+      if (!to) return;
+      try {
+        const r = await api('/whatsapp/test', { method: 'POST', body: { to, message: 'Prueba de WhatsApp desde VHM CRM ✅' } });
+        if (r.skipped) toast('OpenWA no configurado — guarda los datos primero', 'danger');
+        else toast('Mensaje enviado correctamente ✅');
+      } catch (err) { toast('Error: ' + err.message, 'danger'); }
     });
 
     viewLoaders['integraciones'] = loadIntegraciones;

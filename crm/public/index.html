@@ -44,18 +44,18 @@
     </div>
     <nav class="sidebar-nav">
       <div class="nav-section">Principal</div>
-      <button class="nav-item active" data-view="dashboard"><i class="fas fa-gauge-high"></i> Dashboard</button>
+      <button class="nav-item active" data-view="dashboard" class="nav-no-terapeuta"><i class="fas fa-gauge-high"></i> Dashboard</button>
       <button class="nav-item" data-view="agenda"><i class="fas fa-calendar-days"></i> Agenda</button>
       <button class="nav-item" data-view="pacientes"><i class="fas fa-users"></i> Pacientes</button>
-      <button class="nav-item" data-view="leads"><i class="fas fa-bullseye"></i> Leads</button>
+      <button class="nav-item nav-no-terapeuta" data-view="leads"><i class="fas fa-bullseye"></i> Leads</button>
 
       <div class="nav-section">Clínico</div>
       <button class="nav-item" data-view="historial"><i class="fas fa-file-medical"></i> Historial</button>
-      <button class="nav-item" data-view="consentimientos"><i class="fas fa-file-signature"></i> Consentimientos</button>
+      <button class="nav-item nav-no-terapeuta" data-view="consentimientos"><i class="fas fa-file-signature"></i> Consentimientos</button>
 
       <div class="nav-section">Administración</div>
-      <button class="nav-item" data-view="pagos"><i class="fas fa-credit-card"></i> Pagos</button>
-      <button class="nav-item" data-view="espera"><i class="fas fa-hourglass-half"></i> Lista de espera</button>
+      <button class="nav-item nav-no-terapeuta" data-view="pagos"><i class="fas fa-credit-card"></i> Pagos</button>
+      <button class="nav-item nav-no-terapeuta" data-view="espera"><i class="fas fa-hourglass-half"></i> Lista de espera</button>
       <button class="nav-item nav-admin" data-view="analitica" style="display:none"><i class="fas fa-chart-line"></i> Analítica web</button>
       <button class="nav-item nav-admin" data-view="marketing" style="display:none"><i class="fas fa-envelope-open-text"></i> Marketing</button>
       <button class="nav-item nav-admin" data-view="asignacion" style="display:none"><i class="fas fa-sitemap"></i> Asignación auto</button>
@@ -126,17 +126,8 @@
           </select>
           <button class="btn btn-primary btn-sm" id="btnNuevoPaciente"><i class="fas fa-plus"></i> Nuevo</button>
         </div>
-        <div class="card">
-          <div class="table-responsive">
-            <table class="table">
-              <thead><tr>
-                <th>Paciente</th><th>Contacto</th><th>Terapeuta</th>
-                <th>Estado</th><th>Fuente</th><th></th>
-              </tr></thead>
-              <tbody id="tablaPacientes"></tbody>
-            </table>
-          </div>
-        </div>
+        <div id="terapeutaChips" class="chips-bar"></div>
+        <div id="tablaPacientes" class="pac-grid"></div>
       </div>
 
       <!-- LEADS -->
@@ -366,6 +357,82 @@
             </div>
           </div>
 
+          <!-- OpenWA WhatsApp -->
+          <div class="card">
+            <div class="card-header">
+              <span><i class="fab fa-whatsapp" style="color:#25D366"></i> WhatsApp (openwa)</span>
+              <span class="badge badge-yellow" id="openwa-status">Sin configurar</span>
+            </div>
+            <div class="card-body">
+              <div class="form-group">
+                <label class="form-label">URL de openwa *</label>
+                <input class="form-control" id="openwa-url" placeholder="https://vhm.com.pe/openwa">
+              </div>
+              <div class="form-group">
+                <label class="form-label">API Key *</label>
+                <div class="pwd-wrapper">
+                  <input type="password" class="form-control" id="openwa-api-key" placeholder="owa_...">
+                  <button type="button" class="pwd-toggle" onclick="togglePwd('openwa-api-key',this)" tabindex="-1"><i class="fas fa-eye"></i></button>
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Session ID *</label>
+                <input class="form-control" id="openwa-session" placeholder="UUID de la sesión activa">
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button class="btn btn-primary btn-sm" id="btnSaveOpenwa"><i class="fas fa-save"></i> Guardar</button>
+                <button class="btn btn-outline btn-sm" id="btnTestOpenwa"><i class="fab fa-whatsapp"></i> Probar</button>
+              </div>
+              <hr style="margin:14px 0;border-color:var(--border)">
+              <p style="font-size:11px;color:var(--text-muted)">
+                1. Abre <strong>vhm.com.pe/openwa</strong>, inicia sesión y copia el <strong>Session ID</strong><br>
+                2. En <em>API Keys</em> copia o crea una API Key con rol <em>operator</em><br>
+                3. Pega los datos aquí y presiona <strong>Probar</strong>
+              </p>
+            </div>
+          </div>
+
+          <!-- SMS Gateway Android -->
+          <div class="card">
+            <div class="card-header">
+              <span><i class="fas fa-mobile-alt" style="color:#16a34a"></i> SMS Gateway Android</span>
+              <span class="badge badge-yellow" id="sms-status">Sin configurar</span>
+            </div>
+            <div class="card-body">
+              <div class="form-group">
+                <label class="form-label">URL del gateway *</label>
+                <input class="form-control" id="sms-gateway-url" placeholder="http://192.168.1.100:8080/api/v1/message">
+                <div style="font-size:11px;color:var(--text-muted);margin-top:4px">URL local (red WiFi) o cloud de la app Android.</div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Usuario:Contraseña (Basic Auth)</label>
+                <div class="pwd-wrapper">
+                  <input type="password" class="form-control" id="sms-gateway-token" placeholder="admin:mipassword">
+                  <button type="button" class="pwd-toggle" onclick="togglePwd('sms-gateway-token',this)" tabindex="-1"><i class="fas fa-eye"></i></button>
+                </div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Formato <code>usuario:contraseña</code> tal como lo configuras en la app.</div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Tipo de app</label>
+                <select class="form-select" id="sms-gateway-type">
+                  <option value="capcom">android-sms-gateway (capcom6) — recomendado</option>
+                  <option value="envaya">EnvayaSMS</option>
+                </select>
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button class="btn btn-primary btn-sm" id="btnSaveSms"><i class="fas fa-save"></i> Guardar</button>
+                <button class="btn btn-outline btn-sm" id="btnTestSms"><i class="fas fa-paper-plane"></i> Probar</button>
+              </div>
+              <hr style="margin:14px 0;border-color:var(--border)">
+              <p style="font-size:11px;color:var(--text-muted)">
+                1. Instala <strong><a href="https://github.com/capcom6/android-sms-gateway" target="_blank">android-sms-gateway</a></strong> (gratis, open source) en un Android con SIM de SMS ilimitados<br>
+                2. Abre la app, activa el servidor local, copia la IP:puerto<br>
+                3. En <em>Credenciales</em> crea un usuario y contraseña<br>
+                4. Pega la URL (<code>http://IP:8080/api/v1/message</code>) y <code>usuario:contraseña</code> arriba
+              </p>
+            </div>
+          </div>
+
           <!-- Widget Web -->
           <div class="card" style="grid-column:1/-1">
             <div class="card-header"><span><i class="fas fa-globe" style="color:var(--primary)"></i> Widget para vhm.com.pe</span></div>
@@ -419,12 +486,7 @@
         <div class="view-toolbar">
           <button class="btn btn-primary btn-sm" id="btnNuevoTerapeuta"><i class="fas fa-plus"></i> Nuevo terapeuta</button>
         </div>
-        <div class="card">
-          <table class="table">
-            <thead><tr><th>Nombre</th><th>Usuario</th><th>Rol</th><th>Especialidad</th><th>Estado</th><th></th></tr></thead>
-            <tbody id="tablaTerapeutas"></tbody>
-          </table>
-        </div>
+        <div id="tablaTerapeutas"></div>
       </div>
 
       <!-- REPORTES (admin) -->

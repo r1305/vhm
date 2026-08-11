@@ -2,6 +2,7 @@ const { Router } = require('express');
 const pool = require('../lib/db');
 const { auth, ownerFilter } = require('../lib/auth');
 const { sendRecordatorioCita } = require('../lib/mailer');
+const { sendSMS } = require('../lib/sms');
 
 const router = Router();
 const t = (v, max = 255) => v == null ? null : String(v).trim().slice(0, max) || null;
@@ -53,14 +54,14 @@ router.get('/disponibles', async (req, res) => {
 
 router.post('/', auth, async (req, res) => {
   const { paciente_id, terapeuta_id, fecha, hora_inicio, hora_fin,
-          modalidad='presencial', tipo='seguimiento', notas, monto } = req.body || {};
+          modalidad='presencial', tipo='seguimiento', notas } = req.body || {};
   if (!paciente_id || !terapeuta_id || !fecha || !hora_inicio || !hora_fin)
     return res.status(400).json({ error: 'Campos requeridos faltantes' });
   try {
     const [r] = await pool.execute(
-      `INSERT INTO citas (paciente_id,terapeuta_id,fecha,hora_inicio,hora_fin,modalidad,tipo,notas,monto)
-       VALUES (?,?,?,?,?,?,?,?,?)`,
-      [pid(paciente_id),pid(terapeuta_id),fecha,hora_inicio,hora_fin,modalidad,tipo,t(notas,2000),monto||null]
+      `INSERT INTO citas (paciente_id,terapeuta_id,fecha,hora_inicio,hora_fin,modalidad,tipo,notas)
+       VALUES (?,?,?,?,?,?,?,?)`,
+      [pid(paciente_id),pid(terapeuta_id),fecha,hora_inicio,hora_fin,modalidad,tipo,t(notas,2000)]
     );
     // Si el paciente es prospecto, pasa a confirmado
     await pool.execute(
@@ -121,28 +122,34 @@ router.post('/agendar', async (req, res) => {
 });
 
 router.patch('/:cid/estado', auth, async (req, res) => {
-  const { estado } = req.body || {};
-  await pool.execute('UPDATE citas SET estado=? WHERE id=?', [estado, req.params.cid]);
+  const { estado, notas } = req.body || {};
+  const sets = ['estado=?'];
+  const vals = [estado];
+  if (notas) { sets.push('notas=?'); vals.push(notas); }
+  vals.push(req.params.cid);
+  await pool.execute(`UPDATE citas SET ${sets.join(',')} WHERE id=?`, vals);
   res.json({ ok: true });
 });
 
 // Enviar recordatorio manual
 router.post('/:cid/recordatorio', auth, async (req, res) => {
   try {
+    const canal = req.body?.canal || 'email';
     const [[cita]] = await pool.execute(
-      `SELECT c.*, p.nombre, p.apellido, p.email,
+      `SELECT c.*, p.nombre, p.apellido, p.email, p.telefono,
               t.nombre AS t_nombre, t.apellido AS t_apellido
        FROM citas c JOIN pacientes p ON c.paciente_id=p.id
        JOIN terapeutas t ON c.terapeuta_id=t.id WHERE c.id=?`,
       [req.params.cid]
     );
     if (!cita) return res.status(404).json({ error: 'No encontrada' });
-    await sendRecordatorioCita(
-      { nombre: cita.nombre, email: cita.email },
+    const result = await sendRecordatorioCita(
+      { nombre: cita.nombre, email: cita.email, telefono: cita.telefono },
       cita,
-      { nombre: cita.t_nombre, apellido: cita.t_apellido }
+      { nombre: cita.t_nombre, apellido: cita.t_apellido },
+      canal
     );
-    res.json({ ok: true });
+    res.json({ ok: true, result });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

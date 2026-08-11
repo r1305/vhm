@@ -6,16 +6,29 @@ const router = Router();
 const t = (v, max = 255) => v == null ? null : String(v).trim().slice(0, max) || null;
 const id = (v) => { const n = parseInt(v, 10); return isFinite(n) && n > 0 ? n : null; };
 
+router.get('/conteo-por-terapeuta', auth, async (req, res) => {
+  try {
+    const [rows] = await pool.execute(
+      'SELECT terapeuta_id, COUNT(*) AS total FROM pacientes WHERE terapeuta_id IS NOT NULL GROUP BY terapeuta_id'
+    );
+    const map = {};
+    rows.forEach(r => { map[r.terapeuta_id] = r.total; });
+    res.json(map);
+  } catch { res.status(500).json({ error: 'Error' }); }
+});
+
 router.get('/', auth, async (req, res) => {
   try {
     const q = t(req.query.q, 80);
     const estado = t(req.query.estado, 20);
+    const tid = id(req.query.terapeuta_id);
     const of = ownerFilter(req, 'p');
     let sql = `SELECT p.*, t.nombre AS terapeuta_nombre
                FROM pacientes p LEFT JOIN terapeutas t ON p.terapeuta_id = t.id WHERE 1=1`;
     const params = [];
     if (q) { sql += ' AND (p.nombre LIKE ? OR p.apellido LIKE ? OR p.email LIKE ? OR p.telefono LIKE ?)'; const l=`%${q}%`; params.push(l,l,l,l); }
     if (estado) { sql += ' AND p.estado = ?'; params.push(estado); }
+    if (tid)    { sql += ' AND p.terapeuta_id = ?'; params.push(tid); }
     sql += of.sql; params.push(...of.params);
     sql += ' ORDER BY p.updated_at DESC LIMIT 200';
     const [rows] = await pool.execute(sql, params);

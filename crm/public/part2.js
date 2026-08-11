@@ -129,6 +129,8 @@
               <div style="display:flex;gap:4px;margin-left:8px">
                 <button class="btn-icon" data-cita-estado="${c.id}" data-actual="${c.estado}" title="Cambiar estado"><i class="fas fa-pen"></i></button>
                 <button class="btn-icon" data-send-rec="${c.id}" title="Enviar recordatorio"><i class="fas fa-bell"></i></button>
+                ${c.estado !== 'realizada' ? `<button class="btn-icon" style="color:var(--success)" data-confirmar-cita="${c.id}" title="Marcar como realizada"><i class="fas fa-circle-check"></i></button>` : ''}
+                ${c.estado !== 'cancelada' ? `<button class="btn-icon" style="color:var(--danger)" data-cancelar-cita="${c.id}" title="Cancelar sesión"><i class="fas fa-circle-xmark"></i></button>` : ''}
               </div>
             </div>`).join('')
           : '<div class="list-empty">Sin citas para este día</div>';
@@ -140,6 +142,30 @@
           btn.addEventListener('click', async () => {
             try { await api(`/citas/${btn.dataset.sendRec}/recordatorio`, { method: 'POST' }); toast('Recordatorio enviado'); }
             catch (e) { toast(e.message, 'danger'); }
+          });
+        });
+        tl.querySelectorAll('[data-confirmar-cita]').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            try {
+              await api(`/citas/${btn.dataset.confirmarCita}/estado`, { method: 'PATCH', body: { estado: 'realizada' } });
+              toast('Sesión marcada como realizada');
+              loadAgenda();
+            } catch (e) { toast(e.message, 'danger'); }
+          });
+        });
+        tl.querySelectorAll('[data-cancelar-cita]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            openModal('Cancelar sesión', `
+              <div class="form-group">
+                <label class="form-label">Motivo de cancelación *</label>
+                <textarea class="form-control" id="f_motivo_cancelacion" rows="3" placeholder="Indica el motivo de la cancelación…"></textarea>
+              </div>`, async () => {
+              const motivo = document.getElementById('f_motivo_cancelacion').value.trim();
+              if (!motivo) throw new Error('Debes ingresar un motivo de cancelación');
+              await api(`/citas/${btn.dataset.cancelarCita}/estado`, { method: 'PATCH', body: { estado: 'cancelada', notas: motivo } });
+              toast('Sesión cancelada');
+              loadAgenda();
+            });
           });
         });
       } catch (err) { toast(err.message, 'danger'); }
@@ -212,10 +238,6 @@
           </div>
         </div>
         <div class="form-group">
-          <label class="form-label">Monto (S/)</label>
-          <input type="number" step="0.01" min="0" class="form-control" id="f_monto" placeholder="0.00">
-        </div>
-        <div class="form-group">
           <label class="form-label">Notas</label>
           <textarea class="form-control" id="f_notas" rows="2"></textarea>
         </div>`, async () => {
@@ -227,7 +249,6 @@
           hora_fin:     document.getElementById('f_hora_fin').value,
           modalidad:    document.getElementById('f_modalidad').value,
           tipo:         document.getElementById('f_tipo').value,
-          monto:        document.getElementById('f_monto').value || null,
           notas:        document.getElementById('f_notas').value,
         };
         if (!body.paciente_id || !body.terapeuta_id || !body.fecha || !body.hora_inicio || !body.hora_fin)
@@ -277,43 +298,71 @@
        PACIENTES
     ══════════════════════════════════════════════════ */
     let terapeutasCache = [];
+    let chipTerapeutaId = null;
+
+    async function loadTerapeutaChips() {
+      await ensureTerapeutasCache();
+      const conteo = await api('/pacientes/conteo-por-terapeuta').catch(() => ({}));
+      const bar = document.getElementById('terapeutaChips');
+      bar.innerHTML = terapeutasCache.map(t => `
+        <button class="chip" data-chip-id="${t.id}">${esc(fullName(t))} (${conteo[t.id] || 0})</button>
+      `).join('');
+      bar.querySelectorAll('.chip').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = parseInt(btn.dataset.chipId);
+          if (chipTerapeutaId === id) {
+            chipTerapeutaId = null;
+            btn.classList.remove('active');
+          } else {
+            chipTerapeutaId = id;
+            bar.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+            btn.classList.add('active');
+          }
+          loadPacientes();
+        });
+      });
+    }
 
     async function loadPacientes() {
       try {
         const q      = document.getElementById('buscarPaciente').value;
         const estado = document.getElementById('filtroPacienteEstado').value;
         const qs     = new URLSearchParams();
-        if (q)      qs.set('q', q);
-        if (estado) qs.set('estado', estado);
+        if (q)              qs.set('q', q);
+        if (estado)         qs.set('estado', estado);
+        if (chipTerapeutaId) qs.set('terapeuta_id', chipTerapeutaId);
         const data = await api(`/pacientes?${qs}`);
         pacientesCache = data;
         document.getElementById('tablaPacientes').innerHTML = data.length
           ? data.map(p => `
-            <tr>
-              <td>
-                <strong>${esc(fullName(p))}</strong>
-                <div style="font-size:11px;color:var(--text-muted)">${esc(p.motivo_consulta || '')}</div>
-              </td>
-              <td>
-                ${p.email ? `<div>${esc(p.email)}</div>` : ''}
-                ${p.telefono ? `<div>${esc(p.telefono)}</div>` : ''}
-              </td>
-              <td>${esc(p.terapeuta_nombre || '—')}</td>
-              <td>${badge(p.estado, ESTADO_PACIENTE)}</td>
-              <td>${esc(p.fuente || '—')}</td>
-              <td style="white-space:nowrap">
-                <button class="btn-icon" data-ver-paciente="${p.id}" title="Ver detalle"><i class="fas fa-eye"></i></button>
-                <button class="btn-icon" data-edit-paciente="${p.id}" title="Editar"><i class="fas fa-pen"></i></button>
-              </td>
-            </tr>`).join('')
-          : '<tr><td colspan="6" class="list-empty">Sin pacientes</td></tr>';
+            <div class="pac-card">
+              <div class="pac-card-top">
+                <div class="pac-avatar">${(p.nombre?.[0] || '').toUpperCase()}</div>
+                <div style="display:flex;gap:4px">
+                  <button class="btn-icon" data-ver-paciente="${p.id}" title="Ver detalle"><i class="fas fa-eye"></i></button>
+                  <button class="btn-icon" data-edit-paciente="${p.id}" title="Editar"><i class="fas fa-pen"></i></button>
+                </div>
+              </div>
+              <div class="pac-card-name">${esc(fullName(p))}</div>
+              ${p.motivo_consulta ? `<div class="pac-card-motivo">${esc(p.motivo_consulta)}</div>` : ''}
+              <div class="pac-card-meta">
+                ${p.email    ? `<span><i class="fas fa-envelope" style="width:12px"></i> ${esc(p.email)}</span>` : ''}
+                ${p.telefono ? `<span><i class="fas fa-phone"   style="width:12px"></i> ${esc(p.telefono)}</span>` : ''}
+                ${p.terapeuta_nombre ? `<span><i class="fas fa-user-md" style="width:12px"></i> ${esc(p.terapeuta_nombre)}</span>` : ''}
+              </div>
+              <div class="pac-card-footer">
+                ${badge(p.estado, ESTADO_PACIENTE)}
+                ${p.fuente ? `<span class="pac-fuente">${esc(p.fuente)}</span>` : ''}
+              </div>
+            </div>`).join('')
+          : '<div class="list-empty" style="grid-column:1/-1">Sin pacientes</div>';
 
-        document.querySelectorAll('[data-edit-paciente]').forEach(btn => {
-          btn.addEventListener('click', () => showPacienteForm(data.find(p => p.id == btn.dataset.editPaciente)));
-        });
-        document.querySelectorAll('[data-ver-paciente]').forEach(btn => {
-          btn.addEventListener('click', () => showPacienteDetalle(data.find(p => p.id == btn.dataset.verPaciente)));
-        });
+        document.querySelectorAll('[data-edit-paciente]').forEach(btn =>
+          btn.addEventListener('click', () => showPacienteForm(data.find(p => p.id == btn.dataset.editPaciente)))
+        );
+        document.querySelectorAll('[data-ver-paciente]').forEach(btn =>
+          btn.addEventListener('click', () => showPacienteDetalle(data.find(p => p.id == btn.dataset.verPaciente)))
+        );
       } catch (err) { toast(err.message, 'danger'); }
     }
 
@@ -458,7 +507,15 @@
     document.getElementById('filtroPacienteEstado').addEventListener('change', loadPacientes);
     document.getElementById('btnNuevoPaciente').addEventListener('click', () => showPacienteForm());
 
-    viewLoaders['pacientes'] = loadPacientes;
+    viewLoaders['pacientes'] = async () => {
+      if (!isAdmin()) {
+        document.getElementById('terapeutaChips').style.display = 'none';
+      } else {
+        document.getElementById('terapeutaChips').style.display = '';
+        await loadTerapeutaChips();
+      }
+      loadPacientes();
+    };
 
   }); // ready
 })();

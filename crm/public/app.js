@@ -213,10 +213,15 @@
 
   // Vistas que requieren permisos de admin (superadmin o recepcion)
   const ADMIN_ONLY_VIEWS = ['marketing', 'asignacion', 'integraciones', 'analitica', 'terapeutas', 'reportes'];
+  const TERAPEUTA_ONLY_VIEWS = ['agenda', 'pacientes', 'historial'];
 
   function navigateTo(view) {
-    // Validar permisos
     if (ADMIN_ONLY_VIEWS.includes(view) && !isAdmin()) {
+      toast('No tienes permisos para acceder a esta sección', 'danger');
+      return false;
+    }
+    const user = _user;
+    if (user?.rol === 'terapeuta' && !TERAPEUTA_ONLY_VIEWS.includes(view)) {
       toast('No tienes permisos para acceder a esta sección', 'danger');
       return false;
     }
@@ -229,16 +234,20 @@
   }
 
   function handleHashChange() {
-    const hash = window.location.hash.slice(1); // quita el #
-    const view = ROUTE_VIEWS[hash] || 'dashboard';
+    if (!_user) return;
+    const hash = window.location.hash.slice(1);
+    const view = ROUTE_VIEWS[hash] || (_user.rol === 'terapeuta' ? 'agenda' : 'dashboard');
 
-    // Si la vista requiere permisos y no los tiene, redirigir al default
     if (ADMIN_ONLY_VIEWS.includes(view) && !isAdmin()) {
-      window.location.hash = '#dashboard';
+      window.location.hash = _user.rol === 'terapeuta' ? '#agenda' : '#dashboard';
+      return;
+    }
+    if (_user.rol === 'terapeuta' && !TERAPEUTA_ONLY_VIEWS.includes(view)) {
+      window.location.hash = '#agenda';
       return;
     }
 
-    switchView(view, false); // false = no actualizar hash (ya lo tenemos)
+    switchView(view, false);
   }
 
   function initRouter() {
@@ -296,7 +305,7 @@
   /* ── Logout ──────────────────────────────────────── */
   function logout() {
     clearToken(); _user = null;
-    window.location.hash = '#dashboard'; // resetear hash
+    history.replaceState(null, '', window.location.pathname);
     document.getElementById('appPage').style.display = 'none';
     document.getElementById('loginPage').style.display = 'flex';
     document.getElementById('loginPassword').value = '';
@@ -311,11 +320,19 @@
     document.getElementById('userAvatar').textContent = initials || '?';
     document.getElementById('userName').textContent   = fullName(_user);
     document.getElementById('userRole').textContent   = _user.rol;
-    const isAdmin = ['superadmin', 'recepcion'].includes(_user.rol);
+    const isTerapeuta = _user.rol === 'terapeuta';
+    const isAdminUser = ['superadmin', 'recepcion'].includes(_user.rol);
     document.querySelectorAll('.nav-admin').forEach(el => {
-      el.style.display = isAdmin ? 'flex' : 'none';
+      el.style.display = isAdminUser ? 'flex' : 'none';
+    });
+    document.querySelectorAll('.nav-no-terapeuta').forEach(el => {
+      el.style.display = isTerapeuta ? 'none' : '';
     });
     initRouter();
+    if (isTerapeuta && !window.location.hash.includes('agenda') &&
+        !window.location.hash.includes('pacientes') && !window.location.hash.includes('historial')) {
+      window.location.hash = '#agenda';
+    }
   }
 
   /* ── Auto-login si hay token ─────────────────────── */
