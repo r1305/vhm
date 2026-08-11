@@ -85,6 +85,35 @@ router.use('/api/marketing',  require('./routes/marketing'));
 router.use('/api/config',     require('./routes/config'));
 router.use('/api/track',      require('./routes/tracker'));
 
+// Cron config
+router.get('/api/cron/config', require('./lib/auth').authAdmin, async (req, res) => {
+  try {
+    const db = require('./lib/db');
+    const [[row]] = await db.execute('SELECT enabled, hora, minuto, dias FROM cron_config WHERE id=1');
+    res.json(row || { enabled: 0, hora: 18, minuto: 0, dias: '1,2,3,4,5,6' });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.post('/api/cron/config', require('./lib/auth').authAdmin, async (req, res) => {
+  try {
+    const db = require('./lib/db');
+    const { enabled, hora, minuto, dias } = req.body;
+    await db.execute(
+      'UPDATE cron_config SET enabled=?, hora=?, minuto=?, dias=? WHERE id=1',
+      [enabled ? 1 : 0, Number(hora), Number(minuto), dias]
+    );
+    scheduleCron();
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.post('/api/cron/ejecutar', require('./lib/auth').authAdmin, async (req, res) => {
+  try {
+    res.json({ ok: true, message: 'Ejecutando en background…' });
+    require('./cron-wsp').runCronWSP().catch(e => console.error('[cron manual]', e.message));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // Test WhatsApp openwa
 router.post('/api/whatsapp/test', require('./lib/auth').authAdmin, async (req, res) => {
   const { sendWhatsAppGreen } = require('./lib/greenapi');
@@ -135,8 +164,31 @@ async function loadConfigFromDB() {
   }
 }
 
+// ── Scheduler node-cron ─────────────────────────────────────────
+let _cronTask = null;
+async function scheduleCron() {
+  try {
+    const nodeCron = require('node-cron');
+    const db = require('./lib/db');
+    const [[cfg]] = await db.execute('SELECT enabled, hora, minuto, dias FROM cron_config WHERE id=1');
+    if (_cronTask) { _cronTask.stop(); _cronTask = null; }
+    if (!cfg || !cfg.enabled) { console.log('[cron] Desactivado'); return; }
+    const expr = `${cfg.minuto} ${cfg.hora} * * ${cfg.dias}`;
+    _cronTask = nodeCron.schedule(expr, () => {
+      console.log('[cron] Ejecutando cron-wsp...');
+      require('./cron-wsp').runCronWSP().catch(e => console.error('[cron]', e.message));
+    }, { timezone: 'America/Lima' });
+    console.log(`[cron] Programado: ${expr} (America/Lima)`);
+  } catch (err) {
+    console.warn('[cron] node-cron no disponible:', err.message);
+  }
+}
+
 ensureSchema()
   .then(() => loadConfigFromDB())
+  .then(async () => {
+    await scheduleCron();
+  })
   .then(() => {
     if (typeof PhusionPassenger !== 'undefined') {
       PhusionPassenger.configure({ autoInstall: false });

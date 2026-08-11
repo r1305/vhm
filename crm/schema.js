@@ -176,6 +176,19 @@ async function ensureSchema() {
     // Agregar telefono a terapeutas si no existe
     try { await conn.execute('ALTER TABLE terapeutas ADD COLUMN telefono VARCHAR(30) DEFAULT NULL'); } catch (_) {}
 
+    // Config del cron de WhatsApp
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS cron_config (
+        id       INT AUTO_INCREMENT PRIMARY KEY,
+        enabled  TINYINT(1) NOT NULL DEFAULT 0,
+        hora     TINYINT    NOT NULL DEFAULT 18 COMMENT '0-23',
+        minuto   TINYINT    NOT NULL DEFAULT 0  COMMENT '0-59',
+        dias     VARCHAR(20) NOT NULL DEFAULT '1,2,3,4,5,6' COMMENT 'dias semana cron: 0=dom,1=lun...6=sab',
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+    try { await conn.execute('INSERT IGNORE INTO cron_config (id) VALUES (1)'); } catch (_) {}
+
     // Agregar columnas UTM si la tabla ya existía sin ellas
     for (const col of ['utm_source','utm_medium','utm_campaign','utm_content','utm_term']) {
       try { await conn.execute(`ALTER TABLE leads ADD COLUMN ${col} VARCHAR(200) DEFAULT NULL`); }

@@ -392,6 +392,50 @@
             </div>
           </div>
 
+          <!-- Cron WhatsApp -->
+          <div class="card">
+            <div class="card-header">
+              <span><i class="fas fa-clock" style="color:var(--primary)"></i> Cron WhatsApp terapeutas</span>
+              <span class="badge badge-gray" id="cron-status">Desactivado</span>
+            </div>
+            <div class="card-body">
+              <div class="form-group" style="display:flex;align-items:center;gap:10px">
+                <label class="form-label" style="margin:0">Activar envío automático</label>
+                <input type="checkbox" id="cron-enabled" style="width:18px;height:18px;cursor:pointer">
+              </div>
+              <div style="display:flex;gap:12px;flex-wrap:wrap">
+                <div class="form-group" style="flex:1;min-width:80px">
+                  <label class="form-label">Hora (0-23)</label>
+                  <input type="number" min="0" max="23" class="form-control" id="cron-hora" value="18">
+                </div>
+                <div class="form-group" style="flex:1;min-width:80px">
+                  <label class="form-label">Minuto (0-59)</label>
+                  <input type="number" min="0" max="59" class="form-control" id="cron-minuto" value="0">
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Días de envío</label>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
+                  <label style="display:flex;align-items:center;gap:4px;font-size:13px"><input type="checkbox" class="cron-dia" value="1" checked> Lun</label>
+                  <label style="display:flex;align-items:center;gap:4px;font-size:13px"><input type="checkbox" class="cron-dia" value="2" checked> Mar</label>
+                  <label style="display:flex;align-items:center;gap:4px;font-size:13px"><input type="checkbox" class="cron-dia" value="3" checked> Mié</label>
+                  <label style="display:flex;align-items:center;gap:4px;font-size:13px"><input type="checkbox" class="cron-dia" value="4" checked> Jue</label>
+                  <label style="display:flex;align-items:center;gap:4px;font-size:13px"><input type="checkbox" class="cron-dia" value="5" checked> Vie</label>
+                  <label style="display:flex;align-items:center;gap:4px;font-size:13px"><input type="checkbox" class="cron-dia" value="6" checked> Sáb</label>
+                  <label style="display:flex;align-items:center;gap:4px;font-size:13px"><input type="checkbox" class="cron-dia" value="0"> Dom</label>
+                </div>
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button class="btn btn-primary btn-sm" id="btnSaveCron"><i class="fas fa-save"></i> Guardar</button>
+                <button class="btn btn-outline btn-sm" id="btnEjecutarCron"><i class="fas fa-play"></i> Ejecutar ahora</button>
+              </div>
+              <p style="font-size:11px;color:var(--text-muted);margin-top:10px">
+                Envía WhatsApp a cada terapeuta con sus citas del día siguiente.<br>
+                Requiere que los terapeutas tengan teléfono configurado.
+              </p>
+            </div>
+          </div>
+
           <!-- Widget Web -->
           <div class="card" style="grid-column:1/-1">
             <div class="card-header"><span><i class="fas fa-globe" style="color:var(--primary)"></i> Widget para vhm.com.pe</span></div>
