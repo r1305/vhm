@@ -38,17 +38,19 @@ router.get('/', auth, async (req, res) => {
 
 router.post('/', auth, async (req, res) => {
   const { nombre, apellido, email, telefono, fecha_nacimiento, genero,
-          motivo_consulta, fuente, fuente_detalle, terapeuta_id, estado = 'prospecto' } = req.body || {};
+          motivo_consulta, fuente, fuente_detalle, terapeuta_id, estado = 'prospecto',
+          fecha_inicio, sesiones } = req.body || {};
   if (!nombre || !apellido) return res.status(400).json({ error: 'nombre y apellido requeridos' });
   try {
     const tid = id(terapeuta_id) || (req.user.rol === 'terapeuta' ? req.user.id : null);
     const [r] = await pool.execute(
       `INSERT INTO pacientes (nombre,apellido,email,telefono,fecha_nacimiento,genero,
-        motivo_consulta,fuente,fuente_detalle,terapeuta_id,estado)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+        motivo_consulta,fuente,fuente_detalle,terapeuta_id,estado,fecha_inicio,sesiones)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [t(nombre,120),t(apellido,120),t(email,150),t(telefono,30),
        fecha_nacimiento||null, genero||null,
-       t(motivo_consulta,2000),t(fuente,80),t(fuente_detalle,300),tid,estado]
+       t(motivo_consulta,2000),t(fuente,80),t(fuente_detalle,300),tid,estado,
+       fecha_inicio||null, sesiones!=null ? parseInt(sesiones,10)||null : null]
     );
     res.status(201).json({ id: r.insertId });
   } catch { res.status(500).json({ error: 'Error al crear paciente' }); }
@@ -74,16 +76,19 @@ router.put('/:pid', auth, async (req, res) => {
   if (!pid) return res.status(400).json({ error: 'ID inválido' });
   const { nombre, apellido, email, telefono, fecha_nacimiento, genero,
           motivo_consulta, fuente, fuente_detalle, terapeuta_id,
-          estado, notas_internas } = req.body || {};
+          estado, notas_internas, fecha_inicio, sesiones } = req.body || {};
   try {
     await pool.execute(
       `UPDATE pacientes SET nombre=?,apellido=?,email=?,telefono=?,fecha_nacimiento=?,genero=?,
-       motivo_consulta=?,fuente=?,fuente_detalle=?,terapeuta_id=?,estado=?,notas_internas=?
+       motivo_consulta=?,fuente=?,fuente_detalle=?,terapeuta_id=?,estado=?,notas_internas=?,
+       fecha_inicio=?,sesiones=?
        WHERE id=?`,
       [t(nombre,120),t(apellido,120),t(email,150),t(telefono,30),
        fecha_nacimiento||null, genero||null,
        t(motivo_consulta,2000),t(fuente,80),t(fuente_detalle,300),
-       id(terapeuta_id),estado,t(notas_internas,5000),pid]
+       id(terapeuta_id),estado,t(notas_internas,5000),
+       fecha_inicio||null, sesiones!=null ? parseInt(sesiones,10)||null : null,
+       pid]
     );
     res.json({ ok: true });
   } catch { res.status(500).json({ error: 'Error al actualizar' }); }
