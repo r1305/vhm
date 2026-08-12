@@ -137,15 +137,29 @@
   });
   document.getElementById('modalSave').addEventListener('click', async () => {
     if (!_modalSave) return;
-    const btn = document.getElementById('modalSave');
-    btn.disabled = true;
+    const btnSave   = document.getElementById('modalSave');
+    const btnCancel = document.getElementById('modalCancel');
+    const btnClose  = document.getElementById('modalClose');
+    const body      = document.getElementById('modalBody');
+    const inputs    = body.querySelectorAll('input,select,textarea,button');
+
+    btnSave.disabled   = true;
+    btnCancel.disabled = true;
+    btnClose.disabled  = true;
+    btnSave.innerHTML  = '<i class="fas fa-spinner fa-spin"></i> Guardando…';
+    inputs.forEach(el => { el.disabled = true; });
+
     try {
       await _modalSave();
       closeModal();
     } catch (err) {
       toast(err.message, 'danger');
     } finally {
-      btn.disabled = false;
+      btnSave.disabled   = false;
+      btnCancel.disabled = false;
+      btnClose.disabled  = false;
+      btnSave.innerHTML  = 'Guardar';
+      inputs.forEach(el => { el.disabled = false; });
     }
   });
 
