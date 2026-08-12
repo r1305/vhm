@@ -90,24 +90,51 @@
     function buildCalStrip() {
       const strip = document.getElementById('calStrip');
       const hoy   = new Date();
+      // Centro: agendaFechaActual, mostramos 7 días desde el inicio de la semana
       strip.innerHTML = '';
       for (let i = -2; i <= 9; i++) {
-        const d = new Date(hoy); d.setDate(hoy.getDate() + i);
-        const iso = d.toISOString().slice(0,10);
-        const isHoy = iso === agendaFechaActual.toISOString().slice(0,10);
+        const d = new Date(agendaFechaActual); d.setDate(agendaFechaActual.getDate() + i);
+        const iso = localDateISO(d);
+        const isActual = iso === localDateISO(agendaFechaActual);
         const dias = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
         const div = document.createElement('div');
-        div.className = `cal-day${isHoy ? ' active' : ''}`;
+        div.className = `cal-day${isActual ? ' active' : ''}`;
         div.dataset.fecha = iso;
         div.innerHTML = `<div class="day-name">${dias[d.getDay()]}</div><div class="day-num">${d.getDate()}</div>`;
         div.addEventListener('click', () => {
           document.querySelectorAll('.cal-day').forEach(c => c.classList.remove('active'));
           div.classList.add('active');
           agendaFechaActual = d;
+          syncMesSelect();
           loadAgenda();
         });
         strip.appendChild(div);
       }
+    }
+
+    function syncMesSelect() {
+      const sel = document.getElementById('agendaMes');
+      if (!sel) return;
+      const val = `${agendaFechaActual.getFullYear()}-${String(agendaFechaActual.getMonth() + 1).padStart(2,'0')}`;
+      if (sel.value !== val) sel.value = val;
+    }
+
+    function buildMesSelect() {
+      const sel = document.getElementById('agendaMes');
+      if (!sel) return;
+      const hoy    = new Date();
+      const anio   = hoy.getFullYear();
+      const mesMax = hoy.getMonth(); // 0-based
+      const MESES  = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+      sel.innerHTML = '';
+      for (let m = 0; m <= mesMax; m++) {
+        const val = `${anio}-${String(m + 1).padStart(2,'0')}`;
+        const opt = document.createElement('option');
+        opt.value = val;
+        opt.textContent = `${MESES[m]} ${anio}`;
+        sel.appendChild(opt);
+      }
+      syncMesSelect();
     }
 
     async function loadAgenda() {
@@ -186,6 +213,16 @@
 
     document.getElementById('agendaTerapeuta').addEventListener('change', e => {
       agendaTerapeutaId = e.target.value || null;
+      loadAgenda();
+    });
+
+    document.getElementById('agendaMes')?.addEventListener('change', e => {
+      const [anio, mes] = e.target.value.split('-').map(Number);
+      // ir al primer día del mes seleccionado (o hoy si es el mes actual)
+      const hoy = new Date();
+      const esActual = anio === hoy.getFullYear() && mes - 1 === hoy.getMonth();
+      agendaFechaActual = esActual ? hoy : new Date(anio, mes - 1, 1);
+      buildCalStrip();
       loadAgenda();
     });
 
@@ -353,6 +390,7 @@
         const ps = await api('/pacientes').catch(() => []);
         pacientesCache = ps;
       }
+      buildMesSelect();
       buildCalStrip();
       await loadAgendaTerapeutas();
       await loadAgenda();
