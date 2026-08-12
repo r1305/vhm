@@ -203,7 +203,7 @@
           <label class="form-label">Paciente *</label>
           <input class="form-control" id="f_paciente_search" autocomplete="off" placeholder="Buscar paciente…">
           <input type="hidden" id="f_paciente_id">
-          <div id="f_paciente_dropdown" style="display:none;position:absolute;z-index:999;background:var(--card-bg,#fff);border:1px solid var(--border);border-radius:6px;width:100%;max-height:180px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.1)"></div>
+          <div id="f_paciente_dropdown" class="autocomplete-dropdown" style="display:none"></div>
         </div>
         <div class="form-row">
           <div class="form-group">
@@ -289,25 +289,22 @@
         ).slice(0, 10);
         if (!matches.length) { dropdown.style.display = 'none'; return; }
         dropdown.innerHTML = matches.map(p =>
-          `<div data-pid="${p.id}" data-tid="${p.terapeuta_id || ''}" style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border)">
+          `<div class="autocomplete-item" data-pid="${p.id}" data-tid="${p.terapeuta_id || ''}">
             <strong>${esc(fullName(p))}</strong>
-            ${p.terapeuta_nombre ? `<span style="color:var(--text-muted);font-size:11px"> — ${esc(p.terapeuta_nombre)}</span>` : ''}
+            ${p.terapeuta_nombre ? `<span> — ${esc(p.terapeuta_nombre)}</span>` : ''}
           </div>`
         ).join('');
         dropdown.style.display = 'block';
-        dropdown.querySelectorAll('[data-pid]').forEach(item => {
+        dropdown.querySelectorAll('.autocomplete-item').forEach(item => {
           item.addEventListener('mousedown', e => {
             e.preventDefault();
             hiddenId.value = item.dataset.pid;
             searchInput.value = item.querySelector('strong').textContent;
             dropdown.style.display = 'none';
-            // autoseleccionar terapeuta
             const tid = item.dataset.tid;
             const sel = document.getElementById('f_terapeuta_id');
             if (tid && sel) sel.value = tid;
           });
-          item.addEventListener('mouseover', () => item.style.background = 'var(--primary-light,#f0f4ff)');
-          item.addEventListener('mouseout',  () => item.style.background = '');
         });
       }
 
