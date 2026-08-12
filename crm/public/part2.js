@@ -174,14 +174,16 @@
       } catch (err) { toast(err.message, 'danger'); }
     }
 
-    function buildPacienteSelect() {
+    async function buildPacienteSelect() {
       const sel = document.getElementById('agendaPaciente');
       if (!sel) return;
-      const filtrados = agendaTerapeutaId
-        ? pacientesCache.filter(p => String(p.terapeuta_id) === String(agendaTerapeutaId))
-        : pacientesCache;
+      const qs = new URLSearchParams();
+      if (agendaTerapeutaId) qs.set('terapeuta_id', agendaTerapeutaId);
+      const lista = await api(`/pacientes?${qs}`).catch(() => []);
       sel.innerHTML = `<option value="">Todos los pacientes</option>` +
-        filtrados.map(p => `<option value="${p.id}">${esc(fullName(p))}</option>`).join('');
+        lista.map(p => `<option value="${p.id}">${esc(fullName(p))}</option>`).join('');
+      // actualizar cache con todos los pacientes visibles
+      if (!agendaTerapeutaId) pacientesCache = lista;
     }
 
     async function loadAgendaTerapeutas() {
@@ -197,7 +199,7 @@
         } else {
           sel.disabled = false;
         }
-        buildPacienteSelect();
+        await buildPacienteSelect();
       } catch {}
     }
 
@@ -406,12 +408,8 @@
     document.getElementById('btnNuevaCita').addEventListener('click', showNuevaCita);
 
     viewLoaders['agenda'] = async () => {
-      if (!pacientesCache.length) {
-        const ps = await api('/pacientes').catch(() => []);
-        pacientesCache = ps;
-      }
       buildMesSelect();
-      await loadAgendaTerapeutas(); // buildPacienteSelect se llama dentro
+      await loadAgendaTerapeutas();
       await loadAgenda();
     };
 
