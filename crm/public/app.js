@@ -351,12 +351,18 @@
 
   /* ── Auto-login si hay token ─────────────────────── */
   (async function init() {
-    if (!_token) return;
+    if (!_token) {
+      document.getElementById('loginPage').style.display = 'flex';
+      return;
+    }
     try {
       const user = await api('/auth/me');
       _user = user;
       showApp();
-    } catch { clearToken(); }
+    } catch {
+      clearToken();
+      document.getElementById('loginPage').style.display = 'flex';
+    }
   })();
 
   /* ── Exponer globals para los demás módulos ──────── */
