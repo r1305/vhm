@@ -175,7 +175,7 @@ body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color
 /* ── Agenda timeline ──────── */
 .timeline { display: flex; flex-direction: column; gap: 6px; }
 .timeline-item { display: flex; gap: 12px; padding: 10px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); align-items: center; }
-.timeline-time { font-weight: 700; font-size: 13px; width: 50px; flex-shrink: 0; color: var(--primary); }
+.timeline-time { font-weight: 700; font-size: 13px; min-width: 50px; flex-shrink: 0; color: var(--primary); white-space: nowrap; }
 .timeline-body { flex: 1; }
 .timeline-name { font-weight: 600; font-size: 13px; }
 .timeline-sub  { font-size: 11px; color: var(--text-muted); }
