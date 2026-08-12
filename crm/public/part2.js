@@ -156,15 +156,21 @@
 
     async function loadAgenda() {
       try {
-        const fecha = agendaFechaActual.toISOString().slice(0,10);
-        const qs = new URLSearchParams({ fecha });
+        const dia = document.getElementById('agendaDia')?.value;
+        const qs = new URLSearchParams();
+        if (dia) {
+          qs.set('fecha', dia);
+        } else {
+          const mes = `${agendaFechaActual.getFullYear()}-${String(agendaFechaActual.getMonth()+1).padStart(2,'0')}`;
+          qs.set('mes', mes);
+        }
         if (agendaTerapeutaId) qs.set('terapeuta_id', agendaTerapeutaId);
         const citas = await api(`/citas?${qs}`);
         const tl = document.getElementById('agendaTimeline');
         tl.innerHTML = citas.length
           ? citas.map(c => `
             <div class="timeline-item">
-              <div class="timeline-time">${esc(c.hora_inicio?.slice(0,5))}</div>
+              <div class="timeline-time">${esc(c.fecha ? c.fecha.slice(0,10)+' ' : '')}${esc(c.hora_inicio?.slice(0,5))}</div>
               <div class="timeline-body">
                 <div class="timeline-name">${esc(c.paciente_nombre||'')} ${esc(c.paciente_apellido||'')}</div>
                 <div class="timeline-sub">${esc(c.terapeuta_nombre)} · ${esc(c.tipo)} · ${esc(c.modalidad)}</div>
@@ -235,11 +241,23 @@
 
     document.getElementById('agendaMes')?.addEventListener('change', e => {
       const [anio, mes] = e.target.value.split('-').map(Number);
-      // ir al primer día del mes seleccionado (o hoy si es el mes actual)
       const hoy = new Date();
       const esActual = anio === hoy.getFullYear() && mes - 1 === hoy.getMonth();
       agendaFechaActual = esActual ? hoy : new Date(anio, mes - 1, 15);
+      const diaInput = document.getElementById('agendaDia');
+      if (diaInput) diaInput.value = '';
       buildCalStrip();
+      loadAgenda();
+    });
+
+    document.getElementById('agendaDia')?.addEventListener('change', e => {
+      const val = e.target.value;
+      if (val) {
+        const [y, m, d] = val.split('-').map(Number);
+        agendaFechaActual = new Date(y, m - 1, d);
+        syncMesSelect();
+        buildCalStrip();
+      }
       loadAgenda();
     });
 

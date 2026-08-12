@@ -11,6 +11,7 @@ router.get('/', auth, async (req, res) => {
   try {
     const of = ownerFilter(req, 'c');
     const fecha = t(req.query.fecha, 10);
+    const mes   = t(req.query.mes, 7);   // YYYY-MM
     const terapeuta = pid(req.query.terapeuta_id);
     let sql = `SELECT c.*, p.nombre AS paciente_nombre, p.apellido AS paciente_apellido,
                p.email AS paciente_email, p.telefono AS paciente_telefono,
@@ -21,6 +22,7 @@ router.get('/', auth, async (req, res) => {
                WHERE 1=1`;
     const params = [];
     if (fecha) { sql += ' AND c.fecha = ?'; params.push(fecha); }
+    else if (mes) { sql += ' AND c.fecha LIKE ?'; params.push(`${mes}-%`); }
     if (terapeuta) { sql += ' AND c.terapeuta_id = ?'; params.push(terapeuta); }
     sql += of.sql; params.push(...of.params);
     sql += ' ORDER BY c.fecha ASC, c.hora_inicio ASC LIMIT 300';
