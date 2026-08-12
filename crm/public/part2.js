@@ -87,55 +87,6 @@
     let agendaTerapeutaId = null;
     let pacientesCache = [];
 
-    function buildCalStrip() {
-      const strip = document.getElementById('calStrip');
-      const hoy   = new Date();
-      const dias  = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
-      strip.innerHTML = '';
-
-      const esMesActual = agendaFechaActual.getFullYear() === hoy.getFullYear() &&
-                          agendaFechaActual.getMonth()    === hoy.getMonth();
-
-      // Para mes actual: ventana -2..+9. Para mes anterior: todos los días del mes.
-      let fechas = [];
-      if (esMesActual) {
-        for (let i = -2; i <= 9; i++) {
-          const d = new Date(agendaFechaActual);
-          d.setDate(agendaFechaActual.getDate() + i);
-          fechas.push(d);
-        }
-      } else {
-        const anio = agendaFechaActual.getFullYear();
-        const mes  = agendaFechaActual.getMonth();
-        const total = new Date(anio, mes + 1, 0).getDate();
-        for (let day = 1; day <= total; day++) fechas.push(new Date(anio, mes, day));
-      }
-
-      fechas.forEach(d => {
-        const iso = localDateISO(d);
-        const isActual = iso === localDateISO(agendaFechaActual);
-        const div = document.createElement('div');
-        div.className = `cal-day${isActual ? ' active' : ''}`;
-        div.dataset.fecha = iso;
-        div.innerHTML = `<div class="day-name">${dias[d.getDay()]}</div><div class="day-num">${d.getDate()}</div>`;
-        div.addEventListener('click', () => {
-          document.querySelectorAll('.cal-day').forEach(c => c.classList.remove('active'));
-          div.classList.add('active');
-          agendaFechaActual = d;
-          syncMesSelect();
-          loadAgenda();
-        });
-        strip.appendChild(div);
-      });
-    }
-
-    function syncMesSelect() {
-      const sel = document.getElementById('agendaMes');
-      if (!sel) return;
-      const val = `${agendaFechaActual.getFullYear()}-${String(agendaFechaActual.getMonth() + 1).padStart(2,'0')}`;
-      if (sel.value !== val) sel.value = val;
-    }
-
     function buildMesSelect() {
       const sel = document.getElementById('agendaMes');
       if (!sel) return;
@@ -246,7 +197,6 @@
       agendaFechaActual = esActual ? hoy : new Date(anio, mes - 1, 15);
       const diaInput = document.getElementById('agendaDia');
       if (diaInput) diaInput.value = '';
-      buildCalStrip();
       loadAgenda();
     });
 
@@ -255,8 +205,6 @@
       if (val) {
         const [y, m, d] = val.split('-').map(Number);
         agendaFechaActual = new Date(y, m - 1, d);
-        syncMesSelect();
-        buildCalStrip();
       }
       loadAgenda();
     });
@@ -426,7 +374,6 @@
         pacientesCache = ps;
       }
       buildMesSelect();
-      buildCalStrip();
       await loadAgendaTerapeutas();
       await loadAgenda();
     };
