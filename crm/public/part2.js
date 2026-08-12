@@ -90,13 +90,30 @@
     function buildCalStrip() {
       const strip = document.getElementById('calStrip');
       const hoy   = new Date();
-      // Centro: agendaFechaActual, mostramos 7 días desde el inicio de la semana
+      const dias  = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
       strip.innerHTML = '';
-      for (let i = -2; i <= 9; i++) {
-        const d = new Date(agendaFechaActual); d.setDate(agendaFechaActual.getDate() + i);
+
+      const esMesActual = agendaFechaActual.getFullYear() === hoy.getFullYear() &&
+                          agendaFechaActual.getMonth()    === hoy.getMonth();
+
+      // Para mes actual: ventana -2..+9. Para mes anterior: todos los días del mes.
+      let fechas = [];
+      if (esMesActual) {
+        for (let i = -2; i <= 9; i++) {
+          const d = new Date(agendaFechaActual);
+          d.setDate(agendaFechaActual.getDate() + i);
+          fechas.push(d);
+        }
+      } else {
+        const anio = agendaFechaActual.getFullYear();
+        const mes  = agendaFechaActual.getMonth();
+        const total = new Date(anio, mes + 1, 0).getDate();
+        for (let day = 1; day <= total; day++) fechas.push(new Date(anio, mes, day));
+      }
+
+      fechas.forEach(d => {
         const iso = localDateISO(d);
         const isActual = iso === localDateISO(agendaFechaActual);
-        const dias = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
         const div = document.createElement('div');
         div.className = `cal-day${isActual ? ' active' : ''}`;
         div.dataset.fecha = iso;
@@ -109,7 +126,7 @@
           loadAgenda();
         });
         strip.appendChild(div);
-      }
+      });
     }
 
     function syncMesSelect() {
