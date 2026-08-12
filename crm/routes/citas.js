@@ -56,33 +56,33 @@ router.get('/disponibles', async (req, res) => {
 router.post('/', auth, async (req, res) => {
   const { paciente_id, terapeuta_id, fecha, hora_inicio, hora_fin,
           modalidad='presencial', tipo='seguimiento', notas } = req.body || {};
-  if (!paciente_id || !terapeuta_id || !fecha || !hora_inicio || !hora_fin)
+  if (!paciente_id || !terapeuta_id || !fecha)
     return res.status(400).json({ error: 'Campos requeridos faltantes' });
   try {
     const [r] = await pool.execute(
       `INSERT INTO citas (paciente_id,terapeuta_id,fecha,hora_inicio,hora_fin,modalidad,tipo,notas)
        VALUES (?,?,?,?,?,?,?,?)`,
-      [pid(paciente_id),pid(terapeuta_id),fecha,hora_inicio,hora_fin,modalidad,tipo,t(notas,2000)]
+      [pid(paciente_id),pid(terapeuta_id),fecha,hora_inicio||null,hora_fin||null,modalidad,tipo,t(notas,2000)]
     );
-    // Si el paciente es prospecto, pasa a confirmado
     await pool.execute(
       `UPDATE pacientes SET estado='confirmado' WHERE id=? AND estado='prospecto'`,
       [pid(paciente_id)]
     );
-    // Programar recordatorios
     const citaId = r.insertId;
-    const fecha48 = new Date(`${fecha}T${hora_inicio}`);
-    fecha48.setHours(fecha48.getHours() - 48);
-    const fecha24 = new Date(`${fecha}T${hora_inicio}`);
-    fecha24.setHours(fecha24.getHours() - 24);
-    await pool.execute(
-      `INSERT INTO recordatorios (paciente_id,cita_id,tipo,canal,programado_at) VALUES (?,?,'recordatorio_cita','email',?)`,
-      [pid(paciente_id), citaId, fecha48]
-    );
-    await pool.execute(
-      `INSERT INTO recordatorios (paciente_id,cita_id,tipo,canal,programado_at) VALUES (?,?,'recordatorio_cita','email',?)`,
-      [pid(paciente_id), citaId, fecha24]
-    );
+    if (hora_inicio) {
+      const fecha48 = new Date(`${fecha}T${hora_inicio}`);
+      fecha48.setHours(fecha48.getHours() - 48);
+      const fecha24 = new Date(`${fecha}T${hora_inicio}`);
+      fecha24.setHours(fecha24.getHours() - 24);
+      await pool.execute(
+        `INSERT INTO recordatorios (paciente_id,cita_id,tipo,canal,programado_at) VALUES (?,?,'recordatorio_cita','email',?)`,
+        [pid(paciente_id), citaId, fecha48]
+      );
+      await pool.execute(
+        `INSERT INTO recordatorios (paciente_id,cita_id,tipo,canal,programado_at) VALUES (?,?,'recordatorio_cita','email',?)`,
+        [pid(paciente_id), citaId, fecha24]
+      );
+    }
     res.status(201).json({ id: citaId });
   } catch { res.status(500).json({ error: 'Error al crear cita' }); }
 });
