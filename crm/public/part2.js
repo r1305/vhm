@@ -221,7 +221,7 @@
       // ir al primer día del mes seleccionado (o hoy si es el mes actual)
       const hoy = new Date();
       const esActual = anio === hoy.getFullYear() && mes - 1 === hoy.getMonth();
-      agendaFechaActual = esActual ? hoy : new Date(anio, mes - 1, 1);
+      agendaFechaActual = esActual ? hoy : new Date(anio, mes - 1, 15);
       buildCalStrip();
       loadAgenda();
     });
