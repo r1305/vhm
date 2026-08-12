@@ -126,13 +126,13 @@
         const grupos = {};
         const orden  = [];
         citas.forEach(c => {
-          const pid = c.paciente_id;
-          if (!grupos[pid]) { grupos[pid] = { info: c, citas: [] }; orden.push(pid); }
-          grupos[pid].citas.push(c);
+          const key = String(c.paciente_id);
+          if (!grupos[key]) { grupos[key] = { info: c, citas: [] }; orden.push(key); }
+          grupos[key].citas.push(c);
         });
 
-        tl.innerHTML = orden.map(pid => {
-          const { info, citas: cs } = grupos[pid];
+        tl.innerHTML = orden.map(key => {
+          const { info, citas: cs } = grupos[key];
           const nombre = `${esc(info.paciente_nombre||'')} ${esc(info.paciente_apellido||'')}`.trim();
           const inicial = (info.paciente_nombre?.[0] || '?').toUpperCase();
           const total   = cs.length;
