@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════
-   VHM CRM — part6.js  Asignación automática
+   VHM CRM — auto_assignment.js
    ═══════════════════════════════════════════════════════ */
 (function () {
   'use strict';
@@ -12,9 +12,6 @@
   ready(function () {
     const { api, toast, esc, openModal, viewLoaders, isAdmin } = window.CRM;
 
-    /* ══════════════════════════════════════════════════
-       ASIGNACIÓN AUTOMÁTICA
-    ══════════════════════════════════════════════════ */
     async function loadReglas() {
       if (!isAdmin()) return;
       try {
