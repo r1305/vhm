@@ -192,7 +192,10 @@
           ts.map(t => `<option value="${t.id}">${esc(fullName(t))}</option>`).join('');
         if (!isAdmin() && getUser()) {
           sel.value = getUser().id;
-          agendaTerapeutaId = getUser().id;
+          agendaTerapeutaId = String(getUser().id);
+          sel.disabled = true;
+        } else {
+          sel.disabled = false;
         }
         buildPacienteSelect();
       } catch {}
