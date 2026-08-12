@@ -64,7 +64,7 @@ router.post('/', auth, async (req, res) => {
     const [r] = await pool.execute(
       `INSERT INTO citas (paciente_id,terapeuta_id,fecha,hora_inicio,hora_fin,modalidad,tipo,notas)
        VALUES (?,?,?,?,?,?,?,?)`,
-      [pid(paciente_id),pid(terapeuta_id),fecha,hora_inicio||null,hora_fin||null,modalidad,tipo,t(notas,2000)]
+      [pid(paciente_id), pid(terapeuta_id), fecha, hora_inicio||null, hora_fin||null, modalidad, tipo, t(notas,2000)]
     );
     await pool.execute(
       `UPDATE pacientes SET estado='confirmado' WHERE id=? AND estado='prospecto'`,
