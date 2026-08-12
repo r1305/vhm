@@ -116,6 +116,8 @@
           qs.set('mes', mes);
         }
         if (agendaTerapeutaId) qs.set('terapeuta_id', agendaTerapeutaId);
+        const agendaPacienteId = document.getElementById('agendaPaciente')?.value;
+        if (agendaPacienteId) qs.set('paciente_id', agendaPacienteId);
         const citas = await api(`/citas?${qs}`);
         const tl = document.getElementById('agendaTimeline');
         tl.innerHTML = citas.length
@@ -172,6 +174,16 @@
       } catch (err) { toast(err.message, 'danger'); }
     }
 
+    function buildPacienteSelect() {
+      const sel = document.getElementById('agendaPaciente');
+      if (!sel) return;
+      const filtrados = agendaTerapeutaId
+        ? pacientesCache.filter(p => String(p.terapeuta_id) === String(agendaTerapeutaId))
+        : pacientesCache;
+      sel.innerHTML = `<option value="">Todos los pacientes</option>` +
+        filtrados.map(p => `<option value="${p.id}">${esc(fullName(p))}</option>`).join('');
+    }
+
     async function loadAgendaTerapeutas() {
       try {
         const ts = await api('/terapeutas');
@@ -182,13 +194,18 @@
           sel.value = getUser().id;
           agendaTerapeutaId = getUser().id;
         }
+        buildPacienteSelect();
       } catch {}
     }
 
     document.getElementById('agendaTerapeuta').addEventListener('change', e => {
       agendaTerapeutaId = e.target.value || null;
+      document.getElementById('agendaPaciente').value = '';
+      buildPacienteSelect();
       loadAgenda();
     });
+
+    document.getElementById('agendaPaciente')?.addEventListener('change', () => loadAgenda());
 
     document.getElementById('agendaMes')?.addEventListener('change', e => {
       const [anio, mes] = e.target.value.split('-').map(Number);
@@ -285,6 +302,16 @@
         loadAgenda();
       });
 
+      // Preseleccionar paciente si hay uno en el filtro de agenda
+      const agendaPacienteId = document.getElementById('agendaPaciente')?.value;
+      if (agendaPacienteId) {
+        const p = pacientesCache.find(p => String(p.id) === agendaPacienteId);
+        if (p) {
+          document.getElementById('f_paciente_search').value = fullName(p);
+          document.getElementById('f_paciente_id').value = p.id;
+        }
+      }
+
       // Cargar terapeutas
       let terapeutasList = [];
       api('/terapeutas').then(ts => {
@@ -293,6 +320,13 @@
         if (!sel) return;
         sel.innerHTML = ts.map(t => `<option value="${t.id}">${esc(fullName(t))}</option>`).join('');
         if (!isAdmin()) sel.value = getUser()?.id;
+        // preseleccionar terapeuta del filtro de agenda
+        if (agendaTerapeutaId) sel.value = agendaTerapeutaId;
+        // o el terapeuta del paciente preseleccionado
+        if (agendaPacienteId) {
+          const p = pacientesCache.find(p => String(p.id) === agendaPacienteId);
+          if (p?.terapeuta_id) sel.value = p.terapeuta_id;
+        }
       }).catch(() => {});
 
       // Autocomplete paciente
@@ -374,7 +408,7 @@
         pacientesCache = ps;
       }
       buildMesSelect();
-      await loadAgendaTerapeutas();
+      await loadAgendaTerapeutas(); // buildPacienteSelect se llama dentro
       await loadAgenda();
     };
 
