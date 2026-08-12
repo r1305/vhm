@@ -102,7 +102,7 @@
         opt.textContent = `${MESES[m]} ${anio}`;
         sel.appendChild(opt);
       }
-      syncMesSelect();
+      sel.value = `${agendaFechaActual.getFullYear()}-${String(agendaFechaActual.getMonth()+1).padStart(2,'0')}`;
     }
 
     async function loadAgenda() {
