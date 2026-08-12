@@ -204,6 +204,10 @@ async function ensureSchema() {
     `);
     try { await conn.execute('INSERT IGNORE INTO cron_config (id) VALUES (1)'); } catch (_) {}
 
+    // Hacer hora_inicio y hora_fin opcionales en citas
+    try { await conn.execute('ALTER TABLE citas MODIFY hora_inicio TIME NULL DEFAULT NULL'); } catch (_) {}
+    try { await conn.execute('ALTER TABLE citas MODIFY hora_fin TIME NULL DEFAULT NULL'); } catch (_) {}
+
     // Agregar columnas UTM si la tabla ya existía sin ellas
     for (const col of ['utm_source','utm_medium','utm_campaign','utm_content','utm_term']) {
       try { await conn.execute(`ALTER TABLE leads ADD COLUMN ${col} VARCHAR(200) DEFAULT NULL`); }
