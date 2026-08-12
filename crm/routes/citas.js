@@ -22,8 +22,8 @@ router.get('/', auth, async (req, res) => {
                JOIN terapeutas t ON c.terapeuta_id = t.id
                WHERE 1=1`;
     const params = [];
-    if (fecha) { sql += ' AND c.fecha = ?'; params.push(fecha); }
-    else if (mes) { sql += ' AND c.fecha LIKE ?'; params.push(`${mes}-%`); }
+    if (fecha) { sql += ' AND DATE(c.fecha) = ?'; params.push(fecha); }
+    else if (mes) { sql += ' AND DATE_FORMAT(c.fecha, \'%Y-%m\') = ?'; params.push(mes); }
     if (terapeuta) { sql += ' AND c.terapeuta_id = ?'; params.push(terapeuta); }
     if (paciente)  { sql += ' AND c.paciente_id = ?';  params.push(paciente); }
     sql += of.sql; params.push(...of.params);
