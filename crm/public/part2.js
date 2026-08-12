@@ -237,12 +237,12 @@
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label class="form-label">Hora inicio *</label>
-            <input type="time" class="form-control" id="f_hora_inicio">
+            <label class="form-label">Hora inicio</label>
+            <input type="text" class="form-control" id="f_hora_inicio" placeholder="HH:MM">
           </div>
           <div class="form-group">
-            <label class="form-label">Hora fin *</label>
-            <input type="time" class="form-control" id="f_hora_fin">
+            <label class="form-label">Hora fin</label>
+            <input type="text" class="form-control" id="f_hora_fin" placeholder="HH:MM">
           </div>
         </div>
         <div class="form-row">
