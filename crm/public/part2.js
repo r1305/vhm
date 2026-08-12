@@ -278,7 +278,7 @@
           tipo:         document.getElementById('f_tipo').value,
           notas:        document.getElementById('f_notas').value,
         };
-        if (!body.paciente_id || !body.terapeuta_id || !body.fecha || !body.hora_inicio || !body.hora_fin)
+        if (!body.paciente_id || !body.terapeuta_id || !body.fecha)
           throw new Error('Completa todos los campos requeridos');
         await api('/citas', { method: 'POST', body });
         toast('Cita creada');
