@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════
-   VHM CRM — part4.js  Pagos · Lista de espera
+   VHM CRM — payment.js
    ═══════════════════════════════════════════════════════ */
 (function () {
   'use strict';
@@ -13,9 +13,6 @@
     const { api, toast, esc, fmtDate, fmtMoney, badge, fullName,
             openModal, viewLoaders } = window.CRM;
 
-    /* ══════════════════════════════════════════════════
-       PAGOS
-    ══════════════════════════════════════════════════ */
     const ESTADO_PAGO = {
       pendiente:   { label: 'Pendiente',   css: 'badge-yellow' },
       completado:  { label: 'Completado',  css: 'badge-green'  },
@@ -23,13 +20,10 @@
       fallido:     { label: 'Fallido',     css: 'badge-red'    },
     };
 
-    let pagosCache = [];
-
     async function loadPagos() {
       try {
-        const pid = document.getElementById('pagosPacienteSelect').value;
+        const pid  = document.getElementById('pagosPacienteSelect').value;
         const data = await api(`/pagos${pid ? `?paciente_id=${pid}` : ''}`);
-        pagosCache = data;
         document.getElementById('tablaPagos').innerHTML = data.length
           ? data.map(p => `
             <tr>
@@ -43,10 +37,10 @@
       } catch (err) { toast(err.message, 'danger'); }
     }
 
-    async function getPacientesOpts(selectedId = null) {
+    async function getPacientesOpts() {
       const ps = await api('/pacientes').catch(() => []);
       return `<option value="">— Seleccionar —</option>` +
-        ps.map(p => `<option value="${p.id}" ${p.id == selectedId ? 'selected' : ''}>${esc(fullName(p))}</option>`).join('');
+        ps.map(p => `<option value="${p.id}">${esc(fullName(p))}</option>`).join('');
     }
 
     async function showNuevoPago() {
@@ -157,88 +151,12 @@
     document.getElementById('btnNuevoPack').addEventListener('click', showNuevoPack);
 
     viewLoaders['pagos'] = async () => {
-      // poblar select de pacientes
-      const ps = await api('/pacientes').catch(() => []);
+      const ps  = await api('/pacientes').catch(() => []);
       const sel = document.getElementById('pagosPacienteSelect');
       sel.innerHTML = `<option value="">— Todos los pacientes —</option>` +
         ps.map(p => `<option value="${p.id}">${esc(fullName(p))}</option>`).join('');
       loadPagos();
     };
-
-    /* ══════════════════════════════════════════════════
-       LISTA DE ESPERA
-    ══════════════════════════════════════════════════ */
-    async function loadEspera() {
-      try {
-        const data = await api('/reportes/lista-espera');
-        const cont = document.getElementById('listaEsperaContent');
-        cont.innerHTML = data.length
-          ? data.map(item => `
-            <div class="list-item">
-              <div class="list-icon"><i class="fas fa-hourglass-half"></i></div>
-              <div style="flex:1">
-                <div class="list-title">${esc(item.nombre)} ${esc(item.apellido || '')}</div>
-                <div class="list-meta">
-                  ${item.email ? `<span>${esc(item.email)}</span>` : ''}
-                  ${item.especialidad ? `<span>· ${esc(item.especialidad)}</span>` : ''}
-                  <span>· Desde ${fmtDate(item.fecha_solicitud)}</span>
-                  ${item.notificado ? '<span class="badge badge-green" style="margin-left:4px">Notificado</span>' : ''}
-                </div>
-              </div>
-              <div style="display:flex;gap:4px">
-                ${!item.notificado ? `<button class="btn btn-sm btn-outline" data-notif-espera="${item.id}"><i class="fas fa-bell"></i> Notificar</button>` : ''}
-              </div>
-            </div>`).join('')
-          : '<div class="list-empty">Lista de espera vacía</div>';
-
-        document.querySelectorAll('[data-notif-espera]').forEach(btn =>
-          btn.addEventListener('click', async () => {
-            try {
-              await api(`/reportes/lista-espera/${btn.dataset.notifEspera}/notificar`, { method: 'POST' });
-              toast('Notificación enviada');
-              loadEspera();
-            } catch (err) { toast(err.message, 'danger'); }
-          })
-        );
-      } catch (err) { toast(err.message, 'danger'); }
-    }
-
-    async function showNuevoEspera() {
-      const ps = await api('/pacientes').catch(() => []);
-      const ts = await api('/terapeutas').catch(() => []);
-      openModal('Agregar a lista de espera', `
-        <div class="form-group">
-          <label class="form-label">Paciente *</label>
-          <select class="form-select" id="f_paciente_id">
-            <option value="">— Seleccionar —</option>
-            ${ps.map(p => `<option value="${p.id}">${esc(fullName(p))}</option>`).join('')}
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Terapeuta preferido</label>
-          <select class="form-select" id="f_terapeuta_id">
-            <option value="">— Sin preferencia —</option>
-            ${ts.map(t => `<option value="${t.id}">${esc(fullName(t))}</option>`).join('')}
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Especialidad requerida</label>
-          <input class="form-control" id="f_especialidad" placeholder="Ej: Ansiedad, Terapia de pareja…">
-        </div>`, async () => {
-        const body = {
-          paciente_id:  document.getElementById('f_paciente_id').value,
-          terapeuta_id: document.getElementById('f_terapeuta_id').value || null,
-          especialidad: document.getElementById('f_especialidad').value || null,
-        };
-        if (!body.paciente_id) throw new Error('Selecciona un paciente');
-        await api('/reportes/lista-espera', { method: 'POST', body });
-        toast('Agregado a lista de espera');
-        loadEspera();
-      });
-    }
-
-    document.getElementById('btnNuevoEspera').addEventListener('click', showNuevoEspera);
-    viewLoaders['espera'] = loadEspera;
 
   }); // ready
 })();
