@@ -120,23 +120,50 @@
         if (agendaPacienteId) qs.set('paciente_id', agendaPacienteId);
         const citas = await api(`/citas?${qs}`);
         const tl = document.getElementById('agendaTimeline');
-        tl.innerHTML = citas.length
-          ? citas.map(c => `
-            <div class="timeline-item">
-              <div class="timeline-time">${esc(c.fecha ? c.fecha.slice(0,10)+' ' : '')}${esc(c.hora_inicio?.slice(0,5))}</div>
-              <div class="timeline-body">
-                <div class="timeline-name">${esc(c.paciente_nombre||'')} ${esc(c.paciente_apellido||'')}</div>
-                <div class="timeline-sub">${esc(c.terapeuta_nombre)} · ${esc(c.tipo)} · ${esc(c.modalidad)}</div>
+        if (!citas.length) { tl.innerHTML = '<div class="list-empty">Sin citas para este período</div>'; return; }
+
+        // Agrupar por paciente
+        const grupos = {};
+        const orden  = [];
+        citas.forEach(c => {
+          const pid = c.paciente_id;
+          if (!grupos[pid]) { grupos[pid] = { info: c, citas: [] }; orden.push(pid); }
+          grupos[pid].citas.push(c);
+        });
+
+        tl.innerHTML = orden.map(pid => {
+          const { info, citas: cs } = grupos[pid];
+          const nombre = `${esc(info.paciente_nombre||'')} ${esc(info.paciente_apellido||'')}`.trim();
+          const inicial = (info.paciente_nombre?.[0] || '?').toUpperCase();
+          const total   = cs.length;
+          const filas   = cs.map(c => `
+            <div class="ag-cita-row" data-id="${c.id}">
+              <div class="ag-cita-time">${esc(c.fecha ? c.fecha.slice(0,10)+' ' : '')}${esc(c.hora_inicio?.slice(0,5) || '—')}</div>
+              <div class="ag-cita-info">
+                <span class="ag-cita-tipo">${esc(c.tipo)}</span>
+                <span class="ag-cita-meta">${esc(c.terapeuta_nombre)} · ${esc(c.modalidad)}</span>
               </div>
               ${badge(c.estado, ESTADO_CITA)}
-              <div style="display:flex;gap:4px;margin-left:8px">
+              <div class="ag-cita-actions">
                 <button class="btn-icon" data-cita-estado="${c.id}" data-actual="${c.estado}" title="Cambiar estado"><i class="fas fa-pen"></i></button>
                 <button class="btn-icon" data-send-rec="${c.id}" title="Enviar recordatorio"><i class="fas fa-bell"></i></button>
                 ${c.estado !== 'realizada' ? `<button class="btn-icon" style="color:var(--success)" data-confirmar-cita="${c.id}" title="Marcar como realizada"><i class="fas fa-circle-check"></i></button>` : ''}
                 ${c.estado !== 'cancelada' ? `<button class="btn-icon" style="color:var(--danger)" data-cancelar-cita="${c.id}" title="Cancelar sesión"><i class="fas fa-circle-xmark"></i></button>` : ''}
               </div>
-            </div>`).join('')
-          : '<div class="list-empty">Sin citas para este día</div>';
+            </div>`).join('');
+          return `
+            <div class="ag-pac-card">
+              <details open>
+                <summary class="ag-pac-summary">
+                  <div class="ag-pac-avatar">${inicial}</div>
+                  <div class="ag-pac-name">${nombre}</div>
+                  <span class="ag-pac-count">${total} cita${total !== 1 ? 's' : ''}</span>
+                  <i class="fas fa-chevron-down ag-pac-chevron"></i>
+                </summary>
+                <div class="ag-citas-list">${filas}</div>
+              </details>
+            </div>`;
+        }).join('');
 
         tl.querySelectorAll('[data-cita-estado]').forEach(btn => {
           btn.addEventListener('click', () => showCambioEstadoCita(btn.dataset.citaEstado, btn.dataset.actual));

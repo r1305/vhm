@@ -173,12 +173,26 @@ body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color
 .theme-btn:hover { color: var(--primary); border-color: var(--primary); }
 
 /* ── Agenda timeline ──────── */
-.timeline { display: flex; flex-direction: column; gap: 6px; }
-.timeline-item { display: flex; gap: 12px; padding: 10px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); align-items: center; }
-.timeline-time { font-weight: 700; font-size: 13px; min-width: 50px; flex-shrink: 0; color: var(--primary); white-space: nowrap; }
-.timeline-body { flex: 1; }
-.timeline-name { font-weight: 600; font-size: 13px; }
-.timeline-sub  { font-size: 11px; color: var(--text-muted); }
+.timeline { display: flex; flex-direction: column; gap: 10px; }
+
+/* Agenda — cards por paciente */
+.ag-pac-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); overflow: hidden; }
+.ag-pac-summary { list-style: none; display: flex; align-items: center; gap: 10px; padding: 12px 16px; cursor: pointer; user-select: none; }
+.ag-pac-summary::-webkit-details-marker { display: none; }
+.ag-pac-summary:hover { background: var(--primary-light); }
+.ag-pac-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; flex-shrink: 0; }
+.ag-pac-name { font-weight: 700; font-size: 14px; flex: 1; }
+.ag-pac-count { font-size: 11px; font-weight: 600; background: var(--primary-light); color: var(--primary); padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.ag-pac-chevron { font-size: 11px; color: var(--text-muted); transition: transform .2s; flex-shrink: 0; }
+details[open] .ag-pac-chevron { transform: rotate(180deg); }
+.ag-citas-list { border-top: 1px solid var(--border); }
+.ag-cita-row { display: flex; align-items: center; gap: 10px; padding: 9px 16px; border-bottom: 1px solid var(--border); }
+.ag-cita-row:last-child { border-bottom: none; }
+.ag-cita-time { font-weight: 700; font-size: 12px; color: var(--primary); min-width: 90px; flex-shrink: 0; white-space: nowrap; }
+.ag-cita-info { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.ag-cita-tipo { font-size: 13px; font-weight: 600; text-transform: capitalize; }
+.ag-cita-meta { font-size: 11px; color: var(--text-muted); }
+.ag-cita-actions { display: flex; gap: 2px; flex-shrink: 0; }
 
 /* ── Historial notes ──────── */
 .note-card { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 10px; }
