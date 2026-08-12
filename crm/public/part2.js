@@ -189,14 +189,21 @@
       loadAgenda();
     });
 
+    function localDateISO(d) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+
     function showNuevaCita() {
+      const hoy = localDateISO(new Date());
       openModal('Nueva cita', `
-        <div class="form-group">
+        <div class="form-group" style="position:relative">
           <label class="form-label">Paciente *</label>
-          <select class="form-select" id="f_paciente_id">
-            <option value="">— Seleccionar —</option>
-            ${pacientesCache.map(p => `<option value="${p.id}" data-terapeuta="${p.terapeuta_id || ''}">${esc(fullName(p))}</option>`).join('')}
-          </select>
+          <input class="form-control" id="f_paciente_search" autocomplete="off" placeholder="Buscar paciente…">
+          <input type="hidden" id="f_paciente_id">
+          <div id="f_paciente_dropdown" style="display:none;position:absolute;z-index:999;background:var(--card-bg,#fff);border:1px solid var(--border);border-radius:6px;width:100%;max-height:180px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.1)"></div>
         </div>
         <div class="form-row">
           <div class="form-group">
@@ -205,7 +212,7 @@
           </div>
           <div class="form-group">
             <label class="form-label">Fecha *</label>
-            <input type="date" class="form-control" id="f_fecha" value="${agendaFechaActual.toISOString().slice(0,10)}">
+            <input type="date" class="form-control" id="f_fecha" value="${hoy}">
           </div>
         </div>
         <div class="form-row">
@@ -258,20 +265,64 @@
         loadAgenda();
       });
 
-      // Cargar terapeutas y configurar listeners
+      // Cargar terapeutas
+      let terapeutasList = [];
       api('/terapeutas').then(ts => {
+        terapeutasList = ts;
         const sel = document.getElementById('f_terapeuta_id');
         if (!sel) return;
         sel.innerHTML = ts.map(t => `<option value="${t.id}">${esc(fullName(t))}</option>`).join('');
         if (!isAdmin()) sel.value = getUser()?.id;
-
-        // Al cambiar paciente: autoseleccionar su terapeuta
-        document.getElementById('f_paciente_id')?.addEventListener('change', e => {
-          const opt = e.target.selectedOptions[0];
-          const tid = opt?.dataset.terapeuta;
-          if (tid) sel.value = tid;
-        });
       }).catch(() => {});
+
+      // Autocomplete paciente
+      const searchInput = document.getElementById('f_paciente_search');
+      const hiddenId    = document.getElementById('f_paciente_id');
+      const dropdown    = document.getElementById('f_paciente_dropdown');
+
+      function renderDropdown(q) {
+        const q2 = q.toLowerCase();
+        const matches = pacientesCache.filter(p =>
+          fullName(p).toLowerCase().includes(q2) ||
+          (p.telefono || '').includes(q2) ||
+          (p.email || '').toLowerCase().includes(q2)
+        ).slice(0, 10);
+        if (!matches.length) { dropdown.style.display = 'none'; return; }
+        dropdown.innerHTML = matches.map(p =>
+          `<div data-pid="${p.id}" data-tid="${p.terapeuta_id || ''}" style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border)">
+            <strong>${esc(fullName(p))}</strong>
+            ${p.terapeuta_nombre ? `<span style="color:var(--text-muted);font-size:11px"> — ${esc(p.terapeuta_nombre)}</span>` : ''}
+          </div>`
+        ).join('');
+        dropdown.style.display = 'block';
+        dropdown.querySelectorAll('[data-pid]').forEach(item => {
+          item.addEventListener('mousedown', e => {
+            e.preventDefault();
+            hiddenId.value = item.dataset.pid;
+            searchInput.value = item.querySelector('strong').textContent;
+            dropdown.style.display = 'none';
+            // autoseleccionar terapeuta
+            const tid = item.dataset.tid;
+            const sel = document.getElementById('f_terapeuta_id');
+            if (tid && sel) sel.value = tid;
+          });
+          item.addEventListener('mouseover', () => item.style.background = 'var(--primary-light,#f0f4ff)');
+          item.addEventListener('mouseout',  () => item.style.background = '');
+        });
+      }
+
+      searchInput?.addEventListener('input', e => {
+        hiddenId.value = '';
+        const q = e.target.value.trim();
+        if (q.length < 1) { dropdown.style.display = 'none'; return; }
+        renderDropdown(q);
+      });
+      searchInput?.addEventListener('focus', e => {
+        if (e.target.value.trim()) renderDropdown(e.target.value.trim());
+      });
+      searchInput?.addEventListener('blur', () => {
+        setTimeout(() => { dropdown.style.display = 'none'; }, 150);
+      });
 
       // Al cambiar hora inicio: calcular hora fin (+1h)
       document.getElementById('f_hora_inicio')?.addEventListener('change', e => {
