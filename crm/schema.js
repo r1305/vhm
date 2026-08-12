@@ -175,8 +175,21 @@ async function ensureSchema() {
 
     // Agregar telefono a terapeutas si no existe
     try { await conn.execute('ALTER TABLE terapeutas ADD COLUMN telefono VARCHAR(30) DEFAULT NULL'); } catch (_) {}
-    try { await conn.execute('ALTER TABLE pacientes ADD COLUMN fecha_inicio DATE DEFAULT NULL'); } catch (_) {}
-    try { await conn.execute('ALTER TABLE pacientes ADD COLUMN sesiones INT DEFAULT NULL'); } catch (_) {}
+    // Eliminar columnas legacy si existen
+    try { await conn.execute('ALTER TABLE pacientes DROP COLUMN fecha_inicio'); } catch (_) {}
+    try { await conn.execute('ALTER TABLE pacientes DROP COLUMN sesiones'); } catch (_) {}
+
+    // Tabla de sesiones por paciente
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS paciente_sesiones (
+        id           INT AUTO_INCREMENT PRIMARY KEY,
+        paciente_id  INT NOT NULL,
+        fecha_inicio DATE DEFAULT NULL,
+        sesiones     INT NOT NULL DEFAULT 0,
+        created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (paciente_id) REFERENCES pacientes(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
 
     // Config del cron de WhatsApp
     await conn.execute(`
