@@ -195,7 +195,7 @@
           <label class="form-label">Paciente *</label>
           <select class="form-select" id="f_paciente_id">
             <option value="">— Seleccionar —</option>
-            ${pacientesCache.map(p => `<option value="${p.id}">${esc(fullName(p))}</option>`).join('')}
+            ${pacientesCache.map(p => `<option value="${p.id}" data-terapeuta="${p.terapeuta_id || ''}">${esc(fullName(p))}</option>`).join('')}
           </select>
         </div>
         <div class="form-row">
@@ -223,7 +223,7 @@
             <label class="form-label">Modalidad</label>
             <select class="form-select" id="f_modalidad">
               <option value="presencial">Presencial</option>
-              <option value="videollamada">Videollamada</option>
+              <option value="videollamada" selected>Videollamada</option>
               <option value="telefono">Teléfono</option>
             </select>
           </div>
@@ -258,13 +258,29 @@
         loadAgenda();
       });
 
-      // cargar terapeutas en el select del modal
+      // Cargar terapeutas y configurar listeners
       api('/terapeutas').then(ts => {
         const sel = document.getElementById('f_terapeuta_id');
         if (!sel) return;
         sel.innerHTML = ts.map(t => `<option value="${t.id}">${esc(fullName(t))}</option>`).join('');
         if (!isAdmin()) sel.value = getUser()?.id;
+
+        // Al cambiar paciente: autoseleccionar su terapeuta
+        document.getElementById('f_paciente_id')?.addEventListener('change', e => {
+          const opt = e.target.selectedOptions[0];
+          const tid = opt?.dataset.terapeuta;
+          if (tid) sel.value = tid;
+        });
       }).catch(() => {});
+
+      // Al cambiar hora inicio: calcular hora fin (+1h)
+      document.getElementById('f_hora_inicio')?.addEventListener('change', e => {
+        const val = e.target.value;
+        if (!val) return;
+        const [h, m] = val.split(':').map(Number);
+        const fin = `${String((h + 1) % 24).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+        document.getElementById('f_hora_fin').value = fin;
+      });
     }
 
     function showCambioEstadoCita(id, actual) {
