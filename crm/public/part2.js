@@ -148,12 +148,12 @@
                 <button class="btn-icon" data-cita-estado="${c.id}" data-actual="${c.estado}" title="Cambiar estado"><i class="fas fa-pen"></i></button>
                 <button class="btn-icon" data-send-rec="${c.id}" title="Enviar recordatorio"><i class="fas fa-bell"></i></button>
                 ${c.estado !== 'realizada' ? `<button class="btn-icon" style="color:var(--success)" data-confirmar-cita="${c.id}" title="Marcar como realizada"><i class="fas fa-circle-check"></i></button>` : ''}
-                ${c.estado !== 'cancelada' ? `<button class="btn-icon" style="color:var(--danger)" data-cancelar-cita="${c.id}" title="Cancelar sesión"><i class="fas fa-circle-xmark"></i></button>` : ''}
+                ${c.estado !== 'realizada' && c.estado !== 'cancelada' ? `<button class="btn-icon" style="color:var(--danger)" data-cancelar-cita="${c.id}" title="Cancelar sesión"><i class="fas fa-circle-xmark"></i></button>` : ''}
               </div>
             </div>`).join('');
           return `
             <div class="ag-pac-card">
-              <details open>
+              <details>
                 <summary class="ag-pac-summary">
                   <div class="ag-pac-avatar">${inicial}</div>
                   <div class="ag-pac-name">${nombre}</div>
