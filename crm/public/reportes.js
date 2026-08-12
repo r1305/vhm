@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════
-   VHM CRM — part5.js  Reportes
+   VHM CRM — reportes.js
    ═══════════════════════════════════════════════════════ */
 (function () {
   'use strict';
@@ -64,7 +64,7 @@
       container.innerHTML = `
         <div style="margin-bottom:8px;font-size:13px;font-weight:700;color:var(--text)">${fmt(total)} <span style="font-size:11px;color:var(--text-muted);font-weight:400">total en el período</span></div>
         <svg viewBox="0 0 100 60" style="width:100%;height:60px;overflow:visible">
-          <defs><linearGradient id="sg${color.replace('#','')}" x1="0" y1="0" x2="0" y2="1">
+          <defs><linearGradient id="sg${color.replace('#','')}\" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stop-color="${color}" stop-opacity="0.3"/>
             <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
           </linearGradient></defs>
@@ -77,14 +77,13 @@
         </div>`;
     }
 
-    // ── Fechas por defecto: hoy ───────────────────────────────
     function todayStr() { return new Date().toISOString().slice(0, 10); }
 
     function setPreset(preset) {
       const hoy = new Date();
       const fmt = d => d.toISOString().slice(0, 10);
       let desde, hasta = fmt(hoy);
-      if (preset === 'hoy')   { desde = fmt(hoy); }
+      if (preset === 'hoy')    { desde = fmt(hoy); }
       if (preset === 'semana') {
         const d = new Date(hoy);
         d.setDate(hoy.getDate() - hoy.getDay() + (hoy.getDay() === 0 ? -6 : 1));
@@ -101,7 +100,6 @@
       document.getElementById('rptHasta').value = hasta;
     }
 
-    // ── Cargar reportes ───────────────────────────────────────
     async function loadReportes() {
       if (!isAdmin()) return;
       const desde = document.getElementById('rptDesde').value || todayStr();
@@ -111,7 +109,6 @@
         const d = await api(`/reportes/stats?desde=${desde}&hasta=${hasta}`);
         const k = d.kpis || {};
 
-        // ── KPIs ─────────────────────────────────────────────
         document.getElementById('reporteKpis').innerHTML = `
           <div class="kpi-card accent">
             <div class="kpi-label">Ingresos</div>
@@ -143,19 +140,13 @@
             <div class="kpi-value">${k.citas_canceladas || 0}</div>
           </div>`;
 
-        // ── Citas por día ─────────────────────────────────────
-        sparkLine(
-          document.getElementById('grafCitasDia'),
-          d.citasPorDia || [],
-          { dateKey: 'fecha', valueKey: 'total', color: '#7c3aed' }
-        );
+        sparkLine(document.getElementById('grafCitasDia'), d.citasPorDia || [],
+          { dateKey: 'fecha', valueKey: 'total', color: '#7c3aed' });
 
-        // ── Leads por fuente ──────────────────────────────────
         const grafLeads = document.getElementById('grafLeadsFuente');
         if ((d.leadsPorFuente || []).length) {
-          grafLeads.innerHTML = (d.leadsPorFuente).map((f, i) => {
-            const total = f.total;
-            const conv  = f.convertidos;
+          grafLeads.innerHTML = d.leadsPorFuente.map((f, i) => {
+            const total = f.total, conv = f.convertidos;
             const pctConv = total > 0 ? Math.round((conv / total) * 100) : 0;
             const maxT = Math.max(...d.leadsPorFuente.map(x => x.total), 1);
             const pctBar = Math.max(4, (total / maxT) * 100);
@@ -174,14 +165,9 @@
           grafLeads.innerHTML = '<div class="list-empty">Sin leads en este período</div>';
         }
 
-        // ── Ingresos por día ──────────────────────────────────
-        sparkLine(
-          document.getElementById('grafIngresosDia'),
-          d.ingresosPorDia || [],
-          { dateKey: 'dia', valueKey: 'total', color: '#16a34a', fmt: v => fmtMoney(v) }
-        );
+        sparkLine(document.getElementById('grafIngresosDia'), d.ingresosPorDia || [],
+          { dateKey: 'dia', valueKey: 'total', color: '#16a34a', fmt: v => fmtMoney(v) });
 
-        // ── Método de pago ────────────────────────────────────
         const grafMetodo = document.getElementById('grafMetodoPago');
         if ((d.ingresosPorMetodo || []).length) {
           donutChart(grafMetodo, d.ingresosPorMetodo, { labelKey: 'metodo', valueKey: 'cantidad' });
@@ -196,31 +182,18 @@
           grafMetodo.innerHTML = '<div class="list-empty">Sin pagos</div>';
         }
 
-        // ── Por terapeuta ─────────────────────────────────────
-        barChart(
-          document.getElementById('grafTerapeuta'),
+        barChart(document.getElementById('grafTerapeuta'),
           (d.citasPorTerapeuta || []).map(t => ({
-            ...t,
-            nombre_corto: t.nombre + (t.apellido ? ' ' + t.apellido[0] + '.' : ''),
+            ...t, nombre_corto: t.nombre + (t.apellido ? ' ' + t.apellido[0] + '.' : ''),
           })),
-          { labelKey: 'nombre_corto', valueKey: 'total', color: '#7c3aed' }
-        );
+          { labelKey: 'nombre_corto', valueKey: 'total', color: '#7c3aed' });
 
-        // ── Por estado ────────────────────────────────────────
-        donutChart(
-          document.getElementById('grafEstadoCita'),
-          d.citasPorEstado || [],
-          { labelKey: 'estado', valueKey: 'total' }
-        );
+        donutChart(document.getElementById('grafEstadoCita'), d.citasPorEstado || [],
+          { labelKey: 'estado', valueKey: 'total' });
 
-        // ── Modalidad ─────────────────────────────────────────
-        donutChart(
-          document.getElementById('grafModalidad'),
-          d.citasPorModalidad || [],
-          { labelKey: 'modalidad', valueKey: 'total' }
-        );
+        donutChart(document.getElementById('grafModalidad'), d.citasPorModalidad || [],
+          { labelKey: 'modalidad', valueKey: 'total' });
 
-        // ── Acciones ──────────────────────────────────────────
         document.getElementById('rptAcciones').innerHTML = `
           <button class="btn btn-outline btn-sm" id="btnProcesarRec">
             <i class="fas fa-bell"></i> Procesar recordatorios
@@ -245,21 +218,12 @@
       } catch (err) { toast(err.message, 'danger'); }
     }
 
-    // ── Event listeners filtros ───────────────────────────────
     document.querySelectorAll('[data-rpt-preset]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        setPreset(btn.dataset.rptPreset);
-        loadReportes();
-      });
+      btn.addEventListener('click', () => { setPreset(btn.dataset.rptPreset); loadReportes(); });
     });
-
     document.getElementById('btnAplicarFiltro')?.addEventListener('click', loadReportes);
-
-    // Enter en los inputs de fecha también aplica
     ['rptDesde','rptHasta'].forEach(id => {
-      document.getElementById(id)?.addEventListener('keydown', e => {
-        if (e.key === 'Enter') loadReportes();
-      });
+      document.getElementById(id)?.addEventListener('keydown', e => { if (e.key === 'Enter') loadReportes(); });
     });
 
     viewLoaders['reportes'] = () => {
