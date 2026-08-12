@@ -334,7 +334,11 @@
         const data = await api(`/pacientes?${qs}`);
         pacientesCache = data;
         document.getElementById('tablaPacientes').innerHTML = data.length
-          ? data.map(p => `
+          ? data.map(p => {
+            const total    = Number(p.sesiones_total) || 0;
+            const confirm  = Number(p.citas_confirmadas) || 0;
+            const pendient = Math.max(0, total - confirm);
+            return `
             <div class="pac-card">
               <div class="pac-card-top">
                 <div class="pac-avatar">${(p.nombre?.[0] || '').toUpperCase()}</div>
@@ -350,11 +354,20 @@
                 ${p.telefono ? `<span><i class="fas fa-phone"   style="width:12px"></i> ${esc(p.telefono)}</span>` : ''}
                 ${p.terapeuta_nombre ? `<span><i class="fas fa-user-md" style="width:12px"></i> ${esc(p.terapeuta_nombre)}</span>` : ''}
               </div>
+              <div style="display:flex;gap:8px;margin-top:6px;font-size:12px">
+                <span style="background:var(--primary-light);color:var(--primary);padding:2px 8px;border-radius:10px">
+                  <i class="fas fa-calendar-check"></i> Total: <strong>${total}</strong>
+                </span>
+                <span style="background:${pendient > 0 ? 'var(--warning-light,#fff8e1)' : 'var(--success-light,#e8f5e9)'};color:${pendient > 0 ? 'var(--warning,#f59e0b)' : 'var(--success,#22c55e)'};padding:2px 8px;border-radius:10px">
+                  <i class="fas fa-hourglass-half"></i> Pendientes: <strong>${pendient}</strong>
+                </span>
+              </div>
               <div class="pac-card-footer">
                 ${badge(p.estado, ESTADO_PACIENTE)}
                 ${p.fuente ? `<span class="pac-fuente">${esc(p.fuente)}</span>` : ''}
               </div>
-            </div>`).join('')
+            </div>`;
+          }).join('')
           : '<div class="list-empty" style="grid-column:1/-1">Sin pacientes</div>';
 
         document.querySelectorAll('[data-edit-paciente]').forEach(btn =>
@@ -370,9 +383,12 @@
       if (!terapeutasCache.length) terapeutasCache = await api('/terapeutas').catch(() => []);
     }
 
-    function pacienteFormHtml(p = null) {
+    function pacienteFormHtml(p = null, sesiones = []) {
       const tsOpts = terapeutasCache.map(t =>
         `<option value="${t.id}" ${p?.terapeuta_id == t.id ? 'selected' : ''}>${esc(fullName(t))}</option>`).join('');
+      const sesFilas = sesiones.length
+        ? sesiones.map(s => sesionFila(s.id, s.fecha_inicio ? String(s.fecha_inicio).slice(0,10) : '', s.sesiones)).join('')
+        : sesionFila('', '', '');
       return `
         <div class="form-row">
           <div class="form-group">
@@ -412,16 +428,6 @@
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label class="form-label">Fecha de inicio</label>
-            <input type="date" class="form-control" id="f_fecha_inicio" value="${p?.fecha_inicio ? String(p.fecha_inicio).slice(0,10) : ''}">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Sesiones</label>
-            <input type="number" min="0" step="1" class="form-control" id="f_sesiones" value="${p?.sesiones ?? ''}" placeholder="0">
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
             <label class="form-label">Estado</label>
             <select class="form-select" id="f_estado">
               ${Object.entries(ESTADO_PACIENTE).map(([k, v]) =>
@@ -448,14 +454,41 @@
           <textarea class="form-control" id="f_motivo" rows="2">${esc(p?.motivo_consulta || '')}</textarea>
         </div>
         <div class="form-group">
-          <label class="form-label">Notas internas</label>
-          <textarea class="form-control" id="f_notas" rows="2">${esc(p?.notas_internas || '')}</textarea>
+          <label class="form-label" style="margin-bottom:6px">Sesiones</label>
+          <table style="width:100%;border-collapse:collapse" id="sesionesTable">
+            <thead>
+              <tr style="font-size:12px;color:var(--text-muted)">
+                <th style="padding:4px 6px;text-align:left">Fecha de inicio</th>
+                <th style="padding:4px 6px;text-align:left">Sesiones</th>
+                <th style="width:32px"></th>
+              </tr>
+            </thead>
+            <tbody id="sesionesBody">${sesFilas}</tbody>
+          </table>
+          <button type="button" class="btn btn-outline btn-sm" id="btnAddSesion" style="margin-top:6px">
+            <i class="fas fa-plus"></i> Agregar fila
+          </button>
         </div>`;
+    }
+
+    function sesionFila(sid, fecha, cant) {
+      return `<tr data-sid="${sid}" style="border-top:1px solid var(--border)">
+        <td style="padding:4px 6px">
+          <input type="date" class="form-control ses-fecha" value="${esc(fecha)}" style="min-width:130px">
+        </td>
+        <td style="padding:4px 6px">
+          <input type="number" min="0" step="1" class="form-control ses-cant" value="${cant}" placeholder="0" style="max-width:90px">
+        </td>
+        <td style="padding:4px 6px">
+          <button type="button" class="btn-icon danger btn-del-sesion" title="Eliminar"><i class="fas fa-times"></i></button>
+        </td>
+      </tr>`;
     }
 
     async function showPacienteForm(p = null) {
       await ensureTerapeutasCache();
-      openModal(p ? 'Editar paciente' : 'Nuevo paciente', pacienteFormHtml(p), async () => {
+      const sesiones = p ? await api(`/pacientes/${p.id}/sesiones`).catch(() => []) : [];
+      openModal(p ? 'Editar paciente' : 'Nuevo paciente', pacienteFormHtml(p, sesiones), async () => {
         const body = {
           nombre:          document.getElementById('f_nombre').value,
           apellido:        document.getElementById('f_apellido').value,
@@ -467,16 +500,57 @@
           terapeuta_id:    document.getElementById('f_terapeuta_id').value || null,
           fuente:          document.getElementById('f_fuente').value || null,
           motivo_consulta: document.getElementById('f_motivo').value,
-          notas_internas:  document.getElementById('f_notas').value,
-          fecha_inicio:    document.getElementById('f_fecha_inicio').value || null,
-          sesiones:        document.getElementById('f_sesiones').value !== '' ? parseInt(document.getElementById('f_sesiones').value, 10) : null,
         };
         if (!body.nombre || !body.apellido) throw new Error('Nombre y apellido requeridos');
-        if (p) await api(`/pacientes/${p.id}`, { method: 'PUT', body });
-        else   await api('/pacientes', { method: 'POST', body });
+
+        let pid = p?.id;
+        if (p) {
+          await api(`/pacientes/${p.id}`, { method: 'PUT', body });
+        } else {
+          const r = await api('/pacientes', { method: 'POST', body });
+          pid = r.id;
+        }
+
+        // Sincronizar filas de sesiones
+        const filas = document.querySelectorAll('#sesionesBody tr[data-sid]');
+        for (const fila of filas) {
+          const sid    = fila.dataset.sid;
+          const fecha  = fila.querySelector('.ses-fecha').value || null;
+          const cant   = parseInt(fila.querySelector('.ses-cant').value, 10) || 0;
+          if (fila.dataset.deleted === '1') {
+            if (sid) await api(`/pacientes/${pid}/sesiones/${sid}`, { method: 'DELETE' }).catch(() => {});
+          } else if (sid) {
+            await api(`/pacientes/${pid}/sesiones/${sid}`, { method: 'PUT', body: { fecha_inicio: fecha, sesiones: cant } }).catch(() => {});
+          } else {
+            await api(`/pacientes/${pid}/sesiones`, { method: 'POST', body: { fecha_inicio: fecha, sesiones: cant } }).catch(() => {});
+          }
+        }
+
         toast(p ? 'Paciente actualizado' : 'Paciente creado');
         loadPacientes();
       }, { large: true });
+
+      // Listeners dinámicos del formulario de sesiones
+      document.getElementById('btnAddSesion')?.addEventListener('click', () => {
+        document.getElementById('sesionesBody').insertAdjacentHTML('beforeend', sesionFila('', '', ''));
+        bindDelSesion();
+      });
+      bindDelSesion();
+    }
+
+    function bindDelSesion() {
+      document.querySelectorAll('.btn-del-sesion').forEach(btn => {
+        btn.onclick = () => {
+          const fila = btn.closest('tr');
+          if (fila.dataset.sid) {
+            fila.dataset.deleted = '1';
+            fila.style.opacity = '0.3';
+            btn.disabled = true;
+          } else {
+            fila.remove();
+          }
+        };
+      });
     }
 
     function showPacienteDetalle(p) {
