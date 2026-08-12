@@ -119,7 +119,6 @@
         const agendaPacienteId = document.getElementById('agendaPaciente')?.value;
         if (agendaPacienteId) qs.set('paciente_id', agendaPacienteId);
         const citas = await api(`/citas?${qs}`);
-        console.log('citas raw:', JSON.stringify(citas.slice(0,5)));
         const tl = document.getElementById('agendaTimeline');
         if (!citas.length) { tl.innerHTML = '<div class="list-empty">Sin citas para este período</div>'; return; }
 
@@ -131,7 +130,6 @@
           if (!grupos[key]) { grupos[key] = { info: c, citas: [] }; orden.push(key); }
           grupos[key].citas.push(c);
         });
-        console.log('grupos:', Object.keys(grupos).map(k => k + '=' + grupos[k].citas.length));
 
         tl.innerHTML = orden.map(key => {
           const { info, citas: cs } = grupos[key];
