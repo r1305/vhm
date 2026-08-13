@@ -27,7 +27,7 @@ router.get('/', auth, async (req, res) => {
     if (terapeuta) { sql += ' AND c.terapeuta_id = ?'; params.push(terapeuta); }
     if (paciente)  { sql += ' AND c.paciente_id = ?';  params.push(paciente); }
     sql += of.sql; params.push(...of.params);
-    sql += ' ORDER BY c.fecha ASC, c.hora_inicio ASC LIMIT 300';
+    sql += ' ORDER BY c.fecha ASC LIMIT 300';
     const [rows] = await pool.execute(sql, params);
     res.json(rows);
   } catch { res.status(500).json({ error: 'Error al listar citas' }); }
@@ -45,55 +45,33 @@ router.get('/disponibles', async (req, res) => {
       'SELECT hora_inicio, hora_fin FROM disponibilidad WHERE terapeuta_id=? AND dia_semana=? AND activo=1',
       [terapeuta_id, dia]
     );
-    const [ocupadas] = await pool.execute(
-      "SELECT hora_inicio, hora_fin FROM citas WHERE terapeuta_id=? AND fecha=? AND estado NOT IN ('cancelada','no_show')",
-      [terapeuta_id, fecha]
-    );
-    const ocupadasSet = new Set(ocupadas.map(c => c.hora_inicio.slice(0,5)));
-    const libres = slots.filter(s => !ocupadasSet.has(s.hora_inicio.slice(0,5)));
-    res.json(libres);
+    res.json(slots);
   } catch { res.status(500).json({ error: 'Error' }); }
 });
 
 router.post('/', auth, async (req, res) => {
-  const { paciente_id, terapeuta_id, fecha, hora_inicio, hora_fin,
-          modalidad='presencial', tipo='seguimiento', notas } = req.body || {};
+  const { paciente_id, terapeuta_id, fecha, modalidad='presencial', tipo='seguimiento', estado='realizada', notas } = req.body || {};
   if (!paciente_id || !terapeuta_id || !fecha)
     return res.status(400).json({ error: 'Campos requeridos faltantes' });
   try {
     const [r] = await pool.execute(
-      `INSERT INTO citas (paciente_id,terapeuta_id,fecha,hora_inicio,hora_fin,modalidad,tipo,notas)
-       VALUES (?,?,?,?,?,?,?,?)`,
-      [pid(paciente_id), pid(terapeuta_id), fecha, hora_inicio||null, hora_fin||null, modalidad, tipo, t(notas,2000)]
+      `INSERT INTO citas (paciente_id,terapeuta_id,fecha,modalidad,tipo,estado,notas)
+       VALUES (?,?,?,?,?,?,?)`,
+      [pid(paciente_id), pid(terapeuta_id), fecha, modalidad, tipo, estado, t(notas,2000)]
     );
     await pool.execute(
       `UPDATE pacientes SET estado='confirmado' WHERE id=? AND estado='prospecto'`,
       [pid(paciente_id)]
     );
-    const citaId = r.insertId;
-    if (hora_inicio) {
-      const fecha48 = new Date(`${fecha}T${hora_inicio}`);
-      fecha48.setHours(fecha48.getHours() - 48);
-      const fecha24 = new Date(`${fecha}T${hora_inicio}`);
-      fecha24.setHours(fecha24.getHours() - 24);
-      await pool.execute(
-        `INSERT INTO recordatorios (paciente_id,cita_id,tipo,canal,programado_at) VALUES (?,?,'recordatorio_cita','email',?)`,
-        [pid(paciente_id), citaId, fecha48]
-      );
-      await pool.execute(
-        `INSERT INTO recordatorios (paciente_id,cita_id,tipo,canal,programado_at) VALUES (?,?,'recordatorio_cita','email',?)`,
-        [pid(paciente_id), citaId, fecha24]
-      );
-    }
-    res.status(201).json({ id: citaId });
-  } catch { res.status(500).json({ error: 'Error al crear cita' }); }
+    res.status(201).json({ id: r.insertId });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // Auto-agendamiento público (sin auth)
 router.post('/agendar', async (req, res) => {
   const { nombre, apellido, email, telefono, terapeuta_id, fecha,
-          hora_inicio, hora_fin, modalidad='presencial', fuente_detalle } = req.body || {};
-  if (!nombre || !terapeuta_id || !fecha || !hora_inicio)
+          modalidad='presencial', fuente_detalle } = req.body || {};
+  if (!nombre || !terapeuta_id || !fecha)
     return res.status(400).json({ error: 'Datos incompletos' });
   try {
     // Crear o encontrar paciente
@@ -111,9 +89,9 @@ router.post('/agendar', async (req, res) => {
       pacienteId = r.insertId;
     }
     const [rc] = await pool.execute(
-      `INSERT INTO citas (paciente_id,terapeuta_id,fecha,hora_inicio,hora_fin,modalidad,tipo)
-       VALUES (?,?,?,?,?,?,'primera_vez')`,
-      [pacienteId, pid(terapeuta_id), fecha, hora_inicio, hora_fin||'', modalidad]
+      `INSERT INTO citas (paciente_id,terapeuta_id,fecha,modalidad,tipo)
+       VALUES (?,?,?,?,'primera_vez')`,
+      [pacienteId, pid(terapeuta_id), fecha, modalidad]
     );
     // Si el paciente es prospecto, pasa a confirmado
     await pool.execute(
@@ -122,6 +100,21 @@ router.post('/agendar', async (req, res) => {
     );
     res.status(201).json({ ok: true, cita_id: rc.insertId, paciente_id: pacienteId });
   } catch { res.status(500).json({ error: 'Error al agendar' }); }
+});
+
+router.delete('/:cid', auth, async (req, res) => {
+  const cid = pid(req.params.cid);
+  if (!cid) return res.status(400).json({ error: 'ID inválido' });
+  try {
+    const [[cita]] = await pool.execute('SELECT estado, terapeuta_id FROM citas WHERE id=?', [cid]);
+    if (!cita) return res.status(404).json({ error: 'No encontrada' });
+    const esAdmin = req.user.rol !== 'terapeuta';
+    if (!esAdmin && cita.estado !== 'pendiente') return res.status(400).json({ error: 'Solo se pueden eliminar citas pendientes' });
+    if (!esAdmin && cita.terapeuta_id !== req.user.id)
+      return res.status(403).json({ error: 'Sin acceso' });
+    await pool.execute('DELETE FROM citas WHERE id=?', [cid]);
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 router.patch('/:cid/estado', auth, async (req, res) => {

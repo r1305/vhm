@@ -19,16 +19,20 @@ router.get('/stats', auth, async (req, res) => {
     const { desde, hasta } = parseDateRange(req.query);
     const hastaFin = `${hasta} 23:59:59`;
 
+    const tid = req.query.terapeuta_id ? parseInt(req.query.terapeuta_id, 10) : null;
+    const tidFilter  = tid ? ` AND terapeuta_id = ${tid}`   : '';
+    const tidFilterC = tid ? ` AND c.terapeuta_id = ${tid}` : '';
+
     const [[kpis]] = await pool.execute(`
       SELECT
         (SELECT COUNT(*) FROM citas
-          WHERE fecha BETWEEN ? AND ? AND estado NOT IN ('cancelada','no_show')) AS citas_periodo,
+          WHERE fecha BETWEEN ? AND ? AND estado NOT IN ('cancelada','no_show')${tidFilter}) AS citas_periodo,
         (SELECT COUNT(*) FROM citas
-          WHERE fecha BETWEEN ? AND ? AND estado='realizada') AS citas_realizadas,
+          WHERE fecha BETWEEN ? AND ? AND estado='realizada'${tidFilter}) AS citas_realizadas,
         (SELECT COUNT(*) FROM citas
-          WHERE fecha BETWEEN ? AND ? AND estado='cancelada') AS citas_canceladas,
+          WHERE fecha BETWEEN ? AND ? AND estado='cancelada'${tidFilter}) AS citas_canceladas,
         (SELECT COUNT(*) FROM citas
-          WHERE fecha BETWEEN ? AND ? AND estado='no_show') AS no_shows,
+          WHERE fecha BETWEEN ? AND ? AND estado='no_show'${tidFilter}) AS no_shows,
         (SELECT COUNT(*) FROM leads
           WHERE DATE(created_at) BETWEEN ? AND ?) AS leads_periodo,
         (SELECT COUNT(*) FROM leads
@@ -44,26 +48,23 @@ router.get('/stats', auth, async (req, res) => {
       desde, hasta, desde, hasta, desde, hasta, desde, hasta
     ]);
 
-    // Citas por estado (dona)
     const [citasPorEstado] = await pool.execute(`
       SELECT estado, COUNT(*) AS total
-      FROM citas WHERE fecha BETWEEN ? AND ?
+      FROM citas WHERE fecha BETWEEN ? AND ?${tidFilter}
       GROUP BY estado ORDER BY total DESC
     `, [desde, hasta]);
 
-    // Citas por terapeuta
     const [citasPorTerapeuta] = await pool.execute(`
       SELECT t.nombre, t.apellido, COUNT(c.id) AS total,
              SUM(CASE WHEN c.estado='realizada' THEN 1 ELSE 0 END) AS realizadas
       FROM citas c JOIN terapeutas t ON c.terapeuta_id=t.id
-      WHERE c.fecha BETWEEN ? AND ?
+      WHERE c.fecha BETWEEN ? AND ?${tidFilterC}
       GROUP BY t.id ORDER BY total DESC
     `, [desde, hasta]);
 
-    // Citas por día del período
     const [citasPorDia] = await pool.execute(`
       SELECT fecha, COUNT(*) AS total
-      FROM citas WHERE fecha BETWEEN ? AND ?
+      FROM citas WHERE fecha BETWEEN ? AND ?${tidFilter}
       GROUP BY fecha ORDER BY fecha ASC
     `, [desde, hasta]);
 
@@ -134,7 +135,7 @@ router.get('/dashboard', auth, async (req, res) => {
              t.nombre AS terapeuta_nombre
       FROM citas c JOIN pacientes p ON c.paciente_id=p.id
       JOIN terapeutas t ON c.terapeuta_id=t.id
-      WHERE c.fecha=CURDATE() ORDER BY c.hora_inicio ASC LIMIT 20
+      WHERE c.fecha=CURDATE() ORDER BY c.fecha ASC LIMIT 20
     `);
     const [leadsFuente] = await pool.execute(`
       SELECT fuente, COUNT(*) AS total FROM leads
@@ -183,7 +184,7 @@ router.post('/procesar-recordatorios', auth, async (req, res) => {
   if (req.user.rol !== 'superadmin') return res.status(403).json({ error: 'Solo superadmin' });
   const [pendientes] = await pool.execute(`
     SELECT r.*, p.nombre, p.email, p.apellido,
-           c.fecha, c.hora_inicio, c.modalidad,
+           c.fecha, c.modalidad,
            t.nombre AS t_nombre, t.apellido AS t_apellido
     FROM recordatorios r
     JOIN pacientes p ON r.paciente_id=p.id
@@ -198,7 +199,7 @@ router.post('/procesar-recordatorios', auth, async (req, res) => {
       if (rec.email) {
         await sendRecordatorioCita(
           { nombre: rec.nombre, email: rec.email },
-          { fecha: rec.fecha, hora_inicio: rec.hora_inicio, modalidad: rec.modalidad },
+          { fecha: rec.fecha, modalidad: rec.modalidad },
           { nombre: rec.t_nombre||'tu terapeuta', apellido: rec.t_apellido||'' }
         );
       }

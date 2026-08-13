@@ -1,0 +1,24 @@
+<div style="display:flex;gap:6px;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:12px">
+  <button class="btn btn-sm btn-primary" id="mktBtnCampanas">Campañas</button>
+  <button class="btn btn-sm btn-outline" id="mktBtnSuscriptores">Suscriptores</button>
+</div>
+<div id="mktCampanas">
+  <div class="view-toolbar">
+    <button class="btn btn-primary btn-sm" id="btnNuevaCampana"><i class="fas fa-plus"></i> Nueva campaña</button>
+  </div>
+  <div class="card">
+    <table class="table">
+      <thead><tr><th>Nombre</th><th>Asunto</th><th>Segmento</th><th>Estado</th><th>Enviados</th><th></th></tr></thead>
+      <tbody id="tablaCampanas"></tbody>
+    </table>
+  </div>
+</div>
+<div id="mktSuscriptores" style="display:none">
+  <div class="card">
+    <table class="table">
+      <thead><tr><th>Email</th><th>Nombre</th><th>Segmento</th><th>Estado</th><th>Fecha</th><th></th></tr></thead>
+      <tbody id="tablaSuscriptores"></tbody>
+    </table>
+  </div>
+</div>
+

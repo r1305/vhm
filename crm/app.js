@@ -1,8 +1,9 @@
 require('dotenv').config();
-const path = require('path');
+const path    = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 const express = require('express');
 const cors    = require('cors');
+const session = require('express-session');
 
 const { ensureSchema } = require('./schema');
 
@@ -10,6 +11,9 @@ const app  = express();
 const BASE = (process.env.APP_MOUNT_PATH || '/crm').replace(/\/$/, '');
 
 app.set('trust proxy', 1);
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
+app.locals.BASE = (process.env.APP_MOUNT_PATH || '/crm').replace(/\/$/, '');
 
 try { app.use(require('compression')({ threshold: 1024 })); } catch (_) {}
 
@@ -37,6 +41,13 @@ app.use(cors({
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'crm_session_secret_change_me',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { httpOnly: true, maxAge: 10 * 60 * 60 * 1000 }, // 10h
+}));
+
 app.use(BASE, express.static(path.join(__dirname, 'public'), { maxAge: '1h', index: false }));
 
 function sendHtml(res, file) {
@@ -51,6 +62,9 @@ function sendHtml(res, file) {
 
 // Config publica (sin auth) — debe ir antes del router principal
 app.get(`${BASE}/api/config/public`, require('./routes/config'));
+
+// Rutas MPA (páginas)
+app.use(BASE, require('./routes/pages'));
 
 const router = express.Router();
 
@@ -144,10 +158,10 @@ router.post('/api/whatsapp/test', require('./lib/auth').authAdmin, async (req, r
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.get('/', (req, res) => sendHtml(res, 'index.html'));
+router.get('/', (req, res) => res.redirect(`${BASE}/dashboard`));
 router.get('*', (req, res) => {
   if (req.path.startsWith('/api')) return res.status(404).json({ error: 'Ruta no encontrada' });
-  sendHtml(res, 'index.html');
+  res.redirect(`${BASE}/dashboard`);
 });
 
 app.use(BASE, router);

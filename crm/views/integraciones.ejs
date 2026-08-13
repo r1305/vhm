@@ -1,0 +1,67 @@
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+  <div class="card">
+    <div class="card-header"><span><i class="fa-brands fa-instagram" style="color:#E1306C"></i> Instagram / Meta Lead Ads</span><span class="badge badge-green" id="meta-status"><%= cfg.meta_verify_token ? 'Configurado' : 'Sin configurar' %></span></div>
+    <div class="card-body">
+      <div class="form-group"><label class="form-label">Verify Token</label><input class="form-control" id="meta-verify-token" value="<%= cfg.meta_verify_token || '' %>" placeholder="token_secreto_meta"></div>
+      <div class="form-group"><label class="form-label">Page Access Token</label><div class="pwd-wrapper"><input type="password" class="form-control" id="meta-access-token" value="<%= cfg.meta_access_token || '' %>" placeholder="EAAxxxxx..."><button type="button" class="pwd-toggle" onclick="togglePwd('meta-access-token',this)" tabindex="-1"><i class="fas fa-eye"></i></button></div></div>
+      <div class="form-group"><label class="form-label">App Secret</label><div class="pwd-wrapper"><input type="password" class="form-control" id="meta-app-secret" value="<%= cfg.meta_app_secret || '' %>" placeholder="App Secret"><button type="button" class="pwd-toggle" onclick="togglePwd('meta-app-secret',this)" tabindex="-1"><i class="fas fa-eye"></i></button></div></div>
+      <button class="btn btn-primary btn-sm" id="btnSaveMeta"><i class="fas fa-save"></i> Guardar</button>
+      <hr style="margin:14px 0;border-color:var(--border)">
+      <p style="font-size:12px;color:var(--text-muted)"><strong>Webhook URL:</strong></p>
+      <code style="font-size:11px;word-break:break-all;background:var(--bg);padding:6px 8px;border-radius:6px;display:block;margin-top:4px"><%= origin %><%= BASE %>/api/leads/webhook/meta</code>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header"><span><i class="fa-brands fa-tiktok"></i> TikTok Lead Generation</span><span class="badge badge-green" id="tiktok-status"><%= cfg.tiktok_app_secret ? 'Configurado' : 'Sin configurar' %></span></div>
+    <div class="card-body">
+      <div class="form-group"><label class="form-label">App Secret</label><div class="pwd-wrapper"><input type="password" class="form-control" id="tiktok-app-secret" value="<%= cfg.tiktok_app_secret || '' %>" placeholder="App Secret TikTok"><button type="button" class="pwd-toggle" onclick="togglePwd('tiktok-app-secret',this)" tabindex="-1"><i class="fas fa-eye"></i></button></div></div>
+      <div class="form-group"><label class="form-label">Verify Token</label><input class="form-control" id="tiktok-verify-token" value="<%= cfg.tiktok_verify_token || '' %>" placeholder="token_secreto_tiktok"></div>
+      <button class="btn btn-primary btn-sm" id="btnSaveTiktok"><i class="fas fa-save"></i> Guardar</button>
+      <hr style="margin:14px 0;border-color:var(--border)">
+      <p style="font-size:12px;color:var(--text-muted)"><strong>Webhook URL:</strong></p>
+      <code style="font-size:11px;word-break:break-all;background:var(--bg);padding:6px 8px;border-radius:6px;display:block;margin-top:4px"><%= origin %><%= BASE %>/api/leads/webhook/tiktok</code>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header"><span><i class="fab fa-whatsapp" style="color:#25D366"></i> WhatsApp (openwa)</span><span class="badge <%= cfg.openwa_url ? 'badge-green' : 'badge-yellow' %>" id="openwa-status"><%= cfg.openwa_url ? 'Configurado' : 'Sin configurar' %></span></div>
+    <div class="card-body">
+      <div class="form-group"><label class="form-label">URL de openwa *</label><input class="form-control" id="openwa-url" value="<%= cfg.openwa_url || '' %>" placeholder="https://vhm.com.pe/openwa"></div>
+      <div class="form-group"><label class="form-label">API Key *</label><div class="pwd-wrapper"><input type="password" class="form-control" id="openwa-api-key" value="<%= cfg.openwa_api_key || '' %>" placeholder="owa_..."><button type="button" class="pwd-toggle" onclick="togglePwd('openwa-api-key',this)" tabindex="-1"><i class="fas fa-eye"></i></button></div></div>
+      <div class="form-group"><label class="form-label">Session ID *</label><input class="form-control" id="openwa-session" value="<%= cfg.openwa_session || '' %>" placeholder="UUID de la sesión activa"></div>
+      <div style="display:flex;gap:8px"><button class="btn btn-primary btn-sm" id="btnSaveOpenwa"><i class="fas fa-save"></i> Guardar</button><button class="btn btn-outline btn-sm" id="btnTestOpenwa"><i class="fab fa-whatsapp"></i> Probar</button></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header"><span><i class="fas fa-clock" style="color:var(--primary)"></i> Cron WhatsApp terapeutas</span><span class="badge <%= cron.enabled ? 'badge-green' : 'badge-gray' %>" id="cron-status"><%= cron.enabled ? 'Activo' : 'Desactivado' %></span></div>
+    <div class="card-body">
+      <div class="form-group" style="display:flex;align-items:center;gap:10px"><label class="form-label" style="margin:0">Activar envío automático</label><input type="checkbox" id="cron-enabled" <%= cron.enabled ? 'checked' : '' %> style="width:18px;height:18px;cursor:pointer"></div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <div class="form-group" style="flex:1;min-width:80px"><label class="form-label">Hora (0-23)</label><input type="number" min="0" max="23" class="form-control" id="cron-hora" value="<%= cron.hora %>"></div>
+        <div class="form-group" style="flex:1;min-width:80px"><label class="form-label">Minuto (0-59)</label><input type="number" min="0" max="59" class="form-control" id="cron-minuto" value="<%= cron.minuto %>"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Días de envío</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
+          <% [['1','Lun'],['2','Mar'],['3','Mié'],['4','Jue'],['5','Vie'],['6','Sáb'],['0','Dom']].forEach(([v,l]) => { %>
+          <label style="display:flex;align-items:center;gap:4px;font-size:13px"><input type="checkbox" class="cron-dia" value="<%= v %>" <%= cronDias.includes(v) ? 'checked' : '' %>> <%= l %></label>
+          <% }) %>
+        </div>
+      </div>
+      <div class="form-group"><label class="form-label">Mensaje broadcast</label><textarea class="form-control" id="cron-mensaje-broadcast" rows="4" placeholder="Escribe aquí el mensaje..."></textarea></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-primary btn-sm" id="btnSaveCron"><i class="fas fa-save"></i> Guardar</button>
+        <button class="btn btn-outline btn-sm" id="btnEjecutarCron"><i class="fas fa-play"></i> Ejecutar ahora</button>
+        <button class="btn btn-outline btn-sm" id="btnBroadcast"><i class="fab fa-whatsapp" style="color:#25D366"></i> Enviar a todos</button>
+        <button class="btn btn-outline btn-sm" id="btnEnviarManual"><i class="fas fa-paper-plane"></i> Enviar a número</button>
+      </div>
+    </div>
+  </div>
+  <div class="card" style="grid-column:1/-1">
+    <div class="card-header"><span><i class="fas fa-globe" style="color:var(--primary)"></i> Widget para vhm.com.pe</span></div>
+    <div class="card-body">
+      <div class="form-group" style="max-width:400px"><label class="form-label">Texto del botón flotante</label><input class="form-control" id="widget-btn-texto" value="<%= cfg.widget_btn_texto || '' %>" placeholder="💜 Quiero una sesión gratuita"></div>
+      <button class="btn btn-primary btn-sm" id="btnSaveWidget"><i class="fas fa-save"></i> Guardar texto</button>
+    </div>
+  </div>
+</div>
+

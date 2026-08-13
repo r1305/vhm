@@ -10,9 +10,15 @@ function signToken(payload) {
 }
 
 function auth(req, res, next) {
+  // Sesión cookie (MPA)
+  if (req.session?.user) {
+    req.user = req.session.user;
+    return next();
+  }
+  // JWT Bearer (API externa)
   const header = req.headers.authorization || '';
   const token = header.startsWith('Bearer ') ? header.slice(7) : null;
-  if (!token) return res.status(401).json({ error: 'Token requerido' });
+  if (!token) return res.status(401).json({ error: 'No autenticado' });
   try {
     req.user = jwt.verify(token, SECRET);
     next();
@@ -21,7 +27,6 @@ function auth(req, res, next) {
   }
 }
 
-// Solo superadmin o recepcion pueden ver todos los pacientes
 function authAdmin(req, res, next) {
   auth(req, res, () => {
     if (!['superadmin', 'recepcion'].includes(req.user.rol)) {

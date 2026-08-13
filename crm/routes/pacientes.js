@@ -1,6 +1,6 @@
 const { Router } = require('express');
 const pool = require('../lib/db');
-const { auth, ownerFilter } = require('../lib/auth');
+const { auth, authAdmin, ownerFilter } = require('../lib/auth');
 
 const router = Router();
 const t = (v, max = 255) => v == null ? null : String(v).trim().slice(0, max) || null;
@@ -38,7 +38,7 @@ router.get('/', auth, async (req, res) => {
   } catch { res.status(500).json({ error: 'Error al listar pacientes' }); }
 });
 
-router.post('/', auth, async (req, res) => {
+router.post('/', authAdmin, async (req, res) => {
   const { nombre, apellido, email, telefono, fecha_nacimiento, genero,
           motivo_consulta, fuente, fuente_detalle, terapeuta_id, estado = 'prospecto' } = req.body || {};
   if (!nombre || !apellido) return res.status(400).json({ error: 'nombre y apellido requeridos' });
@@ -70,7 +70,7 @@ router.get('/:pid', auth, async (req, res) => {
   } catch { res.status(500).json({ error: 'Error' }); }
 });
 
-router.put('/:pid', auth, async (req, res) => {
+router.put('/:pid', authAdmin, async (req, res) => {
   const pid = id(req.params.pid);
   if (!pid) return res.status(400).json({ error: 'ID inválido' });
   const { nombre, apellido, email, telefono, fecha_nacimiento, genero,

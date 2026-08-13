@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>VHM CRM — <%= title %></title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="<%= BASE %>/app.css">
+  <script>(function(){var t=localStorage.getItem('crm-theme')||'light';document.documentElement.setAttribute('data-theme',t);})();</script>
+  <script>window.__APP_BASE__ = '<%- BASE %>'; window.__USER_ROL__ = '<%- user.rol %>'; window.__USER_ID__ = <%= user.id %>;</script>
+</head>
+<body>
+
+<div class="crm-app">
+
+  <!-- Sidebar -->
+  <aside class="crm-sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="sidebar-logo"><i class="fas fa-heart-pulse"></i></div>
+      <span>VHM CRM</span>
+    </div>
+    <nav class="sidebar-nav">
+      <% const principalItems = ['dashboard','agenda','pacientes','mi_reporte','leads']; %>
+      <% if (principalItems.some(i => menuPermisos.has(i))) { %>
+      <div class="nav-section">Principal</div>
+      <% } %>
+      <% if (menuPermisos.has('dashboard')) { %>
+      <a class="nav-item <%= view === 'dashboard'  ? 'active' : '' %>" href="<%= BASE %>/dashboard"><i class="fas fa-gauge-high"></i> Dashboard</a>
+      <% } %>
+      <% if (menuPermisos.has('agenda')) { %>
+      <a class="nav-item <%= view === 'agenda'     ? 'active' : '' %>" href="<%= BASE %>/agenda"><i class="fas fa-calendar-days"></i> Agenda</a>
+      <% } %>
+      <% if (menuPermisos.has('pacientes')) { %>
+      <a class="nav-item <%= view === 'pacientes'  ? 'active' : '' %>" href="<%= BASE %>/pacientes"><i class="fas fa-users"></i> Pacientes</a>
+      <% } %>
+      <% if (menuPermisos.has('mi_reporte')) { %>
+      <a class="nav-item <%= view === 'mi_reporte' ? 'active' : '' %>" href="<%= BASE %>/mi-reporte"><i class="fas fa-chart-bar"></i> Mi reporte</a>
+      <% } %>
+      <% if (menuPermisos.has('leads')) { %>
+      <a class="nav-item <%= view === 'leads'      ? 'active' : '' %>" href="<%= BASE %>/leads"><i class="fas fa-bullseye"></i> Leads</a>
+      <% } %>
+
+      <% if (menuPermisos.has('historial') || menuPermisos.has('consentimientos')) { %>
+      <div class="nav-section">Clínico</div>
+      <% } %>
+      <% if (menuPermisos.has('historial')) { %>
+      <a class="nav-item <%= view === 'historial'       ? 'active' : '' %>" href="<%= BASE %>/historial"><i class="fas fa-file-medical"></i> Historial</a>
+      <% } %>
+      <% if (menuPermisos.has('consentimientos')) { %>
+      <a class="nav-item <%= view === 'consentimientos' ? 'active' : '' %>" href="<%= BASE %>/consentimientos"><i class="fas fa-file-signature"></i> Consentimientos</a>
+      <% } %>
+
+      <% const adminItems = ['pagos','espera','analitica','marketing','asignacion','integraciones','terapeutas','reportes','permisos_menu']; %>
+      <% if (adminItems.some(i => menuPermisos.has(i))) { %>
+      <div class="nav-section">Administración</div>
+      <% } %>
+      <% if (menuPermisos.has('pagos')) { %>
+      <a class="nav-item <%= view === 'pagos'        ? 'active' : '' %>" href="<%= BASE %>/pagos"><i class="fas fa-credit-card"></i> Pagos</a>
+      <% } %>
+      <% if (menuPermisos.has('espera')) { %>
+      <a class="nav-item <%= view === 'espera'       ? 'active' : '' %>" href="<%= BASE %>/espera"><i class="fas fa-hourglass-half"></i> Lista de espera</a>
+      <% } %>
+      <% if (menuPermisos.has('analitica')) { %>
+      <a class="nav-item <%= view === 'analitica'    ? 'active' : '' %>" href="<%= BASE %>/analitica"><i class="fas fa-chart-line"></i> Analítica web</a>
+      <% } %>
+      <% if (menuPermisos.has('marketing')) { %>
+      <a class="nav-item <%= view === 'marketing'    ? 'active' : '' %>" href="<%= BASE %>/marketing"><i class="fas fa-envelope-open-text"></i> Marketing</a>
+      <% } %>
+      <% if (menuPermisos.has('asignacion')) { %>
+      <a class="nav-item <%= view === 'asignacion'   ? 'active' : '' %>" href="<%= BASE %>/asignacion"><i class="fas fa-sitemap"></i> Asignación auto</a>
+      <% } %>
+      <% if (menuPermisos.has('integraciones')) { %>
+      <a class="nav-item <%= view === 'integraciones'? 'active' : '' %>" href="<%= BASE %>/integraciones"><i class="fas fa-plug"></i> Integraciones</a>
+      <% } %>
+      <% if (menuPermisos.has('terapeutas')) { %>
+      <a class="nav-item <%= view === 'terapeutas'   ? 'active' : '' %>" href="<%= BASE %>/terapeutas"><i class="fas fa-user-md"></i> Terapeutas</a>
+      <% } %>
+      <% if (menuPermisos.has('reportes')) { %>
+      <a class="nav-item <%= view === 'reportes'     ? 'active' : '' %>" href="<%= BASE %>/reportes"><i class="fas fa-chart-bar"></i> Reportes</a>
+      <% } %>
+      <% if (menuPermisos.has('permisos_menu')) { %>
+      <a class="nav-item <%= view === 'permisos_menu'? 'active' : '' %>" href="<%= BASE %>/permisos-menu"><i class="fas fa-shield-halved"></i> Permisos de menú</a>
+      <% } %>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-badge">
+        <div class="user-avatar"><%= user.nombre[0].toUpperCase() %><%= user.apellido[0].toUpperCase() %></div>
+        <div class="user-info">
+          <div class="user-name"><%= user.nombre %> <%= user.apellido %></div>
+          <div class="user-role"><%= user.rol %></div>
+        </div>
+        <form method="POST" action="<%= BASE %>/logout" style="margin:0">
+          <button class="btn-icon" title="Salir"><i class="fas fa-right-from-bracket"></i></button>
+        </form>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="crm-main">
+    <header class="crm-topbar">
+      <button class="btn-icon" id="sidebarToggle" style="display:none"><i class="fas fa-bars"></i></button>
+      <h1 class="page-title"><%= title %></h1>
+      <button class="theme-btn" id="themeBtn" title="Cambiar tema"><i class="fas fa-moon"></i></button>
+    </header>
+
+    <main class="crm-content" id="crmContent">
+      <%- include(partialView) %>
+    </main>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" id="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modalTitle">Formulario</span>
+      <button class="btn-icon" id="modalClose"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" id="modalCancel">Cancelar</button>
+      <button class="btn btn-primary" id="modalSave">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toastContainer"></div>
+
+<script src="<%= BASE %>/app.js"></script>
+<%- scripts %>
+</body>
+</html>
