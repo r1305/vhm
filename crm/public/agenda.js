@@ -49,7 +49,7 @@
             </div>
             <span class="badge ${(ESTADO_CITA[c.estado]||{css:'badge-gray'}).css}">${(ESTADO_CITA[c.estado]||{label:c.estado}).label}</span>
             <div class="ag-cita-actions">
-              <button class="btn-icon" data-cita-estado="${c.id}" data-actual="${c.estado}" title="Cambiar estado"><i class="fas fa-pen"></i></button>
+              <button class="btn-icon" data-cita-estado="${c.id}" data-actual="${c.estado}" data-notas="${esc(c.notas||'')}" title="Cambiar estado"><i class="fas fa-pen"></i></button>
               <button class="btn-icon" data-send-rec="${c.id}" title="Enviar recordatorio"><i class="fas fa-bell"></i></button>
               ${c.estado !== 'realizada' ? `<button class="btn-icon" style="color:var(--success)" data-confirmar="${c.id}" title="Marcar realizada"><i class="fas fa-circle-check"></i></button>` : ''}
               ${c.estado !== 'realizada' && c.estado !== 'cancelada' ? `<button class="btn-icon" style="color:var(--danger)" data-cancelar="${c.id}" title="Cancelar"><i class="fas fa-circle-xmark"></i></button>` : ''}
@@ -71,7 +71,7 @@
       }).join('');
 
       tl.querySelectorAll('[data-cita-estado]').forEach(btn =>
-        btn.addEventListener('click', () => showCambioEstado(btn.dataset.citaEstado, btn.dataset.actual))
+        btn.addEventListener('click', () => showCambioEstado(btn.dataset.citaEstado, btn.dataset.actual, btn.dataset.notas))
       );
       tl.querySelectorAll('[data-send-rec]').forEach(btn =>
         btn.addEventListener('click', async () => {
@@ -332,17 +332,23 @@
   }
 
   /* ── Cambio de estado ───────────────────────────────── */
-  function showCambioEstado(id, actual) {
-    openModal('Cambiar estado', `
+  function showCambioEstado(id, actual, notasActual = '') {
+    openModal('Editar cita', `
       <div class="form-group">
-        <label class="form-label">Nuevo estado</label>
+        <label class="form-label">Estado</label>
         <select class="form-select" id="f_estado_cita">
           ${Object.entries(ESTADO_CITA).map(([k,v]) =>
             `<option value="${k}" ${k===actual?'selected':''}>${v.label}</option>`).join('')}
         </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Observaciones *</label>
+        <textarea class="form-control" id="f_notas_cita" rows="3">${esc(notasActual)}</textarea>
       </div>`, async () => {
-      await api(`/citas/${id}/estado`, { method: 'PATCH', body: { estado: document.getElementById('f_estado_cita').value } });
-      toast('Estado actualizado'); loadAgenda();
+      const notas = document.getElementById('f_notas_cita').value.trim();
+      if (!notas) throw new Error('Las observaciones son obligatorias');
+      await api(`/citas/${id}/estado`, { method: 'PATCH', body: { estado: document.getElementById('f_estado_cita').value, notas } });
+      toast('Cita actualizada'); loadAgenda();
     });
   }
 
