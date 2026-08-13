@@ -1,0 +1,23 @@
+<div class="view-toolbar">
+  <input type="search" class="form-control search-input" id="buscarPaciente" placeholder="Buscar paciente…">
+  <select class="form-select" id="filtroPacienteEstado" style="max-width:160px">
+    <option value="">Todos</option>
+    <option value="activo">Activo</option>
+    <option value="prospecto">Prospecto</option>
+    <option value="alta">Alta</option>
+    <option value="inactivo">Inactivo</option>
+    <option value="lista_espera">Lista de espera</option>
+  </select>
+  <% if (isAdmin) { %><button class="btn btn-primary btn-sm" id="btnNuevoPaciente"><i class="fas fa-plus"></i> Nuevo</button><% } %>
+</div>
+<% if (isAdmin) { %>
+<div id="terapeutaChips" class="chips-bar">
+  <% terapeutas.forEach(t => { %>
+  <button class="chip" data-chip-id="<%= t.id %>"><%= t.nombre %> <%= t.apellido %> (<%= conteo[t.id] || 0 %>)</button>
+  <% }) %>
+</div>
+<% } else { %>
+<div id="terapeutaChips" style="display:none"></div>
+<% } %>
+<div id="tablaPacientes" class="pac-grid"></div>
+

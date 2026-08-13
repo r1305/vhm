@@ -1,0 +1,49 @@
+<div class="kpi-grid" id="kpiGrid">
+  <% kpis.forEach(k => { %>
+  <div class="kpi-card <%= k.css %>">
+    <div class="kpi-label"><%= k.label %></div>
+    <div class="kpi-value"><%= k.value %></div>
+    <% if (k.sub) { %><div class="kpi-sub"><%= k.sub %></div><% } %>
+  </div>
+  <% }) %>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px" class="dash-grid">
+  <div class="card">
+    <div class="card-header"><span><i class="fas fa-calendar-day" style="color:var(--primary)"></i> Citas de hoy</span></div>
+    <div id="citasHoyList">
+      <% if (citasHoy.length) { %>
+        <% citasHoy.forEach(c => { %>
+        <div class="list-item">
+          <div class="list-icon"><i class="fas fa-clock"></i></div>
+          <div style="flex:1">
+            <div class="list-title"><%= c.hora_inicio ? c.hora_inicio.slice(0,5) : '—' %> — <%= c.paciente_nombre %> <%= c.paciente_apellido %></div>
+            <div class="list-meta"><%= c.terapeuta_nombre %> · <%= c.modalidad %></div>
+          </div>
+          <span class="badge <%= estadoCitaCSS[c.estado] || 'badge-gray' %>"><%= c.estado %></span>
+        </div>
+        <% }) %>
+      <% } else { %>
+        <div class="list-empty">Sin citas hoy</div>
+      <% } %>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header"><span><i class="fas fa-bullseye" style="color:var(--primary)"></i> Leads recientes</span></div>
+    <div id="leadsRecentesList">
+      <% if (leadsRecientes.length) { %>
+        <% leadsRecientes.forEach(l => { %>
+        <div class="list-item">
+          <div class="list-icon"><i class="fas fa-user"></i></div>
+          <div style="flex:1">
+            <div class="list-title"><%= l.nombre %> <%= l.apellido || '' %></div>
+            <div class="list-meta"><%= l.fuente %> · <%= l.estado %></div>
+          </div>
+        </div>
+        <% }) %>
+      <% } else { %>
+        <div class="list-empty">Sin leads recientes</div>
+      <% } %>
+    </div>
+  </div>
+</div>
+

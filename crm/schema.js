@@ -62,8 +62,6 @@ async function ensureSchema() {
         paciente_id     INT NOT NULL,
         terapeuta_id    INT NOT NULL,
         fecha           DATE NOT NULL,
-        hora_inicio     TIME NOT NULL,
-        hora_fin        TIME NOT NULL,
         modalidad       ENUM('presencial','videollamada','telefono') NOT NULL DEFAULT 'presencial',
         tipo            ENUM('primera_vez','seguimiento','evaluacion','urgencia') NOT NULL DEFAULT 'seguimiento',
         estado          ENUM('pendiente','confirmada','realizada','cancelada','no_show') NOT NULL DEFAULT 'pendiente',
@@ -204,9 +202,11 @@ async function ensureSchema() {
     `);
     try { await conn.execute('INSERT IGNORE INTO cron_config (id) VALUES (1)'); } catch (_) {}
 
-    // Hacer hora_inicio y hora_fin opcionales en citas
-    try { await conn.execute('ALTER TABLE citas MODIFY hora_inicio TIME NULL DEFAULT NULL'); } catch (_) {}
-    try { await conn.execute('ALTER TABLE citas MODIFY hora_fin TIME NULL DEFAULT NULL'); } catch (_) {}
+    // Eliminar hora_inicio y hora_fin de citas
+    try { await conn.execute('ALTER TABLE citas DROP COLUMN hora_inicio'); } catch (_) {}
+    try { await conn.execute('ALTER TABLE citas DROP COLUMN hora_fin'); } catch (_) {}
+    // Actualizar labels de tipo en citas (solo cosmético, los valores ENUM no cambian)
+    try { await conn.execute("ALTER TABLE citas MODIFY tipo ENUM('primera_vez','seguimiento','evaluacion','urgencia') NOT NULL DEFAULT 'seguimiento'"); } catch (_) {}
 
     // Agregar columnas UTM si la tabla ya existía sin ellas
     for (const col of ['utm_source','utm_medium','utm_campaign','utm_content','utm_term']) {
@@ -366,6 +366,26 @@ async function ensureSchema() {
         [hash]
       );
       console.log('[crm] Superadmin creado: CRM / $CRM$2026$');
+    }
+
+    // ── Permisos de menú por rol ────────────────────────────────
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS menu_permisos (
+        rol   ENUM('superadmin','recepcion','terapeuta') NOT NULL,
+        item  VARCHAR(50) NOT NULL,
+        PRIMARY KEY (rol, item)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+    // Defaults: si la tabla está vacía, insertar permisos base
+    const [[{cnt}]] = await conn.execute('SELECT COUNT(*) AS cnt FROM menu_permisos');
+    if (!cnt) {
+      const defaults = [
+        ...['dashboard','agenda','pacientes','leads','historial','consentimientos','pagos','espera','terapeutas','reportes','analitica','marketing','asignacion','integraciones','permisos_menu'].map(i => ['superadmin', i]),
+        ...['dashboard','agenda','pacientes','leads','historial','consentimientos','pagos','espera','terapeutas','reportes','analitica','marketing','asignacion','integraciones'].map(i => ['recepcion', i]),
+        ...['agenda','pacientes','historial','mi_reporte'].map(i => ['terapeuta', i]),
+      ];
+      for (const [rol, item] of defaults)
+        await conn.execute('INSERT IGNORE INTO menu_permisos (rol, item) VALUES (?,?)', [rol, item]);
     }
 
     console.log('[crm] Schema OK');

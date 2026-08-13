@@ -1,0 +1,11 @@
+<div class="view-toolbar">
+  <select class="form-select" id="historialPacienteSelect" style="max-width:280px">
+    <option value="">— Seleccionar paciente —</option>
+    <% pacientes.forEach(p => { %>
+    <option value="<%= p.id %>"><%= p.nombre %> <%= p.apellido %></option>
+    <% }) %>
+  </select>
+  <button class="btn btn-primary btn-sm" id="btnNuevaNota" disabled><i class="fas fa-plus"></i> Nota</button>
+</div>
+<div id="historialContent"><div class="list-empty">Selecciona un paciente para ver su historial</div></div>
+
