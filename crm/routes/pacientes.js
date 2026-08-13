@@ -25,7 +25,7 @@ router.get('/', auth, async (req, res) => {
     const of = ownerFilter(req, 'p');
     let sql = `SELECT p.*, t.nombre AS terapeuta_nombre,
                COALESCE((SELECT SUM(ps.sesiones) FROM paciente_sesiones ps WHERE ps.paciente_id = p.id), 0) AS sesiones_total,
-               COALESCE((SELECT COUNT(*) FROM citas c WHERE c.paciente_id = p.id AND c.estado IN ('confirmada','realizada')), 0) AS citas_confirmadas
+               COALESCE((SELECT COUNT(*) FROM citas c WHERE c.paciente_id = p.id AND c.estado IN ('realizada','no_show')), 0) AS citas_confirmadas
                FROM pacientes p LEFT JOIN terapeutas t ON p.terapeuta_id = t.id WHERE 1=1`;
     const params = [];
     if (q) { sql += ' AND (p.nombre LIKE ? OR p.apellido LIKE ? OR p.email LIKE ? OR p.telefono LIKE ?)'; const l=`%${q}%`; params.push(l,l,l,l); }
