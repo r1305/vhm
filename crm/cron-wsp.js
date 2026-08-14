@@ -20,8 +20,6 @@ function fmtFecha(dateStr) {
   return `${DIAS[d.getDay()]} ${d.getDate()} de ${MESES[d.getMonth()]}`;
 }
 
-function fmtHora(t) { return String(t).slice(0, 5); }
-
 async function run() {
   const manana = new Date();
   manana.setDate(manana.getDate() + 1);
@@ -47,14 +45,14 @@ async function run() {
 
     // Citas del día siguiente
     const [citas] = await pool.execute(
-      `SELECT c.hora_inicio, c.modalidad,
+      `SELECT c.fecha, c.modalidad,
               p.nombre AS pac_nombre, p.apellido AS pac_apellido,
               t.id AS ter_id, t.nombre AS ter_nombre, t.telefono AS ter_telefono
        FROM citas c
        JOIN pacientes p  ON c.paciente_id  = p.id
        JOIN terapeutas t ON c.terapeuta_id = t.id
        WHERE c.fecha = ? AND c.estado NOT IN ('cancelada','no_show') AND t.activo = 1
-       ORDER BY t.id, c.hora_inicio`,
+       ORDER BY t.id`,
       [fechaStr]
     );
 
@@ -80,7 +78,7 @@ async function run() {
       }
 
       const lineas = ter.citas.map(c =>
-        `• ${fmtHora(c.hora_inicio)} — ${c.pac_nombre} ${c.pac_apellido} ${ICON[c.modalidad] || '📅'}`
+        `• ${c.pac_nombre} ${c.pac_apellido} ${ICON[c.modalidad] || '📅'}`
       ).join('\n');
 
       const total = ter.citas.length;
