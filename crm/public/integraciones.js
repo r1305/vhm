@@ -95,16 +95,21 @@ function togglePwd(id, btn) {
 
   document.getElementById('btnSaveCron')?.addEventListener('click', async () => {
     try {
+      const enabled = document.getElementById('cron-enabled').checked;
       const dias = [...document.querySelectorAll('.cron-dia:checked')].map(cb => cb.value).join(',');
       if (!dias) { toast('Selecciona al menos un día', 'danger'); return; }
       const body = {
-        enabled: document.getElementById('cron-enabled').checked ? 1 : 0,
+        enabled: enabled ? 1 : 0,
         hora:    Number(document.getElementById('cron-hora').value),
         minuto:  Number(document.getElementById('cron-minuto').value),
         dias,
       };
       await api('/cron/config', { method:'POST', body });
-      updateCronStatus(body); toast('Configuración del cron guardada ✅');
+      // Releer desde servidor para confirmar lo que quedó guardado
+      const saved = await api('/cron/config');
+      updateCronStatus(saved);
+      document.getElementById('cron-enabled').checked = !!saved.enabled;
+      toast(saved.enabled ? 'Cron activado ✅' : 'Cron desactivado');
     } catch (err) { toast(err.message, 'danger'); }
   });
 

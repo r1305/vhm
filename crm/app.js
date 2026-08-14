@@ -205,13 +205,13 @@ async function scheduleCron() {
     const db = require('./lib/db');
     const [[cfg]] = await db.execute('SELECT enabled, hora, minuto, dias FROM cron_config WHERE id=1');
     if (_cronTask) { _cronTask.stop(); _cronTask = null; }
-    if (!cfg || !cfg.enabled) { console.log('[cron] Desactivado'); return; }
+    if (!cfg || !cfg.enabled) { console.log('[cron] Desactivado (enabled=' + (cfg?.enabled) + ')'); return; }
     const expr = `${cfg.minuto} ${cfg.hora} * * ${cfg.dias}`;
     _cronTask = nodeCron.schedule(expr, () => {
       console.log('[cron] Ejecutando cron-wsp...');
       require('./cron-wsp').runCronWSP().catch(e => console.error('[cron]', e.message));
     }, { timezone: 'America/Lima' });
-    console.log(`[cron] Programado: ${expr} (America/Lima)`);
+    console.log(`[cron] Programado OK: ${expr} (America/Lima) — enabled=${cfg.enabled}`);
   } catch (err) {
     console.warn('[cron] node-cron no disponible:', err.message);
   }
