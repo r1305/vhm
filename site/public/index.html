@@ -138,6 +138,52 @@
       .carousel-track { animation: none !important; overflow-x: auto; }
       .testimonial { scroll-snap-align: center; }
     }
+    .suscripciones-section { background: #050505; }
+    .planes-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; }
+    .plan-card {
+      background: #111;
+      border: 1px solid #222;
+      border-radius: 14px;
+      padding: 32px 24px;
+      text-align: center;
+      transition: transform .2s, border-color .2s;
+    }
+    .plan-card:hover { transform: translateY(-4px); border-color: #c8e6f0; }
+    .plan-card .plan-nombre { font-size: 1.1rem; font-weight: 700; color: #f5f0eb; margin-bottom: 12px; }
+    .plan-card .plan-precio { font-size: 2rem; font-weight: 800; color: #c8e6f0; margin-bottom: 12px; }
+    .plan-card .plan-precio span { font-size: 1rem; font-weight: 400; opacity: .7; }
+    .plan-card .plan-desc { font-size: .9rem; color: #888; line-height: 1.5; }
+
+    /* GATE LA TRIBU */
+    .tribu-gate-overlay {
+      display: none; position: fixed; inset: 0; z-index: 9999;
+      background: rgba(0,0,0,.75); backdrop-filter: blur(6px);
+      align-items: center; justify-content: center; padding: 20px;
+    }
+    .tribu-gate-overlay.show { display: flex; }
+    .tribu-gate-box {
+      background: #0d0d0d; border: 1px solid #333; border-radius: 18px;
+      padding: 36px 32px; width: 100%; max-width: 400px; text-align: center;
+      box-shadow: 0 30px 60px rgba(0,0,0,.6);
+    }
+    .tribu-gate-box h3 { font-size: 1.4rem; font-weight: 700; color: #fff; margin-bottom: 8px; }
+    .tribu-gate-box .gate-msg { color: #aaa; font-size: .95rem; line-height: 1.6; margin-bottom: 24px; }
+    .tribu-gate-box input {
+      width: 100%; padding: 13px 16px; background: #111; border: 1px solid #333;
+      border-radius: 10px; color: #fff; font-size: 1.1rem; font-family: monospace;
+      letter-spacing: 4px; text-align: center; text-transform: uppercase; outline: none; margin-bottom: 12px;
+    }
+    .tribu-gate-box input:focus { border-color: #c8e6f0; }
+    .tribu-gate-box .gate-btn {
+      width: 100%; padding: 13px; border: none; border-radius: 10px; cursor: pointer;
+      font-size: 1rem; font-weight: 700; background: linear-gradient(135deg, #f5f0eb, #c8e6f0);
+      color: #000; transition: opacity .2s;
+    }
+    .tribu-gate-box .gate-btn:hover { opacity: .88; }
+    .tribu-gate-box .gate-error { color: #e55; font-size: .85rem; margin-top: 8px; min-height: 18px; }
+    .tribu-gate-box .gate-cancel { margin-top: 12px; background: none; border: none; color: #666; font-size: .85rem; cursor: pointer; }
+    .tribu-gate-box .gate-cancel:hover { color: #aaa; }
+
     @media (max-width: 480px) {
       .hero { padding: 100px 16px 40px; }
       .hero img { width: 140px; }
@@ -181,6 +227,19 @@
 })();
 </script>
 
+<!-- GATE LA TRIBU -->
+<div class="tribu-gate-overlay" id="tribuGateOverlay">
+  <div class="tribu-gate-box">
+    <h3>🖶 La Tribu</h3>
+    <p class="gate-msg" id="tribuGateMsg">Ingresa la contraseña para acceder a La Tribu</p>
+    <input type="text" id="tribuGateInput" placeholder="XXXXXXXX" maxlength="16"
+      onkeydown="if(event.key==='Enter') verificarTribu()">
+    <button class="gate-btn" onclick="verificarTribu()">Entrar</button>
+    <div class="gate-error" id="tribuGateError"></div>
+    <button class="gate-cancel" onclick="cerrarGateTribu()">Cancelar</button>
+  </div>
+</div>
+
 <nav>
   <div class="logo">VHM</div>
   <button class="menu-toggle" onclick="document.querySelector('.links').classList.toggle('open')">☰</button>
@@ -196,7 +255,7 @@
   <p class="tagline">Tu camino hacia el bienestar emocional comienza aquí. Te acompañamos en el proceso de sanar, crecer y redescubrirte después de una ruptura amorosa.</p>
   <div style="display:flex;gap:14px;flex-wrap:wrap;justify-content:center">
     <a href="#servicios" class="cta">Conoce nuestros servicios</a>
-    <a href="latribu" class="cta" style="background:transparent;color:#c8e6f0;border:1px solid #c8e6f0">🛖 La Tribu</a>
+    <a href="javascript:void(0)" onclick="abrirGateTribu()" class="cta" style="background:transparent;color:#c8e6f0;border:1px solid #c8e6f0">&#x1F5D6; La Tribu</a>
   </div>
 </div>
 
@@ -235,6 +294,13 @@
         <p>Rediseña tu futuro con claridad, estableciendo nuevas metas y recuperando la confianza en ti.</p>
       </div>
     </div>
+  </section>
+</div>
+
+<div class="suscripciones-section" id="suscripciones-section" style="display:none">
+  <section id="suscripciones">
+    <h2>Planes de Suscripción</h2>
+    <div class="planes-grid" id="planesGrid"></div>
   </section>
 </div>
 
@@ -380,9 +446,84 @@
 })();
 </script>
 
+<script>
+(async function() {
+  try {
+    const res = await fetch((window.__APP_BASE__ || '') + '/api/suscripciones/public');
+    const data = await res.json();
+    if (!data.visible || !data.data || !data.data.length) return;
+    const section = document.getElementById('suscripciones-section');
+    const grid = document.getElementById('planesGrid');
+    grid.innerHTML = data.data.map(p => `
+      <div class="plan-card">
+        <div class="plan-nombre">${p.nombre}</div>
+        <div class="plan-precio">S/ ${Number(p.precio).toFixed(2)} <span>/ mes</span></div>
+        <div class="plan-desc">${p.descripcion || ''}</div>
+      </div>
+    `).join('');
+    section.style.display = '';
+  } catch(e) {}
+})();
+</script>
+
 <script src="clara-chat.js"></script>
 <script src="vhm-tracker.js"></script>
 <script src="vhm-crm-widget.js"></script>
+
+<script>
+// Gate La Tribu
+let tribuGateActivo = false;
+
+(async function() {
+  try {
+    const res = await fetch((window.__APP_BASE__ || '') + '/api/tribu-access/config-publica');
+    const cfg = await res.json();
+    tribuGateActivo = !!cfg.activo;
+    if (cfg.mensaje) document.getElementById('tribuGateMsg').textContent = cfg.mensaje;
+  } catch {}
+})();
+
+function abrirGateTribu() {
+  if (!tribuGateActivo) {
+    window.location.href = (window.__APP_BASE__ || '') + '/latribu';
+    return;
+  }
+  document.getElementById('tribuGateInput').value = '';
+  document.getElementById('tribuGateError').textContent = '';
+  document.getElementById('tribuGateOverlay').classList.add('show');
+  setTimeout(() => document.getElementById('tribuGateInput').focus(), 100);
+}
+
+function cerrarGateTribu() {
+  document.getElementById('tribuGateOverlay').classList.remove('show');
+}
+
+async function verificarTribu() {
+  const input = document.getElementById('tribuGateInput');
+  const errorEl = document.getElementById('tribuGateError');
+  const pwd = input.value.trim();
+  if (!pwd) { errorEl.textContent = 'Ingresa la contraseña'; return; }
+  errorEl.textContent = '';
+  try {
+    const res = await fetch((window.__APP_BASE__ || '') + '/api/tribu-access/verificar', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pwd })
+    });
+    const d = await res.json();
+    if (d.ok) {
+      window.location.href = (window.__APP_BASE__ || '') + '/latribu';
+    } else {
+      errorEl.textContent = 'Contraseña incorrecta. Inténtalo de nuevo.';
+      input.value = '';
+      input.focus();
+    }
+  } catch { errorEl.textContent = 'Error de conexión. Intenta de nuevo.'; }
+}
+
+document.getElementById('tribuGateOverlay').addEventListener('click', function(e) {
+  if (e.target.id === 'tribuGateOverlay') cerrarGateTribu();
+});
+</script>
 
 </body>
 </html>

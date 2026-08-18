@@ -110,6 +110,59 @@ async function crearEsquema() {
   }
   // Columna respondido_por en reclamos (quién respondió)
   await pool.query('ALTER TABLE reclamos ADD COLUMN respondido_por INT NULL').catch(() => {});
+
+  // Suscripciones
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS suscripciones (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      nombre VARCHAR(120) NOT NULL,
+      precio DECIMAL(10,2) NOT NULL,
+      descripcion VARCHAR(255) NULL,
+      fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS config_suscripciones (
+      id INT PRIMARY KEY,
+      activo BOOLEAN DEFAULT FALSE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+
+  const [cfgSus] = await pool.query('SELECT id FROM config_suscripciones WHERE id = 1');
+  if (cfgSus.length === 0) {
+    await pool.query('INSERT INTO config_suscripciones (id, activo) VALUES (1, FALSE)');
+  }
+
+  const [planRows] = await pool.query('SELECT COUNT(*) AS total FROM suscripciones');
+  if (planRows[0].total === 0) {
+    await pool.query(
+      `INSERT INTO suscripciones (nombre, precio, descripcion) VALUES
+        ('Plan Base', 39.90, 'Próximamente'),
+        ('Plan VIP', 89.90, 'Próximamente')`
+    );
+  }
+
+  // Acceso por contraseña a La Tribu
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS tribu_access (
+      id INT PRIMARY KEY,
+      activo BOOLEAN DEFAULT FALSE,
+      password VARCHAR(32) NOT NULL,
+      mensaje VARCHAR(500) DEFAULT 'Ingresa la contraseña para acceder a La Tribu',
+      fecha_renovacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+
+  const [accRows] = await pool.query('SELECT id FROM tribu_access WHERE id = 1');
+  if (accRows.length === 0) {
+    const crypto = require('crypto');
+    const pwd = crypto.randomBytes(4).toString('hex').toUpperCase();
+    await pool.query(
+      'INSERT INTO tribu_access (id, activo, password, mensaje) VALUES (1, FALSE, ?, ?)',
+      [pwd, 'Ingresa la contraseña para acceder a La Tribu']
+    );
+  }
 }
 
 // Renumera el campo "orden" de los videos por categoría (según fecha de subida)
