@@ -37,6 +37,7 @@
   const ESTADO_CITA = {
     pendiente:  { label: 'Pendiente',      css: 'badge-yellow' },
     confirmada: { label: 'Confirmada',     css: 'badge-blue'   },
+    reagendada: { label: 'Reagendada',     css: 'badge-purple' },
     realizada:  { label: 'Realizada',      css: 'badge-green'  },
     cancelada:  { label: 'Cancelada',      css: 'badge-red'    },
     no_show:    { label: 'No se presentó', css: 'badge-gray'   },

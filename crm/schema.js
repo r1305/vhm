@@ -64,7 +64,7 @@ async function ensureSchema() {
         fecha           DATE NOT NULL,
         modalidad       ENUM('presencial','videollamada','telefono') NOT NULL DEFAULT 'presencial',
         tipo            ENUM('primera_vez','seguimiento','evaluacion','urgencia') NOT NULL DEFAULT 'seguimiento',
-        estado          ENUM('pendiente','confirmada','realizada','cancelada','no_show') NOT NULL DEFAULT 'pendiente',
+        estado          ENUM('pendiente','confirmada','reagendada','realizada','cancelada','no_show') NOT NULL DEFAULT 'pendiente',
         notas           TEXT DEFAULT NULL,
         recordatorio_24h TINYINT(1) NOT NULL DEFAULT 0,
         recordatorio_48h TINYINT(1) NOT NULL DEFAULT 0,
@@ -208,6 +208,7 @@ async function ensureSchema() {
     try { await conn.execute('ALTER TABLE citas DROP COLUMN hora_fin'); } catch (_) {}
     // Actualizar labels de tipo en citas (solo cosmético, los valores ENUM no cambian)
     try { await conn.execute("ALTER TABLE citas MODIFY tipo ENUM('primera_vez','seguimiento','evaluacion','urgencia') NOT NULL DEFAULT 'seguimiento'"); } catch (_) {}
+    try { await conn.execute("ALTER TABLE citas MODIFY estado ENUM('pendiente','confirmada','reagendada','realizada','cancelada','no_show') NOT NULL DEFAULT 'pendiente'"); } catch (_) {}
 
     // Agregar columnas UTM si la tabla ya existía sin ellas
     for (const col of ['utm_source','utm_medium','utm_campaign','utm_content','utm_term']) {
