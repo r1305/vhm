@@ -19,7 +19,7 @@ router.get('/', auth, async (req, res) => {
                t.nombre AS terapeuta_nombre
                FROM citas c
                JOIN pacientes p ON c.paciente_id = p.id
-               JOIN terapeutas t ON c.terapeuta_id = t.id
+               LEFT JOIN terapeutas t ON c.terapeuta_id = t.id
                WHERE 1=1`;
     const params = [];
     if (fecha) { sql += ' AND DATE(c.fecha) = ?'; params.push(fecha); }
@@ -27,7 +27,8 @@ router.get('/', auth, async (req, res) => {
     if (terapeuta) { sql += ' AND c.terapeuta_id = ?'; params.push(terapeuta); }
     if (paciente)  { sql += ' AND c.paciente_id = ?';  params.push(paciente); }
     sql += of.sql; params.push(...of.params);
-    sql += ' ORDER BY c.fecha ASC LIMIT 300';
+    sql += ' ORDER BY c.fecha DESC';
+    if (!paciente) sql += ' LIMIT 2000';
     const [rows] = await pool.execute(sql, params);
     res.json(rows);
   } catch { res.status(500).json({ error: 'Error al listar citas' }); }
@@ -118,10 +119,21 @@ router.delete('/:cid', auth, async (req, res) => {
 });
 
 router.patch('/:cid/estado', auth, async (req, res) => {
-  const { estado, notas } = req.body || {};
+  const { estado, notas, fecha } = req.body || {};
   const sets = ['estado=?'];
   const vals = [estado];
-  if (notas) { sets.push('notas=?'); vals.push(notas); }
+  if (notas) { sets.push('notas=?'); vals.push(t(notas, 2000)); }
+  if (fecha != null && fecha !== '') {
+    if (req.user.rol === 'terapeuta') {
+      return res.status(403).json({ error: 'Sin permiso para cambiar la fecha' });
+    }
+    const fechaVal = t(fecha, 10);
+    if (!fechaVal || !/^\d{4}-\d{2}-\d{2}$/.test(fechaVal)) {
+      return res.status(400).json({ error: 'Fecha inválida' });
+    }
+    sets.push('fecha=?');
+    vals.push(fechaVal);
+  }
   vals.push(req.params.cid);
   await pool.execute(`UPDATE citas SET ${sets.join(',')} WHERE id=?`, vals);
   res.json({ ok: true });
