@@ -171,7 +171,7 @@
 
       const total      = citas.length;
       const realizadas = citas.filter(c => c.estado === 'realizada').length;
-      const pendientes = citas.filter(c => c.estado === 'pendiente' || c.estado === 'confirmada').length;
+      const pendientes = citas.filter(c => ['pendiente', 'confirmada', 'reagendada'].includes(c.estado)).length;
       const inicial    = (p.nombre?.[0] || '?').toUpperCase();
       const metaParts  = [p.telefono, p.email, p.terapeuta_nombre].filter(Boolean);
 

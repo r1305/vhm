@@ -23,6 +23,7 @@ const TITLES = {
 const ESTADO_CITA_CSS = {
   pendiente:  'badge-yellow',
   confirmada: 'badge-blue',
+  reagendada: 'badge-purple',
   realizada:  'badge-green',
   cancelada:  'badge-red',
   no_show:    'badge-gray',

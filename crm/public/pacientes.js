@@ -148,7 +148,7 @@
       </div>
       <div class="form-group"><label class="form-label">Motivo de consulta</label><textarea class="form-control" id="f_motivo" rows="2">${esc(p?.motivo_consulta||'')}</textarea></div>
       <div class="form-group">
-        <label class="form-label" style="margin-bottom:6px">Sesiones</label>
+        <label class="form-label" style="margin-bottom:6px">Programa adquirido</label>
         <table style="width:100%;border-collapse:collapse">
           <thead><tr style="font-size:12px;color:var(--text-muted)"><th style="padding:4px 6px;text-align:left">Fecha inicio</th><th style="padding:4px 6px;text-align:left">Sesiones</th><th style="width:32px"></th></tr></thead>
           <tbody id="sesionesBody">${sesFilas}</tbody>
