@@ -164,12 +164,29 @@
 
   /* ── Sidebar mobile ──────────────────────────────── */
   const sidebarToggle = document.getElementById('sidebarToggle');
+  const sidebarBackdrop = document.getElementById('sidebarBackdrop');
   const sidebar       = document.getElementById('sidebar');
-  function checkMobile() {
-    sidebarToggle.style.display = window.innerWidth < 769 ? 'flex' : 'none';
+
+  function closeSidebar() {
+    sidebar?.classList.remove('open');
+    sidebarBackdrop?.classList.remove('open');
   }
-  checkMobile();
-  window.addEventListener('resize', checkMobile);
-  sidebarToggle.addEventListener('click', () => sidebar.classList.toggle('open'));
+
+  function openSidebar() {
+    sidebar?.classList.add('open');
+    sidebarBackdrop?.classList.add('open');
+  }
+
+  sidebarToggle?.addEventListener('click', () => {
+    if (sidebar?.classList.contains('open')) closeSidebar();
+    else openSidebar();
+  });
+  sidebarBackdrop?.addEventListener('click', closeSidebar);
+  sidebar?.querySelectorAll('.nav-item').forEach(link =>
+    link.addEventListener('click', closeSidebar)
+  );
+  window.addEventListener('resize', () => {
+    if (window.innerWidth >= 769) closeSidebar();
+  });
 
 })();

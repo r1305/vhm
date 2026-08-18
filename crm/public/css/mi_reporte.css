@@ -1,1 +1,17 @@
 /* ── Mi reporte ─────────────── */
+.mr-filters { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.mr-field { display: flex; align-items: center; gap: 8px; }
+.mr-field .form-control { width: 150px; }
+.mr-presets { display: flex; gap: 6px; flex-wrap: wrap; }
+.mr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+
+@media (max-width: 768px) {
+  .mr-filters { flex-direction: column; align-items: stretch; }
+  .mr-field { flex-direction: column; align-items: stretch; }
+  .mr-field .form-label { white-space: normal; }
+  .mr-field .form-control { width: 100% !important; min-height: 44px; }
+  .mr-presets { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .mr-presets .btn { justify-content: center; min-height: 44px; }
+  #btnAplicarMr { width: 100%; min-height: 44px; justify-content: center; }
+  .mr-grid { grid-template-columns: 1fr; gap: 12px; }
+}

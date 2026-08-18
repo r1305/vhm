@@ -1,4 +1,11 @@
 /* ── Historial clínico ──────── */
 .note-card { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 10px; }
-.note-meta { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; display: flex; gap: 10px; }
-.note-text { font-size: 13px; line-height: 1.6; white-space: pre-wrap; }
+.note-meta { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.note-text { font-size: 13px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+
+@media (max-width: 768px) {
+  .note-card { padding: 12px; }
+  .note-meta .btn-icon { min-width: 44px; min-height: 44px; margin-left: auto; }
+  #historialPacienteSelect { max-width: none !important; width: 100%; min-height: 44px; }
+  #btnNuevaNota { width: 100%; min-height: 44px; justify-content: center; }
+}

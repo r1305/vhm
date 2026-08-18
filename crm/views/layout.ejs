@@ -96,16 +96,17 @@
       </div>
     </div>
   </aside>
+  <div class="sidebar-backdrop" id="sidebarBackdrop" aria-hidden="true"></div>
 
   <!-- Main -->
   <div class="crm-main">
     <header class="crm-topbar">
-      <button class="btn-icon" id="sidebarToggle" style="display:none"><i class="fas fa-bars"></i></button>
+      <button class="btn-icon sidebar-toggle" id="sidebarToggle" type="button" aria-label="Abrir menú"><i class="fas fa-bars"></i></button>
       <h1 class="page-title"><%= title %></h1>
       <button class="theme-btn" id="themeBtn" title="Cambiar tema"><i class="fas fa-moon"></i></button>
     </header>
 
-    <main class="crm-content" id="crmContent">
+    <main class="crm-content crm-view-<%= view %>" id="crmContent">
       <%- include(partialView) %>
     </main>
   </div>
