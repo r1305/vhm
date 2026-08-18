@@ -10,8 +10,10 @@ const pid = (v) => { const n = parseInt(v, 10); return isFinite(n) && n > 0 ? n 
 router.get('/', auth, async (req, res) => {
   try {
     const of = ownerFilter(req, 'c');
-    const fecha = t(req.query.fecha, 10);
-    const mes   = t(req.query.mes, 7);
+    const fecha  = t(req.query.fecha, 10);
+    const mes    = t(req.query.mes, 7);
+    const desde  = t(req.query.desde, 10);
+    const hasta  = t(req.query.hasta, 10);
     const terapeuta = pid(req.query.terapeuta_id);
     const paciente  = pid(req.query.paciente_id);
     let sql = `SELECT c.*, p.nombre AS paciente_nombre, p.apellido AS paciente_apellido,
@@ -22,7 +24,8 @@ router.get('/', auth, async (req, res) => {
                LEFT JOIN terapeutas t ON c.terapeuta_id = t.id
                WHERE 1=1`;
     const params = [];
-    if (fecha) { sql += ' AND DATE(c.fecha) = ?'; params.push(fecha); }
+    if (desde && hasta) { sql += ' AND c.fecha BETWEEN ? AND ?'; params.push(desde, hasta); }
+    else if (fecha) { sql += ' AND DATE(c.fecha) = ?'; params.push(fecha); }
     else if (mes) { sql += ' AND DATE_FORMAT(c.fecha, \'%Y-%m\') = ?'; params.push(mes); }
     if (terapeuta) { sql += ' AND c.terapeuta_id = ?'; params.push(terapeuta); }
     if (paciente)  { sql += ' AND c.paciente_id = ?';  params.push(paciente); }

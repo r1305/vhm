@@ -93,7 +93,7 @@ router.get('/stats', auth, async (req, res) => {
     // Modalidad de citas
     const [citasPorModalidad] = await pool.execute(`
       SELECT modalidad, COUNT(*) AS total
-      FROM citas WHERE fecha BETWEEN ? AND ?
+      FROM citas WHERE fecha BETWEEN ? AND ?${tidFilter}
       GROUP BY modalidad ORDER BY total DESC
     `, [desde, hasta]);
 
