@@ -103,12 +103,14 @@ function togglePwd(id, btn) {
         hora:    Number(document.getElementById('cron-hora').value),
         minuto:  Number(document.getElementById('cron-minuto').value),
         dias,
+        mensaje: document.getElementById('cron-mensaje-broadcast').value.trim(),
       };
       await api('/cron/config', { method:'POST', body });
       // Releer desde servidor para confirmar lo que quedó guardado
       const saved = await api('/cron/config');
       updateCronStatus(saved);
       document.getElementById('cron-enabled').checked = !!saved.enabled;
+      document.getElementById('cron-mensaje-broadcast').value = saved.mensaje || '';
       toast(saved.enabled ? 'Cron activado ✅' : 'Cron desactivado');
     } catch (err) { toast(err.message, 'danger'); }
   });
