@@ -1,17 +1,51 @@
 /* ── Mi reporte ─────────────── */
-.mr-filters { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.mr-field { display: flex; align-items: center; gap: 8px; }
+.mr-filter-card { margin-bottom: 16px; }
+.mr-filter-card .card-body { padding: 14px 18px; }
+
+.mr-filters { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.mr-field { display: flex; flex-direction: column; gap: 4px; }
 .mr-field .form-control { width: 150px; }
-.mr-presets { display: flex; gap: 6px; flex-wrap: wrap; }
-.mr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+.mr-presets { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.mr-grid { display: grid; gap: 16px; margin-top: 16px; }
+.mr-grid-charts { grid-template-columns: 1.4fr 1fr; }
+.mr-grid-secondary { grid-template-columns: 1fr 1fr; }
+.mr-detail-card { margin-top: 16px; }
+
+.mr-summary-card { margin-bottom: 16px; border-left: 4px solid var(--primary); }
+.mr-summary-card .card-body { padding: 16px 20px; }
+.mr-summary-title { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+.mr-summary-text { font-size: 13px; color: var(--text-muted); line-height: 1.6; }
+.mr-summary-stats { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+.mr-summary-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 600;
+  background: var(--primary-light); color: var(--primary);
+}
+.mr-summary-pill.success { background: #dcfce7; color: #15803d; }
+.mr-summary-pill.warning { background: #fef9c3; color: #92400e; }
+.mr-summary-pill.muted { background: var(--bg); color: var(--text-muted); border: 1px solid var(--border); }
+
+.mr-gauge-wrap { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 180px; text-align: center; gap: 12px; }
+.mr-gauge-ring {
+  --pct: 0;
+  width: 132px; height: 132px; border-radius: 50%; position: relative;
+  background: conic-gradient(var(--success) calc(var(--pct) * 1%), var(--border) 0);
+  display: flex; align-items: center; justify-content: center;
+}
+.mr-gauge-ring::before {
+  content: ''; position: absolute; inset: 14px; border-radius: 50%; background: var(--surface);
+}
+.mr-gauge-val { position: relative; z-index: 1; font-size: 1.75rem; font-weight: 800; color: var(--success); line-height: 1; }
+.mr-gauge-caption { font-size: 12px; color: var(--text-muted); max-width: 220px; line-height: 1.5; }
+.mr-gauge-detail { font-size: 13px; color: var(--text); font-weight: 600; }
 
 @media (max-width: 768px) {
   .mr-filters { flex-direction: column; align-items: stretch; }
-  .mr-field { flex-direction: column; align-items: stretch; }
-  .mr-field .form-label { white-space: normal; }
   .mr-field .form-control { width: 100% !important; min-height: 44px; }
   .mr-presets { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .mr-presets .btn { justify-content: center; min-height: 44px; }
   #btnAplicarMr { width: 100%; min-height: 44px; justify-content: center; }
-  .mr-grid { grid-template-columns: 1fr; gap: 12px; }
+  .mr-grid-charts,
+  .mr-grid-secondary { grid-template-columns: 1fr; }
+  .mr-summary-stats { flex-direction: column; }
 }

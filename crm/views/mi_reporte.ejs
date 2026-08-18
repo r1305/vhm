@@ -1,12 +1,12 @@
-<div class="card" style="margin-bottom:16px">
-  <div class="card-body" style="padding:14px 18px">
+<div class="card mr-filter-card">
+  <div class="card-body">
     <div class="mr-filters">
       <div class="mr-field">
-        <label class="form-label" style="margin:0;white-space:nowrap">Desde</label>
+        <label class="form-label" for="mrDesde">Desde</label>
         <input type="date" class="form-control" id="mrDesde">
       </div>
       <div class="mr-field">
-        <label class="form-label" style="margin:0;white-space:nowrap">Hasta</label>
+        <label class="form-label" for="mrHasta">Hasta</label>
         <input type="date" class="form-control" id="mrHasta">
       </div>
       <div class="mr-presets">
@@ -20,20 +20,33 @@
   </div>
 </div>
 
+<div class="card mr-summary-card" id="mrSummary"></div>
+
 <div class="kpi-grid" id="mrKpis"></div>
 
-<div class="mr-grid">
+<div class="mr-grid mr-grid-charts">
   <div class="card">
-    <div class="card-header"><i class="fas fa-calendar-check" style="color:var(--primary)"></i> Citas por día</div>
-    <div class="card-body" id="mrCitasDia" style="font-size:13px"></div>
+    <div class="card-header"><i class="fas fa-chart-line" style="color:var(--primary)"></i> Actividad diaria</div>
+    <div class="card-body" id="mrSparkCitas"></div>
   </div>
   <div class="card">
-    <div class="card-header"><i class="fas fa-chart-pie" style="color:var(--warning)"></i> Por estado</div>
-    <div class="card-body" id="mrEstados" style="font-size:13px"></div>
+    <div class="card-header"><i class="fas fa-chart-pie" style="color:var(--warning)"></i> Distribución por estado</div>
+    <div class="card-body" id="mrDonutEstado"></div>
   </div>
 </div>
 
-<div style="margin-top:16px" class="card">
+<div class="mr-grid mr-grid-secondary">
+  <div class="card">
+    <div class="card-header"><i class="fas fa-video" style="color:var(--info)"></i> Modalidad de sesiones</div>
+    <div class="card-body" id="mrBarModalidad"></div>
+  </div>
+  <div class="card">
+    <div class="card-header"><i class="fas fa-percent" style="color:var(--success)"></i> Tasa de asistencia</div>
+    <div class="card-body mr-gauge-wrap" id="mrGauge"></div>
+  </div>
+</div>
+
+<div class="card mr-detail-card">
   <div class="card-header"><i class="fas fa-list" style="color:var(--primary)"></i> Detalle de citas</div>
   <div class="card-body" id="mrDetalle"></div>
 </div>
