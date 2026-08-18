@@ -103,18 +103,19 @@ router.use('/api/track',      require('./routes/tracker'));
 router.get('/api/cron/config', require('./lib/auth').authAdmin, async (req, res) => {
   try {
     const db = require('./lib/db');
-    const [[row]] = await db.execute('SELECT enabled, hora, minuto, dias FROM cron_config WHERE id=1');
-    res.json(row || { enabled: 0, hora: 18, minuto: 0, dias: '1,2,3,4,5,6' });
+    const [[row]] = await db.execute('SELECT enabled, hora, minuto, dias, mensaje FROM cron_config WHERE id=1');
+    res.json(row || { enabled: 0, hora: 18, minuto: 0, dias: '1,2,3,4,5,6', mensaje: '' });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 router.post('/api/cron/config', require('./lib/auth').authAdmin, async (req, res) => {
   try {
     const db = require('./lib/db');
-    const { enabled, hora, minuto, dias } = req.body;
+    const { enabled, hora, minuto, dias, mensaje } = req.body;
+    const mensajeVal = mensaje != null ? String(mensaje).trim().slice(0, 4000) : null;
     await db.execute(
-      'UPDATE cron_config SET enabled=?, hora=?, minuto=?, dias=? WHERE id=1',
-      [enabled ? 1 : 0, Number(hora), Number(minuto), dias]
+      'UPDATE cron_config SET enabled=?, hora=?, minuto=?, dias=?, mensaje=? WHERE id=1',
+      [enabled ? 1 : 0, Number(hora), Number(minuto), dias, mensajeVal || null]
     );
     scheduleCron();
     res.json({ ok: true });

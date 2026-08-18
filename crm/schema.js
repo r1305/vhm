@@ -201,6 +201,7 @@ async function ensureSchema() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
     try { await conn.execute('INSERT IGNORE INTO cron_config (id) VALUES (1)'); } catch (_) {}
+    try { await conn.execute('ALTER TABLE cron_config ADD COLUMN mensaje TEXT DEFAULT NULL'); } catch (_) {}
 
     // Eliminar hora_inicio y hora_fin de citas
     try { await conn.execute('ALTER TABLE citas DROP COLUMN hora_inicio'); } catch (_) {}

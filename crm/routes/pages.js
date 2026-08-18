@@ -208,7 +208,7 @@ router.get('/integraciones', requireSession, requireAdmin, async (req, res) => {
   try {
     const [rows] = await db.execute('SELECT clave, valor FROM configuracion');
     const cfg    = Object.fromEntries(rows.map(r => [r.clave, r.valor]));
-    const [[cron]] = await db.execute('SELECT enabled, hora, minuto, dias FROM cron_config WHERE id=1')
+    const [[cron]] = await db.execute('SELECT enabled, hora, minuto, dias, mensaje FROM cron_config WHERE id=1')
       .catch(() => [[{ enabled: 0, hora: 18, minuto: 0, dias: '1,2,3,4,5,6' }]]);
     const cronDias = String(cron?.dias || '').split(',').map(d => d.trim());
     const origin   = `${req.protocol}://${req.get('host')}`;
