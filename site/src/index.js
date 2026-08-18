@@ -75,7 +75,7 @@ app.use((req, res, next) => {
   }
   // Validate CSRF on state-changing methods (skip public POST endpoints)
   if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {
-    const publicPostPaths = ['/api/reclamos', '/api/clara/chat', '/api/auth/login'];
+    const publicPostPaths = ['/api/reclamos', '/api/clara/chat', '/api/auth/login', '/api/tribu-access/verificar'];
     const isPublicPost = req.method === 'POST' && publicPostPaths.some(p => req.path === p);
     const isPublicVideoAction = req.method === 'POST' && req.path.startsWith('/api/videos/') && (req.path.endsWith('/vista') || req.path.endsWith('/like'));
     if (!isPublicPost && !isPublicVideoAction) {
@@ -123,21 +123,15 @@ function sendVueAdmin(res) {
   let html = fs.readFileSync(filePath, 'utf8');
   const inlineBase = `<script>window.__APP_BASE__=${JSON.stringify(base)};</script>`;
   html = html.replace(/(<head[^>]*>)/i, `$1\n  ${inlineBase}`);
-  // Ensure relative assets resolve from the admin directory
-  html = html.replace(/(<head[^>]*>)/i, `$1\n  <base href="./">`);
+  html = html.replace(/(<head[^>]*>)/i, `$1\n  <base href="${base}/admin/">`);
   if (base) {
     html = rewriteRootPaths(html, base);
   }
   res.type('html').send(html);
 }
 
-app.get('/admin', (req, res) => {
-  // Trailing slash so relative assets resolve correctly
-  if (!req.path.endsWith('/')) {
-    return res.redirect(301, req.originalUrl + '/');
-  }
-  sendVueAdmin(res);
-});
+app.get('/admin', (req, res) => res.redirect(301, (res.locals.basePath || '') + '/admin/'));
+app.get('/admin/*', (req, res) => sendVueAdmin(res));
 
 app.get('/consulta', (req, res) => {
   sendPublicHtml(res, 'consulta.html');
@@ -206,6 +200,9 @@ app.use('/api/videos', videosRoutes);
 app.use('/api/clara', claraRoutes);
 app.use('/api/eventos', eventosRoutes);
 app.use('/api/config-facebook-verification', configFacebookVerificationRoutes);
+app.use('/api/suscripciones', require('./suscripcionesRoutes'));
+const { router: tribuAccessRouter, renovarPassword: renovarTribuPassword } = require('./tribuAccessRoutes');
+app.use('/api/tribu-access', tribuAccessRouter);
 
 // Error handler global
 app.use((err, req, res, next) => {
@@ -213,12 +210,41 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Error interno del servidor' });
 });
 
+// Cron: renovar contraseña de La Tribu cada miércoles al mediodía
+function programarCronTribu() {
+  function msHastaProximoMiercoles12() {
+    const ahora = new Date();
+    const objetivo = new Date(ahora);
+    // 3 = miércoles, 0=dom..6=sab
+    const diasHasta = (3 - ahora.getDay() + 7) % 7 || 7;
+    objetivo.setDate(ahora.getDate() + diasHasta);
+    objetivo.setHours(12, 0, 0, 0);
+    return objetivo - ahora;
+  }
+
+  function programar() {
+    const ms = msHastaProximoMiercoles12();
+    setTimeout(async () => {
+      try {
+        await renovarTribuPassword();
+        console.log('[vhm] Contraseña de La Tribu renovada automáticamente');
+      } catch (e) {
+        console.error('[vhm] Error al renovar contraseña de La Tribu:', e.message);
+      }
+      programar(); // reprogramar para el siguiente miércoles
+    }, ms);
+  }
+
+  programar();
+}
+
 async function main() {
   try {
     await require('./ensureSchema').ensureVideoSchema();
   } catch (err) {
     console.error('[vhm] No se pudo asegurar el esquema de videos:', err.message);
   }
+  programarCronTribu();
   if (require.main === module) {
     app.listen(PORT, () => {
       console.log(`Servidor corriendo en http://localhost:${PORT}`);
