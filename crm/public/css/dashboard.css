@@ -1,0 +1,6 @@
+/* ── Dashboard ──────────────── */
+.dash-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+@media (max-width: 768px) {
+  .dash-grid { grid-template-columns: 1fr; }
+}

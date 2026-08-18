@@ -1,0 +1,8 @@
+/* ── Login ─────────────────── */
+.login-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #ede9fe 0%, #f5f3ff 100%); }
+[data-theme="dark"] .login-page { background: linear-gradient(135deg, #13111f 0%, #1e1b2e 100%); }
+.login-card { background: var(--surface); border-radius: 16px; padding: 2.5rem; width: 100%; max-width: 400px; box-shadow: var(--shadow); border: 1px solid var(--border); }
+.login-brand { text-align: center; margin-bottom: 2rem; }
+.login-logo { width: 56px; height: 56px; background: var(--primary); border-radius: 14px; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; font-size: 24px; color: #fff; }
+.login-brand h1 { font-size: 1.4rem; font-weight: 700; color: var(--primary); }
+.login-brand p { color: var(--text-muted); font-size: 13px; margin-top: 4px; }

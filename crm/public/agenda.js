@@ -4,113 +4,273 @@
 (function () {
   'use strict';
 
-  const { api, toast, esc, openModal, ESTADO_CITA, fullName } = window.CRM;
+  const { api, toast, esc, openModal, badge, ESTADO_CITA, fullName } = window.CRM;
 
-  let fechaActual  = new Date();
-  let terapeutaId  = document.getElementById('agendaTerapeuta')?.value || '';
-  let pacientesCache = [];
+  let terapeutaId        = document.getElementById('agendaTerapeuta')?.value || '';
+  let pacientesCache     = [];
+  let citasCounts        = {};
+  let pacienteSeleccionado = null;
 
-  /* ── Timeline ───────────────────────────────────────── */
-  async function loadAgenda() {
+  const MESES_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const DIAS_CORTO = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  const TIPO_CITA = {
+    primera_vez: 'Primera consulta',
+    seguimiento: 'Tratamiento',
+    evaluacion:  'Seguimiento',
+    urgencia:    'Urgencia',
+  };
+  const MODALIDAD_ICON = { presencial: 'fa-building', videollamada: 'fa-video', telefono: 'fa-phone' };
+  const MODALIDAD_LABEL = { presencial: 'Presencial', videollamada: 'Videollamada', telefono: 'Teléfono' };
+
+  function parseFechaParts(fecha) {
+    if (!fecha) return { day: '—', dow: '' };
+    const [y, m, d] = fecha.slice(0, 10).split('-').map(Number);
+    const dt = new Date(y, m - 1, d);
+    return { day: String(d).padStart(2, '0'), dow: DIAS_CORTO[dt.getDay()] };
+  }
+
+  function citaCardHTML(c) {
+    const { day, dow } = parseFechaParts(c.fecha);
+    const modIcon  = MODALIDAD_ICON[c.modalidad] || 'fa-circle';
+    const modLabel = MODALIDAD_LABEL[c.modalidad] || c.modalidad;
+    return `
+      <div class="ag-cita-card" data-id="${c.id}">
+        <div class="ag-cita-date">
+          <div class="ag-cita-day">${day}</div>
+          <div class="ag-cita-dow">${dow}</div>
+        </div>
+        <div class="ag-cita-body">
+          <div class="ag-cita-tipo">${esc(TIPO_CITA[c.tipo] || c.tipo)}</div>
+          <div class="ag-cita-meta">
+            <span><i class="fas fa-user-md"></i> ${esc(c.terapeuta_nombre || '—')}</span>
+            <span><i class="fas ${modIcon}"></i> ${esc(modLabel)}</span>
+          </div>
+        </div>
+        <div class="ag-cita-right">
+          ${badge(c.estado, ESTADO_CITA)}
+          <div class="ag-cita-actions">
+            <button class="btn-icon" data-cita-estado="${c.id}" data-actual="${c.estado}" data-notas="${esc(c.notas||'')}" data-fecha="${c.fecha ? c.fecha.slice(0,10) : ''}" title="Cambiar estado"><i class="fas fa-pen"></i></button>
+            <button class="btn-icon" data-send-rec="${c.id}" title="Enviar recordatorio"><i class="fas fa-bell"></i></button>
+            ${c.estado !== 'realizada' ? `<button class="btn-icon" style="color:var(--success)" data-confirmar="${c.id}" title="Marcar realizada"><i class="fas fa-circle-check"></i></button>` : ''}
+            ${c.estado !== 'realizada' && c.estado !== 'cancelada' ? `<button class="btn-icon" style="color:var(--danger)" data-cancelar="${c.id}" title="Cancelar"><i class="fas fa-circle-xmark"></i></button>` : ''}
+            ${(c.estado === 'pendiente' || window.__USER_ROL__ !== 'terapeuta') ? `<button class="btn-icon" style="color:var(--danger)" data-eliminar="${c.id}" title="Eliminar cita"><i class="fas fa-trash"></i></button>` : ''}
+          </div>
+        </div>
+      </div>`;
+  }
+
+  function showDetailEmpty() {
+    document.getElementById('agDetail').innerHTML = `
+      <div class="ag-detail-empty">
+        <i class="fas fa-calendar-days"></i>
+        <span>Selecciona un paciente</span>
+      </div>`;
+  }
+
+  function bindCitaActions(container) {
+    container.querySelectorAll('[data-cita-estado]').forEach(btn =>
+      btn.addEventListener('click', () => showCambioEstado(btn.dataset.citaEstado, btn.dataset.actual, btn.dataset.notas, btn.dataset.fecha))
+    );
+    container.querySelectorAll('[data-send-rec]').forEach(btn =>
+      btn.addEventListener('click', async () => {
+        try { await api(`/citas/${btn.dataset.sendRec}/recordatorio`, { method: 'POST' }); toast('Recordatorio enviado'); }
+        catch (e) { toast(e.message, 'danger'); }
+      })
+    );
+    container.querySelectorAll('[data-confirmar]').forEach(btn =>
+      btn.addEventListener('click', async () => {
+        try {
+          await api(`/citas/${btn.dataset.confirmar}/estado`, { method: 'PATCH', body: { estado: 'realizada' } });
+          toast('Sesión marcada como realizada'); refreshAgenda();
+        } catch (e) { toast(e.message, 'danger'); }
+      })
+    );
+    container.querySelectorAll('[data-cancelar]').forEach(btn =>
+      btn.addEventListener('click', () => {
+        openModal('Cancelar sesión', `
+          <div class="form-group">
+            <label class="form-label">Motivo *</label>
+            <textarea class="form-control" id="f_motivo_cancelacion" rows="3" placeholder="Indica el motivo…"></textarea>
+          </div>`, async () => {
+          const motivo = document.getElementById('f_motivo_cancelacion').value.trim();
+          if (!motivo) throw new Error('Debes ingresar un motivo');
+          await api(`/citas/${btn.dataset.cancelar}/estado`, { method: 'PATCH', body: { estado: 'cancelada', notas: motivo } });
+          toast('Sesión cancelada'); refreshAgenda();
+        });
+      })
+    );
+    container.querySelectorAll('[data-eliminar]').forEach(btn =>
+      btn.addEventListener('click', async () => {
+        if (!confirm('¿Eliminar esta cita pendiente?')) return;
+        try {
+          await api(`/citas/${btn.dataset.eliminar}`, { method: 'DELETE' });
+          toast('Cita eliminada'); refreshAgenda();
+        } catch (e) { toast(e.message, 'danger'); }
+      })
+    );
+  }
+
+  function renderPacList() {
+    const list = document.getElementById('agPacList');
+    const q = document.getElementById('agendaSearch')?.value.trim().toLowerCase() || '';
+    const filtered = q
+      ? pacientesCache.filter(p =>
+          fullName(p).toLowerCase().includes(q) ||
+          (p.telefono || '').includes(q) ||
+          (p.email || '').toLowerCase().includes(q)
+        )
+      : pacientesCache;
+
+    if (!filtered.length) {
+      list.innerHTML = '<div class="list-empty">Sin pacientes</div>';
+      return;
+    }
+
+    list.innerHTML = filtered.map(p => {
+      const count   = citasCounts[String(p.id)] || 0;
+      const inicial = (p.nombre?.[0] || '?').toUpperCase();
+      const sub     = p.telefono || p.terapeuta_nombre || '';
+      const active  = String(p.id) === String(pacienteSeleccionado) ? ' active' : '';
+      return `
+        <div class="ag-pac-item${active}" data-id="${p.id}">
+          <div class="ag-pac-avatar">${inicial}</div>
+          <div class="ag-pac-info">
+            <div class="ag-pac-name">${esc(fullName(p))}</div>
+            ${sub ? `<div class="ag-pac-sub">${esc(sub)}</div>` : ''}
+          </div>
+          ${count ? `<span class="ag-pac-badge">${count}</span>` : ''}
+        </div>`;
+    }).join('');
+
+    list.querySelectorAll('.ag-pac-item').forEach(item =>
+      item.addEventListener('click', () => selectPaciente(item.dataset.id))
+    );
+  }
+
+  function selectPaciente(id) {
+    pacienteSeleccionado = id || null;
+    document.querySelectorAll('.ag-pac-item').forEach(el =>
+      el.classList.toggle('active', el.dataset.id === String(id))
+    );
+    const sel = document.getElementById('agendaPaciente');
+    if (sel) sel.value = id || '';
+    if (id) loadDetail(id);
+    else showDetailEmpty();
+  }
+
+  async function loadDetail(pacienteId) {
+    const detail = document.getElementById('agDetail');
+    const p = pacientesCache.find(x => String(x.id) === String(pacienteId));
+    if (!p) { showDetailEmpty(); return; }
+
+    detail.innerHTML = '<div class="view-loading">Cargando citas…</div>';
+
     try {
-      const qs = new URLSearchParams();
-      const dia = document.getElementById('agendaDia').value;
-      if (dia) {
-        qs.set('fecha', dia);
-      } else {
-        qs.set('mes', `${fechaActual.getFullYear()}-${String(fechaActual.getMonth()+1).padStart(2,'0')}`);
-      }
-      const tid = document.getElementById('agendaTerapeuta').value;
-      const pid = document.getElementById('agendaPaciente').value;
-      if (tid) qs.set('terapeuta_id', tid);
-      if (pid) qs.set('paciente_id', pid);
-
+      const qs = new URLSearchParams({ paciente_id: pacienteId });
       const citas = await api(`/citas?${qs}`);
-      const tl    = document.getElementById('agendaTimeline');
-      if (!citas.length) { tl.innerHTML = '<div class="list-empty">Sin citas para este período</div>'; return; }
 
-      const grupos = {}, orden = [];
+      const total      = citas.length;
+      const realizadas = citas.filter(c => c.estado === 'realizada').length;
+      const pendientes = citas.filter(c => c.estado === 'pendiente' || c.estado === 'confirmada').length;
+      const inicial    = (p.nombre?.[0] || '?').toUpperCase();
+      const metaParts  = [p.telefono, p.email, p.terapeuta_nombre].filter(Boolean);
+
+      const porMes = {}, ordenMes = [];
       citas.forEach(c => {
-        const key = String(c.paciente_id);
-        if (!grupos[key]) { grupos[key] = { info: c, citas: [] }; orden.push(key); }
-        grupos[key].citas.push(c);
+        const mesKey = c.fecha ? c.fecha.slice(0, 7) : 'sin-fecha';
+        if (!porMes[mesKey]) { porMes[mesKey] = []; ordenMes.push(mesKey); }
+        porMes[mesKey].push(c);
       });
 
-      tl.innerHTML = orden.map(key => {
-        const { info, citas: cs } = grupos[key];
-        const nombre  = `${esc(info.paciente_nombre||'')} ${esc(info.paciente_apellido||'')}`.trim();
-        const inicial = (info.paciente_nombre?.[0] || '?').toUpperCase();
-        const filas   = cs.map(c => `
-          <div class="ag-cita-row" data-id="${c.id}">
-            <div class="ag-cita-time">${c.fecha ? c.fecha.slice(0,10) : '—'}</div>
-            <div class="ag-cita-info">
-              <span class="ag-cita-tipo">${esc(c.tipo)}</span>
-              <span class="ag-cita-meta">${esc(c.terapeuta_nombre)} · ${esc(c.modalidad)}</span>
-            </div>
-            <span class="badge ${(ESTADO_CITA[c.estado]||{css:'badge-gray'}).css}">${(ESTADO_CITA[c.estado]||{label:c.estado}).label}</span>
-            <div class="ag-cita-actions">
-              <button class="btn-icon" data-cita-estado="${c.id}" data-actual="${c.estado}" data-notas="${esc(c.notas||'')}" title="Cambiar estado"><i class="fas fa-pen"></i></button>
-              <button class="btn-icon" data-send-rec="${c.id}" title="Enviar recordatorio"><i class="fas fa-bell"></i></button>
-              ${c.estado !== 'realizada' ? `<button class="btn-icon" style="color:var(--success)" data-confirmar="${c.id}" title="Marcar realizada"><i class="fas fa-circle-check"></i></button>` : ''}
-              ${c.estado !== 'realizada' && c.estado !== 'cancelada' ? `<button class="btn-icon" style="color:var(--danger)" data-cancelar="${c.id}" title="Cancelar"><i class="fas fa-circle-xmark"></i></button>` : ''}
-              ${(c.estado === 'pendiente' || window.__USER_ROL__ !== 'terapeuta') ? `<button class="btn-icon" style="color:var(--danger)" data-eliminar="${c.id}" title="Eliminar cita"><i class="fas fa-trash"></i></button>` : ''}
-            </div>
-          </div>`).join('');
-        return `
-          <div class="ag-pac-card">
-            <details>
-              <summary class="ag-pac-summary">
-                <div class="ag-pac-avatar">${inicial}</div>
-                <div class="ag-pac-name">${nombre}</div>
-                <span class="ag-pac-count">${cs.length} cita${cs.length!==1?'s':''}</span>
-                <i class="fas fa-chevron-down ag-pac-chevron"></i>
-              </summary>
-              <div class="ag-citas-list">${filas}</div>
-            </details>
-          </div>`;
-      }).join('');
+      const timelineHTML = total
+        ? `<div class="ag-timeline">${ordenMes.map(mesKey => {
+            const [anio, mes] = mesKey.split('-');
+            const labelMes = mesKey === 'sin-fecha' ? 'Sin fecha' : `${MESES_ES[parseInt(mes, 10) - 1]} ${anio}`;
+            return `
+              <div class="ag-mes-bloque">
+                <div class="ag-mes-label">${labelMes}</div>
+                ${porMes[mesKey].map(citaCardHTML).join('')}
+              </div>`;
+          }).join('')}</div>`
+        : '<div class="list-empty" style="padding:40px 20px">Sin citas registradas</div>';
 
-      tl.querySelectorAll('[data-cita-estado]').forEach(btn =>
-        btn.addEventListener('click', () => showCambioEstado(btn.dataset.citaEstado, btn.dataset.actual, btn.dataset.notas))
-      );
-      tl.querySelectorAll('[data-send-rec]').forEach(btn =>
-        btn.addEventListener('click', async () => {
-          try { await api(`/citas/${btn.dataset.sendRec}/recordatorio`, { method: 'POST' }); toast('Recordatorio enviado'); }
-          catch (e) { toast(e.message, 'danger'); }
-        })
-      );
-      tl.querySelectorAll('[data-confirmar]').forEach(btn =>
-        btn.addEventListener('click', async () => {
-          try {
-            await api(`/citas/${btn.dataset.confirmar}/estado`, { method: 'PATCH', body: { estado: 'realizada' } });
-            toast('Sesión marcada como realizada'); loadAgenda();
-          } catch (e) { toast(e.message, 'danger'); }
-        })
-      );
-      tl.querySelectorAll('[data-cancelar]').forEach(btn =>
-        btn.addEventListener('click', () => {
-          openModal('Cancelar sesión', `
-            <div class="form-group">
-              <label class="form-label">Motivo *</label>
-              <textarea class="form-control" id="f_motivo_cancelacion" rows="3" placeholder="Indica el motivo…"></textarea>
-            </div>`, async () => {
-            const motivo = document.getElementById('f_motivo_cancelacion').value.trim();
-            if (!motivo) throw new Error('Debes ingresar un motivo');
-            await api(`/citas/${btn.dataset.cancelar}/estado`, { method: 'PATCH', body: { estado: 'cancelada', notas: motivo } });
-            toast('Sesión cancelada'); loadAgenda();
-          });
-        })
-      );
-      tl.querySelectorAll('[data-eliminar]').forEach(btn =>
-        btn.addEventListener('click', async () => {
-          if (!confirm('¿Eliminar esta cita pendiente?')) return;
-          try {
-            await api(`/citas/${btn.dataset.eliminar}`, { method: 'DELETE' });
-            toast('Cita eliminada'); loadAgenda();
-          } catch (e) { toast(e.message, 'danger'); }
-        })
-      );
-    } catch (err) { toast(err.message, 'danger'); }
+      detail.innerHTML = `
+        <div class="ag-detail-header">
+          <div class="ag-detail-avatar">${inicial}</div>
+          <div>
+            <div class="ag-detail-name">${esc(fullName(p))}</div>
+            ${metaParts.length ? `<div class="ag-detail-meta">${metaParts.map(v => esc(v)).join(' · ')}</div>` : ''}
+          </div>
+          <div class="ag-detail-stats">
+            <div class="ag-stat">
+              <div class="ag-stat-val">${total}</div>
+              <div class="ag-stat-lbl">Total</div>
+            </div>
+            <div class="ag-stat">
+              <div class="ag-stat-val">${realizadas}</div>
+              <div class="ag-stat-lbl">Realizadas</div>
+            </div>
+            <div class="ag-stat">
+              <div class="ag-stat-val">${pendientes}</div>
+              <div class="ag-stat-lbl">Pendientes</div>
+            </div>
+          </div>
+        </div>
+        ${timelineHTML}`;
+
+      bindCitaActions(detail);
+    } catch (err) {
+      detail.innerHTML = `<div class="list-empty">${esc(err.message)}</div>`;
+    }
+  }
+
+  async function loadSidebar() {
+    const list = document.getElementById('agPacList');
+    list.innerHTML = '<div class="ag-list-loading"><i class="fas fa-spinner fa-spin"></i> Cargando…</div>';
+
+    try {
+      const qs = new URLSearchParams();
+      const tid = document.getElementById('agendaTerapeuta')?.value;
+      if (tid) qs.set('terapeuta_id', tid);
+
+      const [pacientes, citas] = await Promise.all([
+        api(`/pacientes?${qs}`),
+        api('/citas'),
+      ]);
+
+      pacientesCache = pacientes;
+      window.CRM.pacientesCache = pacientes;
+
+      citasCounts = {};
+      citas.forEach(c => {
+        const k = String(c.paciente_id);
+        citasCounts[k] = (citasCounts[k] || 0) + 1;
+      });
+
+      const sel = document.getElementById('agendaPaciente');
+      if (sel) {
+        sel.innerHTML = `<option value="">Todos los pacientes</option>` +
+          pacientes.map(p => `<option value="${p.id}">${esc(fullName(p))}</option>`).join('');
+      }
+
+      if (pacienteSeleccionado && !pacientes.some(p => String(p.id) === String(pacienteSeleccionado))) {
+        pacienteSeleccionado = null;
+        showDetailEmpty();
+      }
+
+      renderPacList();
+
+      if (pacienteSeleccionado) {
+        if (sel) sel.value = pacienteSeleccionado;
+        await loadDetail(pacienteSeleccionado);
+      }
+    } catch (err) {
+      list.innerHTML = `<div class="list-empty">${esc(err.message)}</div>`;
+    }
+  }
+
+  async function refreshAgenda() {
+    await loadSidebar();
   }
 
   /* ── Carga masiva ──────────────────────────────────── */
@@ -170,29 +330,26 @@
 
     function getFilaVals(tr) {
       return {
-        paciente_id:    tr.querySelector('.cm-paciente').value,
+        paciente_id:     tr.querySelector('.cm-paciente').value,
         paciente_nombre: tr.querySelector('.cm-pac-search').value,
-        terapeuta_id:   tr.querySelector('.cm-terapeuta').value,
-        fecha:          tr.querySelector('.cm-fecha').value,
-        modalidad:      tr.querySelector('.cm-modalidad').value,
-        tipo:           tr.querySelector('.cm-tipo').value,
-        estado:         tr.querySelector('.cm-estado').value,
-        notas:          tr.querySelector('.cm-notas').value,
+        terapeuta_id:    tr.querySelector('.cm-terapeuta').value,
+        fecha:           tr.querySelector('.cm-fecha').value,
+        modalidad:       tr.querySelector('.cm-modalidad').value,
+        tipo:            tr.querySelector('.cm-tipo').value,
+        estado:          tr.querySelector('.cm-estado').value,
+        notas:           tr.querySelector('.cm-notas').value,
       };
     }
 
     function bindFila(tr) {
-      // Eliminar
       tr.querySelector('.cm-del').onclick = () => { tr.remove(); actualizarContador(); };
 
-      // Clonar
       tr.querySelector('.cm-clone').onclick = () => {
         const vals = getFilaVals(tr);
         const tmp = document.createElement('tbody');
         tmp.innerHTML = filaHTML(vals);
         const nueva = tmp.firstElementChild;
         tr.after(nueva);
-        // Restaurar selects (modalidad/tipo/estado no se restauran bien via innerHTML replace)
         nueva.querySelector('.cm-modalidad').value = vals.modalidad;
         nueva.querySelector('.cm-tipo').value      = vals.tipo;
         nueva.querySelector('.cm-estado').value    = vals.estado;
@@ -240,7 +397,6 @@
       input.addEventListener('blur', () => setTimeout(() => { drop.style.display = 'none'; }, 150));
     }
 
-    // Modal con ancho extra via estilo inline en el contenedor
     openModal('Carga masiva de citas', `
       <div style="margin-bottom:10px;display:flex;align-items:center;gap:10px">
         <button type="button" class="btn btn-outline btn-sm" id="cmAgregarFila"><i class="fas fa-plus"></i> Agregar fila</button>
@@ -288,16 +444,14 @@
       const ok      = resultados.filter(r => r.status === 'fulfilled').length;
       const errores = resultados.filter(r => r.status === 'rejected').length;
       toast(`${ok} cita${ok !== 1 ? 's' : ''} creada${ok !== 1 ? 's' : ''}${errores ? ` · ${errores} error${errores !== 1 ? 'es' : ''}` : ''}`, errores ? 'info' : 'success');
-      loadAgenda();
+      refreshAgenda();
     }, { large: true });
 
-    // Ampliar el modal más allá del tamaño lg estándar
     setTimeout(() => {
       const m = document.getElementById('modal');
       if (m) m.style.maxWidth = '95vw';
     }, 0);
 
-    // Si el cache está vacío (no se ha cambiado el filtro de agenda), cargarlo ahora
     if (!pacientesCache.length) {
       const tid = document.getElementById('agendaTerapeuta')?.value || '';
       const qs = new URLSearchParams();
@@ -305,7 +459,6 @@
       api(`/pacientes?${qs}`).then(ps => { pacientesCache = ps; }).catch(() => {});
     }
 
-    // Cargar terapeutas, luego insertar primera fila
     api('/terapeutas').then(ts => {
       terapeutasCache = ts;
       const tbody = document.getElementById('cmBody');
@@ -332,8 +485,15 @@
   }
 
   /* ── Cambio de estado ───────────────────────────────── */
-  function showCambioEstado(id, actual, notasActual = '') {
+  function showCambioEstado(id, actual, notasActual = '', fechaActual = '') {
+    const esAdmin = window.__USER_ROL__ !== 'terapeuta';
+    const fechaISO = fechaActual ? fechaActual.slice(0, 10) : '';
     openModal('Editar cita', `
+      ${esAdmin ? `
+      <div class="form-group">
+        <label class="form-label">Fecha</label>
+        <input type="date" class="form-control" id="f_fecha_cita" value="${esc(fechaISO)}">
+      </div>` : ''}
       <div class="form-group">
         <label class="form-label">Estado</label>
         <select class="form-select" id="f_estado_cita">
@@ -347,8 +507,17 @@
       </div>`, async () => {
       const notas = document.getElementById('f_notas_cita').value.trim();
       if (!notas) throw new Error('Las observaciones son obligatorias');
-      await api(`/citas/${id}/estado`, { method: 'PATCH', body: { estado: document.getElementById('f_estado_cita').value, notas } });
-      toast('Cita actualizada'); loadAgenda();
+      const body = {
+        estado: document.getElementById('f_estado_cita').value,
+        notas,
+      };
+      if (esAdmin) {
+        const fecha = document.getElementById('f_fecha_cita')?.value;
+        if (!fecha) throw new Error('La fecha es obligatoria');
+        body.fecha = fecha;
+      }
+      await api(`/citas/${id}/estado`, { method: 'PATCH', body });
+      toast('Cita actualizada'); refreshAgenda();
     });
   }
 
@@ -420,10 +589,11 @@
       if (!body.paciente_id || !body.terapeuta_id || !body.fecha)
         throw new Error('Completa todos los campos requeridos');
       await api('/citas', { method: 'POST', body });
-      toast('Cita creada'); loadAgenda();
+      toast('Cita creada');
+      pacienteSeleccionado = body.paciente_id;
+      refreshAgenda();
     });
 
-    // Poblar select terapeutas (solo para no-terapeutas)
     if (!esTerapeuta) {
       const selTer = document.getElementById('agendaTerapeuta');
       api('/terapeutas').then(ts => {
@@ -434,10 +604,17 @@
       }).catch(() => {});
     }
 
-    // Autocomplete paciente
     const searchInput = document.getElementById('f_paciente_search');
     const hiddenId    = document.getElementById('f_paciente_id');
     const dropdown    = document.getElementById('f_paciente_dropdown');
+
+    if (pacienteSeleccionado) {
+      const p = pacientesCache.find(x => String(x.id) === String(pacienteSeleccionado));
+      if (p) {
+        hiddenId.value = p.id;
+        searchInput.value = fullName(p);
+      }
+    }
 
     function renderDropdown(q) {
       const matches = pacientesCache.filter(p =>
@@ -476,37 +653,23 @@
   }
 
   /* ── Listeners ──────────────────────────────────────── */
-  document.getElementById('agendaTerapeuta').addEventListener('change', async e => {
+  document.getElementById('agendaTerapeuta')?.addEventListener('change', async e => {
     terapeutaId = e.target.value;
-    const qs = new URLSearchParams();
-    if (terapeutaId) qs.set('terapeuta_id', terapeutaId);
-    pacientesCache = await api(`/pacientes?${qs}`).catch(() => []);
-    const sel = document.getElementById('agendaPaciente');
-    sel.innerHTML = `<option value="">Todos los pacientes</option>` +
-      pacientesCache.map(p => `<option value="${p.id}">${esc(fullName(p))}</option>`).join('');
-    loadAgenda();
+    pacienteSeleccionado = null;
+    showDetailEmpty();
+    await loadSidebar();
   });
-  document.getElementById('agendaPaciente').addEventListener('change', loadAgenda);
-  document.getElementById('agendaMes').addEventListener('change', e => {
-    const [anio, mes] = e.target.value.split('-').map(Number);
-    const hoy = new Date();
-    fechaActual = (anio === hoy.getFullYear() && mes-1 === hoy.getMonth()) ? hoy : new Date(anio, mes-1, 15);
-    document.getElementById('agendaDia').value = '';
-    loadAgenda();
+
+  document.getElementById('agendaSearch')?.addEventListener('input', renderPacList);
+
+  document.getElementById('agendaPaciente')?.addEventListener('change', e => {
+    selectPaciente(e.target.value || null);
   });
-  document.getElementById('agendaDia').addEventListener('change', e => {
-    if (e.target.value) { const [y,m,d] = e.target.value.split('-').map(Number); fechaActual = new Date(y,m-1,d); }
-    loadAgenda();
-  });
-  document.getElementById('btnNuevaCita').addEventListener('click', showNuevaCita);
+
+  document.getElementById('btnNuevaCita')?.addEventListener('click', showNuevaCita);
   document.getElementById('btnCargaMasiva')?.addEventListener('click', showCargaMasiva);
 
   /* ── Init ───────────────────────────────────────────── */
-  api(`/pacientes${terapeutaId ? `?terapeuta_id=${terapeutaId}` : ''}`).then(ps => {
-    pacientesCache = ps;
-    window.CRM.pacientesCache = ps;
-  }).catch(() => {});
-
-  loadAgenda();
+  loadSidebar();
 
 })();
