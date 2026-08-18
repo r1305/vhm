@@ -159,8 +159,36 @@ body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color
 @media (max-width: 768px) {
   .crm-sidebar { transform: translateX(-100%); }
   .crm-sidebar.open { transform: translateX(0); box-shadow: var(--shadow); }
+  .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 199; }
+  .sidebar-backdrop.open { display: block; }
+  .sidebar-toggle { display: inline-flex !important; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; }
   .crm-main { margin-left: 0; }
-  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  .crm-topbar { padding: 0 12px; gap: 8px; }
+  .page-title { font-size: .95rem; }
+  .crm-content { padding: 12px; }
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
   .form-row { grid-template-columns: 1fr; }
   .d-sm-none { display: none; }
+  .view-toolbar { flex-direction: column; align-items: stretch; }
+  .view-toolbar .form-control,
+  .view-toolbar .form-select,
+  .view-toolbar .search-input,
+  .view-toolbar .btn { width: 100%; max-width: none; }
+  .modal-overlay.open { align-items: flex-end; }
+  .modal { width: 100%; max-width: 100%; max-height: 92dvh; border-radius: 14px 14px 0 0; margin: 0; }
+  .modal.lg { max-width: 100%; }
+  .modal-header { padding: 14px 16px 12px; }
+  .modal-body { padding: 16px; }
+  .modal-footer { padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)); flex-wrap: wrap; }
+  .modal-footer .btn { flex: 1; min-width: 120px; justify-content: center; min-height: 44px; }
+  .btn-icon { min-width: 40px; min-height: 40px; display: inline-flex; align-items: center; justify-content: center; }
+  .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -4px; padding: 0 4px; }
+  .table-scroll .table { min-width: 480px; }
+  #toastContainer { left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
+  #toastContainer .toast { min-width: 0; max-width: none; width: 100%; }
+}
+
+@media (min-width: 769px) {
+  .sidebar-toggle { display: none !important; }
+  .sidebar-backdrop { display: none !important; }
 }

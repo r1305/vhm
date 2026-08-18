@@ -59,7 +59,12 @@
       </div>`;
   }
 
+  function setAgMobileView(showDetail) {
+    document.querySelector('.ag-layout')?.classList.toggle('ag-show-detail', !!showDetail);
+  }
+
   function showDetailEmpty() {
+    setAgMobileView(false);
     document.getElementById('agDetail').innerHTML = `
       <div class="ag-detail-empty">
         <i class="fas fa-calendar-days"></i>
@@ -154,8 +159,12 @@
     );
     const sel = document.getElementById('agendaPaciente');
     if (sel) sel.value = id || '';
-    if (id) loadDetail(id);
-    else showDetailEmpty();
+    if (id) {
+      setAgMobileView(true);
+      loadDetail(id);
+    } else {
+      showDetailEmpty();
+    }
   }
 
   async function loadDetail(pacienteId) {
@@ -196,6 +205,7 @@
 
       detail.innerHTML = `
         <div class="ag-detail-header">
+          <button type="button" class="btn btn-outline btn-sm ag-back-btn" id="agBackBtn" aria-label="Volver a pacientes"><i class="fas fa-arrow-left"></i></button>
           <div class="ag-detail-avatar">${inicial}</div>
           <div>
             <div class="ag-detail-name">${esc(fullName(p))}</div>
@@ -219,6 +229,7 @@
         ${timelineHTML}`;
 
       bindCitaActions(detail);
+      document.getElementById('agBackBtn')?.addEventListener('click', () => selectPaciente(null));
     } catch (err) {
       detail.innerHTML = `<div class="list-empty">${esc(err.message)}</div>`;
     }

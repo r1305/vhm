@@ -1,15 +1,15 @@
 <div class="card" style="margin-bottom:16px">
   <div class="card-body" style="padding:14px 18px">
-    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-      <div style="display:flex;align-items:center;gap:8px">
+    <div class="mr-filters">
+      <div class="mr-field">
         <label class="form-label" style="margin:0;white-space:nowrap">Desde</label>
-        <input type="date" class="form-control" id="mrDesde" style="width:150px">
+        <input type="date" class="form-control" id="mrDesde">
       </div>
-      <div style="display:flex;align-items:center;gap:8px">
+      <div class="mr-field">
         <label class="form-label" style="margin:0;white-space:nowrap">Hasta</label>
-        <input type="date" class="form-control" id="mrHasta" style="width:150px">
+        <input type="date" class="form-control" id="mrHasta">
       </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <div class="mr-presets">
         <button class="btn btn-outline btn-sm" data-mr-preset="hoy">Hoy</button>
         <button class="btn btn-outline btn-sm" data-mr-preset="semana">Esta semana</button>
         <button class="btn btn-outline btn-sm" data-mr-preset="mes">Este mes</button>
@@ -22,7 +22,7 @@
 
 <div class="kpi-grid" id="mrKpis"></div>
 
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
+<div class="mr-grid">
   <div class="card">
     <div class="card-header"><i class="fas fa-calendar-check" style="color:var(--primary)"></i> Citas por día</div>
     <div class="card-body" id="mrCitasDia" style="font-size:13px"></div>

@@ -42,7 +42,7 @@
       // Citas por día
       const dias = d.citasPorDia || [];
       document.getElementById('mrCitasDia').innerHTML = dias.length
-        ? `<table class="table" style="font-size:12px">
+        ? `<div class="table-scroll"><table class="table" style="font-size:12px">
             <thead><tr><th>Fecha</th><th>Citas</th><th>Barra</th></tr></thead>
             <tbody>${dias.map(r => {
               const max  = Math.max(...dias.map(x => x.total), 1);
@@ -54,7 +54,7 @@
                 <td style="width:120px"><div style="background:var(--primary);height:8px;border-radius:4px;width:${pct}%"></div></td>
               </tr>`;
             }).join('')}</tbody>
-          </table>`
+          </table></div>`
         : '<div class="list-empty">Sin datos</div>';
 
       // Por estado
@@ -70,7 +70,7 @@
       // Detalle de citas
       const citas = await api(`/citas?desde=${desde}&hasta=${hasta}${terapeutaId ? `&terapeuta_id=${terapeutaId}` : ''}&mes=${desde.slice(0,7)}`);
       document.getElementById('mrDetalle').innerHTML = (citas || []).length
-        ? `<table class="table" style="font-size:12px">
+        ? `<div class="table-scroll"><table class="table" style="font-size:12px">
             <thead><tr><th>Fecha</th><th>Paciente</th><th>Modalidad</th><th>Estado</th></tr></thead>
             <tbody>${citas.map(c => `<tr>
               <td>${fmtDate(String(c.fecha).slice(0,10))}</td>
@@ -78,7 +78,7 @@
               <td>${esc(c.modalidad||'—')}</td>
               <td>${badge(c.estado, ESTADO_CITA)}</td>
             </tr>`).join('')}</tbody>
-          </table>`
+          </table></div>`
         : '<div class="list-empty">Sin citas en este período</div>';
 
     } catch (err) { toast(err.message, 'danger'); }
