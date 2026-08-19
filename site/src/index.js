@@ -130,8 +130,7 @@ function sendVueAdmin(res) {
   res.type('html').send(html);
 }
 
-app.get('/admin', (req, res) => res.redirect(301, (res.locals.basePath || '') + '/admin/'));
-app.get('/admin/*', (req, res) => sendVueAdmin(res));
+app.get(['/admin', '/admin/', '/admin/*'], (req, res) => sendVueAdmin(res));
 
 app.get('/consulta', (req, res) => {
   sendPublicHtml(res, 'consulta.html');
