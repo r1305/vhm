@@ -417,7 +417,7 @@
       try {
         await api(`/bloqueos/${b.id}`, { method: 'DELETE' });
         toast('Bloqueo eliminado');
-        document.getElementById('modalOverlay').classList.remove('active');
+        document.getElementById('modalOverlay').classList.remove('open');
         loadCitas();
       } catch (e) { toast(e.message, 'danger'); }
     });
