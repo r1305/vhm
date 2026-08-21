@@ -8,6 +8,7 @@
   const ITEMS = [
     { key: 'dashboard',       label: 'Dashboard',          icon: 'fa-gauge-high' },
     { key: 'agenda',          label: 'Agenda',             icon: 'fa-calendar-days' },
+    { key: 'calendario',      label: 'Calendario',         icon: 'fa-calendar-week' },
     { key: 'pacientes',       label: 'Pacientes',          icon: 'fa-users' },
     { key: 'mi_reporte',      label: 'Mi reporte',         icon: 'fa-chart-bar' },
     { key: 'leads',           label: 'Leads',              icon: 'fa-bullseye' },
