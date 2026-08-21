@@ -123,8 +123,8 @@
     actualizarTitulo();
     const grid = document.getElementById('calGrid');
     if (vista === 'mes')    grid.innerHTML = renderMes();
-    if (vista === 'semana') grid.innerHTML = `<div class="cal-semana-wrap">${renderSemana(7)}</div>`;
-    if (vista === 'dia')    grid.innerHTML = `<div class="cal-semana-wrap">${renderSemana(1)}</div>`;
+    if (vista === 'semana') grid.innerHTML = `<div class="cal-semana-wrap">${renderSemana()}</div>`;
+    if (vista === 'dia')    grid.innerHTML = renderDia();
     bindEventos();
     renderLeyenda();
   }
@@ -200,54 +200,92 @@
     return html;
   }
 
-  /* ── Vista Semana / Día ── */
+  /* ── Vista Semana ── */
   function renderSemana(dias) {
     const hoy = new Date(); hoy.setHours(0,0,0,0);
-    const ini = dias === 7 ? startOfWeek(cursor) : new Date(cursor);
+    const ini = startOfWeek(cursor);
     const cols = [];
     for (let i = 0; i < dias; i++) {
-      const d = new Date(ini); d.setDate(ini.getDate()+i);
-      cols.push(d);
+      const d = new Date(ini); d.setDate(ini.getDate()+i); cols.push(d);
     }
-
     const porFecha = {};
-    citasCache.forEach(c => {
-      const f = String(c.fecha).slice(0,10);
-      if (!porFecha[f]) porFecha[f] = [];
-      porFecha[f].push(c);
-    });
+    citasCache.forEach(c => { const f=String(c.fecha).slice(0,10); if(!porFecha[f]) porFecha[f]=[]; porFecha[f].push(c); });
     const bMap = bloqueosPorFechaMap();
 
     let html = `<table class="cal-semana"><thead><tr><th class="cal-time-col"></th>`;
     cols.forEach(d => {
-      const esHoy = d.getTime() === hoy.getTime();
+      const esHoy = d.getTime()===hoy.getTime();
       html += `<th class="${esHoy?'cal-hoy-col':''}">
         <div style="font-size:11px">${DIAS_CORTO[d.getDay()]}</div>
-        <div style="font-size:${dias===1?'22px':'16px'};font-weight:700;${esHoy?'color:var(--primary)':''}">${d.getDate()}</div>
+        <div style="font-size:16px;font-weight:700;${esHoy?'color:var(--primary)':''}">${d.getDate()}</div>
       </th>`;
     });
     html += `</tr></thead><tbody><tr><td class="cal-time-col" style="font-size:10px;padding-top:6px">citas</td>`;
     cols.forEach(d => {
-      const fStr  = isoDate(d);
-      const citas = porFecha[fStr] || [];
-      const bloqs = bMap[fStr] || [];
-      const esHoy = d.getTime() === hoy.getTime();
+      const fStr=isoDate(d), citas=porFecha[fStr]||[], bloqs=bMap[fStr]||[], esHoy=d.getTime()===hoy.getTime();
       html += `<td class="${esHoy?'cal-hoy-col':''}" data-fecha="${fStr}" style="padding:4px;min-height:50px">`;
-      bloqs.forEach(b => {
-        html += `<div class="cal-bloqueo" data-bloqueo="${b.id}" style="margin-bottom:3px">🔒 ${esc(b.titulo)}
-          <span style="opacity:.7;font-size:10px"> · ${esc(b.terapeuta_nombre||'')}</span>
-        </div>`;
-      });
-      citas.forEach(c => {
-        html += `<div class="cal-evento ${colorForTer(c.terapeuta_id)}" data-cita="${c.id}" style="margin-bottom:3px">
-          ${esc((c.paciente_nombre||'').split(' ')[0])} ${esc((c.paciente_apellido||'').split(' ')[0])}
-          <span style="opacity:.8;font-size:10px"> · ${esc(c.terapeuta_nombre||'')}</span>
-        </div>`;
-      });
+      bloqs.forEach(b => { html += `<div class="cal-bloqueo" data-bloqueo="${b.id}" style="margin-bottom:3px">🔒 ${esc(b.titulo)}<span style="opacity:.7;font-size:10px"> · ${esc(b.terapeuta_nombre||'')}</span></div>`; });
+      citas.forEach(c => { html += `<div class="cal-evento ${colorForTer(c.terapeuta_id)}" data-cita="${c.id}" style="margin-bottom:3px">${esc((c.paciente_nombre||'').split(' ')[0])} ${esc((c.paciente_apellido||'').split(' ')[0])}<span style="opacity:.8;font-size:10px"> · ${esc(c.terapeuta_nombre||'')}</span></div>`; });
       if (!citas.length && !bloqs.length) html += `<div style="height:30px"></div>`;
       html += `</td>`;
     });
     html += `</tr></tbody></table>`;
+    return html;
+  }
+
+  /* ── Vista Día con 24 slots ── */
+  function renderDia() {
+    const fStr  = isoDate(cursor);
+    const citas = citasCache.filter(c => String(c.fecha).slice(0,10) === fStr);
+    const bMap  = bloqueosPorFechaMap();
+    const bloqs = bMap[fStr] || [];
+
+    function toMin(t) {
+      if (!t) return null;
+      const parts = String(t).split(':');
+      return parseInt(parts[0],10)*60 + parseInt(parts[1]||0,10);
+    }
+
+    let html = `<div class="cal-dia-grid">`;
+    for (let h = 0; h < 24; h++) {
+      const slotMin = h * 60;
+      const slotMax = slotMin + 60;
+      const label   = `${String(h).padStart(2,'0')}:00`;
+
+      const citasSlot = citas.filter(c => {
+        const ini = toMin(c.hora_inicio);
+        const fin = toMin(c.hora_fin);
+        if (ini === null) return false;
+        return ini < slotMax && (fin !== null ? fin > slotMin : ini >= slotMin);
+      });
+
+      const bloqsSlot = bloqs.filter(b => {
+        const ini = toMin(b.hora_inicio);
+        const fin = toMin(b.hora_fin);
+        if (ini === null) return true; // todo el día
+        return ini < slotMax && fin > slotMin;
+      });
+
+      html += `<div class="cal-dia-row">
+        <div class="cal-dia-hora">${label}</div>
+        <div class="cal-dia-cell" data-fecha="${fStr}">`;
+
+      bloqsSlot.forEach(b => {
+        html += `<div class="cal-bloqueo" data-bloqueo="${b.id}">🔒 ${esc(b.titulo)}<span style="opacity:.7;font-size:10px"> · ${esc(b.terapeuta_nombre||'')}</span></div>`;
+      });
+      citasSlot.forEach(c => {
+        const hi = String(c.hora_inicio||'').slice(0,5);
+        const hf = String(c.hora_fin||'').slice(0,5);
+        html += `<div class="cal-evento ${colorForTer(c.terapeuta_id)}" data-cita="${c.id}">
+          <strong>${hi}${hf?' – '+hf:''}</strong>
+          ${esc((c.paciente_nombre||'')+' '+(c.paciente_apellido||''))}
+          <span style="opacity:.8;font-size:10px"> · ${esc(c.terapeuta_nombre||'')}</span>
+        </div>`;
+      });
+
+      html += `</div></div>`;
+    }
+    html += `</div>`;
     return html;
   }
 
@@ -310,6 +348,16 @@
           <input type="date" class="form-control" id="f_bloqueo_hasta" value="${fecha}">
         </div>
       </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Hora inicio</label>
+          <input type="time" class="form-control" id="f_bloqueo_hi" value="00:00">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Hora fin</label>
+          <input type="time" class="form-control" id="f_bloqueo_hf" value="23:59">
+        </div>
+      </div>
       <div class="form-group">
         <label class="form-label">Motivo</label>
         <input class="form-control" id="f_bloqueo_titulo" placeholder="Vacaciones, feriado…" value="Bloqueado">
@@ -319,7 +367,10 @@
       const titulo = document.getElementById('f_bloqueo_titulo').value.trim() || 'Bloqueado';
       if (!desde || !hasta) throw new Error('Las fechas son obligatorias');
       if (hasta < desde)    throw new Error('La fecha hasta debe ser igual o posterior al desde');
-      const body = { fecha_inicio: desde, fecha_fin: hasta, titulo };
+      const body = { fecha_inicio: desde, fecha_fin: hasta, titulo,
+        hora_inicio: document.getElementById('f_bloqueo_hi').value || '00:00',
+        hora_fin:    document.getElementById('f_bloqueo_hf').value || '23:59',
+      };
       if (esAdmin) {
         const tid = document.getElementById('f_bloqueo_ter').value;
         if (!tid) throw new Error('Selecciona un terapeuta');

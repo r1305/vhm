@@ -62,6 +62,8 @@ async function ensureSchema() {
         paciente_id     INT NOT NULL,
         terapeuta_id    INT NOT NULL,
         fecha           DATE NOT NULL,
+        hora_inicio     TIME NOT NULL DEFAULT '17:00:00',
+        hora_fin        TIME NOT NULL DEFAULT '18:00:00',
         modalidad       ENUM('presencial','videollamada','telefono') NOT NULL DEFAULT 'presencial',
         tipo            ENUM('primera_vez','seguimiento','evaluacion','urgencia') NOT NULL DEFAULT 'seguimiento',
         estado          ENUM('pendiente','confirmada','reagendada','realizada','cancelada','no_show') NOT NULL DEFAULT 'pendiente',
@@ -203,9 +205,12 @@ async function ensureSchema() {
     try { await conn.execute('INSERT IGNORE INTO cron_config (id) VALUES (1)'); } catch (_) {}
     try { await conn.execute('ALTER TABLE cron_config ADD COLUMN mensaje TEXT DEFAULT NULL'); } catch (_) {}
 
-    // Eliminar hora_inicio y hora_fin de citas
-    try { await conn.execute('ALTER TABLE citas DROP COLUMN hora_inicio'); } catch (_) {}
-    try { await conn.execute('ALTER TABLE citas DROP COLUMN hora_fin'); } catch (_) {}
+    // Re-agregar hora_inicio y hora_fin a citas con defaults
+    try { await conn.execute("ALTER TABLE citas ADD COLUMN hora_inicio TIME NOT NULL DEFAULT '17:00:00'"); } catch (_) {}
+    try { await conn.execute("ALTER TABLE citas ADD COLUMN hora_fin TIME NOT NULL DEFAULT '18:00:00'"); } catch (_) {}
+    // Agregar hora_inicio y hora_fin a bloqueos
+    try { await conn.execute("ALTER TABLE bloqueos ADD COLUMN hora_inicio TIME NOT NULL DEFAULT '00:00:00'"); } catch (_) {}
+    try { await conn.execute("ALTER TABLE bloqueos ADD COLUMN hora_fin TIME NOT NULL DEFAULT '23:59:00'"); } catch (_) {}
     // Actualizar labels de tipo en citas (solo cosmético, los valores ENUM no cambian)
     try { await conn.execute("ALTER TABLE citas MODIFY tipo ENUM('primera_vez','seguimiento','evaluacion','urgencia') NOT NULL DEFAULT 'seguimiento'"); } catch (_) {}
     try { await conn.execute("ALTER TABLE citas MODIFY estado ENUM('pendiente','confirmada','reagendada','realizada','cancelada','no_show') NOT NULL DEFAULT 'pendiente'"); } catch (_) {}

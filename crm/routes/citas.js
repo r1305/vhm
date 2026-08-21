@@ -55,13 +55,16 @@ router.get('/disponibles', async (req, res) => {
 
 router.post('/', auth, async (req, res) => {
   const { paciente_id, terapeuta_id, fecha, modalidad='presencial', tipo='seguimiento', estado='realizada', notas } = req.body || {};
+  let { hora_inicio, hora_fin } = req.body || {};
   if (!paciente_id || !terapeuta_id || !fecha)
     return res.status(400).json({ error: 'Campos requeridos faltantes' });
+  hora_inicio = hora_inicio || '17:00';
+  hora_fin    = hora_fin    || '18:00';
   try {
     const [r] = await pool.execute(
-      `INSERT INTO citas (paciente_id,terapeuta_id,fecha,modalidad,tipo,estado,notas)
-       VALUES (?,?,?,?,?,?,?)`,
-      [pid(paciente_id), pid(terapeuta_id), fecha, modalidad, tipo, estado, t(notas,2000)]
+      `INSERT INTO citas (paciente_id,terapeuta_id,fecha,hora_inicio,hora_fin,modalidad,tipo,estado,notas)
+       VALUES (?,?,?,?,?,?,?,?,?)`,
+      [pid(paciente_id), pid(terapeuta_id), fecha, hora_inicio, hora_fin, modalidad, tipo, estado, t(notas,2000)]
     );
     await pool.execute(
       `UPDATE pacientes SET estado='confirmado' WHERE id=? AND estado='prospecto'`,
