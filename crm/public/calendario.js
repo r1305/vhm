@@ -181,7 +181,7 @@
       const MAX   = 3;
       let shown   = 0;
 
-      html += `<td class="${esHoy?'cal-hoy':''} ${!esMes?'cal-otro-mes':''}" data-fecha="${fStr}">`;
+      html += `<td class="${esHoy?'cal-hoy':''} ${!esMes?'cal-otro-mes':''} ${bloqs.length?'cal-dia-bloqueado':''}" data-fecha="${fStr}">`;
       html += `<span class="cal-dia-num">${dia.getDate()}</span>`;
       bloqs.forEach(b => {
         if (shown >= MAX) return;
@@ -227,7 +227,7 @@
     html += `</tr></thead><tbody><tr><td class="cal-time-col" style="font-size:10px;padding-top:6px">citas</td>`;
     cols.forEach(d => {
       const fStr=isoDate(d), citas=porFecha[fStr]||[], bloqs=bMap[fStr]||[], esHoy=d.getTime()===hoy.getTime();
-      html += `<td class="${esHoy?'cal-hoy-col':''}" data-fecha="${fStr}" style="padding:4px;min-height:50px">`;
+      html += `<td class="${esHoy?'cal-hoy-col':''} ${bloqs.length?'cal-dia-bloqueado':''}" data-fecha="${fStr}" style="padding:4px;min-height:50px">`;
       bloqs.forEach(b => { html += `<div class="cal-bloqueo" data-bloqueo="${b.id}" style="margin-bottom:3px">🔒 ${esc(b.titulo)}<span style="opacity:.7;font-size:10px"> · ${esc(b.terapeuta_nombre||'')}</span></div>`; });
       citas.forEach(c => { html += `<div class="cal-evento ${colorForTer(c.terapeuta_id)}" data-cita="${c.id}" style="margin-bottom:3px">${esc((c.paciente_nombre||'').split(' ')[0])} ${esc((c.paciente_apellido||'').split(' ')[0])}<span style="opacity:.8;font-size:10px"> · ${esc(c.terapeuta_nombre||'')}</span></div>`; });
       if (!citas.length && !bloqs.length) html += `<div style="height:30px"></div>`;
@@ -272,7 +272,7 @@
 
       html += `<div class="cal-dia-row">
         <div class="cal-dia-hora">${label}</div>
-        <div class="cal-dia-cell" data-fecha="${fStr}">`;
+        <div class="cal-dia-cell${bloqsSlot.length?' cal-dia-bloqueado':''}" data-fecha="${fStr}">`;
 
       bloqsSlot.forEach(b => {
         html += `<div class="cal-bloqueo" data-bloqueo="${b.id}">🔒 ${esc(b.titulo)}<span style="opacity:.7;font-size:10px"> · ${esc(b.terapeuta_nombre||'')}</span></div>`;
@@ -314,6 +314,9 @@
     document.querySelectorAll('[data-fecha]').forEach(el => {
       el.addEventListener('click', e => {
         if (e.target.closest('[data-cita]') || e.target.closest('[data-bloqueo]') || e.target.closest('.cal-mas')) return;
+        const bMap = bloqueosPorFechaMap();
+        const bloqsDelDia = bMap[el.dataset.fecha] || [];
+        if (bloqsDelDia.length) { showDetalleBloqueo(bloqsDelDia[0]); return; }
         showNuevoBloqueo(el.dataset.fecha).catch(err => toast(err.message, 'danger'));
       });
     });

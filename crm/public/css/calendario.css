@@ -147,7 +147,45 @@
 }
 .cal-dia-cell:hover { background: var(--primary-light, #f0f4ff); }
 
-/* ── Colores por terapeuta ── */
+.cal-mes td.cal-dia-bloqueado {
+  background: repeating-linear-gradient(
+    45deg,
+    var(--border),
+    var(--border) 3px,
+    var(--card-bg) 3px,
+    var(--card-bg) 10px
+  );
+  cursor: not-allowed;
+}
+.cal-mes td.cal-dia-bloqueado:hover { background: repeating-linear-gradient(
+    45deg,
+    var(--border),
+    var(--border) 3px,
+    var(--card-bg) 3px,
+    var(--card-bg) 10px
+  );
+}
+.cal-semana td.cal-dia-bloqueado,
+.cal-dia-cell.cal-dia-bloqueado {
+  background: repeating-linear-gradient(
+    45deg,
+    var(--border),
+    var(--border) 3px,
+    var(--card-bg) 3px,
+    var(--card-bg) 10px
+  );
+  cursor: not-allowed;
+}
+.cal-semana td.cal-dia-bloqueado:hover,
+.cal-dia-cell.cal-dia-bloqueado:hover {
+  background: repeating-linear-gradient(
+    45deg,
+    var(--border),
+    var(--border) 3px,
+    var(--card-bg) 3px,
+    var(--card-bg) 10px
+  );
+}
 .cal-color-0 { background: #6366f1; }
 .cal-color-1 { background: #22c55e; }
 .cal-color-2 { background: #f59e0b; }
