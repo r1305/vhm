@@ -103,6 +103,30 @@
     if (vista === 'semana') grid.innerHTML = `<div class="cal-semana-wrap">${renderSemana(7)}</div>`;
     if (vista === 'dia')    grid.innerHTML = `<div class="cal-semana-wrap">${renderSemana(1)}</div>`;
     bindEventos();
+    renderLeyenda();
+  }
+
+  /* ── Leyenda de terapeutas ── */
+  function renderLeyenda() {
+    const el = document.getElementById('calLeyenda');
+    if (!el) return;
+    // Solo visible para admin (el select de terapeuta existe y no tiene valor fijo)
+    const selTer = document.getElementById('calTerapeuta');
+    if (!selTer || selTer.value) { el.innerHTML = ''; return; }
+
+    // Terapeutas presentes en las citas actuales
+    const vistos = new Map(); // tid -> nombre
+    citasCache.forEach(c => {
+      if (!vistos.has(c.terapeuta_id)) vistos.set(c.terapeuta_id, c.terapeuta_nombre || '');
+    });
+    if (!vistos.size) { el.innerHTML = ''; return; }
+
+    el.innerHTML = [...vistos.entries()].map(([tid, nombre]) =>
+      `<span style="display:inline-flex;align-items:center;gap:5px;font-size:12px">
+        <span style="width:12px;height:12px;border-radius:3px;flex-shrink:0" class="${colorForTer(tid)}"></span>
+        ${esc(nombre)}
+      </span>`
+    ).join('');
   }
 
   /* ── Vista Mes ── */
