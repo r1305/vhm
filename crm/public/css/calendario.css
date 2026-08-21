@@ -122,7 +122,32 @@
 }
 .cal-semana .cal-time-col:hover { background: transparent; }
 
-/* Colores por terapeuta (ciclo) */
+/* ── Vista Día 24 slots ── */
+.cal-dia-grid { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.cal-dia-row {
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  border-bottom: 1px solid var(--border);
+  min-height: 48px;
+}
+.cal-dia-row:last-child { border-bottom: none; }
+.cal-dia-hora {
+  padding: 6px 8px 0;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: right;
+  border-right: 2px solid var(--border);
+  background: var(--bg);
+  white-space: nowrap;
+}
+.cal-dia-cell {
+  padding: 4px 6px;
+  cursor: pointer;
+  transition: background .12s;
+}
+.cal-dia-cell:hover { background: var(--primary-light, #f0f4ff); }
+
+/* ── Colores por terapeuta ── */
 .cal-color-0 { background: #6366f1; }
 .cal-color-1 { background: #22c55e; }
 .cal-color-2 { background: #f59e0b; }

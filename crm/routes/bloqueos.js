@@ -29,15 +29,17 @@ router.get('/', auth, async (req, res) => {
 // POST /api/bloqueos
 router.post('/', auth, async (req, res) => {
   try {
-    const { fecha_inicio, fecha_fin, titulo = 'Bloqueado', todo_el_dia = 1 } = req.body || {};
+    const { fecha_inicio, fecha_fin, titulo = 'Bloqueado' } = req.body || {};
+    let { hora_inicio, hora_fin } = req.body || {};
     if (!fecha_inicio || !fecha_fin) return res.status(400).json({ error: 'fecha_inicio y fecha_fin requeridos' });
-    // Terapeuta solo puede crear para sí mismo; admin puede especificar terapeuta_id
+    hora_inicio = hora_inicio || '00:00';
+    hora_fin    = hora_fin    || '23:59';
     const terId = req.user.rol === 'terapeuta'
       ? req.user.id
       : (pid(req.body.terapeuta_id) || req.user.id);
     const [r] = await pool.execute(
-      'INSERT INTO bloqueos (terapeuta_id, fecha_inicio, fecha_fin, titulo, todo_el_dia) VALUES (?,?,?,?,?)',
-      [terId, fecha_inicio, fecha_fin, t(titulo,200), todo_el_dia ? 1 : 0]
+      'INSERT INTO bloqueos (terapeuta_id, fecha_inicio, fecha_fin, hora_inicio, hora_fin, titulo) VALUES (?,?,?,?,?,?)',
+      [terId, fecha_inicio, fecha_fin, hora_inicio, hora_fin, t(titulo,200)]
     );
     res.status(201).json({ id: r.insertId });
   } catch (err) { res.status(500).json({ error: err.message }); }
