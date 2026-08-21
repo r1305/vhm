@@ -123,7 +123,7 @@
     actualizarTitulo();
     const grid = document.getElementById('calGrid');
     if (vista === 'mes')    grid.innerHTML = renderMes();
-    if (vista === 'semana') grid.innerHTML = `<div class="cal-semana-wrap">${renderSemana()}</div>`;
+    if (vista === 'semana') grid.innerHTML = `<div class="cal-semana-wrap">${renderSemana(7)}</div>`;
     if (vista === 'dia')    grid.innerHTML = renderDia();
     bindEventos();
     renderLeyenda();
@@ -262,7 +262,7 @@
       const bloqsSlot = bloqs.filter(b => {
         const ini = toMin(b.hora_inicio);
         const fin = toMin(b.hora_fin);
-        if (ini === null) return true; // todo el día
+        if (ini === null || fin === null) return true; // todo el día
         return ini < slotMax && fin > slotMin;
       });
 
@@ -310,7 +310,7 @@
     document.querySelectorAll('[data-fecha]').forEach(el => {
       el.addEventListener('click', e => {
         if (e.target.closest('[data-cita]') || e.target.closest('[data-bloqueo]') || e.target.closest('.cal-mas')) return;
-        showNuevoBloqueo(el.dataset.fecha);
+        showNuevoBloqueo(el.dataset.fecha).catch(err => toast(err.message, 'danger'));
       });
     });
 
@@ -325,8 +325,12 @@
   }
 
   /* ── Modal nuevo bloqueo ── */
-  function showNuevoBloqueo(fecha) {
+  async function showNuevoBloqueo(fecha) {
     const esAdmin = window.__USER_ROL__ !== 'terapeuta';
+    if (esAdmin && !terapeutasCache.length) {
+      try { terapeutasCache = await api('/terapeutas'); }
+      catch (e) { toast('No se pudieron cargar los terapeutas', 'danger'); return; }
+    }
     const terOpts = terapeutasCache.map(t =>
       `<option value="${t.id}">${esc(fullName(t))}</option>`
     ).join('');
@@ -377,7 +381,11 @@
         body.terapeuta_id = tid;
       }
       await api('/bloqueos', { method: 'POST', body });
-      toast('Bloqueo creado'); loadCitas();
+      const [y,m,d] = desde.split('-').map(Number);
+      cursor = new Date(y, m-1, d);
+      cursor.setHours(0,0,0,0);
+      toast('Bloqueo creado');
+      loadCitas();
     });
   }
 

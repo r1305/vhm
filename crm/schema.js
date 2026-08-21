@@ -208,9 +208,6 @@ async function ensureSchema() {
     // Re-agregar hora_inicio y hora_fin a citas con defaults
     try { await conn.execute("ALTER TABLE citas ADD COLUMN hora_inicio TIME NOT NULL DEFAULT '17:00:00'"); } catch (_) {}
     try { await conn.execute("ALTER TABLE citas ADD COLUMN hora_fin TIME NOT NULL DEFAULT '18:00:00'"); } catch (_) {}
-    // Agregar hora_inicio y hora_fin a bloqueos
-    try { await conn.execute("ALTER TABLE bloqueos ADD COLUMN hora_inicio TIME NOT NULL DEFAULT '00:00:00'"); } catch (_) {}
-    try { await conn.execute("ALTER TABLE bloqueos ADD COLUMN hora_fin TIME NOT NULL DEFAULT '23:59:00'"); } catch (_) {}
     // Actualizar labels de tipo en citas (solo cosmético, los valores ENUM no cambian)
     try { await conn.execute("ALTER TABLE citas MODIFY tipo ENUM('primera_vez','seguimiento','evaluacion','urgencia') NOT NULL DEFAULT 'seguimiento'"); } catch (_) {}
     try { await conn.execute("ALTER TABLE citas MODIFY estado ENUM('pendiente','confirmada','reagendada','realizada','cancelada','no_show') NOT NULL DEFAULT 'pendiente'"); } catch (_) {}
@@ -389,6 +386,8 @@ async function ensureSchema() {
         terapeuta_id INT NOT NULL,
         fecha_inicio DATE NOT NULL,
         fecha_fin    DATE NOT NULL,
+        hora_inicio  TIME NOT NULL DEFAULT '00:00:00',
+        hora_fin     TIME NOT NULL DEFAULT '23:59:00',
         titulo       VARCHAR(200) NOT NULL DEFAULT 'Bloqueado',
         todo_el_dia  TINYINT(1) NOT NULL DEFAULT 1,
         created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -397,6 +396,9 @@ async function ensureSchema() {
         KEY idx_bloqueos_fecha (fecha_inicio)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
+    // Agregar hora_inicio/hora_fin a bloqueos si la tabla ya existía sin ellas
+    try { await conn.execute("ALTER TABLE bloqueos ADD COLUMN hora_inicio TIME NOT NULL DEFAULT '00:00:00'"); } catch (_) {}
+    try { await conn.execute("ALTER TABLE bloqueos ADD COLUMN hora_fin TIME NOT NULL DEFAULT '23:59:00'"); } catch (_) {}
 
     // Agregar 'calendario' a roles existentes si no existe
     for (const rol of ['superadmin', 'recepcion', 'terapeuta'])
