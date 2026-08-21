@@ -1,0 +1,153 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #f4f6fb;
+  color: #1a1a2e;
+  min-height: 100vh;
+}
+
+.ag-wrap {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+}
+
+/* ── Header terapeuta ── */
+.ag-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: #fff;
+  border-radius: 14px;
+  padding: 18px 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 12px rgba(0,0,0,.07);
+}
+.ag-avatar {
+  width: 52px; height: 52px;
+  border-radius: 50%;
+  background: #6366f1;
+  color: #fff;
+  font-size: 22px;
+  font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.ag-ter-nombre { font-size: 17px; font-weight: 700; }
+.ag-ter-esp    { font-size: 13px; color: #666; margin-top: 2px; }
+
+/* ── Steps ── */
+.ag-step { display: none; background: #fff; border-radius: 14px; padding: 22px 20px; box-shadow: 0 2px 12px rgba(0,0,0,.07); }
+.ag-step.active { display: block; }
+.ag-step-title { font-size: 15px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+.ag-step-title i { color: #6366f1; }
+
+.ag-back {
+  background: none; border: none; color: #6366f1; font-size: 13px;
+  cursor: pointer; padding: 0; margin-bottom: 14px; display: flex; align-items: center; gap: 6px;
+}
+.ag-back:hover { text-decoration: underline; }
+
+/* ── Navegación mes ── */
+.ag-cal-nav {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px;
+}
+.ag-cal-nav span { font-weight: 600; font-size: 15px; }
+.ag-nav-btn {
+  background: none; border: 1px solid #e2e8f0; border-radius: 8px;
+  width: 32px; height: 32px; cursor: pointer; color: #444;
+  display: flex; align-items: center; justify-content: center;
+}
+.ag-nav-btn:hover { background: #f0f4ff; }
+
+/* ── Tabla calendario ── */
+.ag-table { width: 100%; border-collapse: collapse; }
+.ag-table th {
+  text-align: center; font-size: 11px; font-weight: 600;
+  color: #888; padding: 6px 2px; border-bottom: 1px solid #eee;
+}
+.ag-table td {
+  text-align: center; padding: 4px 2px;
+  height: 52px; vertical-align: top; position: relative;
+  border-radius: 8px;
+}
+.ag-num { display: block; font-size: 13px; font-weight: 500; padding-top: 4px; }
+.ag-otro .ag-num { color: #ccc; }
+.ag-hoy .ag-num {
+  background: #6366f1; color: #fff;
+  width: 26px; height: 26px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  margin: 2px auto 0;
+}
+.ag-libre { cursor: pointer; }
+.ag-libre:hover { background: #f0f4ff; }
+.ag-sel { background: #eef2ff !important; }
+.ag-sel .ag-num { color: #6366f1; font-weight: 700; }
+.ag-slots-count {
+  display: block; font-size: 10px; color: #6366f1;
+  font-weight: 600; margin-top: 1px;
+}
+
+/* ── Slots de hora ── */
+.ag-fecha-sel {
+  font-size: 14px; font-weight: 600; color: #6366f1;
+  margin-bottom: 14px;
+}
+#agSlots {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+}
+.ag-slot {
+  border: 1.5px solid #e2e8f0; border-radius: 10px;
+  background: #fff; padding: 10px 6px; font-size: 13px;
+  font-weight: 500; cursor: pointer; transition: all .15s;
+  color: #333;
+}
+.ag-slot:hover { border-color: #6366f1; color: #6366f1; background: #f0f4ff; }
+.ag-slot-sel  { border-color: #6366f1; background: #6366f1; color: #fff; }
+
+/* ── Resumen ── */
+.ag-resumen {
+  background: #f0f4ff; border-radius: 10px; padding: 12px 14px;
+  font-size: 13px; color: #444; margin-bottom: 18px;
+  display: flex; align-items: center; gap: 8px;
+}
+.ag-resumen i { color: #6366f1; }
+
+/* ── Formulario ── */
+.ag-form { display: flex; flex-direction: column; gap: 12px; }
+.ag-field { display: flex; flex-direction: column; gap: 4px; }
+.ag-field label { font-size: 12px; font-weight: 600; color: #555; }
+.ag-field input, .ag-field textarea {
+  border: 1.5px solid #e2e8f0; border-radius: 8px;
+  padding: 9px 12px; font-size: 14px; outline: none;
+  transition: border-color .15s; font-family: inherit;
+}
+.ag-field input:focus, .ag-field textarea:focus { border-color: #6366f1; }
+.ag-field textarea { resize: vertical; }
+
+.ag-btn-confirmar {
+  background: #6366f1; color: #fff; border: none;
+  border-radius: 10px; padding: 13px; font-size: 15px;
+  font-weight: 600; cursor: pointer; margin-top: 4px;
+  transition: background .15s;
+}
+.ag-btn-confirmar:hover { background: #4f46e5; }
+.ag-btn-confirmar:disabled { background: #a5b4fc; cursor: not-allowed; }
+
+/* ── Éxito ── */
+.ag-exito { text-align: center; padding: 20px 0; }
+.ag-exito-icon { font-size: 56px; color: #22c55e; margin-bottom: 12px; }
+.ag-exito-titulo { font-size: 22px; font-weight: 700; margin-bottom: 10px; }
+.ag-exito-detalle { font-size: 14px; color: #555; line-height: 1.7; margin-bottom: 24px; }
+.ag-btn-nuevo {
+  background: none; border: 1.5px solid #6366f1; color: #6366f1;
+  border-radius: 10px; padding: 10px 24px; font-size: 14px;
+  font-weight: 600; cursor: pointer;
+}
+.ag-btn-nuevo:hover { background: #f0f4ff; }
+
+/* ── Loading / error ── */
+.ag-loading { text-align: center; padding: 30px; color: #6366f1; font-size: 22px; }
+.ag-error   { text-align: center; padding: 20px; color: #ef4444; font-size: 13px; }

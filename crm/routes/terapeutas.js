@@ -66,7 +66,7 @@ router.post('/:id/disponibilidad', authAdmin, async (req, res) => {
 });
 
 router.delete('/:id/disponibilidad/:did', authAdmin, async (req, res) => {
-  await pool.execute('UPDATE disponibilidad SET activo=0 WHERE id=? AND terapeuta_id=?', [req.params.did, req.params.id]);
+  await pool.execute('DELETE FROM disponibilidad WHERE id=? AND terapeuta_id=?', [req.params.did, req.params.id]);
   res.json({ ok: true });
 });
 

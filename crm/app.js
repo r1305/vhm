@@ -92,6 +92,7 @@ router.use('/api/terapeutas', require('./routes/terapeutas'));
 router.use('/api/pacientes',  require('./routes/pacientes'));
 router.use('/api/citas',      citasRouter);
 router.use('/api/bloqueos',    require('./routes/bloqueos'));
+router.use('/api/publico',     require('./routes/publico'));
 router.use('/api/historial',  require('./routes/historial'));
 router.use('/api/leads',      leadsRouter);
 router.use('/api/pagos',      require('./routes/pagos'));
