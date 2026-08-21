@@ -382,9 +382,9 @@ async function ensureSchema() {
     const [[{cnt}]] = await conn.execute('SELECT COUNT(*) AS cnt FROM menu_permisos');
     if (!cnt) {
       const defaults = [
-        ...['dashboard','agenda','pacientes','leads','historial','consentimientos','pagos','espera','terapeutas','reportes','analitica','marketing','asignacion','integraciones','permisos_menu'].map(i => ['superadmin', i]),
-        ...['dashboard','agenda','pacientes','leads','historial','consentimientos','pagos','espera','terapeutas','reportes','analitica','marketing','asignacion','integraciones'].map(i => ['recepcion', i]),
-        ...['agenda','pacientes','historial','mi_reporte'].map(i => ['terapeuta', i]),
+        ...['dashboard','agenda','calendario','pacientes','leads','historial','consentimientos','pagos','espera','terapeutas','reportes','analitica','marketing','asignacion','integraciones','permisos_menu'].map(i => ['superadmin', i]),
+        ...['dashboard','agenda','calendario','pacientes','leads','historial','consentimientos','pagos','espera','terapeutas','reportes','analitica','marketing','asignacion','integraciones'].map(i => ['recepcion', i]),
+        ...['agenda','calendario','pacientes','historial','mi_reporte'].map(i => ['terapeuta', i]),
       ];
       for (const [rol, item] of defaults)
         await conn.execute('INSERT IGNORE INTO menu_permisos (rol, item) VALUES (?,?)', [rol, item]);
