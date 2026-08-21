@@ -50,11 +50,15 @@
   }
 
   /* ── Expandir bloqueos multi-día a mapa por fecha ── */
+  function toIsoDateStr(v) {
+    return String(v).slice(0, 10);
+  }
+
   function bloqueosPorFechaMap() {
     const map = {};
     bloqueosCache.forEach(b => {
-      let d = new Date(b.fecha_inicio + 'T12:00:00');
-      const fin = new Date(b.fecha_fin + 'T12:00:00');
+      let d = new Date(toIsoDateStr(b.fecha_inicio) + 'T12:00:00');
+      const fin = new Date(toIsoDateStr(b.fecha_fin) + 'T12:00:00');
       while (d <= fin) {
         const f = isoDate(d);
         if (!map[f]) map[f] = [];
