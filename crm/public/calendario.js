@@ -9,10 +9,12 @@
   const MESES_LARGO = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
                        'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
-  let vista      = 'mes';
-  let cursor     = new Date();
+  let vista           = 'mes';
+  let cursor          = new Date();
   cursor.setHours(0,0,0,0);
-  let citasCache = [];
+  let citasCache      = [];
+  let bloqueosCache   = [];
+  let terapeutasCache = [];
   let terapeutaColorMap = {};
   let colorIdx = 0;
 
@@ -28,12 +30,11 @@
 
   function startOfWeek(d) {
     const r = new Date(d);
-    r.setDate(d.getDate() - d.getDay()); // domingo
+    r.setDate(d.getDate() - d.getDay());
     r.setHours(0,0,0,0);
     return r;
   }
 
-  /* ── Rango de fechas según vista ── */
   function rangoActual() {
     if (vista === 'mes') {
       const desde = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
@@ -45,29 +46,51 @@
       const hasta = new Date(desde); hasta.setDate(desde.getDate()+6);
       return { desde, hasta };
     }
-    // dia
     return { desde: new Date(cursor), hasta: new Date(cursor) };
   }
 
-  /* ── Cargar citas del rango ── */
+  /* ── Expandir bloqueos multi-día a mapa por fecha ── */
+  function bloqueosPorFechaMap() {
+    const map = {};
+    bloqueosCache.forEach(b => {
+      let d = new Date(b.fecha_inicio + 'T12:00:00');
+      const fin = new Date(b.fecha_fin + 'T12:00:00');
+      while (d <= fin) {
+        const f = isoDate(d);
+        if (!map[f]) map[f] = [];
+        map[f].push(b);
+        d.setDate(d.getDate()+1);
+      }
+    });
+    return map;
+  }
+
+  /* ── Cargar citas y bloqueos ── */
   async function loadCitas() {
     try {
       const { desde, hasta } = rangoActual();
+      const desdeStr = isoDate(desde);
+      const hastaStr = isoDate(hasta);
+
       const qs = new URLSearchParams();
-      // Para mes/semana usamos rango; la API acepta mes o fecha
       if (vista === 'dia') {
-        qs.set('fecha', isoDate(desde));
+        qs.set('fecha', desdeStr);
       } else {
-        // Pedimos mes a mes si el rango cruza meses
         qs.set('mes', `${desde.getFullYear()}-${String(desde.getMonth()+1).padStart(2,'0')}`);
       }
       const tid = document.getElementById('calTerapeuta')?.value;
       if (tid) qs.set('terapeuta_id', tid);
       else if (window.__USER_ROL__ === 'terapeuta') qs.set('terapeuta_id', window.__USER_ID__);
 
-      citasCache = await api(`/citas?${qs}`);
+      const qsB = new URLSearchParams({ desde: desdeStr, hasta: hastaStr });
+      if (tid) qsB.set('terapeuta_id', tid);
+      else if (window.__USER_ROL__ === 'terapeuta') qsB.set('terapeuta_id', window.__USER_ID__);
 
-      // Si vista semana y cruza mes, pedir también el mes siguiente
+      [citasCache, bloqueosCache] = await Promise.all([
+        api(`/citas?${qs}`),
+        api(`/bloqueos?${qsB}`),
+      ]);
+
       if (vista === 'semana' && desde.getMonth() !== hasta.getMonth()) {
         const qs2 = new URLSearchParams(qs);
         qs2.set('mes', `${hasta.getFullYear()}-${String(hasta.getMonth()+1).padStart(2,'0')}`);
@@ -80,7 +103,7 @@
     } catch (err) { toast(err.message, 'danger'); }
   }
 
-  /* ── Título del toolbar ── */
+  /* ── Título ── */
   function actualizarTitulo() {
     const el = document.getElementById('calTitulo');
     if (!el) return;
@@ -106,21 +129,15 @@
     renderLeyenda();
   }
 
-  /* ── Leyenda de terapeutas ── */
+  /* ── Leyenda ── */
   function renderLeyenda() {
     const el = document.getElementById('calLeyenda');
     if (!el) return;
-    // Solo visible para admin (el select de terapeuta existe y no tiene valor fijo)
     const selTer = document.getElementById('calTerapeuta');
     if (!selTer || selTer.value) { el.innerHTML = ''; return; }
-
-    // Terapeutas presentes en las citas actuales
-    const vistos = new Map(); // tid -> nombre
-    citasCache.forEach(c => {
-      if (!vistos.has(c.terapeuta_id)) vistos.set(c.terapeuta_id, c.terapeuta_nombre || '');
-    });
+    const vistos = new Map();
+    citasCache.forEach(c => { if (!vistos.has(c.terapeuta_id)) vistos.set(c.terapeuta_id, c.terapeuta_nombre || ''); });
     if (!vistos.size) { el.innerHTML = ''; return; }
-
     el.innerHTML = [...vistos.entries()].map(([tid, nombre]) =>
       `<span style="display:inline-flex;align-items:center;gap:5px;font-size:12px">
         <span style="width:12px;height:12px;border-radius:3px;flex-shrink:0" class="${colorForTer(tid)}"></span>
@@ -131,72 +148,75 @@
 
   /* ── Vista Mes ── */
   function renderMes() {
-    const hoy   = new Date(); hoy.setHours(0,0,0,0);
-    const anio  = cursor.getFullYear();
-    const mes   = cursor.getMonth();
-    const ini   = new Date(anio, mes, 1);
-    const fin   = new Date(anio, mes+1, 0);
+    const hoy  = new Date(); hoy.setHours(0,0,0,0);
+    const anio = cursor.getFullYear();
+    const mes  = cursor.getMonth();
+    const ini  = new Date(anio, mes, 1);
+    const fin  = new Date(anio, mes+1, 0);
 
-    // Agrupar citas por fecha
     const porFecha = {};
     citasCache.forEach(c => {
       const f = String(c.fecha).slice(0,10);
       if (!porFecha[f]) porFecha[f] = [];
       porFecha[f].push(c);
     });
+    const bMap = bloqueosPorFechaMap();
 
     let html = `<table class="cal-mes"><thead><tr>`;
     DIAS_CORTO.forEach(d => { html += `<th>${d}</th>`; });
     html += `</tr></thead><tbody>`;
 
-    // Primer día de la semana del mes
     let dia = new Date(anio, mes, 1 - ini.getDay());
-
     while (dia <= fin || dia.getDay() !== 0) {
       if (dia.getDay() === 0) html += '<tr>';
-      const esMes  = dia.getMonth() === mes;
-      const esHoy  = dia.getTime() === hoy.getTime();
-      const fStr   = isoDate(dia);
-      const citas  = porFecha[fStr] || [];
-      const MAX    = 3;
+      const esMes = dia.getMonth() === mes;
+      const esHoy = dia.getTime() === hoy.getTime();
+      const fStr  = isoDate(dia);
+      const citas = porFecha[fStr] || [];
+      const bloqs = bMap[fStr] || [];
+      const MAX   = 3;
+      let shown   = 0;
 
       html += `<td class="${esHoy?'cal-hoy':''} ${!esMes?'cal-otro-mes':''}" data-fecha="${fStr}">`;
       html += `<span class="cal-dia-num">${dia.getDate()}</span>`;
-      citas.slice(0, MAX).forEach(c => {
-        html += `<div class="cal-evento ${colorForTer(c.terapeuta_id)}" data-cita="${c.id}" title="${esc(c.paciente_nombre||'')} ${esc(c.paciente_apellido||'')}">
+      bloqs.forEach(b => {
+        if (shown >= MAX) return;
+        html += `<div class="cal-bloqueo" data-bloqueo="${b.id}" title="${esc(b.titulo)}">🔒 ${esc(b.titulo)}</div>`;
+        shown++;
+      });
+      citas.slice(0, MAX - shown).forEach(c => {
+        html += `<div class="cal-evento ${colorForTer(c.terapeuta_id)}" data-cita="${c.id}">
           ${esc((c.paciente_nombre||'').split(' ')[0])} ${esc((c.paciente_apellido||'').split(' ')[0])}
         </div>`;
+        shown++;
       });
-      if (citas.length > MAX) html += `<div class="cal-mas" data-fecha="${fStr}">+${citas.length - MAX} más</div>`;
+      const resto = (citas.length + bloqs.length) - shown;
+      if (resto > 0) html += `<div class="cal-mas" data-fecha="${fStr}">+${resto} más</div>`;
       html += `</td>`;
-
       if (dia.getDay() === 6) html += '</tr>';
       dia.setDate(dia.getDate()+1);
     }
-
     html += `</tbody></table>`;
     return html;
   }
 
   /* ── Vista Semana / Día ── */
   function renderSemana(dias) {
-    const hoy  = new Date(); hoy.setHours(0,0,0,0);
-    const ini  = dias === 7 ? startOfWeek(cursor) : new Date(cursor);
-
-    // Columnas de fechas
+    const hoy = new Date(); hoy.setHours(0,0,0,0);
+    const ini = dias === 7 ? startOfWeek(cursor) : new Date(cursor);
     const cols = [];
     for (let i = 0; i < dias; i++) {
       const d = new Date(ini); d.setDate(ini.getDate()+i);
       cols.push(d);
     }
 
-    // Agrupar citas por fecha
     const porFecha = {};
     citasCache.forEach(c => {
       const f = String(c.fecha).slice(0,10);
       if (!porFecha[f]) porFecha[f] = [];
       porFecha[f].push(c);
     });
+    const bMap = bloqueosPorFechaMap();
 
     let html = `<table class="cal-semana"><thead><tr><th class="cal-time-col"></th>`;
     cols.forEach(d => {
@@ -206,22 +226,25 @@
         <div style="font-size:${dias===1?'22px':'16px'};font-weight:700;${esHoy?'color:var(--primary)':''}">${d.getDate()}</div>
       </th>`;
     });
-    html += `</tr></thead><tbody>`;
-
-    // Fila "Todo el día" con las citas (sin hora)
-    html += `<tr><td class="cal-time-col" style="font-size:10px;padding-top:6px">citas</td>`;
+    html += `</tr></thead><tbody><tr><td class="cal-time-col" style="font-size:10px;padding-top:6px">citas</td>`;
     cols.forEach(d => {
-      const fStr = isoDate(d);
+      const fStr  = isoDate(d);
       const citas = porFecha[fStr] || [];
+      const bloqs = bMap[fStr] || [];
       const esHoy = d.getTime() === hoy.getTime();
       html += `<td class="${esHoy?'cal-hoy-col':''}" data-fecha="${fStr}" style="padding:4px;min-height:50px">`;
+      bloqs.forEach(b => {
+        html += `<div class="cal-bloqueo" data-bloqueo="${b.id}" style="margin-bottom:3px">🔒 ${esc(b.titulo)}
+          <span style="opacity:.7;font-size:10px"> · ${esc(b.terapeuta_nombre||'')}</span>
+        </div>`;
+      });
       citas.forEach(c => {
         html += `<div class="cal-evento ${colorForTer(c.terapeuta_id)}" data-cita="${c.id}" style="margin-bottom:3px">
           ${esc((c.paciente_nombre||'').split(' ')[0])} ${esc((c.paciente_apellido||'').split(' ')[0])}
           <span style="opacity:.8;font-size:10px"> · ${esc(c.terapeuta_nombre||'')}</span>
         </div>`;
       });
-      if (!citas.length) html += `<div style="height:30px"></div>`;
+      if (!citas.length && !bloqs.length) html += `<div style="height:30px"></div>`;
       html += `</td>`;
     });
     html += `</tr></tbody></table>`;
@@ -230,7 +253,6 @@
 
   /* ── Bind clicks ── */
   function bindEventos() {
-    // Click en evento → detalle
     document.querySelectorAll('[data-cita]').forEach(el => {
       el.addEventListener('click', e => {
         e.stopPropagation();
@@ -239,17 +261,21 @@
       });
     });
 
-    // Click en celda vacía → ir a vista día
-    document.querySelectorAll('[data-fecha]').forEach(el => {
+    document.querySelectorAll('[data-bloqueo]').forEach(el => {
       el.addEventListener('click', e => {
-        if (e.target.closest('[data-cita]')) return;
-        const [y,m,d] = el.dataset.fecha.split('-').map(Number);
-        cursor = new Date(y, m-1, d);
-        setVista('dia');
+        e.stopPropagation();
+        const b = bloqueosCache.find(x => String(x.id) === el.dataset.bloqueo);
+        if (b) showDetalleBloqueo(b);
       });
     });
 
-    // "+N más"
+    document.querySelectorAll('[data-fecha]').forEach(el => {
+      el.addEventListener('click', e => {
+        if (e.target.closest('[data-cita]') || e.target.closest('[data-bloqueo]') || e.target.closest('.cal-mas')) return;
+        showNuevoBloqueo(el.dataset.fecha);
+      });
+    });
+
     document.querySelectorAll('.cal-mas').forEach(el => {
       el.addEventListener('click', e => {
         e.stopPropagation();
@@ -260,7 +286,78 @@
     });
   }
 
-  /* ── Detalle de cita ── */
+  /* ── Modal nuevo bloqueo ── */
+  function showNuevoBloqueo(fecha) {
+    const esAdmin = window.__USER_ROL__ !== 'terapeuta';
+    const terOpts = terapeutasCache.map(t =>
+      `<option value="${t.id}">${esc(fullName(t))}</option>`
+    ).join('');
+
+    openModal('Bloquear fecha', `
+      ${esAdmin ? `<div class="form-group">
+        <label class="form-label">Terapeuta *</label>
+        <select class="form-select" id="f_bloqueo_ter">
+          <option value="">— Seleccionar —</option>${terOpts}
+        </select>
+      </div>` : ''}
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Desde *</label>
+          <input type="date" class="form-control" id="f_bloqueo_desde" value="${fecha}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Hasta *</label>
+          <input type="date" class="form-control" id="f_bloqueo_hasta" value="${fecha}">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Motivo</label>
+        <input class="form-control" id="f_bloqueo_titulo" placeholder="Vacaciones, feriado…" value="Bloqueado">
+      </div>`, async () => {
+      const desde  = document.getElementById('f_bloqueo_desde').value;
+      const hasta  = document.getElementById('f_bloqueo_hasta').value;
+      const titulo = document.getElementById('f_bloqueo_titulo').value.trim() || 'Bloqueado';
+      if (!desde || !hasta) throw new Error('Las fechas son obligatorias');
+      if (hasta < desde)    throw new Error('La fecha hasta debe ser igual o posterior al desde');
+      const body = { fecha_inicio: desde, fecha_fin: hasta, titulo };
+      if (esAdmin) {
+        const tid = document.getElementById('f_bloqueo_ter').value;
+        if (!tid) throw new Error('Selecciona un terapeuta');
+        body.terapeuta_id = tid;
+      }
+      await api('/bloqueos', { method: 'POST', body });
+      toast('Bloqueo creado'); loadCitas();
+    });
+  }
+
+  /* ── Detalle bloqueo ── */
+  function showDetalleBloqueo(b) {
+    const puedeBorrar = window.__USER_ROL__ !== 'terapeuta' || String(b.terapeuta_id) === String(window.__USER_ID__);
+    openModal('Bloqueo de agenda', `
+      <div style="font-size:13px;display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><span style="color:var(--text-muted)">Terapeuta</span><br><strong>${esc((b.terapeuta_nombre||'') + ' ' + (b.terapeuta_apellido||''))}</strong></div>
+        <div><span style="color:var(--text-muted)">Motivo</span><br><strong>${esc(b.titulo)}</strong></div>
+        <div><span style="color:var(--text-muted)">Desde</span><br><strong>${b.fecha_inicio}</strong></div>
+        <div><span style="color:var(--text-muted)">Hasta</span><br><strong>${b.fecha_fin}</strong></div>
+      </div>
+      ${puedeBorrar ? `<div style="margin-top:16px">
+        <button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger)" id="btnEliminarBloqueo">
+          <i class="fas fa-trash"></i> Eliminar bloqueo
+        </button>
+      </div>` : ''}`, null);
+    document.getElementById('modalSave').style.display = 'none';
+    document.getElementById('btnEliminarBloqueo')?.addEventListener('click', async () => {
+      if (!confirm('¿Eliminar este bloqueo?')) return;
+      try {
+        await api(`/bloqueos/${b.id}`, { method: 'DELETE' });
+        toast('Bloqueo eliminado');
+        document.getElementById('modalOverlay').classList.remove('active');
+        loadCitas();
+      } catch (e) { toast(e.message, 'danger'); }
+    });
+  }
+
+  /* ── Detalle cita ── */
   function showDetalle(c) {
     const estado = (ESTADO_CITA[c.estado] || { label: c.estado, css: 'badge-gray' });
     openModal('Detalle de cita', `
@@ -286,13 +383,9 @@
 
   /* ── Navegación ── */
   function navegar(dir) {
-    if (vista === 'mes') {
-      cursor.setMonth(cursor.getMonth() + dir);
-    } else if (vista === 'semana') {
-      cursor.setDate(cursor.getDate() + dir * 7);
-    } else {
-      cursor.setDate(cursor.getDate() + dir);
-    }
+    if (vista === 'mes')    cursor.setMonth(cursor.getMonth() + dir);
+    else if (vista === 'semana') cursor.setDate(cursor.getDate() + dir * 7);
+    else cursor.setDate(cursor.getDate() + dir);
     loadCitas();
   }
 
@@ -305,7 +398,8 @@
   );
   document.getElementById('calTerapeuta')?.addEventListener('change', loadCitas);
 
-  /* ── Init ── */
+  /* ── Init: cargar terapeutas para el modal de bloqueo ── */
+  api('/terapeutas').then(ts => { terapeutasCache = ts; }).catch(() => {});
   loadCitas();
 
 })();

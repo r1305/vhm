@@ -378,6 +378,21 @@ async function ensureSchema() {
         PRIMARY KEY (rol, item)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS bloqueos (
+        id           INT AUTO_INCREMENT PRIMARY KEY,
+        terapeuta_id INT NOT NULL,
+        fecha_inicio DATE NOT NULL,
+        fecha_fin    DATE NOT NULL,
+        titulo       VARCHAR(200) NOT NULL DEFAULT 'Bloqueado',
+        todo_el_dia  TINYINT(1) NOT NULL DEFAULT 1,
+        created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (terapeuta_id) REFERENCES terapeutas(id) ON DELETE CASCADE,
+        KEY idx_bloqueos_ter (terapeuta_id),
+        KEY idx_bloqueos_fecha (fecha_inicio)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
     // Agregar 'calendario' a roles existentes si no existe
     for (const rol of ['superadmin', 'recepcion', 'terapeuta'])
       await conn.execute('INSERT IGNORE INTO menu_permisos (rol, item) VALUES (?,?)', [rol, 'calendario']);

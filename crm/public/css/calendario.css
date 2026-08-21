@@ -56,6 +56,25 @@
   cursor: pointer;
   color: #fff;
 }
+.cal-bloqueo {
+  font-size: 11px;
+  padding: 2px 5px;
+  border-radius: 4px;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  background: repeating-linear-gradient(
+    45deg,
+    var(--border),
+    var(--border) 3px,
+    var(--card-bg) 3px,
+    var(--card-bg) 8px
+  );
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
 .cal-mas {
   font-size: 11px;
   color: var(--text-muted);
