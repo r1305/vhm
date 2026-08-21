@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agendar cita — <%= terapeuta.nombre %> <%= terapeuta.apellido %></title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="<%= BASE %>/css/agendar.css">
+  <script>
+    window.__APP_BASE__ = '<%- BASE %>';
+    window.__TER_USERNAME__ = '<%- terapeuta.username %>';
+    window.__TER_NOMBRE__ = '<%- terapeuta.nombre + " " + terapeuta.apellido %>';
+  </script>
+</head>
+<body>
+  <div class="ag-wrap">
+    <div class="ag-header">
+      <div class="ag-avatar"><%= terapeuta.nombre[0].toUpperCase() %></div>
+      <div>
+        <div class="ag-ter-nombre"><%= terapeuta.nombre %> <%= terapeuta.apellido %></div>
+        <% if (terapeuta.especialidad) { %>
+        <div class="ag-ter-esp"><%= terapeuta.especialidad %></div>
+        <% } %>
+      </div>
+    </div>
+
+    <div class="ag-steps" id="agSteps">
+      <!-- Step 1: elegir día -->
+      <div class="ag-step active" id="step1">
+        <div class="ag-step-title"><i class="fas fa-calendar-days"></i> Elige un día</div>
+        <div class="ag-cal-nav">
+          <button class="ag-nav-btn" id="agPrev"><i class="fas fa-chevron-left"></i></button>
+          <span id="agMesTitulo"></span>
+          <button class="ag-nav-btn" id="agNext"><i class="fas fa-chevron-right"></i></button>
+        </div>
+        <div id="agCal"></div>
+      </div>
+
+      <!-- Step 2: elegir hora -->
+      <div class="ag-step" id="step2">
+        <button class="ag-back" id="agBackToStep1"><i class="fas fa-arrow-left"></i> Cambiar día</button>
+        <div class="ag-step-title"><i class="fas fa-clock"></i> Elige un horario</div>
+        <div class="ag-fecha-sel" id="agFechaSel"></div>
+        <div id="agSlots"></div>
+      </div>
+
+      <!-- Step 3: datos del paciente -->
+      <div class="ag-step" id="step3">
+        <button class="ag-back" id="agBackToStep2"><i class="fas fa-arrow-left"></i> Cambiar horario</button>
+        <div class="ag-step-title"><i class="fas fa-user"></i> Tus datos</div>
+        <div class="ag-resumen" id="agResumen"></div>
+        <div class="ag-form">
+          <div class="ag-field"><label>Nombre *</label><input id="ag_nombre" placeholder="Tu nombre"></div>
+          <div class="ag-field"><label>Apellido</label><input id="ag_apellido" placeholder="Tu apellido"></div>
+          <div class="ag-field"><label>Teléfono *</label><input id="ag_telefono" type="tel" placeholder="999 999 999"></div>
+          <div class="ag-field"><label>Email</label><input id="ag_email" type="email" placeholder="correo@ejemplo.com"></div>
+          <div class="ag-field"><label>Motivo de consulta</label><textarea id="ag_motivo" rows="3" placeholder="Cuéntanos brevemente…"></textarea></div>
+          <button class="ag-btn-confirmar" id="agConfirmar">Confirmar cita</button>
+        </div>
+      </div>
+
+      <!-- Step 4: confirmación -->
+      <div class="ag-step" id="step4">
+        <div class="ag-exito">
+          <div class="ag-exito-icon"><i class="fas fa-circle-check"></i></div>
+          <div class="ag-exito-titulo">¡Cita agendada!</div>
+          <div class="ag-exito-detalle" id="agExitoDetalle"></div>
+          <button class="ag-btn-nuevo" id="agNuevaCita">Agendar otra cita</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="<%= BASE %>/agendar.js"></script>
+</body>
+</html>

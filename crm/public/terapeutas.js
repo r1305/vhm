@@ -6,6 +6,8 @@
 
   const { api, toast, esc, fullName, openModal } = window.CRM;
 
+  const DIAS_SEMANA = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+
   async function loadTerapeutas() {
     try {
       const data = await api('/terapeutas');
@@ -24,12 +26,18 @@
             </div>
             <div class="ter-card-footer">
               ${t.activo ? '<span class="badge badge-green">Activo</span>' : '<span class="badge badge-gray">Inactivo</span>'}
+              <button class="btn btn-outline btn-sm" data-horario="${t.id}" style="margin-left:auto;font-size:11px">
+                <i class="fas fa-clock"></i> Horario
+              </button>
             </div>
           </div>`).join('')}</div>`
         : '<div class="list-empty">Sin terapeutas registrados</div>';
 
       document.querySelectorAll('[data-edit]').forEach(btn =>
         btn.addEventListener('click', () => showTerapeutaForm(data.find(t => t.id == btn.dataset.edit)))
+      );
+      document.querySelectorAll('[data-horario]').forEach(btn =>
+        btn.addEventListener('click', () => showHorario(data.find(t => t.id == btn.dataset.horario)))
       );
     } catch (err) { toast(err.message, 'danger'); }
   }
@@ -87,6 +95,64 @@
         toast(t ? 'Terapeuta actualizado' : 'Terapeuta creado');
         loadTerapeutas();
       });
+  }
+
+  async function showHorario(ter) {
+    let disp = [];
+    try { disp = await api(`/terapeutas/${ter.id}/disponibilidad`); } catch (_) {}
+
+    // Mapa dia_semana -> {id, hora_inicio, hora_fin}
+    const mapa = {};
+    disp.forEach(d => { mapa[d.dia_semana] = d; });
+
+    const BASE = window.__APP_BASE__ || '';
+    const link = `${location.origin}${BASE}/agendar/${esc(ter.username)}`;
+
+    const rows = DIAS_SEMANA.map((nombre, i) => {
+      const d = mapa[i];
+      const hi = d ? String(d.hora_inicio).slice(0,5) : '09:00';
+      const hf = d ? String(d.hora_fin).slice(0,5)   : '18:00';
+      return `<div class="form-row" style="align-items:center;gap:8px;margin-bottom:6px">
+        <div style="width:110px;display:flex;align-items:center;gap:6px">
+          <input type="checkbox" id="dia_${i}" ${d ? 'checked' : ''} style="width:16px;height:16px">
+          <label for="dia_${i}" style="font-size:13px;cursor:pointer">${nombre}</label>
+        </div>
+        <input type="time" id="hi_${i}" class="form-control" value="${hi}" style="width:110px">
+        <span style="font-size:12px;color:var(--text-muted)">a</span>
+        <input type="time" id="hf_${i}" class="form-control" value="${hf}" style="width:110px">
+      </div>`;
+    }).join('');
+
+    openModal(`Horario — ${esc(fullName(ter))}`, `
+      <div style="margin-bottom:14px">${rows}</div>
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:12px">
+        <div style="color:var(--text-muted);margin-bottom:4px">Link de agendamiento público:</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <code style="flex:1;word-break:break-all;font-size:11px">${link}</code>
+          <button class="btn btn-outline btn-sm" id="btnCopyLink"><i class="fas fa-copy"></i></button>
+        </div>
+      </div>`,
+      async () => {
+        // Guardar: eliminar todos y re-insertar los activos
+        for (const d of disp) {
+          await api(`/terapeutas/${ter.id}/disponibilidad/${d.id}`, { method: 'DELETE' });
+        }
+        for (let i = 0; i < 7; i++) {
+          if (!document.getElementById(`dia_${i}`)?.checked) continue;
+          const hi = document.getElementById(`hi_${i}`).value;
+          const hf = document.getElementById(`hf_${i}`).value;
+          if (!hi || !hf || hf <= hi) continue;
+          await api(`/terapeutas/${ter.id}/disponibilidad`, {
+            method: 'POST', body: { dia_semana: i, hora_inicio: hi, hora_fin: hf },
+          });
+        }
+        toast('Horario guardado');
+      }
+    );
+
+    document.getElementById('btnCopyLink')?.addEventListener('click', () => {
+      navigator.clipboard.writeText(link).then(() => toast('Link copiado'));
+    });
   }
 
   document.getElementById('btnNuevoTerapeuta').addEventListener('click', () => showTerapeutaForm());

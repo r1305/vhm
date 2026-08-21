@@ -62,6 +62,18 @@ async function render(res, view, data = {}) {
   res.render('layout', locals);
 }
 
+// ── AGENDAR (público, sin auth) ────────────────────────────────
+router.get('/agendar/:username', async (req, res) => {
+  try {
+    const [[terapeuta]] = await db.execute(
+      'SELECT id, nombre, apellido, username, especialidad FROM terapeutas WHERE username=? AND activo=1',
+      [req.params.username]
+    );
+    if (!terapeuta) return res.status(404).send('Terapeuta no encontrado');
+    res.render('agendar', { BASE: req.app.locals.BASE, terapeuta });
+  } catch (err) { res.status(500).send(err.message); }
+});
+
 // ── LOGIN ────────────────────────────────────────────────────────
 router.get('/login', (req, res) => {
   if (req.session?.user) return res.redirect(`${req.app.locals.BASE}/dashboard`);
