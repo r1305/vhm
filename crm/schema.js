@@ -378,6 +378,10 @@ async function ensureSchema() {
         PRIMARY KEY (rol, item)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
+    // Agregar 'calendario' a roles existentes si no existe
+    for (const rol of ['superadmin', 'recepcion', 'terapeuta'])
+      await conn.execute('INSERT IGNORE INTO menu_permisos (rol, item) VALUES (?,?)', [rol, 'calendario']);
+
     // Defaults: si la tabla está vacía, insertar permisos base
     const [[{cnt}]] = await conn.execute('SELECT COUNT(*) AS cnt FROM menu_permisos');
     if (!cnt) {
