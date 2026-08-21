@@ -1,0 +1,114 @@
+.cal-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.btn-group { display: flex; }
+.btn-group .btn { border-radius: 0; border-right-width: 0; }
+.btn-group .btn:first-child { border-radius: 6px 0 0 6px; }
+.btn-group .btn:last-child  { border-radius: 0 6px 6px 0; border-right-width: 1px; }
+.btn-group .btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+/* ── Vista Mes ── */
+.cal-mes { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.cal-mes th {
+  padding: 8px 4px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  border-bottom: 2px solid var(--border);
+}
+.cal-mes td {
+  vertical-align: top;
+  border: 1px solid var(--border);
+  padding: 4px;
+  height: 110px;
+  cursor: pointer;
+  transition: background .15s;
+}
+.cal-mes td:hover { background: var(--primary-light, #f0f4ff); }
+.cal-mes td.cal-hoy { background: var(--primary-light, #f0f4ff); }
+.cal-mes td.cal-hoy .cal-dia-num { background: var(--primary); color: #fff; }
+.cal-mes td.cal-otro-mes .cal-dia-num { color: var(--text-muted); opacity: .5; }
+.cal-dia-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+.cal-evento {
+  font-size: 11px;
+  padding: 2px 5px;
+  border-radius: 4px;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  color: #fff;
+}
+.cal-mas {
+  font-size: 11px;
+  color: var(--text-muted);
+  padding: 1px 4px;
+  cursor: pointer;
+}
+
+/* ── Vista Semana / Día ── */
+.cal-semana-wrap { overflow-x: auto; }
+.cal-semana {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 600px;
+  table-layout: fixed;
+}
+.cal-semana th {
+  padding: 8px 4px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  border-bottom: 2px solid var(--border);
+  border-right: 1px solid var(--border);
+}
+.cal-semana th.cal-hoy-col { color: var(--primary); }
+.cal-semana td {
+  vertical-align: top;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 4px;
+  min-height: 60px;
+  cursor: pointer;
+}
+.cal-semana td:hover { background: var(--primary-light, #f0f4ff); }
+.cal-semana td.cal-hoy-col { background: var(--primary-light, #f0f4ff); }
+.cal-semana .cal-time-col {
+  width: 52px;
+  text-align: right;
+  padding-right: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+  border-right: 2px solid var(--border);
+  white-space: nowrap;
+  cursor: default;
+}
+.cal-semana .cal-time-col:hover { background: transparent; }
+
+/* Colores por terapeuta (ciclo) */
+.cal-color-0 { background: #6366f1; }
+.cal-color-1 { background: #22c55e; }
+.cal-color-2 { background: #f59e0b; }
+.cal-color-3 { background: #ef4444; }
+.cal-color-4 { background: #06b6d4; }
+.cal-color-5 { background: #ec4899; }
+.cal-color-6 { background: #8b5cf6; }
+.cal-color-7 { background: #14b8a6; }

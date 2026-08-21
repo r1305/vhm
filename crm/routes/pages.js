@@ -17,6 +17,7 @@ const TITLES = {
   marketing:       'Email Marketing',
   integraciones:   'Integraciones',
   asignacion:      'Asignación automática',
+  calendario:      'Calendario',
   permisos_menu:   'Permisos de menú',
 };
 
@@ -100,26 +101,110 @@ router.get('/mi-reporte', requireSession, (req, res) => {
 router.get('/dashboard', requireSession, requireAdmin, async (req, res) => {
   const user = req.session.user;
   try {
-    const hoy = new Date().toISOString().slice(0, 10);
-    const [[{ total_pacientes }]] = await db.execute('SELECT COUNT(*) AS total_pacientes FROM pacientes');
-    const [[{ citas_hoy }]]       = await db.execute('SELECT COUNT(*) AS citas_hoy FROM citas WHERE fecha = ?', [hoy]);
-    const [[{ leads_nuevos }]]    = await db.execute("SELECT COUNT(*) AS leads_nuevos FROM leads WHERE estado = 'nuevo'");
-    const [[{ ingresos_mes }]]    = await db.execute(
-      "SELECT COALESCE(SUM(monto),0) AS ingresos_mes FROM pagos WHERE estado='completado' AND DATE_FORMAT(created_at,'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')"
-    );
-    const [citasHoy]      = await db.execute(
-      'SELECT c.*, p.nombre AS paciente_nombre, p.apellido AS paciente_apellido, t.nombre AS terapeuta_nombre FROM citas c JOIN pacientes p ON p.id=c.paciente_id JOIN terapeutas t ON t.id=c.terapeuta_id WHERE c.fecha = ? ORDER BY c.fecha',
-      [hoy]
-    );
-    const [leadsRecientes] = await db.execute('SELECT * FROM leads ORDER BY created_at DESC LIMIT 5');
+    const [[{ pacientes_activos }]] = await db.execute("SELECT COUNT(*) AS pacientes_activos FROM pacientes WHERE estado = 'activo'");
+    const [[{ ingresos_mes }]]      = await db.execute("SELECT COALESCE(SUM(monto),0) AS ingresos_mes FROM pagos WHERE estado='completado' AND DATE_FORMAT(created_at,'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')");
+    const [[{ ingresos_mes_ant }]]  = await db.execute("SELECT COALESCE(SUM(monto),0) AS ingresos_mes_ant FROM pagos WHERE estado='completado' AND DATE_FORMAT(created_at,'%Y-%m') = DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 1 MONTH),'%Y-%m')");
+    const [[{ retenidos }]]         = await db.execute('SELECT COUNT(*) AS retenidos FROM (SELECT paciente_id FROM paciente_sesiones GROUP BY paciente_id HAVING COUNT(*) >= 2) x');
+    const [[{ altas_mes }]]         = await db.execute("SELECT COUNT(*) AS altas_mes FROM pacientes WHERE estado='alta' AND DATE_FORMAT(updated_at,'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')");
+    const [[{ sin_paquete }]]       = await db.execute("SELECT COUNT(*) AS sin_paquete FROM pacientes p WHERE p.estado='activo' AND NOT EXISTS (SELECT 1 FROM paciente_sesiones ps WHERE ps.paciente_id = p.id)");
+    const [[{ leads_mes }]]         = await db.execute("SELECT COUNT(*) AS leads_mes FROM leads WHERE DATE_FORMAT(created_at,'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')");
+    const [[{ convertidos_mes }]]   = await db.execute("SELECT COUNT(*) AS convertidos_mes FROM leads WHERE estado='convertido' AND DATE_FORMAT(updated_at,'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')");
+    const [[{ no_show_mes }]]       = await db.execute("SELECT COUNT(*) AS no_show_mes FROM citas WHERE estado='no_show' AND DATE_FORMAT(fecha,'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')");
+    const [[{ citas_mes }]]         = await db.execute("SELECT COUNT(*) AS citas_mes FROM citas WHERE estado IN ('realizada','no_show') AND DATE_FORMAT(fecha,'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')");
+    const [[{ lista_espera }]]      = await db.execute('SELECT COUNT(*) AS lista_espera FROM lista_espera WHERE activo=1');
+
+    const tasaRetencion   = pacientes_activos > 0 ? Math.round((retenidos / pacientes_activos) * 100) : 0;
+    const tasaConversion  = leads_mes > 0 ? Math.round((convertidos_mes / leads_mes) * 100) : 0;
+    const tasaNoShow      = citas_mes > 0 ? Math.round((no_show_mes / citas_mes) * 100) : 0;
+    const varMes          = ingresos_mes_ant > 0 ? ((ingresos_mes - ingresos_mes_ant) / ingresos_mes_ant * 100).toFixed(1) : null;
+
+    // Próximos a agotar sesiones (≤2 restantes)
+    const [proximosAgotar] = await db.execute(`
+      SELECT p.id, p.nombre, p.apellido, p.telefono, t.nombre AS terapeuta_nombre,
+             COALESCE((SELECT SUM(ps.sesiones) FROM paciente_sesiones ps WHERE ps.paciente_id = p.id), 0) AS sesiones_total,
+             COALESCE((SELECT COUNT(*) FROM citas c WHERE c.paciente_id = p.id AND c.estado IN ('realizada','no_show')), 0) AS sesiones_usadas
+      FROM pacientes p LEFT JOIN terapeutas t ON p.terapeuta_id = t.id
+      WHERE p.estado = 'activo'
+      HAVING sesiones_total > 0 AND (sesiones_total - sesiones_usadas) <= 2
+      ORDER BY (sesiones_total - sesiones_usadas) ASC, p.nombre ASC
+      LIMIT 15
+    `);
+
+    // En riesgo de abandono: activos sin cita realizada en 30+ días
+    const [enRiesgo] = await db.execute(`
+      SELECT p.id, p.nombre, p.apellido, p.telefono, t.nombre AS terapeuta_nombre,
+             MAX(c.fecha) AS ultima_cita
+      FROM pacientes p
+      LEFT JOIN terapeutas t ON p.terapeuta_id = t.id
+      LEFT JOIN citas c ON c.paciente_id = p.id AND c.estado = 'realizada'
+      WHERE p.estado = 'activo'
+      GROUP BY p.id
+      HAVING ultima_cita IS NULL OR ultima_cita < DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+      ORDER BY ultima_cita ASC
+      LIMIT 15
+    `);
+
+    // Activos sin paquete asignado
+
+    const [sinPaquete] = await db.execute(`
+      SELECT p.id, p.nombre, p.apellido, p.telefono, t.nombre AS terapeuta_nombre,
+             p.created_at
+      FROM pacientes p LEFT JOIN terapeutas t ON p.terapeuta_id = t.id
+      WHERE p.estado = 'activo'
+        AND NOT EXISTS (SELECT 1 FROM paciente_sesiones ps WHERE ps.paciente_id = p.id)
+      ORDER BY p.created_at DESC LIMIT 10
+    `);
+
+    // Paquetes vencidos con sesiones sin usar
+    const [packVencidos] = await db.execute(`
+      SELECT p.id, p.nombre, p.apellido, p.telefono, t.nombre AS terapeuta_nombre,
+             pk.nombre AS pack_nombre, pk.vence_at,
+             (pk.sesiones_total - pk.sesiones_usadas) AS sesiones_restantes
+      FROM packs pk
+      JOIN pacientes p ON p.id = pk.paciente_id
+      LEFT JOIN terapeutas t ON t.id = p.terapeuta_id
+      WHERE pk.vence_at < CURDATE()
+        AND pk.activo = 1
+        AND (pk.sesiones_total - pk.sesiones_usadas) > 0
+      ORDER BY pk.vence_at ASC LIMIT 10
+    `);
+
+    // Ocupación por terapeuta
+    const [ocupacion] = await db.execute(`
+      SELECT t.id, t.nombre, t.apellido,
+             COUNT(p.id) AS pacientes_asignados
+      FROM terapeutas t
+      LEFT JOIN pacientes p ON p.terapeuta_id = t.id AND p.estado = 'activo'
+      WHERE t.activo = 1
+      GROUP BY t.id ORDER BY pacientes_asignados DESC
+    `);
 
     const kpis = [
-      { label: 'Pacientes activos', value: total_pacientes, css: 'accent' },
-      { label: 'Citas hoy',         value: citas_hoy,       css: 'success' },
-      { label: 'Leads nuevos',      value: leads_nuevos,    css: 'warning' },
-      { label: 'Ingresos del mes',  value: `S/ ${parseFloat(ingresos_mes).toFixed(2)}`, css: '' },
+      { label: 'Pacientes activos',   value: pacientes_activos, css: 'accent' },
+      { label: 'Ingresos del mes',    value: `S/ ${parseFloat(ingresos_mes).toFixed(2)}`, sub: varMes !== null ? `${varMes > 0 ? '+' : ''}${varMes}% vs mes anterior` : null, css: '' },
+      { label: 'Tasa de retención',   value: `${tasaRetencion}%`, sub: `${retenidos} con 2+ paquetes`, css: tasaRetencion >= 50 ? 'success' : 'warning' },
+      { label: 'Conversión leads',    value: `${tasaConversion}%`, sub: `${convertidos_mes} de ${leads_mes} este mes`, css: tasaConversion >= 30 ? 'success' : 'warning' },
+      { label: 'No-show del mes',     value: `${tasaNoShow}%`, sub: `${no_show_mes} de ${citas_mes} citas`, css: tasaNoShow > 15 ? 'warning' : 'success' },
+      { label: 'Altas este mes',      value: altas_mes, sub: 'tratamientos finalizados', css: '' },
+      { label: 'Sin paquete activo',  value: sin_paquete, sub: 'pacientes activos', css: sin_paquete > 0 ? 'warning' : 'success' },
     ];
-    render(res, 'dashboard', { user, kpis, citasHoy, leadsRecientes, estadoCitaCSS: ESTADO_CITA_CSS, scripts: `<script src="${req.app.locals.BASE}/dashboard.js"></script>` });
+
+    render(res, 'dashboard', {
+      user, kpis,
+      proximosAgotar, enRiesgo,
+      sinPaquete, packVencidos, ocupacion,
+      lista_espera,
+      scripts: `<script src="${req.app.locals.BASE}/dashboard.js"></script>`
+    });
+  } catch (err) { res.status(500).send(err.message); }
+});
+
+// ── CALENDARIO ─────────────────────────────────────────────────
+router.get('/calendario', requireSession, async (req, res) => {
+  const user = req.session.user;
+  try {
+    const [terapeutas] = await db.execute('SELECT id, nombre, apellido FROM terapeutas WHERE activo=1 ORDER BY nombre');
+    render(res, 'calendario', { user, terapeutas, scripts: `<script src="${req.app.locals.BASE}/calendario.js"></script>` });
   } catch (err) { res.status(500).send(err.message); }
 });
 

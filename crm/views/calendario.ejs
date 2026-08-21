@@ -1,0 +1,24 @@
+<div class="cal-toolbar">
+  <div style="display:flex;align-items:center;gap:8px">
+    <button class="btn btn-outline btn-sm" id="calHoy">Hoy</button>
+    <button class="btn-icon" id="calPrev"><i class="fas fa-chevron-left"></i></button>
+    <button class="btn-icon" id="calNext"><i class="fas fa-chevron-right"></i></button>
+    <span id="calTitulo" style="font-weight:600;font-size:15px;min-width:200px"></span>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px">
+    <% if (user.rol !== 'terapeuta') { %>
+    <select class="form-select form-select-sm" id="calTerapeuta" style="max-width:180px">
+      <option value="">Todos los terapeutas</option>
+      <% terapeutas.forEach(t => { %>
+      <option value="<%= t.id %>"><%= t.nombre %> <%= t.apellido %></option>
+      <% }) %>
+    </select>
+    <% } %>
+    <div class="btn-group">
+      <button class="btn btn-outline btn-sm cal-vista-btn active" data-vista="mes">Mes</button>
+      <button class="btn btn-outline btn-sm cal-vista-btn" data-vista="semana">Semana</button>
+      <button class="btn btn-outline btn-sm cal-vista-btn" data-vista="dia">Día</button>
+    </div>
+  </div>
+</div>
+<div id="calGrid" style="margin-top:12px"></div>

@@ -21,7 +21,7 @@
       <span>VHM CRM</span>
     </div>
     <nav class="sidebar-nav">
-      <% const principalItems = ['dashboard','agenda','pacientes','mi_reporte','leads']; %>
+      <% const principalItems = ['dashboard','agenda','calendario','pacientes','mi_reporte','leads']; %>
       <% if (principalItems.some(i => menuPermisos.has(i))) { %>
       <div class="nav-section">Principal</div>
       <% } %>
@@ -30,6 +30,9 @@
       <% } %>
       <% if (menuPermisos.has('agenda')) { %>
       <a class="nav-item <%= view === 'agenda'     ? 'active' : '' %>" href="<%= BASE %>/agenda"><i class="fas fa-calendar-days"></i> Agenda</a>
+      <% } %>
+      <% if (menuPermisos.has('calendario')) { %>
+      <a class="nav-item <%= view === 'calendario' ? 'active' : '' %>" href="<%= BASE %>/calendario"><i class="fas fa-calendar-week"></i> Calendario</a>
       <% } %>
       <% if (menuPermisos.has('pacientes')) { %>
       <a class="nav-item <%= view === 'pacientes'  ? 'active' : '' %>" href="<%= BASE %>/pacientes"><i class="fas fa-users"></i> Pacientes</a>
