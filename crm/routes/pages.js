@@ -18,6 +18,7 @@ const TITLES = {
   integraciones:   'Integraciones',
   asignacion:      'Asignación automática',
   calendario:      'Calendario',
+  disponibilidad:  'Mi disponibilidad',
   permisos_menu:   'Permisos de menú',
 };
 
@@ -274,6 +275,18 @@ router.get('/pagos', requireSession, requireAdmin, async (req, res) => {
 // ── ESPERA ───────────────────────────────────────────────────────
 router.get('/espera', requireSession, requireAdmin, async (req, res) => {
   render(res, 'espera', { user: req.session.user, scripts: `<script src="${req.app.locals.BASE}/queue.js"></script>` });
+});
+
+// ── DISPONIBILIDAD ──────────────────────────────────────────────
+router.get('/disponibilidad', requireSession, async (req, res) => {
+  const user = req.session.user;
+  try {
+    const isAdmin = ['superadmin','recepcion'].includes(user.rol);
+    const [terapeutas] = isAdmin
+      ? await db.execute('SELECT id, nombre, apellido, username FROM terapeutas WHERE activo=1 ORDER BY nombre')
+      : [[{ id: user.id, nombre: user.nombre, apellido: user.apellido, username: user.username }]];
+    render(res, 'disponibilidad', { user, terapeutas, scripts: `<script src="${req.app.locals.BASE}/disponibilidad.js"></script>` });
+  } catch (err) { res.status(500).send(err.message); }
 });
 
 // ── TERAPEUTAS ───────────────────────────────────────────────────

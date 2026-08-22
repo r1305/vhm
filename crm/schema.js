@@ -403,14 +403,16 @@ async function ensureSchema() {
     // Agregar 'calendario' a roles existentes si no existe
     for (const rol of ['superadmin', 'recepcion', 'terapeuta'])
       await conn.execute('INSERT IGNORE INTO menu_permisos (rol, item) VALUES (?,?)', [rol, 'calendario']);
+    for (const rol of ['superadmin', 'recepcion', 'terapeuta'])
+      await conn.execute('INSERT IGNORE INTO menu_permisos (rol, item) VALUES (?,?)', [rol, 'disponibilidad']);
 
     // Defaults: si la tabla está vacía, insertar permisos base
     const [[{cnt}]] = await conn.execute('SELECT COUNT(*) AS cnt FROM menu_permisos');
     if (!cnt) {
       const defaults = [
-        ...['dashboard','agenda','calendario','pacientes','leads','historial','consentimientos','pagos','espera','terapeutas','reportes','analitica','marketing','asignacion','integraciones','permisos_menu'].map(i => ['superadmin', i]),
-        ...['dashboard','agenda','calendario','pacientes','leads','historial','consentimientos','pagos','espera','terapeutas','reportes','analitica','marketing','asignacion','integraciones'].map(i => ['recepcion', i]),
-        ...['agenda','calendario','pacientes','historial','mi_reporte'].map(i => ['terapeuta', i]),
+        ...['dashboard','agenda','calendario','disponibilidad','pacientes','leads','historial','consentimientos','pagos','espera','terapeutas','reportes','analitica','marketing','asignacion','integraciones','permisos_menu'].map(i => ['superadmin', i]),
+        ...['dashboard','agenda','calendario','disponibilidad','pacientes','leads','historial','consentimientos','pagos','espera','terapeutas','reportes','analitica','marketing','asignacion','integraciones'].map(i => ['recepcion', i]),
+        ...['agenda','calendario','disponibilidad','pacientes','historial','mi_reporte'].map(i => ['terapeuta', i]),
       ];
       for (const [rol, item] of defaults)
         await conn.execute('INSERT IGNORE INTO menu_permisos (rol, item) VALUES (?,?)', [rol, item]);
