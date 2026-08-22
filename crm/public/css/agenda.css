@@ -33,6 +33,8 @@
 .ag-stat { text-align: center; }
 .ag-stat-val { font-size: 18px; font-weight: 700; color: var(--primary); line-height: 1; }
 .ag-stat-lbl { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .4px; margin-top: 2px; }
+.ag-stat-warn .ag-stat-val { color: var(--warning, #f59e0b); }
+.ag-stat-warn .ag-stat-lbl { color: var(--warning, #f59e0b); opacity: .8; }
 
 .ag-timeline { flex: 1; overflow-y: auto; padding: 16px 20px; display: flex; flex-direction: column; gap: 20px; -webkit-overflow-scrolling: touch; }
 .ag-mes-bloque { display: flex; flex-direction: column; gap: 8px; }

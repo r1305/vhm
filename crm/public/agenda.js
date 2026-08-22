@@ -166,6 +166,8 @@
       const total      = citas.length;
       const realizadas = citas.filter(c => c.estado==='realizada').length;
       const pendientes = citas.filter(c => ['pendiente','confirmada','reagendada'].includes(c.estado)).length;
+      const sesionesTotal = parseInt(p.sesiones_total || 0, 10);
+      const porAgendar = Math.max(0, sesionesTotal - realizadas);
       const inicial    = (p.nombre?.[0]||'?').toUpperCase();
       const metaParts  = [p.telefono, p.email, p.terapeuta_nombre].filter(Boolean);
       const porMes = {}, ordenMes = [];
@@ -193,6 +195,7 @@
             <div class="ag-stat"><div class="ag-stat-val">${total}</div><div class="ag-stat-lbl">Total</div></div>
             <div class="ag-stat"><div class="ag-stat-val">${realizadas}</div><div class="ag-stat-lbl">Realizadas</div></div>
             <div class="ag-stat"><div class="ag-stat-val">${pendientes}</div><div class="ag-stat-lbl">Pendientes</div></div>
+            <div class="ag-stat ${porAgendar > 0 ? 'ag-stat-warn' : ''}"><div class="ag-stat-val">${porAgendar}</div><div class="ag-stat-lbl">Por agendar</div></div>
           </div>
         </div>
         ${timelineHTML}`;
