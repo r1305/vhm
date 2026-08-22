@@ -56,17 +56,24 @@ router.get('/:id/disponibilidad', auth, async (req, res) => {
   res.json(rows);
 });
 
-router.post('/:id/disponibilidad', authAdmin, async (req, res) => {
+router.post('/:id/disponibilidad', auth, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  // Terapeuta solo puede editar la suya
+  if (req.user.rol === 'terapeuta' && req.user.id !== id)
+    return res.status(403).json({ error: 'Sin acceso' });
   const { dia_semana, hora_inicio, hora_fin } = req.body || {};
   await pool.execute(
     'INSERT INTO disponibilidad (terapeuta_id, dia_semana, hora_inicio, hora_fin) VALUES (?,?,?,?)',
-    [req.params.id, dia_semana, hora_inicio, hora_fin]
+    [id, dia_semana, hora_inicio, hora_fin]
   );
   res.status(201).json({ ok: true });
 });
 
-router.delete('/:id/disponibilidad/:did', authAdmin, async (req, res) => {
-  await pool.execute('DELETE FROM disponibilidad WHERE id=? AND terapeuta_id=?', [req.params.did, req.params.id]);
+router.delete('/:id/disponibilidad/:did', auth, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (req.user.rol === 'terapeuta' && req.user.id !== id)
+    return res.status(403).json({ error: 'Sin acceso' });
+  await pool.execute('DELETE FROM disponibilidad WHERE id=? AND terapeuta_id=?', [req.params.did, id]);
   res.json({ ok: true });
 });
 
