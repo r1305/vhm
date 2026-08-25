@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Configuración - VHM Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/admin.css">
+  <script src="js/base.js"></script>
+  <style>
+    .msg-box {
+      display: none;
+      margin-top: 12px;
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-size: .85rem;
+      line-height: 1.4;
+    }
+    .msg-box.success {
+      background: #ecfdf5;
+      border: 1px solid #a7f3d0;
+      color: #047857;
+    }
+    .msg-box.error {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #b91c1c;
+    }
+    .sus-planes-table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+    .sus-planes-table thead tr { border-bottom: 1px solid var(--border-color); color: var(--text-muted); }
+    .sus-planes-table th { text-align: left; padding: 8px 4px; }
+    .sus-planes-table th:nth-child(2) { text-align: right; }
+    .sus-planes-table th:nth-child(3) { text-align: center; }
+    .sus-planes-table th:last-child { text-align: right; }
+    .sus-planes-table td { padding: 10px 4px; border-bottom: 1px solid var(--border-color); }
+    .sus-planes-table td:nth-child(2) { text-align: right; }
+    .sus-planes-table td:nth-child(3) { text-align: center; }
+    .sus-planes-table td:nth-child(4) { color: var(--text-muted); }
+    .sus-planes-table td:last-child { white-space: nowrap; text-align: right; }
+    .mp-token-wrap { position: relative; }
+    .mp-token-wrap input { padding-right: 42px; }
+    .mp-token-toggle {
+      position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+      background: none; border: none; cursor: pointer; font-size: 1.1rem;
+      color: var(--text-muted); padding: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div id="admin-root"><div id="page-main" style="display:none">
+    <div class="section-header">
+      <div>
+        <h2>⚙️ Configuración</h2>
+        <p>Ajusta el correo SMTP, Pixel, WhatsApp y redes sociales</p>
+      </div>
+    </div>
+
+    <div class="sub-tabs">
+      <button type="button" data-tab="email" class="active">📧 Email SMTP</button>
+      <button type="button" data-tab="pixel">📊 Pixel Meta</button>
+      <button type="button" data-tab="whatsapp">💬 WhatsApp</button>
+      <button type="button" data-tab="redes">🌐 Redes Sociales</button>
+      <button type="button" data-tab="facebook">🔗 Facebook</button>
+      <button type="button" data-tab="suscripciones">💳 Suscripciones</button>
+      <button type="button" data-tab="mercadopago">💰 Mercado Pago</button>
+    </div>
+
+    <!-- EMAIL -->
+    <div data-panel="email">
+      <div class="config-grid">
+        <div class="config-section">
+          <h3>📧 Configuración de Correo SMTP</h3>
+          <div class="form-group">
+            <label for="email-host">Servidor SMTP (Host)</label>
+            <input type="text" id="email-host" placeholder="smtp.tudominio.com">
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="form-group">
+              <label for="email-port">Puerto</label>
+              <input type="number" id="email-port" placeholder="465">
+            </div>
+            <div class="form-group">
+              <label for="email-secure">Seguridad</label>
+              <select id="email-secure">
+                <option value="1">SSL/TLS</option>
+                <option value="0">STARTTLS</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="email-user">Usuario / Email SMTP</label>
+            <input type="text" id="email-user" placeholder="noreply@tudominio.com">
+          </div>
+          <div class="form-group">
+            <label for="email-pass">Contraseña SMTP <span class="optional">(dejar vacío para no cambiar)</span></label>
+            <input type="password" id="email-pass" placeholder="••••••••">
+          </div>
+          <div class="form-group">
+            <label for="email-from">Email remitente (From)</label>
+            <input type="email" id="email-from" placeholder="noreply@tudominio.com">
+          </div>
+          <div class="form-group">
+            <label for="email-nombre-from">Nombre remitente</label>
+            <input type="text" id="email-nombre-from" placeholder="VHM - Libro de Reclamaciones">
+          </div>
+          <div style="font-size:.8rem;color:var(--text-muted)" id="email-fecha"></div>
+          <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap">
+            <button type="button" class="btn btn-primary" id="btn-guardar-email">💾 Guardar configuración</button>
+            <button type="button" class="btn btn-outline" id="btn-test-email">📤 Enviar correo de prueba</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PIXEL -->
+    <div data-panel="pixel" style="display:none">
+      <div class="config-grid">
+        <div class="config-section">
+          <h3>📊 Pixel de Meta (Facebook)</h3>
+          <div class="form-group">
+            <label for="pixel-id">ID del Pixel</label>
+            <input type="text" id="pixel-id" placeholder="123456789012345">
+            <div class="field-hint">ID numérico de tu pixel de Meta/Facebook</div>
+          </div>
+          <div class="form-group">
+            <label for="pixel-activo">Estado del Pixel</label>
+            <select id="pixel-activo">
+              <option value="1">🟢 Activo</option>
+              <option value="0">🔴 Inactivo</option>
+            </select>
+          </div>
+          <div style="font-size:.8rem;color:var(--text-muted)" id="pixel-fecha"></div>
+          <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap">
+            <button type="button" class="btn btn-primary" id="btn-guardar-pixel">💾 Guardar configuración</button>
+          </div>
+          <div class="msg-box" id="pixel-msg"></div>
+          <div class="info-box" style="margin-top:20px">
+            <h4>ℹ️ Información del Pixel</h4>
+            <p>El pixel de Meta se agrega automáticamente al landing page para rastrear visitantes y conversiones. Puedes encontrar tu ID de pixel en el Administrador de Eventos de Facebook Business.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- WHATSAPP -->
+    <div data-panel="whatsapp" style="display:none">
+      <div class="config-grid">
+        <div class="config-section">
+          <h3>💬 Configuración de WhatsApp</h3>
+          <div class="form-group">
+            <label for="wa-numero">Número de WhatsApp</label>
+            <input type="text" id="wa-numero" placeholder="51999999999">
+            <div class="field-hint">Código de país sin + ni espacios (ej: 51999999999)</div>
+          </div>
+          <div class="form-group">
+            <label for="wa-mensaje">Mensaje predeterminado</label>
+            <input type="text" id="wa-mensaje" placeholder="Hola, me gustaría obtener más información...">
+          </div>
+          <div class="form-group">
+            <label for="wa-activo">Estado del botón flotante</label>
+            <select id="wa-activo">
+              <option value="1">🟢 Activo</option>
+              <option value="0">🔴 Inactivo</option>
+            </select>
+          </div>
+          <div style="font-size:.8rem;color:var(--text-muted)" id="wa-fecha"></div>
+          <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap">
+            <button type="button" class="btn btn-primary" id="btn-guardar-wa">💾 Guardar configuración</button>
+          </div>
+          <div class="msg-box" id="wa-msg"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- REDES -->
+    <div data-panel="redes" style="display:none">
+      <div class="config-grid">
+        <div class="config-section">
+          <h3>🌐 Redes Sociales</h3>
+          <p style="font-size:.85rem;color:var(--text-muted);margin-bottom:20px">Ingresa los enlaces de tus redes. Solo se mostrarán en la landing las que tengan un enlace.</p>
+          <div class="form-group">
+            <label for="redes-instagram">📷 Instagram</label>
+            <input type="url" id="redes-instagram" placeholder="https://www.instagram.com/tu_usuario">
+          </div>
+          <div class="form-group">
+            <label for="redes-facebook">👍 Facebook</label>
+            <input type="url" id="redes-facebook" placeholder="https://www.facebook.com/tu_pagina">
+          </div>
+          <div class="form-group">
+            <label for="redes-youtube">▶️ YouTube</label>
+            <input type="url" id="redes-youtube" placeholder="https://www.youtube.com/@tu_canal">
+          </div>
+          <div class="form-group">
+            <label for="redes-tiktok">🎵 TikTok</label>
+            <input type="url" id="redes-tiktok" placeholder="https://www.tiktok.com/@tu_usuario">
+          </div>
+          <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap">
+            <button type="button" class="btn btn-primary" id="btn-guardar-redes">💾 Guardar redes</button>
+          </div>
+          <div class="msg-box" id="redes-msg"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FACEBOOK -->
+    <div data-panel="facebook" style="display:none">
+      <div class="config-grid">
+        <div class="config-section">
+          <h3>🔗 Verificación de Dominio (Meta)</h3>
+          <div class="form-group">
+            <label for="fb-id">Meta Domain Verification ID</label>
+            <input type="text" id="fb-id" placeholder="334wyp3xdemukzfa4bjajet3wbw4w6">
+            <div class="field-hint">Código de verificación de dominio proporcionado por Meta (Facebook/Instagram). Se inyecta como <code>&lt;meta name="facebook-domain-verification"&gt;</code> en el landing.</div>
+          </div>
+          <div style="font-size:.8rem;color:var(--text-muted)" id="fb-fecha"></div>
+          <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap">
+            <button type="button" class="btn btn-primary" id="btn-guardar-fb">💾 Guardar</button>
+          </div>
+          <div class="msg-box" id="fb-msg"></div>
+          <div class="info-box" style="margin-top:20px">
+            <h4>ℹ️ ¿Cómo obtener este código?</h4>
+            <p>1. Ve al <a href="https://developers.facebook.com" target="_blank" rel="noopener noreferrer">Panel de Desarrolladores de Meta</a>.</p>
+            <p>2. Selecciona tu aplicación.</p>
+            <p>3. Ve a <strong>Configuración → Básico</strong>.</p>
+            <p>4. En "Verificación de dominio", agrega tu dominio y copia el código meta.</p>
+            <p>5. Pega solo el valor del <code>content</code> en el campo de arriba.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SUSCRIPCIONES -->
+    <div data-panel="suscripciones" style="display:none">
+      <div class="config-grid">
+        <div class="config-section">
+          <h3>💳 Planes de Suscripción</h3>
+          <div class="form-group" style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+            <label style="margin:0">Mostrar sección en la landing</label>
+            <label class="switch">
+              <input type="checkbox" id="sus-visible">
+              <span class="slider"></span>
+            </label>
+            <span style="font-size:.85rem;color:var(--text-muted)" id="sus-visible-label">🔴 Oculta</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <strong id="sus-planes-count">Planes (0)</strong>
+            <button type="button" class="btn btn-primary" id="btn-nuevo-plan">+ Agregar plan</button>
+          </div>
+          <div id="sus-planes-wrap"></div>
+          <div class="msg-box" id="sus-msg"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MERCADO PAGO -->
+    <div data-panel="mercadopago" style="display:none">
+      <div class="config-grid">
+        <div class="config-section">
+          <h3>💰 Integración con Mercado Pago</h3>
+          <div class="form-group" style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+            <label style="margin:0">Habilitar Mercado Pago</label>
+            <label class="switch">
+              <input type="checkbox" id="mp-activo">
+              <span class="slider"></span>
+            </label>
+            <span style="font-size:.85rem;color:var(--text-muted)" id="mp-activo-label">🔴 Inactivo</span>
+          </div>
+          <div class="form-group">
+            <label for="mp-modo">Modo</label>
+            <select id="mp-modo">
+              <option value="sandbox">🧪 Sandbox (pruebas)</option>
+              <option value="produccion">🚀 Producción</option>
+            </select>
+            <div class="field-hint">Usa Sandbox para probar pagos sin dinero real. Cambia a Producción cuando estés listo.</div>
+          </div>
+          <div class="form-group">
+            <label for="mp-public-key">Public Key</label>
+            <input type="text" id="mp-public-key" placeholder="APP_USR-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+            <div class="field-hint">Clave pública de tu aplicación en Mercado Pago. Se usa en el frontend para inicializar el checkout.</div>
+          </div>
+          <div class="form-group">
+            <label for="mp-access-token">Access Token</label>
+            <div class="mp-token-wrap">
+              <input type="password" id="mp-access-token"
+                placeholder="APP_USR-0000000000000000-000000-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx-000000000">
+              <button type="button" class="mp-token-toggle" id="btn-mp-token-toggle" title="Mostrar">👁️</button>
+            </div>
+            <div class="field-hint">Token privado de tu aplicación. Nunca lo compartas ni lo expongas en el frontend.</div>
+          </div>
+          <div style="font-size:.8rem;color:var(--text-muted)" id="mp-fecha"></div>
+          <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap">
+            <button type="button" class="btn btn-primary" id="btn-guardar-mp">💾 Guardar configuración</button>
+          </div>
+          <div class="msg-box" id="mp-msg"></div>
+          <div class="info-box" style="margin-top:20px">
+            <h4>ℹ️ ¿Cómo obtener las credenciales?</h4>
+            <p>1. Ingresa a <a href="https://www.mercadopago.com.pe/developers/panel" target="_blank" rel="noopener noreferrer">mercadopago.com.pe/developers/panel</a>.</p>
+            <p>2. Crea o selecciona una aplicación.</p>
+            <p>3. En <strong>Credenciales</strong> encontrarás la <strong>Public Key</strong> y el <strong>Access Token</strong> tanto para Sandbox como para Producción.</p>
+            <p>4. Usa las credenciales de <strong>Sandbox</strong> para pruebas y las de <strong>Producción</strong> cuando vayas en vivo.</p>
+            <p>5. Configura el webhook en Mercado Pago apuntando a <code id="mp-webhook-url"></code> (evento <strong>Orders</strong>).</p>
+            <p>6. En el servidor, define <code>SITE_URL</code> con la URL pública del sitio (ej. <code>https://tudominio.com/site</code>) y opcionalmente <code>MP_WEBHOOK_SECRET</code> para validar la firma.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL SUSCRIPCIÓN -->
+    <div class="modal-overlay" id="modal-sus">
+      <div class="modal">
+        <div class="modal-header">
+          <h3 id="modal-sus-title">➕ Nuevo plan</h3>
+          <button type="button" class="modal-close" data-modal-close="modal-sus">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="sus-nombre">Nombre</label>
+            <input type="text" id="sus-nombre" placeholder="Plan Base">
+          </div>
+          <div class="form-group">
+            <label for="sus-precio">Precio (S/)</label>
+            <input type="number" step="0.01" min="0" id="sus-precio" placeholder="39.90">
+          </div>
+          <div class="form-group">
+            <label for="sus-vigencia">Vigencia (días calendario)</label>
+            <input type="number" min="1" id="sus-vigencia" placeholder="30" value="30">
+            <div class="field-hint">Número de días calendario desde la fecha de suscripción</div>
+          </div>
+          <div class="form-group">
+            <label for="sus-descripcion">Descripción</label>
+            <input type="text" id="sus-descripcion" placeholder="Próximamente">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" data-modal-close="modal-sus">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="btn-guardar-plan">💾 Guardar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL CORREO PRUEBA -->
+    <div class="modal-overlay" id="modal-test-email">
+      <div class="modal">
+        <div class="modal-header">
+          <h3>📧 Enviar Correo de Prueba</h3>
+          <button type="button" class="modal-close" data-modal-close="modal-test-email">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="test-email-dest">Correo de destino</label>
+            <input type="email" id="test-email-dest" placeholder="ejemplo@correo.com">
+          </div>
+          <div class="form-group">
+            <label for="test-email-mensaje">Mensaje de prueba</label>
+            <textarea id="test-email-mensaje" rows="4" placeholder="Escribe el mensaje de prueba..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" data-modal-close="modal-test-email">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="btn-enviar-test">📨 Enviar</button>
+        </div>
+      </div>
+    </div>
+  </div></div>
+  <script src="js/api.js"></script><script src="js/auth.js"></script><script src="js/toast.js"></script><script src="js/utils.js"></script><script src="js/layout.js"></script><script src="js/config.js"></script>
+</body>
+</html>

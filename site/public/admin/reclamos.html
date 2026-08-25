@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reclamos - VHM Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/admin.css">
+  <script src="js/base.js"></script>
+</head>
+<body>
+  <div id="admin-root"><div id="page-main" style="display:none">
+    <div class="stats-row" style="grid-template-columns:repeat(4,1fr)">
+      <div class="stat-card"><div class="stat-icon">📋</div><div class="stat-label">Total reclamos</div><div class="stat-value" id="st-total">—</div></div>
+      <div class="stat-card"><div class="stat-icon">⏳</div><div class="stat-label">Pendientes</div><div class="stat-value" id="st-pend">—</div></div>
+      <div class="stat-card"><div class="stat-icon">🔄</div><div class="stat-label">En proceso</div><div class="stat-value" id="st-proc">—</div></div>
+      <div class="stat-card"><div class="stat-icon">✅</div><div class="stat-label">Resueltos</div><div class="stat-value" id="st-res">—</div></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><h3>📋 Reclamos recibidos</h3></div>
+      <div class="card-body" id="reclamos-body"></div>
+      <div class="pagination">
+        <button type="button" id="pg-prev">← Anterior</button>
+        <span class="page-info" id="pg-info">1 / 1</span>
+        <button type="button" id="pg-next">Siguiente →</button>
+      </div>
+    </div>
+    <div class="modal-overlay" id="modal-detalle">
+      <div class="modal">
+        <div class="modal-header"><h3>📄 Detalle del Reclamo</h3><button type="button" class="modal-close" data-modal-close="modal-detalle">✕</button></div>
+        <div class="modal-body" id="detalle-body"></div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" data-modal-close="modal-detalle">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="btn-responder">📨 Enviar respuesta y notificar</button>
+        </div>
+      </div>
+    </div>
+  </div></div>
+  <script src="js/api.js"></script><script src="js/auth.js"></script><script src="js/toast.js"></script><script src="js/utils.js"></script><script src="js/layout.js"></script><script src="js/reclamos.js"></script>
+</body>
+</html>

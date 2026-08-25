@@ -1,15 +1,6 @@
 require('dotenv').config();
 const express = require('express');
 
-// Compilar admin en segundo plano (no bloquear el arranque en cPanel)
-setImmediate(() => {
-  try {
-    require('./scripts/build-admin').run();
-  } catch (err) {
-    console.error('[admin] error al iniciar build:', err.message);
-  }
-});
-
 // Forzar GMT-5 (Lima) en todo el proceso antes de cualquier operacion de fecha
 process.env.TZ = 'America/Lima';
 

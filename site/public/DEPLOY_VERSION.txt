@@ -1,3 +1,3 @@
-deploy-version=deploy-v3
+deploy-version=html-admin-v1
 deploy-date=2026-08-25
-features=latribu-mercadopago,admin-auto-build,tribu-users
+admin=html-vanilla-js

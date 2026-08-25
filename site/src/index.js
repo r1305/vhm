@@ -129,78 +129,12 @@ app.use(express.static(path.join(__dirname, '../public'), {
 }));
 
 app.get('/health', (req, res) => {
-  res.json({ ok: true, service: 'vhm-site' });
+  res.json({ ok: true, service: 'vhm-site', admin: 'html' });
 });
 
-app.get('/admin/BUILD.txt', (req, res) => {
-  const buildFile = path.join(__dirname, '../public/admin/BUILD.txt');
-  res.type('text/plain');
-  res.set('Cache-Control', 'no-store');
-  if (fs.existsSync(buildFile)) {
-    return res.send(fs.readFileSync(buildFile, 'utf8'));
-  }
-  return res.status(503).send(
-    'Admin no compilado en este servidor.\n' +
-    'En cPanel: Run NPM Install → Restart.\n' +
-    'Diagnostico: /site/api/admin-build-info\n'
-  );
-});
-
-app.get('/api/admin-build-info', (req, res) => {
-  const adminIndex = path.join(__dirname, '../public/admin/index.html');
-  const buildFile = path.join(__dirname, '../public/admin/BUILD.txt');
-  const adminVueDir = path.join(__dirname, '../admin-vue');
-  const adminVueSrc = path.join(adminVueDir, 'src');
-  let buildStamp = null;
-  let indexScript = null;
-  if (fs.existsSync(buildFile)) {
-    buildStamp = fs.readFileSync(buildFile, 'utf8').trim();
-  }
-  if (fs.existsSync(adminIndex)) {
-    const html = fs.readFileSync(adminIndex, 'utf8');
-    const match = html.match(/src="\.\/assets\/([^"]+\.js)"/);
-    indexScript = match ? match[1] : null;
-  }
-  res.json({
-    ok: true,
-    buildStamp,
-    adminIndexExists: fs.existsSync(adminIndex),
-    adminVueExists: fs.existsSync(adminVueDir),
-    adminVueSrcExists: fs.existsSync(adminVueSrc),
-    indexScript,
-    adminSkipBuild: process.env.ADMIN_SKIP_BUILD || null,
-    adminForceBuild: process.env.ADMIN_FORCE_BUILD || null,
-    nodeEnv: process.env.NODE_ENV || null,
-  });
-});
-
-function sendVueAdmin(res) {
-  const base = ((res.locals && res.locals.basePath) || process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
-  const filePath = path.join(__dirname, '../public/admin/index.html');
-  if (!fs.existsSync(filePath)) {
-    return res.status(503).type('html').send(
-      '<h1>Admin no compilado</h1><p>Ejecuta <code>npm run build:admin</code> o reinicia la app para compilar admin-vue.</p>'
-    );
-  }
-  let html = fs.readFileSync(filePath, 'utf8');
-  const inlineBase = `<script>window.__APP_BASE__=${JSON.stringify(base)};</script>`;
-  html = html.replace(/(<head[^>]*>)/i, `$1\n  ${inlineBase}`);
-  html = html.replace(/(<head[^>]*>)/i, `$1\n  <base href="${base}/admin/">`);
-  if (base) {
-    html = rewriteRootPaths(html, base);
-  }
-  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-  res.set('Pragma', 'no-cache');
-  res.set('Expires', '0');
-  res.type('html').send(html);
-}
-
-app.get(['/admin', '/admin/'], (req, res) => sendVueAdmin(res));
-app.get('/admin/*', (req, res) => {
-  if (req.path.startsWith('/admin/assets/')) {
-    return res.status(404).send('Not found');
-  }
-  sendVueAdmin(res);
+app.get(['/admin', '/admin/'], (req, res) => {
+  const base = (res.locals.basePath || process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
+  res.redirect(base + '/admin/reclamos.html');
 });
 
 app.get('/consulta', (req, res) => {
@@ -229,11 +163,11 @@ app.get('/api/pixel-config', async (req, res) => {
     const pool = require('./db');
     const [rows] = await pool.execute('SELECT pixel_id, activo FROM config_pixel WHERE id = 1 AND activo = 1');
     const payload = rows[0] || { pixel_id: null, activo: false };
-    payload._deployVersion = 'deploy-v3';
+    payload._deployVersion = 'html-admin-v1';
     res.json(payload);
   } catch (err) {
     console.error(err);
-    res.json({ pixel_id: null, activo: false, _deployVersion: 'deploy-v3' });
+    res.json({ pixel_id: null, activo: false, _deployVersion: 'html-admin-v1' });
   }
 });
 

@@ -49,8 +49,27 @@ lib/
 ├── siteEnv.js        ← Lectura de variables de entorno
 └── mount.js          ← Utilidad de reescritura HTML
 public/               ← Frontend estático (videos.html = La Tribu en /latribu)
+public/admin/         ← Panel admin HTML + JS (sin build, sin Vue)
 app.js                ← Entry point (Passenger / standalone)
 ```
+
+## Panel admin
+
+HTML + JavaScript vanilla en `public/admin/` — **sin compilación**.
+
+| Página | Archivo |
+|--------|---------|
+| Login | `admin/login.html` |
+| Reclamos | `admin/reclamos.html` |
+| Testimonios | `admin/testimonios.html` |
+| La Tribu | `admin/videos.html` |
+| Usuarios Tribu | `admin/tribu-users.html` |
+| Administradores | `admin/usuarios.html` |
+| Ajustes | `admin/config.html` |
+
+Shared: `admin/js/api.js`, `auth.js`, `layout.js`, `admin/css/admin.css`
+
+Deploy: sube los archivos editados → Restart en cPanel.
 
 ## La Tribu
 

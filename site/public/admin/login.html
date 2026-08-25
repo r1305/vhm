@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - VHM Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/admin.css">
+  <script src="js/base.js"></script>
+</head>
+<body>
+  <div class="login-container">
+    <div class="login-box">
+      <img src="../logo_vhm.jpeg" alt="VHM" class="logo" id="login-logo">
+      <h2>Panel de Administración</h2>
+      <p>Ingresa para gestionar tu sitio VHM</p>
+      <div class="error" id="login-error"></div>
+      <input type="text" id="login-user" placeholder="Usuario" autocomplete="username">
+      <input type="password" id="login-pass" placeholder="Contraseña" autocomplete="current-password">
+      <button type="button" id="login-btn"><span id="login-btn-text">Ingresar</span></button>
+    </div>
+  </div>
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/toast.js"></script>
+  <script src="js/login.js"></script>
+</body>
+</html>
