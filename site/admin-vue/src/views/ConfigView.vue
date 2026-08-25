@@ -14,6 +14,7 @@
       <button :class="{ active: tabActivo === 'redes' }" @click="tabActivo = 'redes'">🌐 Redes Sociales</button>
       <button :class="{ active: tabActivo === 'facebook' }" @click="tabActivo = 'facebook'">🔗 Facebook</button>
       <button :class="{ active: tabActivo === 'suscripciones' }" @click="tabActivo = 'suscripciones'">💳 Suscripciones</button>
+      <button :class="{ active: tabActivo === 'mercadopago' }" @click="tabActivo = 'mercadopago'">💰 Mercado Pago</button>
     </div>
 
     <!-- EMAIL -->
@@ -174,6 +175,7 @@
               <tr style="border-bottom:1px solid #333;color:#aaa">
                 <th style="text-align:left;padding:8px 4px">Nombre</th>
                 <th style="text-align:right;padding:8px 4px">Precio</th>
+                <th style="text-align:center;padding:8px 4px">Vigencia</th>
                 <th style="text-align:left;padding:8px 4px">Descripción</th>
                 <th style="padding:8px 4px"></th>
               </tr>
@@ -182,6 +184,7 @@
               <tr v-for="p in sus.planes" :key="p.id" style="border-bottom:1px solid #1a1a1a">
                 <td style="padding:10px 4px">{{ p.nombre }}</td>
                 <td style="padding:10px 4px;text-align:right">S/ {{ Number(p.precio).toFixed(2) }}</td>
+                <td style="padding:10px 4px;text-align:center">{{ p.vigencia_dias || 30 }} días</td>
                 <td style="padding:10px 4px;color:#aaa">{{ p.descripcion }}</td>
                 <td style="padding:10px 4px;white-space:nowrap;text-align:right">
                   <button class="btn btn-outline" style="padding:4px 10px;font-size:.8rem;margin-right:6px" @click="abrirModalSus(p)">✏️</button>
@@ -197,6 +200,72 @@
       </div>
     </div>
 
+    <!-- MERCADO PAGO -->
+    <div v-show="tabActivo === 'mercadopago'">
+      <div class="config-grid">
+        <div class="config-section">
+          <h3>💰 Integración con Mercado Pago</h3>
+
+          <div class="form-group" style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+            <label style="margin:0">Habilitar Mercado Pago</label>
+            <label class="switch">
+              <input type="checkbox" v-model="mp.activo">
+              <span class="slider"></span>
+            </label>
+            <span style="font-size:.85rem;color:var(--text-muted)">{{ mp.activo ? '🟢 Activo' : '🔴 Inactivo' }}</span>
+          </div>
+
+          <div class="form-group">
+            <label>Modo</label>
+            <select v-model="mp.modo">
+              <option value="sandbox">🧪 Sandbox (pruebas)</option>
+              <option value="produccion">🚀 Producción</option>
+            </select>
+            <div class="field-hint">Usa Sandbox para probar pagos sin dinero real. Cambia a Producción cuando estés listo.</div>
+          </div>
+
+          <div class="form-group">
+            <label>Public Key</label>
+            <input type="text" v-model="mp.public_key" placeholder="APP_USR-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+            <div class="field-hint">Clave pública de tu aplicación en Mercado Pago. Se usa en el frontend para inicializar el checkout.</div>
+          </div>
+
+          <div class="form-group">
+            <label>Access Token</label>
+            <div style="position:relative">
+              <input :type="mpTokenVisible ? 'text' : 'password'" v-model="mp.access_token"
+                placeholder="APP_USR-0000000000000000-000000-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx-000000000"
+                style="padding-right:42px">
+              <button type="button" @click="mpTokenVisible = !mpTokenVisible"
+                style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:1.1rem;color:var(--text-muted);padding:4px"
+                :title="mpTokenVisible ? 'Ocultar' : 'Mostrar'">
+                {{ mpTokenVisible ? '🙈' : '👁️' }}
+              </button>
+            </div>
+            <div class="field-hint">Token privado de tu aplicación. Nunca lo compartas ni lo expongas en el frontend.</div>
+          </div>
+
+          <div style="font-size:.8rem;color:var(--text-muted)">{{ mp.fechaActualizacion }}</div>
+
+          <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap">
+            <button class="btn btn-primary" @click="guardarMp" :disabled="guardandoMp">{{ guardandoMp ? 'Guardando...' : '💾 Guardar configuración' }}</button>
+          </div>
+
+          <div :class="['msg-box', { success: mpMsg.ok, error: !mpMsg.ok }]" v-if="mpMsg.texto" style="display:block;margin-top:12px">{{ mpMsg.texto }}</div>
+
+          <div class="info-box" style="margin-top:20px">
+            <h4>ℹ️ ¿Cómo obtener las credenciales?</h4>
+            <p>1. Ingresa a <a href="https://www.mercadopago.com.pe/developers/panel" target="_blank" rel="noopener noreferrer">mercadopago.com.pe/developers/panel</a>.</p>
+            <p>2. Crea o selecciona una aplicación.</p>
+            <p>3. En <strong>Credenciales</strong> encontrarás la <strong>Public Key</strong> y el <strong>Access Token</strong> tanto para Sandbox como para Producción.</p>
+            <p>4. Usa las credenciales de <strong>Sandbox</strong> para pruebas y las de <strong>Producción</strong> cuando vayas en vivo.</p>
+            <p>5. Configura el webhook en Mercado Pago apuntando a <code>{{ webhookUrl }}</code> (evento <strong>Orders</strong>).</p>
+            <p>6. En el servidor, define <code>SITE_URL</code> con la URL pública del sitio (ej. <code>https://tudominio.com/site</code>) y opcionalmente <code>MP_WEBHOOK_SECRET</code> para validar la firma.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- MODAL SUSCRIPCIÓN -->
     <div class="modal-overlay" :class="{ show: modalSusVisible }" @click.self="modalSusVisible = false">
       <div class="modal">
@@ -207,6 +276,11 @@
         <div class="modal-body">
           <div class="form-group"><label>Nombre</label><input type="text" v-model="susForm.nombre" placeholder="Plan Base"></div>
           <div class="form-group"><label>Precio (S/)</label><input type="number" step="0.01" min="0" v-model.number="susForm.precio" placeholder="39.90"></div>
+          <div class="form-group">
+            <label>Vigencia (días calendario)</label>
+            <input type="number" min="1" v-model.number="susForm.vigencia_dias" placeholder="30">
+            <div class="field-hint">Número de días calendario desde la fecha de suscripción</div>
+          </div>
           <div class="form-group"><label>Descripción</label><input type="text" v-model="susForm.descripcion" placeholder="Próximamente"></div>
         </div>
         <div class="modal-footer">
@@ -243,7 +317,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, watch, onMounted } from 'vue'
+import { ref, reactive, watch, onMounted, computed } from 'vue'
 import { apiFetch, authHeaders } from '../utils/api'
 import { toast } from '../utils/toast'
 
@@ -254,7 +328,17 @@ const sus = reactive({ visible: false, planes: [] })
 const susMsg = reactive({ texto: '', ok: false })
 const modalSusVisible = ref(false)
 const guardandoSus = ref(false)
-const susForm = reactive({ id: null, nombre: '', precio: '', descripcion: '' })
+const susForm = reactive({ id: null, nombre: '', precio: '', descripcion: '', vigencia_dias: 30 })
+
+// Mercado Pago
+const mp = reactive({ activo: false, modo: 'sandbox', public_key: '', access_token: '', fechaActualizacion: '' })
+const mpMsg = reactive({ texto: '', ok: false })
+const guardandoMp = ref(false)
+const mpTokenVisible = ref(false)
+const webhookUrl = computed(() => {
+  const base = (window.__APP_BASE__ || '/site').replace(/\/$/, '')
+  return `${window.location.origin}${base}/api/tribu-pagos/webhook`
+})
 
 // Email config
 const email = reactive({ host: '', port: 465, secure: 1, user: '', pass: '', from: '', nombreFrom: '', fechaActualizacion: '' })
@@ -292,6 +376,7 @@ watch(tabActivo, (t) => {
   if (t === 'redes') cargarRedes()
   if (t === 'facebook') cargarFacebook()
   if (t === 'suscripciones') cargarSuscripciones()
+  if (t === 'mercadopago') cargarMp()
 })
 
 onMounted(cargarEmail)
@@ -471,8 +556,8 @@ async function guardarConfigSus() {
 }
 
 function abrirModalSus(plan) {
-  if (plan) { susForm.id = plan.id; susForm.nombre = plan.nombre; susForm.precio = plan.precio; susForm.descripcion = plan.descripcion || '' }
-  else { susForm.id = null; susForm.nombre = ''; susForm.precio = ''; susForm.descripcion = '' }
+  if (plan) { susForm.id = plan.id; susForm.nombre = plan.nombre; susForm.precio = plan.precio; susForm.descripcion = plan.descripcion || ''; susForm.vigencia_dias = plan.vigencia_dias || 30 }
+  else { susForm.id = null; susForm.nombre = ''; susForm.precio = ''; susForm.descripcion = ''; susForm.vigencia_dias = 30 }
   susMsg.texto = ''
   modalSusVisible.value = true
 }
@@ -481,7 +566,7 @@ async function guardarPlan() {
   if (!susForm.nombre || susForm.precio === '') return mostrarMsg(susMsg, 'Nombre y precio son obligatorios', false)
   guardandoSus.value = true
   try {
-    const body = { nombre: susForm.nombre, precio: susForm.precio, descripcion: susForm.descripcion }
+    const body = { nombre: susForm.nombre, precio: susForm.precio, descripcion: susForm.descripcion, vigencia_dias: susForm.vigencia_dias || 30 }
     const url = susForm.id ? `/suscripciones/${susForm.id}` : '/suscripciones'
     const method = susForm.id ? 'PUT' : 'POST'
     const res = await apiFetch(url, { method, headers: authHeaders(), body: JSON.stringify(body) })
@@ -499,6 +584,31 @@ async function eliminarPlan(id) {
     if (res.ok) { cargarSuscripciones(); toast('Plan eliminado', 'success') }
     else { const d = await res.json(); toast(d.error, 'error') }
   } catch { toast('Error de conexión', 'error') }
+}
+
+// === MERCADO PAGO ===
+async function cargarMp() {
+  try {
+    const res = await apiFetch('/config-mercadopago', { headers: authHeaders() })
+    const d = await res.json()
+    mp.activo = !!d.activo
+    mp.modo = d.modo || 'sandbox'
+    mp.public_key = d.public_key || ''
+    mp.access_token = d.access_token || ''
+    mp.fechaActualizacion = d.fecha_actualizacion ? fmtFecha(d.fecha_actualizacion) : ''
+  } catch { mostrarMsg(mpMsg, 'Error al cargar configuración', false) }
+}
+
+async function guardarMp() {
+  guardandoMp.value = true
+  try {
+    const body = { activo: mp.activo, modo: mp.modo, public_key: mp.public_key, access_token: mp.access_token }
+    const res = await apiFetch('/config-mercadopago', { method: 'PUT', headers: authHeaders(), body: JSON.stringify(body) })
+    const d = await res.json()
+    mostrarMsg(mpMsg, res.ok ? d.message : d.error, res.ok)
+    if (res.ok) cargarMp()
+  } catch { mostrarMsg(mpMsg, 'Error de conexión', false) }
+  finally { guardandoMp.value = false }
 }
 
 function mostrarMsg(target, texto, ok) {

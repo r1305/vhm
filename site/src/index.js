@@ -39,7 +39,7 @@ app.use((req, res, next) => {
   res.setHeader('X-XSS-Protection', '1; mode=block');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://connect.facebook.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://connect.facebook.net https://graph.facebook.com; frame-src https://www.loom.com; frame-ancestors 'none'");
+  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://connect.facebook.net https://*.mlstatic.com https://sdk.mercadopago.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.mlstatic.com; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com https://*.mlstatic.com; connect-src 'self' https://connect.facebook.net https://graph.facebook.com https://*.mercadopago.com https://*.mercadopago.com.pe https://*.mlstatic.com https://*.mercadolibre.com; frame-src https://www.loom.com https://*.mercadopago.com https://*.mercadopago.com.pe https://*.mercadolibre.com; frame-ancestors 'none'");
   if (process.env.NODE_ENV === 'production') {
     res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   }
@@ -75,7 +75,7 @@ app.use((req, res, next) => {
   }
   // Validate CSRF on state-changing methods (skip public POST endpoints)
   if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {
-    const publicPostPaths = ['/api/reclamos', '/api/clara/chat', '/api/auth/login', '/api/tribu-access/verificar'];
+    const publicPostPaths = ['/api/reclamos', '/api/clara/chat', '/api/auth/login', '/api/tribu-access/verificar', '/api/tribu-auth/login', '/api/tribu-auth/registro', '/api/tribu-auth/recuperar', '/api/tribu-auth/reset-password', '/api/tribu-pagos/webhook', '/api/tribu-pagos/procesar-pago'];
     const isPublicPost = req.method === 'POST' && publicPostPaths.some(p => req.path === p);
     const isPublicVideoAction = req.method === 'POST' && req.path.startsWith('/api/videos/') && (req.path.endsWith('/vista') || req.path.endsWith('/like'));
     if (!isPublicPost && !isPublicVideoAction) {
@@ -200,8 +200,13 @@ app.use('/api/clara', claraRoutes);
 app.use('/api/eventos', eventosRoutes);
 app.use('/api/config-facebook-verification', configFacebookVerificationRoutes);
 app.use('/api/suscripciones', require('./suscripcionesRoutes'));
+app.use('/api/config-mercadopago', require('./configMercadoPagoRoutes'));
 const { router: tribuAccessRouter, renovarPassword: renovarTribuPassword } = require('./tribuAccessRoutes');
 app.use('/api/tribu-access', tribuAccessRouter);
+app.use('/api/tribu-users', require('./tribuUsersRoutes'));
+const { router: tribuAuthRouter } = require('./tribuAuthRoutes');
+app.use('/api/tribu-auth', tribuAuthRouter);
+app.use('/api/tribu-pagos', require('./tribuPagosRoutes'));
 
 // Error handler global
 app.use((err, req, res, next) => {

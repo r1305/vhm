@@ -3,5 +3,8 @@ node_modules/
 *.log
 backend.zip
 migrate-db.js
+migrate-*.js
+fix*.js
+patch_*.js
 public/uploads/*
 !public/uploads/.gitkeep

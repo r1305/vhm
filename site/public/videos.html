@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>La Tribu - VHM</title>
   <script src="__app_base__.js"></script>
+  <script src="https://sdk.mercadopago.com/js/v2"></script>
   <link rel="icon" type="image/jpeg" href="logo_vhm.jpeg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -255,6 +256,54 @@
       .cal-events-desktop { display: none; }
       .cal-events-mobile { display: block; }
     }
+
+    .nav-user { display: flex; align-items: center; gap: 10px; }
+    .nav-user-name { font-size: .88rem; font-weight: 700; color: #e9d5ff; }
+    .nav-logout { background: none; border: 1px solid rgba(168,85,247,.4); color: var(--muted); padding: 6px 12px; border-radius: 20px; font-size: .8rem; font-weight: 700; cursor: pointer; font-family: inherit; transition: all .2s; }
+    .nav-logout:hover { border-color: var(--pink); color: var(--pink); }
+    .auth-overlay { display: none; position: fixed; inset: 0; background: rgba(7,7,13,.88); backdrop-filter: blur(10px); z-index: 2000; padding: 20px; align-items: center; justify-content: center; }
+    .auth-overlay.show { display: flex; }
+    .auth-box { background: var(--panel); border: 1px solid rgba(168,85,247,.35); border-radius: 24px; width: 100%; max-width: 420px; padding: 36px 32px 28px; position: relative; box-shadow: 0 40px 90px -30px rgba(168,85,247,.45); animation: authIn .25s ease; }
+    @keyframes authIn { from { opacity:0; transform: scale(.95) translateY(12px); } to { opacity:1; transform: scale(1) translateY(0); } }
+    .auth-box .auth-logo { text-align: center; margin-bottom: 6px; font-family: 'Fraunces', serif; font-size: 1.8rem; font-weight: 700; background: var(--grad-warm); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+    .auth-box .auth-title { text-align: center; font-size: 1.15rem; font-weight: 800; color: #fff; margin-bottom: 4px; }
+    .auth-box .auth-sub { text-align: center; font-size: .85rem; color: var(--muted); margin-bottom: 24px; }
+    .auth-box .auth-close { position: absolute; top: 14px; right: 16px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12); color: var(--muted); width: 34px; height: 34px; border-radius: 50%; cursor: pointer; font-size: 1.2rem; line-height: 1; }
+    .auth-box .auth-close:hover { background: var(--pink); color: #fff; }
+    .auth-field { margin-bottom: 14px; }
+    .auth-field label { display: block; font-size: .8rem; font-weight: 700; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .5px; }
+    .auth-field input { width: 100%; padding: 12px 14px; background: rgba(255,255,255,.05); border: 1px solid rgba(168,85,247,.3); border-radius: 12px; color: #fff; font-size: .95rem; font-family: inherit; transition: border-color .2s; }
+    .auth-field input:focus { outline: none; border-color: var(--purple); background: rgba(168,85,247,.08); }
+    .auth-field input::placeholder { color: rgba(255,255,255,.25); }
+    .auth-btn { width: 100%; padding: 13px; margin-top: 6px; background: var(--grad-warm); border: none; border-radius: 12px; color: #fff; font-size: 1rem; font-weight: 800; font-family: inherit; cursor: pointer; transition: opacity .2s, transform .15s; }
+    .auth-btn:hover:not(:disabled) { opacity: .9; transform: translateY(-1px); }
+    .auth-btn:disabled { opacity: .5; cursor: not-allowed; }
+    .auth-error { color: #fb7185; font-size: .83rem; font-weight: 700; margin-top: 10px; text-align: center; min-height: 20px; }
+    .auth-footer { text-align: center; margin-top: 18px; font-size: .85rem; color: var(--muted); }
+    .auth-footer a { color: #c9b8ee; font-weight: 700; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+    .auth-footer a:hover { color: #fff; }
+    .auth-divider { display: flex; align-items: center; gap: 10px; margin: 16px 0; color: var(--muted); font-size: .8rem; }
+    .auth-divider::before, .auth-divider::after { content: ''; flex: 1; height: 1px; background: rgba(168,85,247,.2); }
+    .lock-banner { position: relative; z-index: 20; margin: 0 22px 32px; padding: 28px 24px; background: rgba(168,85,247,.08); border: 1px solid rgba(168,85,247,.35); border-radius: 18px; text-align: center; }
+    .lock-banner .lock-icon { font-size: 2.2rem; margin-bottom: 10px; }
+    .lock-banner h3 { font-family: 'Fraunces', serif; font-size: 1.3rem; color: #fff; margin-bottom: 8px; }
+    .lock-banner p { color: var(--muted); font-size: .92rem; line-height: 1.6; margin-bottom: 18px; }
+    .lock-banner .lock-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+    .lock-btn { padding: 11px 24px; border-radius: 30px; font-size: .9rem; font-weight: 800; font-family: inherit; cursor: pointer; border: none; transition: transform .15s, opacity .2s; }
+    .lock-btn:hover { transform: translateY(-2px); opacity: .9; }
+    .lock-btn-primary { background: var(--grad-warm); color: #fff; }
+    .lock-btn-outline { background: transparent; border: 1px solid rgba(168,85,247,.5); color: #e9d5ff; }
+    .tribu-locked { position: relative; pointer-events: none; user-select: none; }
+    .tribu-locked::after { content: ''; position: absolute; inset: 0; backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px); background: rgba(7,7,13,.55); z-index: 10; border-radius: 12px; }
+    .plan-card { background: rgba(168,85,247,.07); border: 1px solid rgba(168,85,247,.3); border-radius: 16px; padding: 20px 22px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; transition: border-color .2s, background .2s; }
+    .plan-card:hover { border-color: rgba(236,72,153,.55); background: rgba(168,85,247,.12); }
+    .plan-info { flex: 1; }
+    .plan-nombre { font-family: 'Fraunces', serif; font-size: 1.1rem; font-weight: 700; color: #fff; margin-bottom: 4px; }
+    .plan-desc { font-size: .85rem; color: var(--muted); line-height: 1.5; }
+    .plan-precio { font-size: 1.5rem; font-weight: 800; color: #fff; white-space: nowrap; }
+    .plan-adquirir { padding: 10px 22px; border-radius: 30px; font-size: .9rem; font-weight: 800; font-family: inherit; cursor: pointer; border: none; background: var(--grad-warm); color: #fff; transition: transform .15s, opacity .2s; }
+    .plan-adquirir:hover { transform: translateY(-2px); opacity: .9; }
+    .plan-adquirir:disabled { opacity: .5; cursor: not-allowed; transform: none; }
   </style>
 </head>
 <body>
@@ -266,6 +315,7 @@
     <a href=".">Inicio</a>
     <a href="latribu">La Tribu</a>
     <a href="reclamo">Libro de Reclamaciones</a>
+    <span id="navAuthArea"></span>
   </div>
 </nav>
 
@@ -333,6 +383,75 @@
   </div>
 </div>
 
+
+<!-- MODAL PLANES -->
+<div class="auth-overlay" id="planesOverlay">
+  <div class="auth-box" style="max-width:560px;width:100%">
+    <button class="auth-close" onclick="cerrarModalPlanes()">&times;</button>
+    <div class="auth-logo">La Tribu</div>
+    <div class="auth-title">Elige tu plan</div>
+    <div class="auth-sub">Accede a todo el contenido exclusivo</div>
+    <div id="planesLista" style="margin-top:18px;display:flex;flex-direction:column;gap:12px"></div>
+    <div id="planesError" class="auth-error"></div>
+  </div>
+</div>
+<!-- MODAL PAGO -->
+<div class="auth-overlay" id="pagoOverlay">
+  <div class="auth-box" style="max-width:500px;width:100%">
+    <button class="auth-close" onclick="cerrarModalPago()">&times;</button>
+    <div class="auth-logo">La Tribu</div>
+    <div class="auth-title" id="pagoTitulo">Adquirir plan</div>
+    <div class="auth-sub" id="pagoSub"></div>
+    <div id="pagoSandboxHint" class="auth-sub" style="display:none;font-size:.82rem;color:#fbbf24;margin-top:8px"></div>
+    <div id="pagoContenido" style="margin-top:20px"><div id="cardBrickContainer"></div></div>
+    <div id="pagoError" class="auth-error"></div>
+  </div>
+</div>
+<!-- MODAL AUTH -->
+<div class="auth-overlay" id="authOverlay">
+  <div class="auth-box">
+    <button class="auth-close" onclick="cerrarAuth()">&times;</button>
+    <div class="auth-logo">La Tribu</div>
+    <div id="authLogin">
+      <div class="auth-title">Iniciar sesion</div>
+      <div class="auth-sub">Accede a tu espacio de crecimiento</div>
+      <div class="auth-field"><label>Correo</label><input type="email" id="loginEmail" placeholder="tu@correo.com" autocomplete="email"></div>
+      <div class="auth-field"><label>Contrasena</label><input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password"></div>
+      <button class="auth-btn" id="loginBtn" onclick="doLogin()">Entrar</button>
+      <div class="auth-error" id="loginError"></div>
+      <div class="auth-footer"><a onclick="mostrarPanel('authRecuperar')">Olvide mi contrasena</a></div>
+      <div class="auth-divider">o</div>
+      <div class="auth-footer">No tienes cuenta? <a onclick="mostrarPanel('authRegistro')">Crear cuenta</a></div>
+    </div>
+    <div id="authRegistro" style="display:none">
+      <div class="auth-title">Crear cuenta</div>
+      <div class="auth-sub">Unete a La Tribu</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="auth-field"><label>Nombre</label><input type="text" id="regNombre" placeholder="Ana" autocomplete="given-name"></div>
+        <div class="auth-field"><label>Apellido</label><input type="text" id="regApellido" placeholder="Garcia" autocomplete="family-name"></div>
+      </div>
+      <div class="auth-field"><label>Correo</label><input type="email" id="regEmail" placeholder="tu@correo.com" autocomplete="email"></div>
+      <div class="auth-field"><label>Contrasena</label><input type="password" id="regPassword" placeholder="Minimo 6 caracteres" autocomplete="new-password"></div>
+      <button class="auth-btn" id="regBtn" onclick="doRegistro()">Crear cuenta</button>
+      <div class="auth-error" id="regError"></div>
+      <div class="auth-footer" style="margin-top:14px">Ya tienes cuenta? <a onclick="mostrarPanel('authLogin')">Iniciar sesion</a></div>
+    </div>
+    <div id="authRecuperar" style="display:none">
+      <div class="auth-title">Recuperar contrasena</div>
+      <div class="auth-sub">Te enviaremos instrucciones a tu correo</div>
+      <div class="auth-field"><label>Correo</label><input type="email" id="recEmail" placeholder="tu@correo.com" autocomplete="email"></div>
+      <button class="auth-btn" id="recBtn" onclick="doRecuperar()">Enviar instrucciones</button>
+      <div class="auth-error" id="recError"></div>
+      <div class="auth-footer" style="margin-top:14px"><a onclick="mostrarPanel('authLogin')">Volver al inicio de sesion</a></div>
+    </div>
+    <div id="authRecuperarOk" style="display:none;text-align:center;padding:12px 0">
+      <div style="font-size:2.5rem;margin-bottom:12px">📬</div>
+      <div class="auth-title">Revisa tu correo</div>
+      <div class="auth-sub">Si el correo existe, recibiras las instrucciones en breve.</div>
+      <div class="auth-footer" style="margin-top:20px"><a onclick="mostrarPanel('authLogin')">Volver al inicio de sesion</a></div>
+    </div>
+  </div>
+</div>
 <footer>
   <p>&copy; <script>document.write(new Date().getFullYear())</script> VHM - Bienestar, Relaciones & Superación Personal.</p>
   <p style="margin-top:8px"><a href=".">Volver al inicio</a> | <a href="reclamo">Libro de Reclamaciones</a></p>
@@ -343,14 +462,278 @@ const API = (window.__APP_BASE__ || '') + '/api';
 let videosData = [];
 let videoActual = null;
 let eventosMes = [];
+let tribuUser = null;
+let planActual = null;
+let planesCache = null;
+let videoPendiente = null;
 const MESES_ES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-const DOW_ES = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+const DOW_ES = ['Lun','Mar','Mie','Jue','Vie','Sab','Dom'];
+
+/* AUTH */
+function getToken() { return localStorage.getItem('tribu_token'); }
+function setToken(t) { localStorage.setItem('tribu_token', t); }
+function clearToken() { localStorage.removeItem('tribu_token'); localStorage.removeItem('tribu_user'); }
+function getStoredUser() { try { return JSON.parse(localStorage.getItem('tribu_user') || 'null'); } catch { return null; } }
+function setStoredUser(u) { localStorage.setItem('tribu_user', JSON.stringify(u)); }
+function tieneSuscripcion() { return !!(tribuUser && tribuUser.suscripcion_activa); }
+
+function renderNavAuth() {
+  const area = document.getElementById('navAuthArea');
+  if (tribuUser) {
+    area.innerHTML = '<span class="nav-user"><span class="nav-user-name">Hola, ' + tribuUser.nombre + '</span><button class="nav-logout" onclick="doLogout()">Salir</button></span>';
+  } else {
+    area.innerHTML = "<a onclick='abrirLogin()' style='cursor:pointer'>Iniciar Sesion</a>";
+  }
+}
+
+async function verificarSesion() {
+  const token = getToken();
+  if (!token) { tribuUser = null; renderNavAuth(); return; }
+  try {
+    const res = await fetch(API + '/tribu-auth/me', { headers: { Authorization: 'Bearer ' + token } });
+    if (res.ok) { tribuUser = await res.json(); setStoredUser(tribuUser); }
+    else { clearToken(); tribuUser = null; }
+  } catch { tribuUser = getStoredUser(); }
+  renderNavAuth();
+}
+
+function abrirLogin() { abrirAuth("authLogin"); }
+function abrirLoginAuth() { abrirAuth("authLogin"); }
+function abrirRegistroAuth() { abrirAuth("authRegistro"); }
+function abrirAuth(panel) {
+  panel = panel || 'authLogin';
+  mostrarPanel(panel);
+  document.getElementById('authOverlay').classList.add('show');
+  document.body.style.overflow = 'hidden';
+  setTimeout(() => { const f = document.querySelector('#' + panel + ' input'); if (f) f.focus(); }, 50);
+}
+function cerrarAuth() { document.getElementById('authOverlay').classList.remove('show'); document.body.style.overflow = ''; limpiarErrores(); }
+function mostrarPanel(id) {
+  ['authLogin','authRegistro','authRecuperar','authRecuperarOk'].forEach(p => {
+    document.getElementById(p).style.display = p === id ? '' : 'none';
+  });
+  limpiarErrores();
+}
+function limpiarErrores() {
+  ['loginError','regError','recError'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = ''; });
+}
+
+async function doLogin() {
+  const btn = document.getElementById('loginBtn');
+  const errEl = document.getElementById('loginError');
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  if (!email || !password) { errEl.textContent = 'Completa todos los campos'; return; }
+  btn.disabled = true; btn.textContent = 'Entrando...';
+  try {
+    const res = await fetch(API + '/tribu-auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
+    const d = await res.json();
+    if (!res.ok) { errEl.textContent = d.error || 'Error al iniciar sesion'; return; }
+    setToken(d.token); setStoredUser(d.user); tribuUser = d.user;
+    renderNavAuth(); cerrarAuth(); cargar();
+    if (videoPendiente !== null) { const id = videoPendiente; videoPendiente = null; abrirVideo(id); }
+  } catch { errEl.textContent = 'Error de conexion'; }
+  finally { btn.disabled = false; btn.textContent = 'Entrar'; }
+}
+
+async function doRegistro() {
+  const btn = document.getElementById('regBtn');
+  const errEl = document.getElementById('regError');
+  const nombre = document.getElementById('regNombre').value.trim();
+  const apellido = document.getElementById('regApellido').value.trim();
+  const email = document.getElementById('regEmail').value.trim();
+  const password = document.getElementById('regPassword').value;
+  if (!nombre || !apellido || !email || !password) { errEl.textContent = 'Completa todos los campos'; return; }
+  btn.disabled = true; btn.textContent = 'Creando cuenta...';
+  try {
+    const res = await fetch(API + '/tribu-auth/registro', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre, apellido, email, password }) });
+    const d = await res.json();
+    if (!res.ok) { errEl.textContent = d.error || 'Error al crear cuenta'; return; }
+    setToken(d.token); setStoredUser(d.user); tribuUser = d.user;
+    renderNavAuth(); cerrarAuth(); cargar();
+  } catch { errEl.textContent = 'Error de conexion'; }
+  finally { btn.disabled = false; btn.textContent = 'Crear cuenta'; }
+}
+
+async function doRecuperar() {
+  const btn = document.getElementById('recBtn');
+  const errEl = document.getElementById('recError');
+  const email = document.getElementById('recEmail').value.trim();
+  if (!email) { errEl.textContent = 'Ingresa tu correo'; return; }
+  btn.disabled = true; btn.textContent = 'Enviando...';
+  try {
+    await fetch(API + '/tribu-auth/recuperar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
+    mostrarPanel('authRecuperarOk');
+  } catch { errEl.textContent = 'Error de conexion'; }
+  finally { btn.disabled = false; btn.textContent = 'Enviar instrucciones'; }
+}
+
+function doLogout() { clearToken(); tribuUser = null; renderNavAuth(); cargar(); }
+
+document.getElementById('authOverlay').addEventListener('click', e => { if (e.target.id === 'authOverlay') cerrarAuth(); });
+document.getElementById('authOverlay').addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  const panel = ['authLogin','authRegistro','authRecuperar'].find(p => document.getElementById(p).style.display !== 'none');
+  if (panel === 'authLogin') doLogin();
+  else if (panel === 'authRegistro') doRegistro();
+  else if (panel === 'authRecuperar') doRecuperar();
+});
+
+/* PLANES Y PAGO */
+async function abrirModalPlanes() {
+  document.getElementById('planesError').textContent = '';
+  document.getElementById('planesLista').innerHTML = '<div style="color:var(--muted);text-align:center;padding:20px">Cargando planes...</div>';
+  document.getElementById('planesOverlay').classList.add('show');
+  document.body.style.overflow = 'hidden';
+  if (!planesCache) {
+    try {
+      const res = await fetch(API + '/suscripciones/public');
+      const d = await res.json();
+      if (!d.visible || !d.data.length) {
+        document.getElementById('planesLista').innerHTML = '<div style="color:var(--muted);text-align:center;padding:20px">No hay planes disponibles en este momento.</div>';
+        return;
+      }
+      planesCache = d.data;
+    } catch {
+      document.getElementById('planesError').textContent = 'Error al cargar los planes.';
+      document.getElementById('planesLista').innerHTML = '';
+      return;
+    }
+  }
+  document.getElementById('planesLista').innerHTML = planesCache.map(p =>
+    '<div class="plan-card">' +
+      '<div class="plan-info">' +
+        '<div class="plan-nombre">' + escapeHtml(p.nombre) + '</div>' +
+        (p.descripcion ? '<div class="plan-desc">' + escapeHtml(p.descripcion) + '</div>' : '') +
+      '</div>' +
+      '<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">' +
+        '<div class="plan-precio">S/ ' + parseFloat(p.precio).toFixed(2) + '</div>' +
+        '<button class="plan-adquirir" data-plan-id="' + p.id + '" onclick="adquirirPlanById(this)">Adquirir</button>' +
+      '</div>' +
+    '</div>'
+  ).join('');
+}
+
+function cerrarModalPlanes() { document.getElementById('planesOverlay').classList.remove('show'); document.body.style.overflow = ''; }
+
+function adquirirPlanById(btn) {
+  const id = parseInt(btn.getAttribute('data-plan-id'));
+  const p = planesCache.find(x => x.id === id);
+  if (p) adquirirPlan(p.id, p.nombre, p.precio);
+}
+async function adquirirPlan(id, nombre, precio) {
+  cerrarModalPlanes();
+  planActual = { id, nombre, precio };
+  document.getElementById('pagoTitulo').textContent = nombre;
+  document.getElementById('pagoSub').textContent = 'S/ ' + parseFloat(precio).toFixed(2);
+  document.getElementById('pagoError').textContent = '';
+  document.getElementById('cardBrickContainer').innerHTML = '';
+  document.getElementById('pagoOverlay').classList.add('show');
+  document.body.style.overflow = 'hidden';
+  await montarCardBrick(id, precio);
+}
+
+async function montarCardBrick(suscripcion_id, monto) {
+  try {
+    const cfgRes = await fetch(API + '/config-mercadopago/public');
+    const cfg = await cfgRes.json();
+    if (!cfg.activo || !cfg.public_key) throw new Error('MercadoPago no esta activo');
+    const sandboxHint = document.getElementById('pagoSandboxHint');
+    if (cfg.modo === 'sandbox') {
+      sandboxHint.style.display = 'block';
+      sandboxHint.textContent = 'Modo prueba: usa tarjetas de prueba y el email ' + (cfg.sandbox_payer_email || 'test_user_123456789@testuser.com');
+    } else {
+      sandboxHint.style.display = 'none';
+      sandboxHint.textContent = '';
+    }
+    const mp = new MercadoPago(cfg.public_key, { locale: 'es-PE' });
+    const bricks = mp.bricks();
+    if (window._cardBrick) { try { await window._cardBrick.unmount(); } catch {} window._cardBrick = null; }
+    const init = { amount: parseFloat(monto) };
+    const payerEmail = cfg.modo === 'sandbox'
+      ? (cfg.sandbox_payer_email || 'test_user_123456789@testuser.com')
+      : (tribuUser && tribuUser.email);
+    if (payerEmail) init.payer = { email: payerEmail };
+    window._cardBrick = await bricks.create('cardPayment', 'cardBrickContainer', {
+      initialization: init,
+      customization: { visual: { style: { theme: 'dark' } } },
+      callbacks: {
+        onReady: () => {},
+        onError: (err) => { document.getElementById('pagoError').textContent = err.message || 'Error en el formulario'; },
+        onSubmit: (formData, additionalData) => new Promise(async (resolve, reject) => {
+          document.getElementById('pagoError').textContent = '';
+          try {
+            const payload = Object.assign({}, formData, {
+              suscripcion_id,
+              payment_type_id: additionalData && additionalData.paymentTypeId
+            });
+            const res = await fetch(API + '/tribu-pagos/procesar-pago', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + getToken() },
+              body: JSON.stringify(payload)
+            });
+            const d = await res.json();
+            if (!res.ok) throw new Error(d.error || 'Error al procesar el pago');
+            if (d.status === 'approved') {
+              cerrarModalPago();
+              await verificarSesion();
+              await cargar();
+              alert('Pago exitoso! Tu suscripcion ha sido activada.');
+              resolve();
+            } else if (d.status === 'in_process' || d.status === 'pending' || d.order_status === 'action_required') {
+              cerrarModalPago();
+              alert('Tu pago esta pendiente de confirmacion. Te avisaremos cuando se active.');
+              resolve();
+            } else {
+              throw new Error('Pago rechazado: ' + (d.status_detail || d.status));
+            }
+          } catch(err) {
+            document.getElementById('pagoError').textContent = err.message;
+            reject(err);
+          }
+        })
+      }
+    });
+  } catch(err) {
+    document.getElementById('pagoError').textContent = err.message;
+  }
+}
+
+function cerrarModalPago() {
+  if (window._cardBrick) { try { window._cardBrick.unmount(); } catch {} window._cardBrick = null; }
+  document.getElementById('pagoOverlay').classList.remove('show');
+  document.body.style.overflow = '';
+}
+
+document.getElementById('planesOverlay').addEventListener('click', e => { if (e.target.id === 'planesOverlay') cerrarModalPlanes(); });
+document.getElementById('pagoOverlay').addEventListener('click', e => { if (e.target.id === 'pagoOverlay') cerrarModalPago(); });
+
+function bannerSinSuscripcion() {
+  const logueado = !!tribuUser;
+  return '<div class="lock-banner">' +
+    '<div class="lock-icon">🔒</div>' +
+    '<h3>' + (logueado ? 'Necesitas una suscripcion activa' : 'Contenido exclusivo para miembros') + '</h3>' +
+    '<p>' + (logueado ? 'Hola ' + tribuUser.nombre + ', tu cuenta no tiene una suscripcion activa.' : 'Inicia sesion o crea una cuenta para acceder a todos los recursos de La Tribu.') + '</p>' +
+    '<div class="lock-btns">' +
+    (logueado
+      ? '<button class="lock-btn lock-btn-primary" onclick="abrirModalPlanes()">Ver planes</button>'
+      : '<button class="lock-btn lock-btn-primary" onclick="abrirLoginAuth()">Iniciar sesion</button><button class="lock-btn lock-btn-outline" onclick="abrirRegistroAuth()">Crear cuenta</button>'
+    ) +
+    '</div></div>';
+}
 
 function switchTribuTab(tab) {
   document.querySelectorAll('.tribu-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   document.getElementById('tabCamino').classList.toggle('active', tab === 'camino');
   document.getElementById('tabCalendario').classList.toggle('active', tab === 'calendario');
-  if (tab === 'calendario') cargarCalendario();
+  if (tab === 'calendario') {
+    if (tieneSuscripcion()) cargarCalendario();
+    else renderCalendarioBloqueado();
+  }
+}
+
+function renderCalendarioBloqueado() {
+  document.querySelector('.cal-wrap').innerHTML = '<div style="margin:40px auto;max-width:480px">' + bannerSinSuscripcion() + '</div>';
 }
 
 function fmtHora(t) {
@@ -512,7 +895,7 @@ async function cargar() {
         <div class="cat-block">
           <h2 class="cat-title">${escapeHtml(cat.nombre)}</h2>
           ${cat.descripcion ? `<p class="cat-desc">${escapeHtml(cat.descripcion)}</p>` : ''}
-          <div class="grid">${videosCat.map(cardHtml).join('')}</div>
+          <div class="grid ${tieneSuscripcion() ? '' : 'tribu-locked'}">${videosCat.map(cardHtml).join('')}</div>
         </div>`;
     });
 
@@ -521,17 +904,20 @@ async function cargar() {
       html += `
         <div class="cat-block">
           <h2 class="cat-title">Otros recursos</h2>
-          <div class="grid">${sinCategoria.map(cardHtml).join('')}</div>
+          <div class="grid ${tieneSuscripcion() ? '' : 'tribu-locked'}">${sinCategoria.map(cardHtml).join('')}</div>
         </div>`;
     }
 
     cont.innerHTML = html;
+    if (!tieneSuscripcion()) cont.insertAdjacentHTML('afterbegin', bannerSinSuscripcion());
   } catch (e) {
     document.getElementById('contenido').innerHTML = '<div class="empty">No se pudieron cargar los recursos.</div>';
   }
 }
 
 async function abrirVideo(id) {
+  if (!tribuUser) { videoPendiente = id; abrirAuth('authLogin'); return; }
+  if (!tieneSuscripcion()) { const cont = document.getElementById('contenido'); if (!cont.querySelector('.lock-banner')) cont.insertAdjacentHTML('afterbegin', bannerSinSuscripcion()); cont.querySelector('.lock-banner').scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
   const v = videosData.find(x => x.id === id);
   if (!v) return;
   videoActual = v;
@@ -625,7 +1011,7 @@ document.addEventListener('keydown', e => {
   }
 });
 
-cargar();
+verificarSesion().then(cargar);
 
 // Carga los textos del hero desde la configuración (editables desde el admin).
 (async function cargarLanding() {

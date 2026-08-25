@@ -38,13 +38,25 @@ src/
 ├── configPixelRoutes.js
 ├── configWhatsappRoutes.js
 ├── ensureSchema.js   ← Auto-migración de tablas
+├── tribuAuthRoutes.js    ← Login/registro La Tribu
+├── tribuPagosRoutes.js   ← Mercado Pago (Orders API)
+├── tribuAccessRoutes.js  ← Gate contraseña landing
+├── tribuUsersRoutes.js   ← Admin usuarios La Tribu
+├── suscripcionesRoutes.js
+├── configMercadoPagoRoutes.js
 └── mailer.js
 lib/
 ├── siteEnv.js        ← Lectura de variables de entorno
 └── mount.js          ← Utilidad de reescritura HTML
-public/               ← Frontend estático
+public/               ← Frontend estático (videos.html = La Tribu en /latribu)
 app.js                ← Entry point (Passenger / standalone)
 ```
+
+## La Tribu
+
+- Página: `public/videos.html` servida en `/site/latribu`
+- Pagos: Checkout API vía Orders API (`/api/tribu-pagos/procesar-pago`)
+- Variables extra: `SITE_URL`, `MP_SANDBOX_PAYER_EMAIL`, `MP_WEBHOOK_SECRET` (ver `.env.example`)
 
 ## Deploy cPanel
 

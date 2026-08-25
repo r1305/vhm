@@ -2,7 +2,7 @@
   <div>
     <div class="section-header">
       <div>
-        <h2>👥 Usuarios del sistema</h2>
+        <h2>👥 Administradores del sistema</h2>
         <p>Gestiona quiénes pueden acceder al panel de administración</p>
       </div>
       <button class="btn btn-primary" @click="mostrarModal()">+ Nuevo usuario</button>
