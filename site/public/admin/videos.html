@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>La Tribu - VHM Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/admin.css">
+  <script src="js/base.js"></script>
+  <style>
+    .summary-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 16px; }
+    .summary-card { text-align: center; padding: 24px 12px; }
+    .sc-icon { font-size: 2rem; margin-bottom: 6px; }
+    .sc-num { font-size: 1.6rem; font-weight: 700; color: var(--color-primary); }
+    .sc-label { font-size: .8rem; color: var(--text-muted); margin-top: 2px; }
+    .top-row { display: flex; align-items: center; gap: 10px; padding: 8px 4px; border-bottom: 1px solid var(--border-color); }
+    .top-row:last-child { border-bottom: none; }
+    .top-rank { width: 22px; height: 22px; border-radius: 50%; background: var(--color-primary); color: #fff; font-size: .75rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .top-title { flex: 1; font-size: .85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .top-num { font-size: .85rem; font-weight: 600; color: var(--text-secondary); white-space: nowrap; }
+    .stats-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+    @media (max-width: 768px) {
+      .summary-cards { grid-template-columns: repeat(2, 1fr); }
+      .stats-grid-2 { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div id="admin-root"><div id="page-main" style="display:none">
+    <div class="section-header">
+      <div>
+        <h2>🎬 La Tribu — Camino Interior</h2>
+        <p>Videos, categorías, eventos y textos de la sección</p>
+      </div>
+    </div>
+
+    <div class="sub-tabs">
+      <button type="button" data-tab="resumen">📊 Resumen</button>
+      <button type="button" data-tab="videos" class="active">🎬 Videos</button>
+      <button type="button" data-tab="categorias">🗂️ Categorías</button>
+      <button type="button" data-tab="textos">📝 Textos</button>
+      <button type="button" data-tab="eventos">📅 Eventos</button>
+      <button type="button" data-tab="acceso">🔐 Acceso</button>
+    </div>
+
+    <!-- RESUMEN -->
+    <div data-panel="resumen" style="display:none">
+      <div class="filter-row">
+        <label style="font-size:.85rem;font-weight:600;color:var(--text-secondary)">📅 Desde:</label>
+        <input type="date" id="res-fecha-desde">
+        <label style="font-size:.85rem;font-weight:600;color:var(--text-secondary)">Hasta:</label>
+        <input type="date" id="res-fecha-hasta">
+        <button type="button" class="btn btn-primary btn-sm" id="btn-res-filtrar">Filtrar</button>
+        <button type="button" class="btn btn-outline btn-sm" id="btn-res-limpiar">Limpiar</button>
+      </div>
+      <div class="summary-cards">
+        <div class="card summary-card"><div class="sc-icon">🎬</div><div class="sc-num" id="st-total-videos">—</div><div class="sc-label">Videos</div></div>
+        <div class="card summary-card"><div class="sc-icon">👁️</div><div class="sc-num" id="st-total-views">—</div><div class="sc-label">Vistas totales</div></div>
+        <div class="card summary-card"><div class="sc-icon">❤️</div><div class="sc-num" id="st-total-likes">—</div><div class="sc-label">Likes totales</div></div>
+        <div class="card summary-card"><div class="sc-icon">📊</div><div class="sc-num" id="st-prom-vistas">—</div><div class="sc-label">Prom. vistas/video</div></div>
+      </div>
+      <div class="stats-grid-2">
+        <div class="card">
+          <div class="card-header"><h3>🔝 Más vistos</h3></div>
+          <div class="card-body" style="padding:12px" id="top-views"></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>🔝 Más gustados</h3></div>
+          <div class="card-body" style="padding:12px" id="top-likes"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- VIDEOS -->
+    <div data-panel="videos">
+      <div class="filter-row">
+        <input type="text" id="vid-search" placeholder="Buscar por título..." style="width:180px">
+        <select id="vid-categoria">
+          <option value="">Todas las categorías</option>
+        </select>
+        <button type="button" class="btn btn-primary btn-sm" id="btn-vid-buscar">🔍 Buscar</button>
+        <button type="button" class="btn btn-primary btn-sm" id="btn-nuevo-video" style="margin-left:auto">+ Nuevo video</button>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <div class="table-desktop">
+            <table>
+              <thead>
+                <tr>
+                  <th></th>
+                  <th style="cursor:pointer" data-sort="titulo">Título <span class="sort-icon" data-col="titulo"></span></th>
+                  <th style="cursor:pointer" data-sort="categoria_nombre">Categoría <span class="sort-icon" data-col="categoria_nombre"></span></th>
+                  <th style="cursor:pointer" data-sort="duracion">Duración <span class="sort-icon" data-col="duracion"></span></th>
+                  <th style="cursor:pointer" data-sort="vistas">Vistas <span class="sort-icon" data-col="vistas"></span></th>
+                  <th style="cursor:pointer" data-sort="likes">Likes <span class="sort-icon" data-col="likes"></span></th>
+                  <th>Activo</th>
+                  <th>Creado por</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="videos-tbody"></tbody>
+            </table>
+          </div>
+          <div class="mobile-cards" id="videos-mobile"></div>
+        </div>
+        <div class="pagination" style="border-top:none;padding-top:0">
+          <button type="button" id="vid-pg-prev">←</button>
+          <span class="page-info" id="vid-pg-info">Pág. 1 de 1</span>
+          <button type="button" id="vid-pg-next">→</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CATEGORÍAS -->
+    <div data-panel="categorias" style="display:none">
+      <div style="margin-bottom:16px">
+        <button type="button" class="btn btn-primary" id="btn-nueva-categoria">+ Nueva categoría</button>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <div class="table-desktop">
+            <table>
+              <thead>
+                <tr><th>Nombre</th><th>Descripción</th><th>Videos</th><th>Orden</th><th>Creado por</th><th>Activo</th><th>Acciones</th></tr>
+              </thead>
+              <tbody id="cat-tbody"></tbody>
+            </table>
+          </div>
+          <div class="mobile-cards" id="cat-mobile"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TEXTOS -->
+    <div data-panel="textos" style="display:none">
+      <div class="card" style="max-width:640px">
+        <div class="card-header"><h3>📝 Textos de la sección</h3></div>
+        <div class="card-body" style="padding:20px">
+          <p style="font-size:.85rem;color:var(--text-muted);margin-bottom:16px">Estos textos aparecen en la pestaña <strong>Camino Interior</strong> de La Tribu.</p>
+          <div class="form-group">
+            <label>Texto introductorio <span class="optional">(empieza con "Cada masterclass...")</span></label>
+            <textarea id="landing-intro" rows="4" placeholder="Texto introductorio..."></textarea>
+          </div>
+          <div class="form-group">
+            <label>Texto del propósito <span class="optional">(empieza con "Cada recurso...")</span></label>
+            <textarea id="landing-pacto" rows="4" placeholder="Texto del propósito..."></textarea>
+          </div>
+          <button type="button" class="btn btn-primary" id="btn-guardar-landing">💾 Guardar cambios</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- EVENTOS -->
+    <div data-panel="eventos" style="display:none">
+      <div class="filter-row">
+        <label style="font-size:.85rem;font-weight:600;color:var(--text-secondary)">📅 Mes:</label>
+        <select id="evt-mes"></select>
+        <button type="button" class="btn btn-primary btn-sm" id="btn-nuevo-evento" style="margin-left:auto">+ Nuevo evento</button>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <div class="table-desktop">
+            <table>
+              <thead>
+                <tr><th>Nombre</th><th>Fecha</th><th>Inicio</th><th>Fin</th><th>Lugar</th><th>Creado por</th><th>Activo</th><th>Acciones</th></tr>
+              </thead>
+              <tbody id="evt-tbody"></tbody>
+            </table>
+          </div>
+          <div class="mobile-cards" id="evt-mobile"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ACCESO -->
+    <div data-panel="acceso" style="display:none">
+      <div style="padding:24px 0">
+        <div class="config-section">
+          <h3>🔐 Acceso por Contraseña</h3>
+          <p style="font-size:.85rem;color:var(--text-muted);margin-bottom:24px">La contraseña se renueva automáticamente cada miércoles al mediodía.</p>
+
+          <div class="form-group" style="display:flex;align-items:center;gap:12px">
+            <label style="margin:0">Bloqueo activo</label>
+            <label class="switch">
+              <input type="checkbox" id="acc-activo">
+              <span class="slider"></span>
+            </label>
+            <span style="font-size:.85rem;color:var(--text-muted)" id="acc-estado-label">🔓 Acceso libre</span>
+          </div>
+
+          <div style="margin:28px 0 20px;padding:20px;background:#0d0d0d;border:1px solid #222;border-radius:12px">
+            <div style="font-size:.8rem;color:#888;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">Contraseña actual</div>
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+              <span style="font-size:2rem;font-weight:800;letter-spacing:6px;color:#c8e6f0;font-family:monospace" id="acc-password">—</span>
+              <button type="button" class="btn btn-outline" style="padding:6px 14px;font-size:.85rem" id="btn-acc-copiar">📋 Copiar</button>
+            </div>
+            <div style="font-size:.78rem;color:#555;margin-top:8px">Última renovación: <span id="acc-fecha-renovacion">—</span></div>
+          </div>
+
+          <div style="margin-bottom:24px">
+            <button type="button" class="btn btn-outline" id="btn-acc-renovar" style="border-color:#e55;color:#e55">🔄 Renovar contraseña ahora</button>
+            <div style="font-size:.8rem;color:var(--text-muted);margin-top:6px">Úsalo ante una filtración o eventualidad.</div>
+          </div>
+
+          <div class="form-group">
+            <label>Mensaje para el usuario</label>
+            <input type="text" id="acc-mensaje" placeholder="Ingresa la contraseña para acceder a La Tribu" maxlength="500">
+            <div class="field-hint">Se muestra en la pantalla de acceso del landing.</div>
+          </div>
+
+          <button type="button" class="btn btn-primary" id="btn-acc-guardar">💾 Guardar</button>
+          <div class="msg-box" id="acc-msg" style="display:none;margin-top:12px"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL VIDEO -->
+    <div class="modal-overlay" id="modal-video">
+      <div class="modal">
+        <div class="modal-header">
+          <h3 id="modal-video-title">🎬 Nuevo Video</h3>
+          <button type="button" class="modal-close" data-modal-close="modal-video">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group"><label>Título <span class="optional">(opcional con Loom)</span></label><input type="text" id="vf-titulo" placeholder="Déjalo vacío para usar el de Loom"></div>
+          <div class="form-group"><label>Subtítulo / etiqueta</label><input type="text" id="vf-subtitulo" placeholder="Masterclass completa + Ronda de preguntas"></div>
+          <div class="form-group">
+            <label>Categoría</label>
+            <select id="vf-categoria_id">
+              <option value="">— Sin categoría —</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Enlace del video</label>
+            <input type="text" id="vf-video_url" placeholder="https://www.loom.com/share/...">
+            <div class="field-hint">Loom, YouTube, Vimeo o enlace directo a MP4</div>
+          </div>
+          <div class="form-group"><label>Duración <span class="optional">(se autocompleta en Loom)</span></label><input type="text" id="vf-duracion" placeholder="1h 25min"></div>
+          <div class="form-group"><label>Descripción</label><textarea id="vf-descripcion" rows="3" placeholder="Breve descripción del recurso..."></textarea></div>
+          <div class="form-group">
+            <label>Miniatura <span class="optional">(opcional)</span></label>
+            <div class="file-drop" id="vf-thumb-drop">
+              <input type="file" id="vf-thumbnail" accept="image/*">
+              <div class="fd-icon">🖼️</div>
+              <div class="fd-text">Haz clic para subir miniatura</div>
+            </div>
+            <div class="file-preview" id="vf-thumb-preview" style="display:none">
+              <img id="vf-thumb-img" src="" alt="" style="width:100px;height:56px;border-radius:6px;object-fit:cover">
+              <button type="button" class="btn-remove" id="btn-quitar-thumb">Quitar miniatura</button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Estado</label>
+            <select id="vf-activo">
+              <option value="1">🟢 Activo</option>
+              <option value="0">🔴 Inactivo</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" data-modal-close="modal-video">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="btn-guardar-video">💾 Guardar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL CATEGORÍA -->
+    <div class="modal-overlay" id="modal-categoria">
+      <div class="modal">
+        <div class="modal-header">
+          <h3 id="modal-categoria-title">🗂️ Nueva Categoría</h3>
+          <button type="button" class="modal-close" data-modal-close="modal-categoria">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group"><label>Nombre</label><input type="text" id="cf-nombre" placeholder="Sanación Emocional"></div>
+          <div class="form-group"><label>Descripción</label><textarea id="cf-descripcion" rows="3" placeholder="Herramientas para entender, soltar y sanar..."></textarea></div>
+          <div class="form-group"><label>Orden</label><input type="number" id="cf-orden" placeholder="1" min="1" value="1"></div>
+          <div class="form-group">
+            <label>Estado</label>
+            <select id="cf-activo">
+              <option value="1">🟢 Activo</option>
+              <option value="0">🔴 Inactivo</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" data-modal-close="modal-categoria">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="btn-guardar-categoria">💾 Guardar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL EVENTO -->
+    <div class="modal-overlay" id="modal-evento">
+      <div class="modal">
+        <div class="modal-header">
+          <h3 id="modal-evento-title">📅 Nuevo Evento</h3>
+          <button type="button" class="modal-close" data-modal-close="modal-evento">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group"><label>Nombre</label><input type="text" id="ef-nombre" placeholder="Encuentro de la tribu"></div>
+          <div class="form-group"><label>Fecha</label><input type="date" id="ef-fecha"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="form-group"><label>Hora inicio</label><input type="time" id="ef-hora_inicio"></div>
+            <div class="form-group"><label>Hora fin <span class="optional">(opcional)</span></label><input type="time" id="ef-hora_fin"></div>
+          </div>
+          <div class="form-group"><label>Lugar</label><input type="text" id="ef-lugar" placeholder="Centro VHM, Sala principal"></div>
+          <div class="form-group"><label>Link <span class="optional">(opcional)</span></label><input type="url" id="ef-ubicacion" placeholder="https://maps.google.com/..."></div>
+          <div class="form-group">
+            <label>Estado</label>
+            <select id="ef-activo">
+              <option value="1">🟢 Activo</option>
+              <option value="0">🔴 Inactivo</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" data-modal-close="modal-evento">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="btn-guardar-evento">💾 Guardar</button>
+        </div>
+      </div>
+    </div>
+  </div></div>
+
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/toast.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/layout.js"></script>
+  <script src="js/videos.js"></script>
+</body>
+</html>

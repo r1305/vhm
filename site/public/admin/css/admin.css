@@ -536,3 +536,10 @@ tr:hover td { background: var(--bg-card-hover); }
 .slider:before { content: ''; position: absolute; width: 18px; height: 18px; left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: .3s; }
 .switch input:checked + .slider { background: #4caf50; }
 .switch input:checked + .slider:before { transform: translateX(20px); }
+
+.msg-box { display: none; padding: 12px 14px; border-radius: 10px; font-size: .85rem; margin-top: 12px; }
+.msg-box.success { display: block; background: #ecfdf5; border: 1px solid #a7f3d0; color: #047857; }
+.msg-box.error { display: block; background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; }
+
+.btn-secondary { background: var(--bg-hover); color: var(--text-secondary); border: 1px solid var(--border-light); }
+.btn-secondary:hover:not(:disabled) { background: var(--bg-hover-strong); }

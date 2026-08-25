@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Testimonios - VHM Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/admin.css">
+  <script src="js/base.js"></script>
+</head>
+<body>
+  <div id="admin-root"><div id="page-main" style="display:none">
+    <div class="section-header">
+      <div>
+        <h2>⭐ Testimonios</h2>
+        <p>Gestiona los testimonios que se muestran en la landing page</p>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button type="button" class="btn btn-outline btn-sm" id="btn-toggle-seccion">🚫 Sección oculta</button>
+        <button type="button" class="btn btn-primary" id="btn-nuevo">+ Nuevo testimonio</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-body">
+        <div class="table-desktop">
+          <table>
+            <thead><tr><th>Foto</th><th>Autor</th><th>Texto</th><th>Creado por</th><th>Estado</th><th>Acciones</th></tr></thead>
+            <tbody id="testimonios-body"></tbody>
+          </table>
+        </div>
+        <div class="mobile-cards" id="testimonios-mobile"></div>
+      </div>
+    </div>
+    <div class="modal-overlay" id="modal-testimonio">
+      <div class="modal">
+        <div class="modal-header">
+          <h3 id="modal-testimonio-title">⭐ Nuevo Testimonio</h3>
+          <button type="button" class="modal-close" data-modal-close="modal-testimonio">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="input-autor">Autor</label>
+            <input type="text" id="input-autor" placeholder="María, 28 años">
+          </div>
+          <div class="form-group">
+            <label for="input-texto">Texto del testimonio</label>
+            <textarea id="input-texto" rows="3" placeholder="Escribe el testimonio..."></textarea>
+          </div>
+          <div class="form-group">
+            <label for="input-foto">Foto</label>
+            <div class="file-drop">
+              <input type="file" id="input-foto" accept="image/*">
+              <div class="fd-icon">📷</div>
+              <div class="fd-text">Haz clic para subir una foto</div>
+            </div>
+            <div class="file-preview" id="foto-preview">
+              <img id="foto-preview-img" src="" alt="" style="width:48px;height:48px;border-radius:50%;object-fit:cover">
+              <button type="button" class="btn-remove" id="btn-quitar-foto">Quitar foto</button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="select-activo">Estado</label>
+            <select id="select-activo">
+              <option value="1">🟢 Activo</option>
+              <option value="0">🔴 Inactivo</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" data-modal-close="modal-testimonio">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="btn-guardar-testimonio">💾 Guardar</button>
+        </div>
+      </div>
+    </div>
+  </div></div>
+  <script src="js/api.js"></script><script src="js/auth.js"></script><script src="js/toast.js"></script><script src="js/utils.js"></script><script src="js/layout.js"></script><script src="js/testimonios.js"></script>
+</body>
+</html>
