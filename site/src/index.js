@@ -115,11 +115,27 @@ app.get('/__app_base__.js', (req, res) => {
   res.type('application/javascript').set('Cache-Control', 'no-store').send(`window.__APP_BASE__=${JSON.stringify(base)};`);
 });
 
-app.use(express.static(path.join(__dirname, '../public'), { maxAge: '1d', index: false }));
+app.use(express.static(path.join(__dirname, '../public'), {
+  maxAge: '1d',
+  index: false,
+  setHeaders(res, filePath) {
+    const normalized = filePath.replace(/\\/g, '/');
+    if (normalized.includes('/public/admin/')) {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+    }
+  },
+}));
 
 function sendVueAdmin(res) {
   const base = ((res.locals && res.locals.basePath) || process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
   const filePath = path.join(__dirname, '../public/admin/index.html');
+  if (!fs.existsSync(filePath)) {
+    return res.status(503).type('html').send(
+      '<h1>Admin no compilado</h1><p>Ejecuta <code>npm run build:admin</code> o reinicia la app para compilar admin-vue.</p>'
+    );
+  }
   let html = fs.readFileSync(filePath, 'utf8');
   const inlineBase = `<script>window.__APP_BASE__=${JSON.stringify(base)};</script>`;
   html = html.replace(/(<head[^>]*>)/i, `$1\n  ${inlineBase}`);
@@ -127,10 +143,19 @@ function sendVueAdmin(res) {
   if (base) {
     html = rewriteRootPaths(html, base);
   }
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
   res.type('html').send(html);
 }
 
-app.get(['/admin', '/admin/', '/admin/*'], (req, res) => sendVueAdmin(res));
+app.get(['/admin', '/admin/'], (req, res) => sendVueAdmin(res));
+app.get('/admin/*', (req, res) => {
+  if (req.path.startsWith('/admin/assets/')) {
+    return res.status(404).send('Not found');
+  }
+  sendVueAdmin(res);
+});
 
 app.get('/consulta', (req, res) => {
   sendPublicHtml(res, 'consulta.html');
