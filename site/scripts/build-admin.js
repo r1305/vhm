@@ -31,8 +31,7 @@ function newestMtime(dir) {
 
 function forceBuildEnabled() {
   if (process.env.ADMIN_SKIP_BUILD === '1') return false;
-  if (process.env.ADMIN_FORCE_BUILD === '0') return false;
-  return true;
+  return process.env.ADMIN_FORCE_BUILD === '1';
 }
 
 function needsBuild() {

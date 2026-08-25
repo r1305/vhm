@@ -1,3 +1,3 @@
-deploy-version=f87536f
+deploy-version=deploy-v3
 deploy-date=2026-08-25
 features=latribu-mercadopago,admin-auto-build,tribu-users

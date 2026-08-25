@@ -228,10 +228,12 @@ app.get('/api/pixel-config', async (req, res) => {
   try {
     const pool = require('./db');
     const [rows] = await pool.execute('SELECT pixel_id, activo FROM config_pixel WHERE id = 1 AND activo = 1');
-    res.json(rows[0] || { pixel_id: null, activo: false });
+    const payload = rows[0] || { pixel_id: null, activo: false };
+    payload._deployVersion = 'deploy-v3';
+    res.json(payload);
   } catch (err) {
     console.error(err);
-    res.json({ pixel_id: null, activo: false });
+    res.json({ pixel_id: null, activo: false, _deployVersion: 'deploy-v3' });
   }
 });
 
