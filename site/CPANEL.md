@@ -41,6 +41,21 @@ MP_SANDBOX_PAYER_EMAIL=test_user_XXXXX@testuser.com   # solo sandbox
 
 Si el build falla por memoria en el hosting, compila en local una vez (`npm run build:admin`) y sube `public/admin/`, o define `ADMIN_SKIP_BUILD=1` en `.env`.
 
+### Verificar que el admin se actualizó
+
+1. Abre `https://vhm.com.pe/site/admin/BUILD.txt` — debe mostrar fecha reciente del último build.
+2. En el admin deberías ver **Usuarios Tribu** en el menú y **Mercado Pago** en Ajustes (solo Super Admin).
+3. Hard refresh: `Ctrl+Shift+R` (Windows) o vacía caché del navegador.
+
+### Si git pull falla por cambios locales
+
+```bash
+git checkout -- site/package.json
+git pull origin main
+```
+
+Luego **Run NPM Install** + **Restart**.
+
 ## La Tribu + Mercado Pago
 
 | Recurso | URL |

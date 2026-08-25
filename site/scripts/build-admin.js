@@ -2,6 +2,7 @@
  * Compila admin-vue → public/admin cuando el código fuente cambió.
  * Se ejecuta al arrancar app.js y en postinstall (npm install).
  * Desactivar: ADMIN_SKIP_BUILD=1 en .env
+ * Forzar siempre (producción): ADMIN_FORCE_BUILD=1 (por defecto en NODE_ENV=production)
  */
 const { spawnSync } = require('child_process');
 const fs = require('fs');
@@ -10,6 +11,7 @@ const path = require('path');
 const ROOT = path.join(__dirname, '..');
 const ADMIN_VUE = path.join(ROOT, 'admin-vue');
 const OUT_INDEX = path.join(ROOT, 'public', 'admin', 'index.html');
+const BUILD_STAMP = path.join(ROOT, 'public', 'admin', 'BUILD.txt');
 const SRC_DIR = path.join(ADMIN_VUE, 'src');
 
 function newestMtime(dir) {
@@ -27,7 +29,14 @@ function newestMtime(dir) {
   return max;
 }
 
+function forceBuildEnabled() {
+  if (process.env.ADMIN_FORCE_BUILD === '1') return true;
+  if (process.env.ADMIN_FORCE_BUILD === '0') return false;
+  return process.env.NODE_ENV === 'production';
+}
+
 function needsBuild() {
+  if (forceBuildEnabled()) return true;
   if (!fs.existsSync(SRC_DIR)) return false;
   if (!fs.existsSync(OUT_INDEX)) return true;
   const outTime = fs.statSync(OUT_INDEX).mtimeMs;
@@ -47,6 +56,13 @@ function needsBuild() {
     }
   }
   return false;
+}
+
+function writeBuildStamp() {
+  const stamp = new Date().toISOString();
+  fs.mkdirSync(path.dirname(BUILD_STAMP), { recursive: true });
+  fs.writeFileSync(BUILD_STAMP, `admin build: ${stamp}\n`, 'utf8');
+  console.log(`[admin] BUILD.txt → ${stamp}`);
 }
 
 function npmInAdmin(args, label) {
@@ -80,7 +96,11 @@ function run() {
     return;
   }
 
-  console.log('[admin] compilando panel admin (admin-vue → public/admin)...');
+  if (forceBuildEnabled()) {
+    console.log('[admin] compilación forzada (producción / ADMIN_FORCE_BUILD=1)...');
+  } else {
+    console.log('[admin] compilando panel admin (admin-vue → public/admin)...');
+  }
 
   const nodeModules = path.join(ADMIN_VUE, 'node_modules', 'vite');
   if (!fs.existsSync(nodeModules)) {
@@ -90,7 +110,14 @@ function run() {
   }
 
   const ok = npmInAdmin(['run', 'build'], 'vite build');
-  if (ok) console.log('[admin] build completado');
+  if (ok) {
+    writeBuildStamp();
+    console.log('[admin] build completado');
+  } else if (fs.existsSync(OUT_INDEX)) {
+    console.warn('[admin] build falló; se sirve el último public/admin disponible');
+  } else {
+    console.error('[admin] build falló y no hay public/admin/index.html');
+  }
 }
 
 module.exports = { run, needsBuild };
