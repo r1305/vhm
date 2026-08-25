@@ -1,4 +1,5 @@
 require('dotenv').config();
+require('./scripts/build-admin').run();
 const express = require('express');
 
 // Forzar GMT-5 (Lima) en todo el proceso antes de cualquier operacion de fecha
