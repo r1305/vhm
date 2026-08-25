@@ -12,9 +12,9 @@ function requireAdmin(req, res, next) {
 // Pública: obtener planes activos + visibilidad
 router.get('/public', async (req, res) => {
   try {
-    const [cfg] = await pool.execute('SELECT activo FROM config_suscripciones WHERE id = 1');
-    const visible = cfg[0]?.activo ?? false;
-    if (!visible) return res.json({ visible: false, data: [] });
+    const [cfg] = await pool.execute('SELECT activo, visible FROM config_suscripciones WHERE id = 1');
+    const row = cfg[0];
+    if (!row?.activo || !row?.visible) return res.json({ visible: false, data: [] });
     const [rows] = await pool.execute('SELECT id, nombre, precio, descripcion FROM suscripciones ORDER BY id ASC');
     res.json({ visible: true, data: rows });
   } catch { res.json({ visible: false, data: [] }); }
@@ -25,16 +25,16 @@ router.use(authMiddleware);
 // GET config visibilidad
 router.get('/config', requireAdmin, async (req, res) => {
   try {
-    const [rows] = await pool.execute('SELECT activo FROM config_suscripciones WHERE id = 1');
-    res.json({ activo: rows[0]?.activo ?? false });
+    const [rows] = await pool.execute('SELECT activo, visible FROM config_suscripciones WHERE id = 1');
+    res.json({ activo: rows[0]?.activo ?? false, visible: rows[0]?.visible ?? false });
   } catch { res.status(500).json({ error: 'Error al obtener configuración' }); }
 });
 
 // PUT config visibilidad
 router.put('/config', requireAdmin, async (req, res) => {
   try {
-    const { activo } = req.body;
-    await pool.execute('UPDATE config_suscripciones SET activo = ? WHERE id = 1', [activo ? 1 : 0]);
+    const { activo, visible } = req.body;
+    await pool.execute('UPDATE config_suscripciones SET activo = ?, visible = ? WHERE id = 1', [activo ? 1 : 0, visible ? 1 : 0]);
     res.json({ message: 'Configuración guardada' });
   } catch { res.status(500).json({ error: 'Error al guardar configuración' }); }
 });

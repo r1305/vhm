@@ -235,8 +235,16 @@
       <div class="config-grid">
         <div class="config-section">
           <h3>💳 Planes de Suscripción</h3>
+          <div class="form-group" style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+            <label style="margin:0;min-width:220px">Habilitar suscripciones (pagos)</label>
+            <label class="switch">
+              <input type="checkbox" id="sus-activo">
+              <span class="slider"></span>
+            </label>
+            <span style="font-size:.85rem;color:var(--text-muted)" id="sus-activo-label">🔴 Deshabilitado</span>
+          </div>
           <div class="form-group" style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
-            <label style="margin:0">Mostrar sección en la landing</label>
+            <label style="margin:0;min-width:220px">Mostrar sección en la landing</label>
             <label class="switch">
               <input type="checkbox" id="sus-visible">
               <span class="slider"></span>
