@@ -118,9 +118,11 @@ async function crearEsquema() {
       nombre VARCHAR(120) NOT NULL,
       precio DECIMAL(10,2) NOT NULL,
       descripcion VARCHAR(255) NULL,
+      vigencia_dias INT NOT NULL DEFAULT 30,
       fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
+  await pool.query('ALTER TABLE suscripciones ADD COLUMN IF NOT EXISTS vigencia_dias INT NOT NULL DEFAULT 30').catch(() => {});
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS config_suscripciones (
@@ -142,6 +144,75 @@ async function crearEsquema() {
         ('Plan VIP', 89.90, 'Próximamente')`
     );
   }
+
+  // Usuarios de La Tribu (espejo de pacientes sin terapeuta_id)
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS tribu_users (
+      id               INT AUTO_INCREMENT PRIMARY KEY,
+      nombre           VARCHAR(120) NOT NULL,
+      apellido         VARCHAR(120) NOT NULL,
+      email            VARCHAR(150) DEFAULT NULL,
+      telefono         VARCHAR(30)  DEFAULT NULL,
+      fecha_nacimiento DATE         DEFAULT NULL,
+      genero           ENUM('masculino','femenino','otro','prefiero_no_decir') DEFAULT NULL,
+      direccion        VARCHAR(255) DEFAULT NULL,
+      motivo_consulta  TEXT         DEFAULT NULL,
+      fuente           VARCHAR(80)  DEFAULT NULL,
+      fuente_detalle   VARCHAR(200) DEFAULT NULL,
+      estado           ENUM('prospecto','activo','alta','inactivo','lista_espera') NOT NULL DEFAULT 'prospecto',
+      consentimiento   TINYINT(1)   NOT NULL DEFAULT 0,
+      consentimiento_at TIMESTAMP   NULL DEFAULT NULL,
+      notas_internas   TEXT         DEFAULT NULL,
+      password         TEXT         NOT NULL,
+      psw_temp         TINYINT(1)   NOT NULL DEFAULT 1 CHECK (psw_temp IN (0,1)),
+      is_suscribed     TINYINT(1)   NOT NULL DEFAULT 0,
+      created_at       TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+      updated_at       TIMESTAMP    DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+
+  // Mercado Pago
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS config_mercadopago (
+      id             INT PRIMARY KEY,
+      activo         TINYINT(1) NOT NULL DEFAULT 0,
+      modo           ENUM('sandbox','produccion') NOT NULL DEFAULT 'sandbox',
+      public_key     VARCHAR(120) NOT NULL DEFAULT '',
+      access_token   VARCHAR(120) NOT NULL DEFAULT '',
+      fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+  const [mpRows] = await pool.query('SELECT id FROM config_mercadopago WHERE id = 1');
+  if (mpRows.length === 0) {
+    await pool.query("INSERT INTO config_mercadopago (id, activo, modo, public_key, access_token) VALUES (1, 0, 'sandbox', '', '')");
+  }
+
+  // Suscripciones activas de usuarios de La Tribu
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS tribu_suscripciones (
+      id              INT AUTO_INCREMENT PRIMARY KEY,
+      tribu_user_id   INT NOT NULL,
+      suscripcion_id  INT NOT NULL,
+      fecha_inicio    DATE NOT NULL,
+      fecha_fin       DATE NOT NULL,
+      activo          TINYINT(1) NOT NULL DEFAULT 1,
+      created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      KEY idx_ts_user (tribu_user_id),
+      KEY idx_ts_fin (fecha_fin),
+      FOREIGN KEY (tribu_user_id) REFERENCES tribu_users(id) ON DELETE CASCADE,
+      FOREIGN KEY (suscripcion_id) REFERENCES suscripciones(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+
+  await pool.query('ALTER TABLE tribu_suscripciones ADD COLUMN mp_payment_id VARCHAR(64) NULL').catch(() => {});
+  await pool.query('ALTER TABLE tribu_suscripciones ADD KEY idx_ts_mp (mp_payment_id)').catch(() => {});
+
+  // Columna para contraseña temporal en texto plano (se borra al cambiar)
+  await pool.query('ALTER TABLE tribu_users ADD COLUMN password_plain VARCHAR(20) NULL').catch(() => {});
+
+  // Columnas reset_token para tribu_users
+  await pool.query('ALTER TABLE tribu_users ADD COLUMN reset_token VARCHAR(64) NULL').catch(() => {});
+  await pool.query('ALTER TABLE tribu_users ADD COLUMN reset_token_exp DATETIME NULL').catch(() => {});
 
   // Acceso por contraseña a La Tribu
   await pool.query(`

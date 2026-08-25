@@ -20,9 +20,12 @@
         <button class="nav-item" :class="{ active: $route.path === '/videos' }" @click="navigate('/videos')">
           <span class="nav-icon">🎬</span> La Tribu
         </button>
+        <button class="nav-item" :class="{ active: $route.path === '/tribu-users' }" @click="navigate('/tribu-users')">
+          <span class="nav-icon">🫂</span> Usuarios Tribu
+        </button>
         <div class="nav-label">Configuración</div>
         <button class="nav-item" :class="{ active: $route.path === '/usuarios' }" @click="navigate('/usuarios')">
-          <span class="nav-icon">👥</span> Usuarios
+          <span class="nav-icon">👥</span> Administradores
         </button>
         <button v-if="auth.isAdmin" class="nav-item" :class="{ active: $route.path === '/config' }" @click="navigate('/config')">
           <span class="nav-icon">⚙️</span> Ajustes
@@ -72,7 +75,8 @@ const PAGE_TITLES = {
   reclamos: '📋 Reclamos',
   testimonios: '⭐ Testimonios',
   videos: '🎬 La Tribu',
-  usuarios: '👥 Usuarios',
+  'tribu-users': '🫂 Usuarios Tribu',
+  usuarios: '👥 Administradores',
   config: '⚙️ Configuración'
 }
 

@@ -6,6 +6,7 @@ import TestimoniosView from '../views/TestimoniosView.vue'
 import VideosView from '../views/VideosView.vue'
 import UsuariosView from '../views/UsuariosView.vue'
 import ConfigView from '../views/ConfigView.vue'
+import TribuUsersView from '../views/TribuUsersView.vue'
 
 const routes = [
   { path: '/login', name: 'login', component: LoginView },
@@ -18,6 +19,7 @@ const routes = [
       { path: 'testimonios', name: 'testimonios', component: TestimoniosView, meta: { roles: ['ADMIN', 'SUPER_ADMIN'] } },
       { path: 'videos', name: 'videos', component: VideosView, meta: { roles: ['ADMIN', 'SUPER_ADMIN'] } },
       { path: 'usuarios', name: 'usuarios', component: UsuariosView, meta: { roles: ['ADMIN', 'SUPER_ADMIN'] } },
+      { path: 'tribu-users', name: 'tribu-users', component: TribuUsersView, meta: { roles: ['ADMIN', 'SUPER_ADMIN'] } },
       { path: 'config', name: 'config', component: ConfigView, meta: { roles: ['SUPER_ADMIN'] } }
     ]
   }

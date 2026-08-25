@@ -50,24 +50,24 @@ router.get('/', requireAdmin, async (req, res) => {
 // POST crear plan
 router.post('/', requireAdmin, async (req, res) => {
   try {
-    const { nombre, precio, descripcion } = req.body;
+    const { nombre, precio, descripcion, vigencia_dias } = req.body;
     if (!nombre || precio == null) return res.status(400).json({ error: 'Nombre y precio son obligatorios' });
     const [result] = await pool.execute(
-      'INSERT INTO suscripciones (nombre, precio, descripcion) VALUES (?, ?, ?)',
-      [nombre.trim(), parseFloat(precio), descripcion?.trim() || null]
+      'INSERT INTO suscripciones (nombre, precio, descripcion, vigencia_dias) VALUES (?, ?, ?, ?)',
+      [nombre.trim(), parseFloat(precio), descripcion?.trim() || null, parseInt(vigencia_dias) || 30]
     );
-    res.status(201).json({ id: result.insertId, nombre, precio, descripcion });
+    res.status(201).json({ id: result.insertId, nombre, precio, descripcion, vigencia_dias });
   } catch { res.status(500).json({ error: 'Error al crear suscripción' }); }
 });
 
 // PUT editar plan
 router.put('/:id', requireAdmin, async (req, res) => {
   try {
-    const { nombre, precio, descripcion } = req.body;
+    const { nombre, precio, descripcion, vigencia_dias } = req.body;
     if (!nombre || precio == null) return res.status(400).json({ error: 'Nombre y precio son obligatorios' });
     const [result] = await pool.execute(
-      'UPDATE suscripciones SET nombre = ?, precio = ?, descripcion = ? WHERE id = ?',
-      [nombre.trim(), parseFloat(precio), descripcion?.trim() || null, req.params.id]
+      'UPDATE suscripciones SET nombre = ?, precio = ?, descripcion = ?, vigencia_dias = ? WHERE id = ?',
+      [nombre.trim(), parseFloat(precio), descripcion?.trim() || null, parseInt(vigencia_dias) || 30, req.params.id]
     );
     if (result.affectedRows === 0) return res.status(404).json({ error: 'Plan no encontrado' });
     res.json({ message: 'Plan actualizado' });
