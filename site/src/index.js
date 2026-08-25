@@ -107,6 +107,58 @@ function sendPublicHtml(res, filename) {
   res.type('html').send(html);
 }
 
+const ADMIN_DIR = path.join(__dirname, '../public/admin');
+const ADMIN_PAGES = [
+  'login.html',
+  'reclamos.html',
+  'testimonios.html',
+  'videos.html',
+  'tribu-users.html',
+  'usuarios.html',
+  'config.html',
+  'index.html',
+];
+
+function sendAdminHtml(res, filename) {
+  const base = ((res.locals && res.locals.basePath) || process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
+  const filePath = path.join(ADMIN_DIR, filename);
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).type('text/plain').send('Admin page not found: ' + filename);
+  }
+  let html = fs.readFileSync(filePath, 'utf8');
+  const inlineBase = `<script>window.__APP_BASE__=${JSON.stringify(base)};</script>`;
+  html = html.replace(/(<head[^>]*>)/i, `$1\n  ${inlineBase}`);
+  html = html.replace(/(<head[^>]*>)/i, `$1\n  <base href="${base}/admin/">`);
+  if (base) {
+    html = rewriteRootPaths(html, base);
+  }
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  res.type('html').send(html);
+}
+
+function sendAdminAsset(subdir, file, res) {
+  if (!file || !/^[a-zA-Z0-9._-]+$/.test(file)) {
+    return res.status(400).type('text/plain').send('Invalid file');
+  }
+  const dir = path.join(ADMIN_DIR, subdir);
+  const filePath = path.join(dir, file);
+  if (!filePath.startsWith(dir + path.sep) || !fs.existsSync(filePath)) {
+    return res.status(404).type('text/plain').send('Not found');
+  }
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.sendFile(filePath);
+}
+
+// Admin assets — rutas explícitas (evita que HTML reemplace JS/CSS en producción)
+app.get('/admin/js/:file', (req, res) => sendAdminAsset('js', req.params.file, res));
+app.get('/admin/css/:file', (req, res) => sendAdminAsset('css', req.params.file, res));
+
+ADMIN_PAGES.forEach((page) => {
+  app.get('/admin/' + page, (req, res) => sendAdminHtml(res, page));
+});
+
 app.get('/', (req, res) => sendPublicHtml(res, 'index.html'));
 
 // Fallback para __app_base__.js cuando se corre standalone (sin gateway)
@@ -118,23 +170,30 @@ app.get('/__app_base__.js', (req, res) => {
 app.use(express.static(path.join(__dirname, '../public'), {
   maxAge: '1d',
   index: false,
-  setHeaders(res, filePath) {
-    const normalized = filePath.replace(/\\/g, '/');
-    if (normalized.includes('/public/admin/')) {
-      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-      res.setHeader('Pragma', 'no-cache');
-      res.setHeader('Expires', '0');
-    }
-  },
 }));
 
 app.get('/health', (req, res) => {
-  res.json({ ok: true, service: 'vhm-site', admin: 'html' });
+  res.json({ ok: true, service: 'vhm-site', admin: 'html', version: 'html-admin-v2' });
+});
+
+app.get('/api/deploy-info', (req, res) => {
+  const versionFile = path.join(__dirname, '../public/DEPLOY_VERSION.txt');
+  let version = null;
+  if (fs.existsSync(versionFile)) {
+    version = fs.readFileSync(versionFile, 'utf8').trim();
+  }
+  res.json({
+    ok: true,
+    version,
+    adminDir: fs.existsSync(ADMIN_DIR),
+    adminJs: fs.existsSync(path.join(ADMIN_DIR, 'js', 'api.js')),
+    adminPages: ADMIN_PAGES.filter((p) => fs.existsSync(path.join(ADMIN_DIR, p))),
+  });
 });
 
 app.get(['/admin', '/admin/'], (req, res) => {
   const base = (res.locals.basePath || process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
-  res.redirect(base + '/admin/reclamos.html');
+  res.redirect(base + '/admin/login.html');
 });
 
 app.get('/consulta', (req, res) => {
@@ -163,11 +222,11 @@ app.get('/api/pixel-config', async (req, res) => {
     const pool = require('./db');
     const [rows] = await pool.execute('SELECT pixel_id, activo FROM config_pixel WHERE id = 1 AND activo = 1');
     const payload = rows[0] || { pixel_id: null, activo: false };
-    payload._deployVersion = 'html-admin-v1';
+    payload._deployVersion = 'html-admin-v2';
     res.json(payload);
   } catch (err) {
     console.error(err);
-    res.json({ pixel_id: null, activo: false, _deployVersion: 'html-admin-v1' });
+    res.json({ pixel_id: null, activo: false, _deployVersion: 'html-admin-v2' });
   }
 });
 

@@ -38,9 +38,26 @@ MP_SANDBOX_PAYER_EMAIL=test_user_XXXXX@testuser.com   # solo sandbox
 
 ### Verificar deploy
 
-- `https://vhm.com.pe/site/api/pixel-config` → debe incluir `"_deployVersion":"html-admin-v1"`
-- `https://vhm.com.pe/site/DEPLOY_VERSION.txt` → `deploy-version=html-admin-v1`
-- Admin: `https://vhm.com.pe/site/admin/login.html`
+Abre estas URLs (deben responder **JSON** o **texto**, nunca "Cannot GET"):
+
+| URL | Esperado |
+|-----|----------|
+| `/site/api/deploy-info` | JSON con `version`, `adminJs: true` |
+| `/site/api/pixel-config` | `"_deployVersion":"html-admin-v2"` |
+| `/site/DEPLOY_VERSION.txt` | `deploy-version=html-admin-v2` |
+| `/site/admin/js/api.js` | Código JavaScript (no HTML) |
+| `/site/admin/login.html` | Pantalla de login con estilos |
+
+### Deploy con git (Terminal SSH)
+
+```bash
+cd ~/ruta/al/repo    # carpeta PADRE de site/ (donde está .git)
+bash site/deploy.sh
+```
+
+Luego **Restart** en cPanel.
+
+Ver guía completa: `site/DEPLOY.md`
 
 ## Panel admin (HTML, sin Vue)
 
