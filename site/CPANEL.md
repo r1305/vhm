@@ -43,9 +43,10 @@ Si el build falla por memoria en el hosting, compila en local una vez (`npm run 
 
 ### Verificar que el admin se actualizó
 
-1. Abre `https://vhm.com.pe/site/admin/BUILD.txt` — debe mostrar fecha reciente del último build.
-2. En el admin deberías ver **Usuarios Tribu** en el menú y **Mercado Pago** en Ajustes (solo Super Admin).
-3. Hard refresh: `Ctrl+Shift+R` (Windows) o vacía caché del navegador.
+1. Abre `https://vhm.com.pe/site/api/admin-build-info` — JSON con estado del build.
+2. Abre `https://vhm.com.pe/site/admin/BUILD.txt` — fecha del último build (o mensaje de error claro).
+3. En el admin deberías ver **Usuarios Tribu** en el menú y **Mercado Pago** en Ajustes (solo Super Admin).
+4. Hard refresh: `Ctrl+Shift+R` (Windows) o vacía caché del navegador.
 
 ### Si git pull falla por cambios locales
 

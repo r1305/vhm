@@ -30,9 +30,9 @@ function newestMtime(dir) {
 }
 
 function forceBuildEnabled() {
-  if (process.env.ADMIN_FORCE_BUILD === '1') return true;
+  if (process.env.ADMIN_SKIP_BUILD === '1') return false;
   if (process.env.ADMIN_FORCE_BUILD === '0') return false;
-  return process.env.NODE_ENV === 'production';
+  return true;
 }
 
 function needsBuild() {
@@ -97,7 +97,7 @@ function run() {
   }
 
   if (forceBuildEnabled()) {
-    console.log('[admin] compilación forzada (producción / ADMIN_FORCE_BUILD=1)...');
+    console.log('[admin] compilación forzada en cada arranque...');
   } else {
     console.log('[admin] compilando panel admin (admin-vue → public/admin)...');
   }
