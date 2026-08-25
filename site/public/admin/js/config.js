@@ -48,6 +48,8 @@
     btnGuardarFb: document.getElementById('btn-guardar-fb'),
     susVisible: document.getElementById('sus-visible'),
     susVisibleLabel: document.getElementById('sus-visible-label'),
+    susActivo: document.getElementById('sus-activo'),
+    susActivoLabel: document.getElementById('sus-activo-label'),
     susPlanesCount: document.getElementById('sus-planes-count'),
     susPlanesWrap: document.getElementById('sus-planes-wrap'),
     susMsg: document.getElementById('sus-msg'),
@@ -85,6 +87,10 @@
 
   function updateSusVisibleLabel(checked) {
     el.susVisibleLabel.textContent = checked ? '🟢 Visible' : '🔴 Oculta';
+  }
+
+  function updateSusActivoLabel(checked) {
+    el.susActivoLabel.textContent = checked ? '🟢 Habilitado' : '🔴 Deshabilitado';
   }
 
   function updateMpActivoLabel(checked) {
@@ -380,7 +386,9 @@
       const resPlanes = await AdminApi.apiFetch('/suscripciones', { headers: AdminApi.authHeaders() });
       const cfg = await resCfg.json();
       const planes = await resPlanes.json();
-      el.susVisible.checked = !!cfg.activo;
+      el.susActivo.checked = !!cfg.activo;
+      updateSusActivoLabel(el.susActivo.checked);
+      el.susVisible.checked = !!cfg.visible;
       updateSusVisibleLabel(el.susVisible.checked);
       susPlanes = Array.isArray(planes) ? planes : [];
       renderSusPlanes();
@@ -394,7 +402,7 @@
       const res = await AdminApi.apiFetch('/suscripciones/config', {
         method: 'PUT',
         headers: AdminApi.authHeaders(),
-        body: JSON.stringify({ activo: el.susVisible.checked }),
+        body: JSON.stringify({ activo: el.susActivo.checked, visible: el.susVisible.checked }),
       });
       const d = await res.json();
       AdminUtils.mostrarMsg(el.susMsg, res.ok ? d.message : d.error, res.ok);
@@ -568,6 +576,10 @@
     el.btnGuardarRedes.addEventListener('click', guardarRedes);
     el.btnGuardarFb.addEventListener('click', guardarFacebook);
 
+    el.susActivo.addEventListener('change', function () {
+      updateSusActivoLabel(this.checked);
+      guardarConfigSus();
+    });
     el.susVisible.addEventListener('change', function () {
       updateSusVisibleLabel(this.checked);
       guardarConfigSus();

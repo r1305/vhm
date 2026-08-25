@@ -127,14 +127,16 @@ async function crearEsquema() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS config_suscripciones (
       id INT PRIMARY KEY,
-      activo BOOLEAN DEFAULT FALSE
+      activo BOOLEAN DEFAULT FALSE,
+      visible BOOLEAN DEFAULT FALSE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
 
   const [cfgSus] = await pool.query('SELECT id FROM config_suscripciones WHERE id = 1');
   if (cfgSus.length === 0) {
-    await pool.query('INSERT INTO config_suscripciones (id, activo) VALUES (1, FALSE)');
+    await pool.query('INSERT INTO config_suscripciones (id, activo, visible) VALUES (1, FALSE, FALSE)');
   }
+  await pool.query('ALTER TABLE config_suscripciones ADD COLUMN IF NOT EXISTS visible BOOLEAN DEFAULT FALSE').catch(() => {});
 
   const [planRows] = await pool.query('SELECT COUNT(*) AS total FROM suscripciones');
   if (planRows[0].total === 0) {
