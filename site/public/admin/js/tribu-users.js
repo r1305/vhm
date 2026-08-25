@@ -14,6 +14,7 @@
   const pswError = document.getElementById('psw-error');
   const btnTogglePsw = document.getElementById('btn-toggle-psw');
   const btnCopiarPsw = document.getElementById('btn-copiar-psw');
+  const btnRegenerarPsw = document.getElementById('btn-regenerar-psw');
 
   let usuarios = [];
   let page = 1;
@@ -35,6 +36,24 @@
   bodyEl.addEventListener('click', onTableClick);
   btnTogglePsw.addEventListener('click', togglePswVisible);
   btnCopiarPsw.addEventListener('click', copiarPsw);
+  btnRegenerarPsw.addEventListener('click', async function () {
+    btnRegenerarPsw.disabled = true;
+    btnRegenerarPsw.textContent = 'Procesando…';
+    try {
+      const res = await AdminApi.apiFetch('/tribu-users/regenerar-passwords-temp', {
+        method: 'POST',
+        headers: AdminApi.authHeaders()
+      });
+      const data = await res.json();
+      toast(data.message || 'Listo', 'success');
+      if (data.updated > 0) cargar(page);
+    } catch {
+      toast('Error al regenerar contraseñas', 'error');
+    } finally {
+      btnRegenerarPsw.disabled = false;
+      btnRegenerarPsw.textContent = '🔄 Regenerar contraseñas';
+    }
+  });
 
   cargar(1);
 

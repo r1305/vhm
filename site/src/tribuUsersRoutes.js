@@ -1,4 +1,6 @@
 const { Router } = require('express');
+const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const pool = require('./db');
 const { authMiddleware } = require('./auth');
 
@@ -35,6 +37,31 @@ router.get('/', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error al obtener usuarios tribu' });
+  }
+});
+
+// POST regenerar contraseñas temporales para todos los usuarios con psw_temp=1 y password_plain=NULL
+router.post('/regenerar-passwords-temp', requireAdmin, async (req, res) => {
+  try {
+    const [rows] = await pool.execute(
+      'SELECT id FROM tribu_users WHERE psw_temp = 1 AND (password_plain IS NULL OR password_plain = \'\')'
+    );
+    if (!rows.length) return res.json({ message: 'No hay usuarios que necesiten regeneración', updated: 0 });
+
+    let updated = 0;
+    for (const { id } of rows) {
+      const plain = crypto.randomBytes(4).toString('hex').toUpperCase();
+      const hash = await bcrypt.hash(plain, 10);
+      await pool.execute(
+        'UPDATE tribu_users SET password = ?, password_plain = ? WHERE id = ?',
+        [hash, plain, id]
+      );
+      updated++;
+    }
+    res.json({ message: `Contraseñas regeneradas para ${updated} usuario(s)`, updated });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al regenerar contraseñas' });
   }
 });
 
