@@ -41,7 +41,32 @@ MP_SANDBOX_PAYER_EMAIL=test_user_XXXXX@testuser.com   # solo sandbox
 
 Si el build falla por memoria en el hosting, compila en local una vez (`npm run build:admin`) y sube `public/admin/`, o define `ADMIN_SKIP_BUILD=1` en `.env`.
 
-### Verificar que el admin se actualizó
+### Verificar que el código nuevo está en el servidor
+
+Abre **`https://vhm.com.pe/site/DEPLOY_VERSION.txt`**
+
+- Si **no existe** o muestra una versión vieja → el servidor **no tiene el código nuevo**.
+- Si muestra `deploy-version=f87536f` (o más reciente) → el código sí llegó.
+
+También: `https://vhm.com.pe/site/api/config-mercadopago/public` debe responder JSON (aunque sea `{"activo":false}`), **no** 404.
+
+### Forzar actualización con git (recomendado)
+
+Desde la carpeta **padre** del repo (donde está la carpeta `site/`, no dentro de `site/`):
+
+```bash
+cd ~/repositorio/vhm          # ruta donde clonaste el repo
+git fetch origin
+git reset --hard origin/main  # descarta cambios locales del servidor
+cd site
+npm install
+```
+
+En cPanel → **Restart** la app Node.
+
+> Si antes fallaba el pull por `site/package.json`, `git reset --hard` lo resuelve.
+
+### Verificar admin
 
 1. Abre `https://vhm.com.pe/site/api/admin-build-info` — JSON con estado del build.
 2. Abre `https://vhm.com.pe/site/admin/BUILD.txt` — fecha del último build (o mensaje de error claro).
