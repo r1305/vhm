@@ -43,28 +43,43 @@ Si el build falla por memoria en el hosting, compila en local una vez (`npm run 
 
 ### Verificar que el código nuevo está en el servidor
 
-Abre **`https://vhm.com.pe/site/DEPLOY_VERSION.txt`**
+Abre **`https://vhm.com.pe/site/api/pixel-config`**
 
-- Si **no existe** o muestra una versión vieja → el servidor **no tiene el código nuevo**.
-- Si muestra `deploy-version=f87536f` (o más reciente) → el código sí llegó.
+- Código **viejo**: `{"pixel_id":null,"activo":false}` (sin `_deployVersion`)
+- Código **nuevo**: incluye `"_deployVersion":"deploy-v3"`
 
-También: `https://vhm.com.pe/site/api/config-mercadopago/public` debe responder JSON (aunque sea `{"activo":false}`), **no** 404.
+También: `https://vhm.com.pe/site/DEPLOY_VERSION.txt` debe mostrar `deploy-version=deploy-v3`.
 
-### Forzar actualización con git (recomendado)
+### Subir cambios por FTP (más simple que git en cPanel)
 
-Desde la carpeta **padre** del repo (donde está la carpeta `site/`, no dentro de `site/`):
+Sube **estas carpetas/archivos** a la raíz de la app Node (`public_html/site` o similar):
+
+```
+app.js
+package.json
+package-lock.json
+scripts/
+src/          ← todo
+public/       ← todo (incluye admin/ y DEPLOY_VERSION.txt)
+admin-vue/    ← todo excepto node_modules
+.env          ← NO subir; editar solo en cPanel
+```
+
+No subas `node_modules/`. Luego en cPanel: **Run NPM Install** → **Restart**.
+
+### Forzar actualización con git (alternativa)
+
+Desde la carpeta **padre** del repo (donde está la carpeta `site/`):
 
 ```bash
-cd ~/repositorio/vhm          # ruta donde clonaste el repo
+cd ~/repositorio/vhm
 git fetch origin
-git reset --hard origin/main  # descarta cambios locales del servidor
+git reset --hard origin/main
 cd site
 npm install
 ```
 
-En cPanel → **Restart** la app Node.
-
-> Si antes fallaba el pull por `site/package.json`, `git reset --hard` lo resuelve.
+En cPanel → **Restart**.
 
 ### Verificar admin
 
