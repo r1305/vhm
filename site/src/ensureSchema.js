@@ -208,6 +208,19 @@ async function crearEsquema() {
 
   await pool.query('ALTER TABLE tribu_suscripciones ADD COLUMN mp_payment_id VARCHAR(64) NULL').catch(() => {});
   await pool.query('ALTER TABLE tribu_suscripciones ADD KEY idx_ts_mp (mp_payment_id)').catch(() => {});
+  await pool.query('ALTER TABLE tribu_suscripciones ADD COLUMN mp_preapproval_id VARCHAR(64) NULL').catch(() => {});
+  await pool.query('ALTER TABLE tribu_suscripciones ADD KEY idx_ts_preapproval (mp_preapproval_id)').catch(() => {});
+  await pool.query('ALTER TABLE tribu_suscripciones ADD COLUMN auto_renovacion TINYINT(1) NOT NULL DEFAULT 1').catch(() => {});
+  await pool.query('ALTER TABLE tribu_suscripciones ADD COLUMN cancelada_at TIMESTAMP NULL').catch(() => {});
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS tribu_mp_payment_events (
+      mp_payment_id VARCHAR(64) NOT NULL PRIMARY KEY,
+      tribu_suscripcion_id INT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      KEY idx_tmpe_sub (tribu_suscripcion_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
 
   // Columna para contraseña temporal en texto plano (se borra al cambiar)
   await pool.query('ALTER TABLE tribu_users ADD COLUMN password_plain VARCHAR(20) NULL').catch(() => {});
