@@ -1,13 +1,34 @@
 /**
- * WhatsApp via openwa-cpanel (Baileys, 100% gratuito)
+ * WhatsApp via openwa-cpanel (Baileys)
  *
- * Variables de entorno (configurables desde panel Integraciones del CRM):
- *   OPENWA_URL        URL base de openwa, ej: https://vhm.com.pe/openwa
- *   OPENWA_API_KEY    API key de openwa (la que ves en el dashboard)
- *   OPENWA_SESSION    Session ID de la sesión activa en openwa
+ * Variables (panel Integraciones o .env):
+ *   OPENWA_URL, OPENWA_API_KEY, OPENWA_SESSION
  */
 
+async function loadOpenwaConfigFromDB() {
+  const pool = require('./db');
+  const [rows] = await pool.execute(
+    "SELECT clave, valor FROM configuracion WHERE clave IN ('openwa_url','openwa_api_key','openwa_session')"
+  );
+  for (const r of rows) {
+    if (!r.valor) continue;
+    if (r.clave === 'openwa_url')     process.env.OPENWA_URL     = r.valor;
+    if (r.clave === 'openwa_api_key') process.env.OPENWA_API_KEY = r.valor;
+    if (r.clave === 'openwa_session') process.env.OPENWA_SESSION = r.valor;
+  }
+}
+
+function isOpenwaConfigured() {
+  return Boolean(
+    process.env.OPENWA_URL &&
+    process.env.OPENWA_API_KEY &&
+    process.env.OPENWA_SESSION
+  );
+}
+
 async function sendWhatsAppGreen({ to, message }) {
+  await loadOpenwaConfigFromDB();
+
   const baseUrl   = (process.env.OPENWA_URL   || '').replace(/\/$/, '');
   const apiKey    = process.env.OPENWA_API_KEY || '';
   const sessionId = process.env.OPENWA_SESSION || '';
@@ -37,4 +58,4 @@ async function sendWhatsAppGreen({ to, message }) {
   return { ok: true, messageId: data.messageId };
 }
 
-module.exports = { sendWhatsAppGreen };
+module.exports = { sendWhatsAppGreen, loadOpenwaConfigFromDB, isOpenwaConfigured };

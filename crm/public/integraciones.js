@@ -117,8 +117,18 @@ function togglePwd(id, btn) {
 
   document.getElementById('btnEjecutarCron')?.addEventListener('click', async () => {
     if (!confirm('¿Ejecutar el envío de WhatsApp ahora?')) return;
-    try { await api('/cron/ejecutar', { method:'POST' }); toast('Ejecutando en background…'); }
-    catch (err) { toast(err.message, 'danger'); }
+    const btn = document.getElementById('btnEjecutarCron');
+    if (btn) { btn.disabled = true; btn.textContent = 'Ejecutando…'; }
+    try {
+      const r = await api('/cron/ejecutar', { method:'POST' });
+      if (r.sinConfig) toast('OpenWA no configurado — guarda URL, API key y Session ID', 'danger');
+      else if (r.sinCitas) toast(`Sin citas para mañana (${r.fecha})`, 'danger');
+      else if (r.errores?.length) toast(`Enviados: ${r.enviados}. Errores: ${r.errores.length}`, 'danger');
+      else toast(`Enviado a ${r.enviados} terapeuta(s) para ${r.fecha} ✅`);
+    } catch (err) { toast(err.message, 'danger'); }
+    finally {
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-play"></i> Ejecutar ahora'; }
+    }
   });
 
   document.getElementById('btnBroadcast')?.addEventListener('click', async () => {
