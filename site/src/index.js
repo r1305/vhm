@@ -224,7 +224,7 @@ app.use(express.static(path.join(__dirname, '../public'), {
 }));
 
 app.get('/health', (req, res) => {
-  res.json({ ok: true, service: 'vhm-site', admin: 'html', version: 'html-admin-v2' });
+  res.json({ ok: true, service: 'vhm-site', admin: 'html', version: 'html-admin-v3' });
 });
 
 app.get('/api/deploy-info', (req, res) => {

@@ -1,3 +1,6 @@
+// NO usar PM2 en cPanel compartido si ya tienes "Setup Node.js App".
+// Passenger (cPanel) ya gestiona los procesos Node.
+// Si ejecutas pm2 start con este archivo ADEMÁS de cPanel, duplicarás procesos.
 module.exports = {
   apps: [
     {
