@@ -121,29 +121,103 @@ router.post('/registro', async (req, res) => {
   }
 });
 
-// POST /api/tribu-auth/recuperar  — genera token y lo guarda (sin email por ahora, devuelve el token)
+async function ensureTempPasswordPlain(userId, currentPlain) {
+  if (currentPlain) return currentPlain;
+  const plain = crypto.randomBytes(4).toString('hex').toUpperCase();
+  const hash = await bcrypt.hash(plain, 10);
+  await pool.execute(
+    'UPDATE tribu_users SET password = ?, password_plain = ? WHERE id = ?',
+    [hash, plain, userId]
+  );
+  return plain;
+}
+
+// POST /api/tribu-auth/recuperar — usuarios con psw_temp: muestra contraseña temporal en pantalla
 router.post('/recuperar', async (req, res) => {
   try {
+    const ip = req.ip || req.connection.remoteAddress;
+    const record = getAttempts(ip);
+    if (record && record.count >= MAX_ATTEMPTS) {
+      const remaining = Math.ceil((WINDOW_MS - (Date.now() - record.start)) / 60000);
+      return res.status(429).json({ error: `Demasiados intentos. Intenta en ${remaining} minuto(s).` });
+    }
+
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: 'Email requerido' });
 
     const emailNorm = email.trim().toLowerCase();
-    const [rows] = await pool.execute('SELECT id FROM tribu_users WHERE email = ? LIMIT 1', [emailNorm]);
-    // Siempre responder igual para no revelar si el email existe
-    if (!rows.length) return res.json({ message: 'Si el correo existe, recibirás instrucciones.' });
-
-    const token = crypto.randomBytes(24).toString('hex');
-    const expira = new Date(Date.now() + 60 * 60 * 1000); // 1 hora
-    await pool.execute(
-      'UPDATE tribu_users SET reset_token = ?, reset_token_exp = ? WHERE id = ?',
-      [token, expira, rows[0].id]
+    const [rows] = await pool.execute(
+      'SELECT id, psw_temp, password_plain FROM tribu_users WHERE email = ? LIMIT 1',
+      [emailNorm]
     );
 
-    // TODO: enviar email con el token cuando esté configurado el mailer
-    res.json({ message: 'Si el correo existe, recibirás instrucciones.' });
+    if (!rows.length) {
+      recordAttempt(ip);
+      return res.json({ temp: false, message: 'Si el correo existe y tiene contraseña temporal, podrás continuar.' });
+    }
+
+    const user = rows[0];
+    if (!user.psw_temp) {
+      return res.json({ temp: false, message: 'Si el correo existe, recibirás instrucciones por correo cuando esté disponible.' });
+    }
+
+    resetAttempts(ip);
+    const tempPassword = await ensureTempPasswordPlain(user.id, user.password_plain);
+    res.json({
+      temp: true,
+      tempPassword,
+      message: 'Esta es tu contraseña temporal. Ingrésala a continuación y crea una nueva contraseña.',
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error al procesar la solicitud' });
+  }
+});
+
+// POST /api/tribu-auth/cambiar-password-temp — valida temporal y fija contraseña definitiva
+router.post('/cambiar-password-temp', async (req, res) => {
+  try {
+    const ip = req.ip || req.connection.remoteAddress;
+    const record = getAttempts(ip);
+    if (record && record.count >= MAX_ATTEMPTS) {
+      const remaining = Math.ceil((WINDOW_MS - (Date.now() - record.start)) / 60000);
+      return res.status(429).json({ error: `Demasiados intentos. Intenta en ${remaining} minuto(s).` });
+    }
+
+    const { email, tempPassword, newPassword } = req.body;
+    if (!email || !tempPassword || !newPassword) {
+      return res.status(400).json({ error: 'Correo, contraseña temporal y nueva contraseña son requeridos' });
+    }
+    if (String(newPassword).length < 6) {
+      return res.status(400).json({ error: 'La nueva contraseña debe tener al menos 6 caracteres' });
+    }
+
+    const emailNorm = email.trim().toLowerCase();
+    const [rows] = await pool.execute(
+      'SELECT id, password FROM tribu_users WHERE email = ? AND psw_temp = 1 LIMIT 1',
+      [emailNorm]
+    );
+    if (!rows.length) {
+      recordAttempt(ip);
+      return res.status(400).json({ error: 'No se encontró una cuenta con contraseña temporal para ese correo' });
+    }
+
+    const valid = await bcrypt.compare(String(tempPassword), rows[0].password);
+    if (!valid) {
+      recordAttempt(ip);
+      return res.status(401).json({ error: 'Contraseña temporal incorrecta' });
+    }
+
+    resetAttempts(ip);
+    const hash = await bcrypt.hash(String(newPassword), 12);
+    await pool.execute(
+      'UPDATE tribu_users SET password = ?, psw_temp = 0, password_plain = NULL, reset_token = NULL, reset_token_exp = NULL WHERE id = ?',
+      [hash, rows[0].id]
+    );
+    res.json({ message: 'Contraseña actualizada. Ya puedes iniciar sesión con tu nueva contraseña.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al actualizar la contraseña' });
   }
 });
 

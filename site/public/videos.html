@@ -226,6 +226,16 @@
     .cal-events-desktop { display: block; }
     .cal-events-mobile { display: none; }
     .cal-empty { text-align: center; color: var(--muted); padding: 40px 20px; }
+    .cal-lock-banner {
+      margin: 24px auto 32px; max-width: 480px;
+    }
+    .cal-lock-banner .lock-banner { margin: 0; }
+    .temp-pw-box {
+      margin: 16px 0; padding: 14px 16px; border-radius: 12px;
+      background: rgba(168,85,247,.15); border: 1px dashed rgba(236,72,153,.45);
+      font-family: ui-monospace, monospace; font-size: 1.35rem; letter-spacing: .12em;
+      text-align: center; color: #fff;
+    }
 
     /* MODAL EVENTO */
     .evt-overlay { display: none; position: fixed; inset: 0; background: rgba(7,7,13,.85); backdrop-filter: blur(8px); z-index: 1000; padding: 20px; align-items: center; justify-content: center; }
@@ -343,6 +353,7 @@
 
 <div id="tabCalendario" class="tribu-panel">
   <div class="cal-wrap">
+    <div id="calLockBanner" class="cal-lock-banner" style="display:none"></div>
     <div class="cal-header">
       <h2 id="calMesTitulo"></h2>
     </div>
@@ -438,16 +449,40 @@
     </div>
     <div id="authRecuperar" style="display:none">
       <div class="auth-title">Recuperar contrasena</div>
-      <div class="auth-sub">Te enviaremos instrucciones a tu correo</div>
+      <div class="auth-sub">Ingresa tu correo para recuperar tu acceso</div>
       <div class="auth-field"><label>Correo</label><input type="email" id="recEmail" placeholder="tu@correo.com" autocomplete="email"></div>
-      <button class="auth-btn" id="recBtn" onclick="doRecuperar()">Enviar instrucciones</button>
+      <button class="auth-btn" id="recBtn" onclick="doRecuperar()">Continuar</button>
       <div class="auth-error" id="recError"></div>
       <div class="auth-footer" style="margin-top:14px"><a onclick="mostrarPanel('authLogin')">Volver al inicio de sesion</a></div>
+    </div>
+    <div id="authRecuperarTemp" style="display:none;text-align:center;padding:8px 0">
+      <div class="auth-title">Tu contrasena temporal</div>
+      <div class="auth-sub">Guardala y usala en el siguiente paso para crear tu contrasena definitiva</div>
+      <div class="temp-pw-box" id="recTempShown">--------</div>
+      <button class="auth-btn" id="recTempNextBtn" onclick="mostrarPanel('authIngresarTemp')">Siguiente</button>
+      <div class="auth-footer" style="margin-top:14px"><a onclick="mostrarPanel('authRecuperar')">Volver</a></div>
+    </div>
+    <div id="authIngresarTemp" style="display:none">
+      <div class="auth-title">Confirma tu contrasena temporal</div>
+      <div class="auth-sub">Ingresa la contraseña temporal que acabas de ver</div>
+      <div class="auth-field"><label>Contrasena temporal</label><input type="text" id="recTempInput" placeholder="Contraseña temporal" autocomplete="off"></div>
+      <button class="auth-btn" id="recTempVerifyBtn" onclick="doIngresarTemp()">Continuar</button>
+      <div class="auth-error" id="recTempError"></div>
+      <div class="auth-footer" style="margin-top:14px"><a onclick="mostrarPanel('authRecuperarTemp')">Volver</a></div>
+    </div>
+    <div id="authNuevaPassword" style="display:none">
+      <div class="auth-title">Nueva contrasena</div>
+      <div class="auth-sub">Crea la contraseña con la que iniciaras sesion de ahora en adelante</div>
+      <div class="auth-field"><label>Nueva contrasena</label><input type="password" id="recNewPassword" placeholder="Minimo 6 caracteres" autocomplete="new-password"></div>
+      <div class="auth-field"><label>Confirmar contrasena</label><input type="password" id="recNewPassword2" placeholder="Repite la contrasena" autocomplete="new-password"></div>
+      <button class="auth-btn" id="recNewBtn" onclick="doCambiarPasswordTemp()">Guardar contrasena</button>
+      <div class="auth-error" id="recNewError"></div>
+      <div class="auth-footer" style="margin-top:14px"><a onclick="mostrarPanel('authIngresarTemp')">Volver</a></div>
     </div>
     <div id="authRecuperarOk" style="display:none;text-align:center;padding:12px 0">
       <div style="font-size:2.5rem;margin-bottom:12px">📬</div>
       <div class="auth-title">Revisa tu correo</div>
-      <div class="auth-sub">Si el correo existe, recibiras las instrucciones en breve.</div>
+      <div class="auth-sub" id="recOkMsg">Si el correo existe, recibiras las instrucciones en breve.</div>
       <div class="auth-footer" style="margin-top:20px"><a onclick="mostrarPanel('authLogin')">Volver al inicio de sesion</a></div>
     </div>
   </div>
@@ -466,6 +501,9 @@ let tribuUser = null;
 let planActual = null;
 let planesCache = null;
 let videoPendiente = null;
+let recEmailFlow = '';
+let recTempPasswordFlow = '';
+const CAL_WRAP_HTML = '<div id="calLockBanner" class="cal-lock-banner" style="display:none"></div><div class="cal-header"><h2 id="calMesTitulo"></h2></div><div class="cal-grid" id="calDow"></div><div class="cal-grid" id="calGrid" style="margin-top:8px"></div><div class="cal-empty" id="calLoading">Cargando eventos...</div>';
 const MESES_ES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 const DOW_ES = ['Lun','Mar','Mie','Jue','Vie','Sab','Dom'];
 
@@ -489,6 +527,8 @@ function renderNavAuth() {
 async function verificarSesion() {
   const token = getToken();
   if (!token) { tribuUser = null; renderNavAuth(); return; }
+  tribuUser = getStoredUser();
+  renderNavAuth();
   try {
     const res = await fetch(API + '/tribu-auth/me', { headers: { Authorization: 'Bearer ' + token } });
     if (res.ok) { tribuUser = await res.json(); setStoredUser(tribuUser); }
@@ -509,13 +549,13 @@ function abrirAuth(panel) {
 }
 function cerrarAuth() { document.getElementById('authOverlay').classList.remove('show'); document.body.style.overflow = ''; limpiarErrores(); }
 function mostrarPanel(id) {
-  ['authLogin','authRegistro','authRecuperar','authRecuperarOk'].forEach(p => {
+  ['authLogin','authRegistro','authRecuperar','authRecuperarTemp','authIngresarTemp','authNuevaPassword','authRecuperarOk'].forEach(p => {
     document.getElementById(p).style.display = p === id ? '' : 'none';
   });
   limpiarErrores();
 }
 function limpiarErrores() {
-  ['loginError','regError','recError'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = ''; });
+  ['loginError','regError','recError','recTempError','recNewError'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = ''; });
 }
 
 async function doLogin() {
@@ -530,7 +570,7 @@ async function doLogin() {
     const d = await res.json();
     if (!res.ok) { errEl.textContent = d.error || 'Error al iniciar sesion'; return; }
     setToken(d.token); setStoredUser(d.user); tribuUser = d.user;
-    renderNavAuth(); cerrarAuth(); cargar();
+    await afterAuthSuccess();
     if (videoPendiente !== null) { const id = videoPendiente; videoPendiente = null; abrirVideo(id); }
   } catch { errEl.textContent = 'Error de conexion'; }
   finally { btn.disabled = false; btn.textContent = 'Entrar'; }
@@ -550,7 +590,7 @@ async function doRegistro() {
     const d = await res.json();
     if (!res.ok) { errEl.textContent = d.error || 'Error al crear cuenta'; return; }
     setToken(d.token); setStoredUser(d.user); tribuUser = d.user;
-    renderNavAuth(); cerrarAuth(); cargar();
+    await afterAuthSuccess();
   } catch { errEl.textContent = 'Error de conexion'; }
   finally { btn.disabled = false; btn.textContent = 'Crear cuenta'; }
 }
@@ -560,12 +600,58 @@ async function doRecuperar() {
   const errEl = document.getElementById('recError');
   const email = document.getElementById('recEmail').value.trim();
   if (!email) { errEl.textContent = 'Ingresa tu correo'; return; }
-  btn.disabled = true; btn.textContent = 'Enviando...';
+  btn.disabled = true; btn.textContent = 'Buscando...';
   try {
-    await fetch(API + '/tribu-auth/recuperar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
+    const res = await fetch(API + '/tribu-auth/recuperar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
+    const d = await res.json();
+    if (!res.ok) { errEl.textContent = d.error || 'Error al procesar'; return; }
+    if (d.temp && d.tempPassword) {
+      recEmailFlow = email;
+      recTempPasswordFlow = d.tempPassword;
+      document.getElementById('recTempShown').textContent = d.tempPassword;
+      document.getElementById('recTempInput').value = '';
+      mostrarPanel('authRecuperarTemp');
+    } else {
+      document.getElementById('recOkMsg').textContent = d.message || 'Si el correo existe, recibiras las instrucciones en breve.';
+      mostrarPanel('authRecuperarOk');
+    }
+  } catch { errEl.textContent = 'Error de conexion'; }
+  finally { btn.disabled = false; btn.textContent = 'Continuar'; }
+}
+
+function doIngresarTemp() {
+  const errEl = document.getElementById('recTempError');
+  const temp = document.getElementById('recTempInput').value.trim();
+  if (!temp) { errEl.textContent = 'Ingresa tu contraseña temporal'; return; }
+  if (temp !== recTempPasswordFlow) { errEl.textContent = 'La contraseña temporal no coincide'; return; }
+  document.getElementById('recNewPassword').value = '';
+  document.getElementById('recNewPassword2').value = '';
+  mostrarPanel('authNuevaPassword');
+}
+
+async function doCambiarPasswordTemp() {
+  const btn = document.getElementById('recNewBtn');
+  const errEl = document.getElementById('recNewError');
+  const tempPassword = document.getElementById('recTempInput').value.trim();
+  const newPassword = document.getElementById('recNewPassword').value;
+  const newPassword2 = document.getElementById('recNewPassword2').value;
+  if (!newPassword || newPassword.length < 6) { errEl.textContent = 'La contraseña debe tener al menos 6 caracteres'; return; }
+  if (newPassword !== newPassword2) { errEl.textContent = 'Las contraseñas no coinciden'; return; }
+  btn.disabled = true; btn.textContent = 'Guardando...';
+  try {
+    const res = await fetch(API + '/tribu-auth/cambiar-password-temp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: recEmailFlow, tempPassword, newPassword }),
+    });
+    const d = await res.json();
+    if (!res.ok) { errEl.textContent = d.error || 'No se pudo actualizar la contraseña'; return; }
+    recEmailFlow = '';
+    recTempPasswordFlow = '';
+    document.getElementById('recOkMsg').textContent = d.message || 'Contraseña actualizada. Ya puedes iniciar sesión.';
     mostrarPanel('authRecuperarOk');
   } catch { errEl.textContent = 'Error de conexion'; }
-  finally { btn.disabled = false; btn.textContent = 'Enviar instrucciones'; }
+  finally { btn.disabled = false; btn.textContent = 'Guardar contrasena'; }
 }
 
 function doLogout() { clearToken(); tribuUser = null; renderNavAuth(); cargar(); }
@@ -573,10 +659,12 @@ function doLogout() { clearToken(); tribuUser = null; renderNavAuth(); cargar();
 document.getElementById('authOverlay').addEventListener('click', e => { if (e.target.id === 'authOverlay') cerrarAuth(); });
 document.getElementById('authOverlay').addEventListener('keydown', e => {
   if (e.key !== 'Enter') return;
-  const panel = ['authLogin','authRegistro','authRecuperar'].find(p => document.getElementById(p).style.display !== 'none');
-  if (panel === 'authLogin') doLogin();
-  else if (panel === 'authRegistro') doRegistro();
-  else if (panel === 'authRecuperar') doRecuperar();
+  const visible = ['authLogin','authRegistro','authRecuperar','authIngresarTemp','authNuevaPassword'].find(p => document.getElementById(p).style.display !== 'none');
+  if (visible === 'authLogin') doLogin();
+  else if (visible === 'authRegistro') doRegistro();
+  else if (visible === 'authRecuperar') doRecuperar();
+  else if (visible === 'authIngresarTemp') doIngresarTemp();
+  else if (visible === 'authNuevaPassword') doCambiarPasswordTemp();
 });
 
 /* PLANES Y PAGO */
@@ -678,6 +766,7 @@ async function montarCardBrick(suscripcion_id, monto) {
               cerrarModalPago();
               await verificarSesion();
               await cargar();
+              refreshCalendarioIfActive();
               alert('Pago exitoso! Tu suscripcion ha sido activada.');
               resolve();
             } else if (d.status === 'in_process' || d.status === 'pending' || d.order_status === 'action_required') {
@@ -722,18 +811,48 @@ function bannerSinSuscripcion() {
     '</div></div>';
 }
 
-function switchTribuTab(tab) {
-  document.querySelectorAll('.tribu-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
-  document.getElementById('tabCamino').classList.toggle('active', tab === 'camino');
-  document.getElementById('tabCalendario').classList.toggle('active', tab === 'calendario');
-  if (tab === 'calendario') {
-    if (tieneSuscripcion()) cargarCalendario();
-    else renderCalendarioBloqueado();
+function ensureCalendarioDom() {
+  const wrap = document.querySelector('#tabCalendario .cal-wrap');
+  if (!wrap || !document.getElementById('calGrid')) {
+    if (wrap) wrap.innerHTML = CAL_WRAP_HTML;
   }
 }
 
 function renderCalendarioBloqueado() {
-  document.querySelector('.cal-wrap').innerHTML = '<div style="margin:40px auto;max-width:480px">' + bannerSinSuscripcion() + '</div>';
+  ensureCalendarioDom();
+  const lock = document.getElementById('calLockBanner');
+  const loading = document.getElementById('calLoading');
+  if (lock) {
+    lock.innerHTML = bannerSinSuscripcion();
+    lock.style.display = 'block';
+  }
+  if (loading) loading.style.display = 'none';
+}
+
+function refreshCalendarioIfActive() {
+  if (!document.getElementById('tabCalendario').classList.contains('active')) return;
+  ensureCalendarioDom();
+  if (tieneSuscripcion()) cargarCalendario();
+  else renderCalendarioBloqueado();
+}
+
+async function afterAuthSuccess() {
+  renderNavAuth();
+  cerrarAuth();
+  await cargar();
+  refreshCalendarioIfActive();
+}
+
+async function switchTribuTab(tab) {
+  document.querySelectorAll('.tribu-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.getElementById('tabCamino').classList.toggle('active', tab === 'camino');
+  document.getElementById('tabCalendario').classList.toggle('active', tab === 'calendario');
+  if (tab === 'calendario') {
+    await verificarSesion();
+    ensureCalendarioDom();
+    if (tieneSuscripcion()) cargarCalendario();
+    else renderCalendarioBloqueado();
+  }
 }
 
 function fmtHora(t) {
@@ -743,8 +862,12 @@ function fmtHora(t) {
 }
 
 async function cargarCalendario() {
+  ensureCalendarioDom();
+  hideCalendarioLock();
   const loading = document.getElementById('calLoading');
+  if (!loading) return;
   loading.style.display = 'block';
+  loading.textContent = 'Cargando eventos...';
   const now = new Date();
   const mes = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   document.getElementById('calMesTitulo').textContent = `${MESES_ES[now.getMonth()]} ${now.getFullYear()}`;
