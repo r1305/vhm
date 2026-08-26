@@ -126,7 +126,7 @@ router.post('/api/cron/config', require('./lib/auth').authAdmin, async (req, res
 
 router.post('/api/cron/ejecutar', require('./lib/auth').authAdmin, async (req, res) => {
   try {
-    const stats = await require('./cron-wsp').runCronWSP();
+    const stats = await require('./cron-wsp').runCronWSP({ manual: true });
     res.json({ ok: true, message: 'Cron ejecutado', ...stats });
   } catch (err) {
     console.error('[cron manual]', err.message);
@@ -138,18 +138,12 @@ router.post('/api/cron/broadcast', require('./lib/auth').authAdmin, async (req, 
   const { message } = req.body || {};
   if (!message) return res.status(400).json({ error: 'message requerido' });
   try {
-    const db = require('./lib/db');
-    const { sendWhatsAppGreen } = require('./lib/greenapi');
-    const [terapeutas] = await db.execute(
-      "SELECT nombre, telefono FROM terapeutas WHERE activo=1 AND telefono IS NOT NULL AND telefono != ''"
-    );
-    if (!terapeutas.length) return res.json({ ok: true, enviados: 0, omitidos: 0 });
-    res.json({ ok: true, enviados: terapeutas.length });
-    for (const t of terapeutas) {
-      try { await sendWhatsAppGreen({ to: t.telefono, message }); }
-      catch (e) { console.error(`[broadcast] ${t.nombre}:`, e.message); }
-      await new Promise(r => setTimeout(r, 1000));
-    }
+    const { sendBroadcastToTerapeutas } = require('./cron-wsp');
+    const { loadOpenwaConfigFromDB, isOpenwaConfigured } = require('./lib/greenapi');
+    await loadOpenwaConfigFromDB();
+    if (!isOpenwaConfigured()) return res.json({ ok: true, enviados: 0, omitidos: 0, sinConfig: true });
+    const stats = await sendBroadcastToTerapeutas(message.trim());
+    res.json({ ok: true, ...stats });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

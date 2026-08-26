@@ -116,15 +116,25 @@ function togglePwd(id, btn) {
   });
 
   document.getElementById('btnEjecutarCron')?.addEventListener('click', async () => {
-    if (!confirm('¿Ejecutar el envío de WhatsApp ahora?')) return;
+    const message = document.getElementById('cron-mensaje-broadcast').value.trim();
+    if (!message) { toast('Escribe el mensaje recordatorio antes de ejecutar', 'danger'); return; }
+    if (!confirm('¿Enviar el recordatorio a todos los terapeutas ahora?')) return;
     const btn = document.getElementById('btnEjecutarCron');
     if (btn) { btn.disabled = true; btn.textContent = 'Ejecutando…'; }
     try {
+      await api('/cron/config', { method:'POST', body: {
+        enabled: document.getElementById('cron-enabled').checked ? 1 : 0,
+        hora: Number(document.getElementById('cron-hora').value),
+        minuto: Number(document.getElementById('cron-minuto').value),
+        dias: [...document.querySelectorAll('.cron-dia:checked')].map(cb => cb.value).join(','),
+        mensaje: message,
+      }});
       const r = await api('/cron/ejecutar', { method:'POST' });
       if (r.sinConfig) toast('OpenWA no configurado — guarda URL, API key y Session ID', 'danger');
-      else if (r.sinCitas) toast(`Sin citas para mañana (${r.fecha})`, 'danger');
+      else if (r.sinMensaje) toast('Sin mensaje configurado', 'danger');
       else if (r.errores?.length) toast(`Enviados: ${r.enviados}. Errores: ${r.errores.length}`, 'danger');
-      else toast(`Enviado a ${r.enviados} terapeuta(s) para ${r.fecha} ✅`);
+      else if (r.enviados === 0 && r.omitidos === 0) toast('Ningún terapeuta activo con teléfono', 'danger');
+      else toast(`Recordatorio enviado a ${r.enviados} terapeuta(s) ✅`);
     } catch (err) { toast(err.message, 'danger'); }
     finally {
       if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-play"></i> Ejecutar ahora'; }

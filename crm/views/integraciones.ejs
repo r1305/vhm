@@ -47,7 +47,7 @@
           <% }) %>
         </div>
       </div>
-      <div class="form-group"><label class="form-label">Mensaje broadcast</label><textarea class="form-control" id="cron-mensaje-broadcast" rows="4" placeholder="Escribe aquí el mensaje..."><%= cron.mensaje || '' %></textarea></div>
+      <div class="form-group"><label class="form-label">Mensaje recordatorio</label><textarea class="form-control" id="cron-mensaje-broadcast" rows="4" placeholder="Hola {nombre}, recuerda revisar tu agenda en el CRM..."><%= cron.mensaje || '' %></textarea><p style="font-size:11px;color:var(--text-muted);margin-top:4px">Se envía a <strong>todos</strong> los terapeutas activos con teléfono. Usa <code>{nombre}</code> para personalizar.</p></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn btn-primary btn-sm" id="btnSaveCron"><i class="fas fa-save"></i> Guardar</button>
         <button class="btn btn-outline btn-sm" id="btnEjecutarCron"><i class="fas fa-play"></i> Ejecutar ahora</button>
