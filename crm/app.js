@@ -126,9 +126,12 @@ router.post('/api/cron/config', require('./lib/auth').authAdmin, async (req, res
 
 router.post('/api/cron/ejecutar', require('./lib/auth').authAdmin, async (req, res) => {
   try {
-    res.json({ ok: true, message: 'Ejecutando en background…' });
-    require('./cron-wsp').runCronWSP().catch(e => console.error('[cron manual]', e.message));
-  } catch (err) { res.status(500).json({ error: err.message }); }
+    const stats = await require('./cron-wsp').runCronWSP();
+    res.json({ ok: true, message: 'Cron ejecutado', ...stats });
+  } catch (err) {
+    console.error('[cron manual]', err.message);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 router.post('/api/cron/broadcast', require('./lib/auth').authAdmin, async (req, res) => {
