@@ -305,6 +305,24 @@
     .lock-btn-outline { background: transparent; border: 1px solid rgba(168,85,247,.5); color: #e9d5ff; }
     .tribu-locked { position: relative; pointer-events: none; user-select: none; }
     .tribu-locked::after { content: ''; position: absolute; inset: 0; backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px); background: rgba(7,7,13,.55); z-index: 10; border-radius: 12px; }
+    .tribu-page-loader {
+      position: fixed; inset: 0; z-index: 12000;
+      display: none; align-items: center; justify-content: center;
+      background: rgba(7,7,13,.72); backdrop-filter: blur(4px);
+    }
+    .tribu-page-loader.show { display: flex; }
+    .tribu-page-loader-box {
+      text-align: center; color: #fff; padding: 28px 32px; border-radius: 18px;
+      background: rgba(20,16,36,.92); border: 1px solid rgba(168,85,247,.35);
+      min-width: 220px;
+    }
+    .tribu-spinner {
+      width: 42px; height: 42px; margin: 0 auto 14px; border-radius: 50%;
+      border: 3px solid rgba(168,85,247,.25); border-top-color: #ec4899;
+      animation: tribuSpin .8s linear infinite;
+    }
+    @keyframes tribuSpin { to { transform: rotate(360deg); } }
+    .tribu-page-loader-box p { margin: 0; color: #d8c9f0; font-size: .92rem; font-weight: 700; }
     .plan-card { background: rgba(168,85,247,.07); border: 1px solid rgba(168,85,247,.3); border-radius: 16px; padding: 20px 22px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; transition: border-color .2s, background .2s; }
     .plan-card:hover { border-color: rgba(236,72,153,.55); background: rgba(168,85,247,.12); }
     .plan-info { flex: 1; }
@@ -487,6 +505,12 @@
     </div>
   </div>
 </div>
+<div id="tribuPageLoader" class="tribu-page-loader" aria-live="polite" aria-busy="false">
+  <div class="tribu-page-loader-box">
+    <div class="tribu-spinner" aria-hidden="true"></div>
+    <p id="tribuPageLoaderText">Actualizando contenido...</p>
+  </div>
+</div>
 <footer>
   <p>&copy; <script>document.write(new Date().getFullYear())</script> VHM - Bienestar, Relaciones & Superación Personal.</p>
   <p style="margin-top:8px"><a href=".">Volver al inicio</a> | <a href="reclamo">Libro de Reclamaciones</a></p>
@@ -514,6 +538,25 @@ function clearToken() { localStorage.removeItem('tribu_token'); localStorage.rem
 function getStoredUser() { try { return JSON.parse(localStorage.getItem('tribu_user') || 'null'); } catch { return null; } }
 function setStoredUser(u) { localStorage.setItem('tribu_user', JSON.stringify(u)); }
 function tieneSuscripcion() { return !!(tribuUser && tribuUser.suscripcion_activa); }
+
+let pageLoaderDepth = 0;
+function showPageLoader(message) {
+  pageLoaderDepth++;
+  const el = document.getElementById('tribuPageLoader');
+  const txt = document.getElementById('tribuPageLoaderText');
+  if (txt && message) txt.textContent = message;
+  if (el) { el.classList.add('show'); el.setAttribute('aria-busy', 'true'); }
+}
+function hidePageLoader() {
+  pageLoaderDepth = Math.max(0, pageLoaderDepth - 1);
+  if (pageLoaderDepth > 0) return;
+  const el = document.getElementById('tribuPageLoader');
+  if (el) { el.classList.remove('show'); el.setAttribute('aria-busy', 'false'); }
+}
+function clearStaleLockUi() {
+  document.querySelectorAll('#contenido .lock-banner').forEach(el => el.remove());
+  hideCalendarioLock();
+}
 
 function renderNavAuth() {
   const area = document.getElementById('navAuthArea');
@@ -765,8 +808,14 @@ async function montarCardBrick(suscripcion_id, monto) {
             if (d.status === 'approved') {
               cerrarModalPago();
               await verificarSesion();
-              await cargar();
-              refreshCalendarioIfActive();
+              showPageLoader('Actualizando contenido...');
+              clearStaleLockUi();
+              try {
+                await cargar();
+                await refreshCalendarioIfActive();
+              } finally {
+                hidePageLoader();
+              }
               alert('Pago exitoso! Tu suscripcion ha sido activada.');
               resolve();
             } else if (d.status === 'in_process' || d.status === 'pending' || d.order_status === 'action_required') {
@@ -829,18 +878,31 @@ function renderCalendarioBloqueado() {
   if (loading) loading.style.display = 'none';
 }
 
-function refreshCalendarioIfActive() {
+function hideCalendarioLock() {
+  const lock = document.getElementById('calLockBanner');
+  if (lock) { lock.style.display = 'none'; lock.innerHTML = ''; }
+}
+
+async function refreshCalendarioIfActive() {
   if (!document.getElementById('tabCalendario').classList.contains('active')) return;
   ensureCalendarioDom();
-  if (tieneSuscripcion()) cargarCalendario();
+  if (tieneSuscripcion()) await cargarCalendario();
   else renderCalendarioBloqueado();
 }
 
 async function afterAuthSuccess() {
+  showPageLoader('Actualizando contenido...');
   renderNavAuth();
+  clearStaleLockUi();
+  const cont = document.getElementById('contenido');
+  if (cont) cont.innerHTML = '<div class="empty">Actualizando recursos...</div>';
   cerrarAuth();
-  await cargar();
-  refreshCalendarioIfActive();
+  try {
+    await cargar();
+    await refreshCalendarioIfActive();
+  } finally {
+    hidePageLoader();
+  }
 }
 
 async function switchTribuTab(tab) {
@@ -848,10 +910,15 @@ async function switchTribuTab(tab) {
   document.getElementById('tabCamino').classList.toggle('active', tab === 'camino');
   document.getElementById('tabCalendario').classList.toggle('active', tab === 'calendario');
   if (tab === 'calendario') {
-    await verificarSesion();
-    ensureCalendarioDom();
-    if (tieneSuscripcion()) cargarCalendario();
-    else renderCalendarioBloqueado();
+    showPageLoader('Cargando calendario...');
+    try {
+      if (!tribuUser) await verificarSesion();
+      ensureCalendarioDom();
+      if (tieneSuscripcion()) await cargarCalendario();
+      else renderCalendarioBloqueado();
+    } finally {
+      hidePageLoader();
+    }
   }
 }
 
@@ -876,10 +943,13 @@ async function cargarCalendario() {
 
   try {
     const res = await fetch(`${API}/eventos?mes=${mes}`);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
     eventosMes = await res.json();
+    if (!Array.isArray(eventosMes)) eventosMes = [];
     renderCalendario(now.getFullYear(), now.getMonth());
     loading.style.display = 'none';
-  } catch {
+  } catch (err) {
+    console.error('[calendario]', err);
     loading.textContent = 'No se pudieron cargar los eventos.';
   }
 }
