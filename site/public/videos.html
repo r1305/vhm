@@ -1090,7 +1090,7 @@ async function abrirModalPlanes() {
     try {
       const res = await fetch(API + '/suscripciones/public');
       const d = await res.json();
-      if (!d.visible || !d.data.length) {
+      if (!d.activo || !d.data.length) {
         document.getElementById('planesLista').innerHTML = '<div style="color:var(--muted);text-align:center;padding:20px">No hay planes disponibles en este momento.</div>';
         return;
       }
