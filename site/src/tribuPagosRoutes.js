@@ -7,7 +7,7 @@ const router = Router();
 
 async function getMpConfig() {
   const [rows] = await pool.execute(
-    'SELECT activo, access_token, modo FROM config_mercadopago WHERE id = 1'
+    'SELECT activo, access_token, modo, public_key FROM config_mercadopago WHERE id = 1'
   );
   const cfg = rows[0];
   if (!cfg || !cfg.activo || !cfg.access_token) {
@@ -49,9 +49,40 @@ function getSandboxPayerEmail() {
   return email.includes('@testuser.com') ? email : 'test_user_123456789@testuser.com';
 }
 
+function validateMpCredentials(cfg) {
+  const pk = String(cfg.public_key || '').trim();
+  const at = String(cfg.access_token || '').trim();
+  const sandbox = cfg.modo === 'sandbox';
+  const pkTest = pk.startsWith('TEST-');
+  const atTest = at.startsWith('TEST-');
+  if (sandbox && pk && !pkTest) {
+    throw new Error('Modo sandbox: usa la Public Key de prueba (TEST-...) de la misma aplicación en Mercado Pago.');
+  }
+  if (sandbox && at && !atTest) {
+    throw new Error('Modo sandbox: usa el Access Token de prueba (TEST-...) de la misma aplicación en Mercado Pago.');
+  }
+  if (!sandbox && pk && pkTest) {
+    throw new Error('Modo producción: no uses credenciales TEST-. Cambia a credenciales de producción.');
+  }
+}
+
 function resolvePayerEmail(brickEmail, userEmail, mpModo) {
-  if (mpModo === 'sandbox') return getSandboxPayerEmail();
-  const email = String(brickEmail || userEmail || '').trim().toLowerCase();
+  const fromBrick = String(brickEmail || '').trim().toLowerCase();
+  if (mpModo === 'sandbox') {
+    const configured = getSandboxPayerEmail();
+    // El card_token_id queda ligado al email usado en el Brick; debe coincidir con payer_email.
+    if (fromBrick) {
+      if (fromBrick !== configured) {
+        throw new Error(
+          `El email del pago (${fromBrick}) no coincide con el comprador de prueba configurado (${configured}). `
+          + 'En sandbox usa solo el email de tu cuenta comprador de prueba en MP_SANDBOX_PAYER_EMAIL.'
+        );
+      }
+      return fromBrick;
+    }
+    return configured;
+  }
+  const email = fromBrick || String(userEmail || '').trim().toLowerCase();
   if (!email) throw new Error('Email del pagador requerido');
   return email;
 }
@@ -110,7 +141,14 @@ function parseMpPayloadErrors(payload) {
 }
 
 function mapMpError(err) {
-  const fromPayload = parseMpPayloadErrors(err?.payload);
+  const payload = err?.payload || {};
+  const code = payload.code || payload?.cause?.[0]?.code;
+  if (code === 'guest_site_mismatch') {
+    return 'Mercado Pago rechazó el pago: el comprador o las credenciales no corresponden a la misma aplicación/país. '
+      + 'Revisa que Public Key y Access Token sean de la misma app (Perú), del mismo modo (sandbox o producción), '
+      + 'y que en pruebas uses el email del comprador de prueba en MP_SANDBOX_PAYER_EMAIL.';
+  }
+  const fromPayload = parseMpPayloadErrors(payload);
   if (fromPayload) return fromPayload;
 
   const causes = Array.isArray(err?.causes) ? err.causes : [];
@@ -346,6 +384,7 @@ router.post('/procesar-pago', tribuAuthMiddleware, async (req, res) => {
     if (!plan) return res.status(404).json({ error: 'Plan no encontrado' });
 
     const cfg = await getMpConfig();
+    validateMpCredentials(cfg);
     const externalRef = buildExternalRef(req.tribuUser.id, plan.id);
 
     const preapproval = await createMpPreapproval(cfg.access_token, buildPreapprovalBody({

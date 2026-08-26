@@ -1247,6 +1247,7 @@ async function montarCardBrick(suscripcion_id, monto) {
     const mp = new MercadoPago(cfg.public_key, { locale: 'es-PE' });
     const bricks = mp.bricks();
     if (window._cardBrick) { try { await window._cardBrick.unmount(); } catch {} window._cardBrick = null; }
+    window._mpPayCfg = cfg;
     const init = { amount: parseFloat(monto) };
     const payerEmail = cfg.modo === 'sandbox'
       ? (cfg.sandbox_payer_email || 'test_user_123456789@testuser.com')
@@ -1261,10 +1262,20 @@ async function montarCardBrick(suscripcion_id, monto) {
         onSubmit: (formData, additionalData) => new Promise(async (resolve, reject) => {
           document.getElementById('pagoError').textContent = '';
           try {
+            const payCfg = window._mpPayCfg || cfg;
             const payload = Object.assign({}, formData, {
               suscripcion_id,
               payment_type_id: additionalData && additionalData.paymentTypeId
             });
+            if (payCfg.modo === 'sandbox') {
+              const testEmail = payCfg.sandbox_payer_email || 'test_user_123456789@testuser.com';
+              payload.payer = Object.assign({}, payload.payer || formData.payer || {}, { email: testEmail });
+              payload.email = testEmail;
+              const brickEmail = String((formData.payer && formData.payer.email) || formData.email || '').toLowerCase();
+              if (brickEmail && brickEmail !== testEmail) {
+                throw new Error('En modo prueba debes usar el email ' + testEmail + '. Cierra el modal y vuelve a abrirlo.');
+              }
+            }
             const res = await fetch(API + '/tribu-pagos/procesar-pago', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + getToken() },
