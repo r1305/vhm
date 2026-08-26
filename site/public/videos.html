@@ -411,6 +411,14 @@
     .subs-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: .72rem; font-weight: 800; margin-top: 8px; }
     .subs-badge.on { background: rgba(45,212,191,.2); color: #2dd4bf; }
     .subs-badge.off { background: rgba(154,147,179,.15); color: var(--muted); }
+    .subs-badge.warn { background: rgba(251,191,36,.18); color: #fcd34d; }
+    .subs-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; align-items: center; }
+    .subs-cancel-btn {
+      background: none; border: 1px solid rgba(251,113,133,.45); color: #fb7185;
+      padding: 8px 14px; border-radius: 999px; font-size: .82rem; font-weight: 800;
+      font-family: inherit; cursor: pointer; transition: background .15s, color .15s;
+    }
+    .subs-cancel-btn:hover { background: rgba(251,113,133,.12); color: #fff; }
     .subs-empty { text-align: center; color: var(--muted); padding: 40px 20px; }
     .account-back {
       display: inline-flex; align-items: center; gap: 6px; margin-bottom: 14px;
@@ -581,6 +589,9 @@
     <div class="auth-logo">La Tribu</div>
     <div class="auth-title" id="pagoTitulo">Adquirir plan</div>
     <div class="auth-sub" id="pagoSub"></div>
+    <div class="auth-sub" id="pagoRecurringNote" style="font-size:.82rem;color:#c9b8ee;margin-top:8px;line-height:1.45">
+      Suscripción recurrente: se debitará automáticamente cada mes. Puedes cancelar la autorenovación en cualquier momento desde Mis suscripciones.
+    </div>
     <div id="pagoSandboxHint" class="auth-sub" style="display:none;font-size:.82rem;color:#fbbf24;margin-top:8px"></div>
     <div id="pagoContenido" style="margin-top:20px"><div id="cardBrickContainer"></div></div>
     <div id="pagoError" class="auth-error"></div>
@@ -968,15 +979,58 @@ async function cargarMisSuscripciones() {
     lista.innerHTML = d.data.map(s => {
       const fin = formatYmd(s.fecha_fin);
       const ini = formatYmd(s.fecha_inicio);
+      let badgeClass = 'off';
+      let badgeText = 'Vencida';
+      if (s.activo && s.auto_renovacion) {
+        badgeClass = 'on';
+        badgeText = 'Activa · autorenovación';
+      } else if (s.activo) {
+        badgeClass = 'warn';
+        badgeText = 'Activa · sin autorenovación';
+      }
+      const cancelBtn = s.puede_cancelar
+        ? `<div class="subs-actions"><button type="button" class="subs-cancel-btn" onclick="cancelarAutorenovacion(${s.id})">Cancelar autorenovación</button></div>`
+        : (s.activo && !s.auto_renovacion ? '<div class="subs-meta" style="margin-top:10px">No se renovará al vencer.</div>' : '');
       return `<div class="subs-card${s.activo ? ' active' : ''}">
         <div class="subs-title">${escapeHtml(s.nombre)}</div>
         <div class="subs-meta">S/ ${parseFloat(s.precio).toFixed(2)} · ${ini} → ${fin}</div>
         ${s.descripcion ? `<div class="subs-meta">${escapeHtml(s.descripcion)}</div>` : ''}
-        <span class="subs-badge ${s.activo ? 'on' : 'off'}">${s.activo ? 'Activa' : 'Vencida'}</span>
+        <span class="subs-badge ${badgeClass}">${badgeText}</span>
+        ${cancelBtn}
       </div>`;
     }).join('');
   } catch {
     lista.innerHTML = '<div class="subs-empty">No se pudieron cargar las suscripciones.</div>';
+  }
+}
+
+async function cancelarAutorenovacion(id) {
+  if (!confirm('¿Cancelar la autorenovación? Seguirás con acceso hasta la fecha de vencimiento.')) return;
+  showPageLoader('Cancelando autorenovación...');
+  try {
+    const res = await tribuFetch('/tribu-pagos/cancelar-renovacion', {
+      method: 'POST',
+      body: JSON.stringify({ suscripcion_id: id }),
+    });
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.error || 'No se pudo cancelar');
+    await verificarSesion();
+    await cargarMisSuscripciones();
+    mostrarTribuFeedback({
+      type: 'pending',
+      title: 'Autorenovación cancelada',
+      message: d.message || 'Mantendrás acceso hasta la fecha de vencimiento de tu plan.',
+      btnText: 'Entendido',
+    });
+  } catch (err) {
+    mostrarTribuFeedback({
+      type: 'pending',
+      title: 'No se pudo cancelar',
+      message: err.message || 'Intenta de nuevo más tarde.',
+      btnText: 'Cerrar',
+    });
+  } finally {
+    hidePageLoader();
   }
 }
 
@@ -1151,7 +1205,7 @@ async function abrirModalPlanes() {
         (p.descripcion ? '<div class="plan-desc">' + escapeHtml(p.descripcion) + '</div>' : '') +
       '</div>' +
       '<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">' +
-        '<div class="plan-precio">S/ ' + parseFloat(p.precio).toFixed(2) + '</div>' +
+        '<div class="plan-precio">S/ ' + parseFloat(p.precio).toFixed(2) + '<span style="font-size:.75rem;font-weight:700;color:var(--muted);margin-left:4px">/ mes</span></div>' +
         '<button class="plan-adquirir" data-plan-id="' + p.id + '" onclick="adquirirPlanById(this)">Adquirir</button>' +
       '</div>' +
     '</div>'
@@ -1169,7 +1223,7 @@ async function adquirirPlan(id, nombre, precio) {
   cerrarModalPlanes();
   planActual = { id, nombre, precio };
   document.getElementById('pagoTitulo').textContent = nombre;
-  document.getElementById('pagoSub').textContent = 'S/ ' + parseFloat(precio).toFixed(2);
+  document.getElementById('pagoSub').textContent = 'S/ ' + parseFloat(precio).toFixed(2) + ' / mes';
   document.getElementById('pagoError').textContent = '';
   document.getElementById('cardBrickContainer').innerHTML = '';
   document.getElementById('pagoOverlay').classList.add('show');
@@ -1232,8 +1286,8 @@ async function montarCardBrick(suscripcion_id, monto) {
               }
               mostrarTribuFeedback({
                 type: 'success',
-                title: '¡Pago exitoso!',
-                message: 'Tu suscripción ha sido activada. Ya puedes disfrutar de todo el contenido exclusivo de La Tribu.',
+                title: '¡Suscripción activada!',
+                message: 'Tu plan recurrente está activo. Se debitará automáticamente cada mes. Puedes cancelar la autorenovación cuando quieras desde Mis suscripciones.',
                 btnText: 'Explorar contenido'
               });
               resolve();

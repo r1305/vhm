@@ -420,7 +420,7 @@ router.delete('/perfil/foto', tribuAuthMiddleware, async (req, res) => {
 router.get('/suscripciones', tribuAuthMiddleware, async (req, res) => {
   try {
     const [rows] = await pool.execute(
-      `SELECT ts.id, ts.fecha_inicio, ts.fecha_fin, ts.activo,
+      `SELECT ts.id, ts.fecha_inicio, ts.fecha_fin, ts.activo, ts.auto_renovacion, ts.mp_preapproval_id, ts.cancelada_at,
               s.nombre, s.precio, s.descripcion,
               (ts.activo = 1 AND ts.fecha_fin >= CURDATE()) AS vigente
        FROM tribu_suscripciones ts
@@ -437,6 +437,9 @@ router.get('/suscripciones', tribuAuthMiddleware, async (req, res) => {
       fecha_inicio: toYmd(r.fecha_inicio),
       fecha_fin: toYmd(r.fecha_fin),
       activo: !!r.vigente,
+      auto_renovacion: !!(r.auto_renovacion && r.vigente && r.mp_preapproval_id),
+      puede_cancelar: !!(r.vigente && r.auto_renovacion && r.mp_preapproval_id),
+      cancelada_at: r.cancelada_at ? toYmd(r.cancelada_at) : null,
     }));
     res.json({ data });
   } catch (err) {
