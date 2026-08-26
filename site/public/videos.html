@@ -254,11 +254,23 @@
       .hero { padding-top: 112px; }
       .hero h1 { font-size: 2.2rem; }
       .cat-title { font-size: 1.5rem; }
-      nav .links { display: none; flex-direction: column; position: absolute; top: 100%; left: 0; right: 0; background: rgba(7,7,13,.97); padding: 18px; gap: 14px; border-bottom: 1px solid var(--line); }
+      nav .links { display: none; flex-direction: column; align-items: stretch; position: absolute; top: 100%; left: 0; right: 0; background: rgba(7,7,13,.97); padding: 18px; gap: 14px; border-bottom: 1px solid var(--line); }
       nav .links.open { display: flex; }
       nav .links a { font-size: 1.05rem; }
       nav .menu-toggle { display: block; }
-      .tribu-tab { font-size: .85rem; padding: 12px 10px; }
+      .user-menu { width: 100%; }
+      .user-menu-btn { width: 100%; justify-content: flex-start; padding: 10px 14px 10px 10px; border-radius: 14px; }
+      .user-menu-name { max-width: none; }
+      .user-menu-panel {
+        position: static; width: 100%; min-width: 0; margin-top: 8px;
+        box-shadow: none; border-radius: 14px; background: rgba(7,7,13,.55);
+      }
+      .user-menu-chevron { margin-left: auto; }
+      .tribu-tab { font-size: .82rem; padding: 12px 8px; }
+      .tribu-tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+      .tribu-tabs::-webkit-scrollbar { display: none; }
+      .profile-wrap, .subs-wrap { padding-left: 16px; padding-right: 16px; }
+      .profile-head { flex-direction: column; align-items: flex-start; }
       .cal-day { height: 90px; }
       .cal-ev { font-size: .68rem; }
       .cal-grid { gap: 12px; }
@@ -269,8 +281,52 @@
 
     .nav-user { display: flex; align-items: center; gap: 10px; }
     .nav-user-name { font-size: .88rem; font-weight: 700; color: #e9d5ff; }
-    .nav-logout { background: none; border: 1px solid rgba(168,85,247,.4); color: var(--muted); padding: 6px 12px; border-radius: 20px; font-size: .8rem; font-weight: 700; cursor: pointer; font-family: inherit; transition: all .2s; }
-    .nav-logout:hover { border-color: var(--pink); color: var(--pink); }
+    .nav-login-link { color: var(--muted); font-size: .9rem; font-weight: 700; cursor: pointer; transition: color .2s; background: none; border: none; font-family: inherit; padding: 0; }
+    .nav-login-link:hover { color: #fff; }
+    .user-menu { position: relative; z-index: 120; }
+    .user-menu-btn {
+      display: flex; align-items: center; gap: 10px; max-width: 100%;
+      padding: 5px 12px 5px 5px; border-radius: 999px;
+      border: 1px solid rgba(168,85,247,.4); background: rgba(168,85,247,.1);
+      cursor: pointer; color: inherit; font-family: inherit; transition: border-color .2s, background .2s;
+    }
+    .user-menu-btn:hover, .user-menu.open .user-menu-btn {
+      border-color: rgba(236,72,153,.55); background: rgba(168,85,247,.18);
+    }
+    .user-menu-avatar { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; flex-shrink: 0; border: 1px solid rgba(168,85,247,.35); }
+    .user-menu-avatar-ph {
+      width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+      display: inline-flex; align-items: center; justify-content: center;
+      background: rgba(168,85,247,.28); color: #fff; font-size: .82rem; font-weight: 800;
+    }
+    .user-menu-label { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; text-align: left; }
+    .user-menu-name { font-size: .88rem; font-weight: 800; color: #fff; line-height: 1.2; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .user-menu-sub { font-size: .72rem; font-weight: 700; color: var(--muted); line-height: 1.2; }
+    .user-menu-chevron { margin-left: 2px; color: #c9b8ee; font-size: .75rem; transition: transform .2s; flex-shrink: 0; }
+    .user-menu.open .user-menu-chevron { transform: rotate(180deg); }
+    .user-menu-panel {
+      display: none; position: absolute; top: calc(100% + 10px); right: 0; min-width: 260px;
+      background: rgba(16,16,25,.98); border: 1px solid rgba(168,85,247,.35); border-radius: 16px;
+      padding: 8px; box-shadow: 0 24px 60px rgba(0,0,0,.5); backdrop-filter: blur(12px);
+    }
+    .user-menu.open .user-menu-panel { display: block; animation: menuIn .18s ease; }
+    @keyframes menuIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+    .user-menu-head {
+      padding: 10px 12px 12px; border-bottom: 1px solid rgba(168,85,247,.18); margin-bottom: 6px;
+    }
+    .user-menu-head-name { font-weight: 800; color: #fff; font-size: .92rem; }
+    .user-menu-head-email { font-size: .78rem; color: var(--muted); margin-top: 2px; word-break: break-all; }
+    .user-menu-item {
+      width: 100%; display: flex; align-items: center; gap: 10px;
+      padding: 11px 12px; border: none; background: none; color: #ece9f5;
+      font-family: inherit; font-weight: 700; font-size: .9rem; border-radius: 10px;
+      cursor: pointer; text-align: left; transition: background .15s;
+    }
+    .user-menu-item:hover, .user-menu-item:focus-visible { background: rgba(168,85,247,.16); outline: none; }
+    .user-menu-item .mi { width: 1.35rem; text-align: center; flex-shrink: 0; }
+    .user-menu-item.danger { color: #fb7185; }
+    .user-menu-item.danger:hover { background: rgba(251,113,133,.12); }
+    .user-menu-divider { height: 1px; background: rgba(168,85,247,.16); margin: 6px 4px; }
     .auth-overlay { display: none; position: fixed; inset: 0; background: rgba(7,7,13,.88); backdrop-filter: blur(10px); z-index: 2000; padding: 20px; align-items: center; justify-content: center; }
     .auth-overlay.show { display: flex; }
     .auth-box { background: var(--panel); border: 1px solid rgba(168,85,247,.35); border-radius: 24px; width: 100%; max-width: 420px; padding: 36px 32px 28px; position: relative; box-shadow: 0 40px 90px -30px rgba(168,85,247,.45); animation: authIn .25s ease; }
@@ -332,11 +388,6 @@
     .plan-adquirir { padding: 10px 22px; border-radius: 30px; font-size: .9rem; font-weight: 800; font-family: inherit; cursor: pointer; border: none; background: var(--grad-warm); color: #fff; transition: transform .15s, opacity .2s; }
     .plan-adquirir:hover { transform: translateY(-2px); opacity: .9; }
     .plan-adquirir:disabled { opacity: .5; cursor: not-allowed; transform: none; }
-    .nav-user-wrap { display: inline-flex; align-items: center; gap: 8px; margin-right: 6px; }
-    .nav-avatar { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; border: 1px solid rgba(168,85,247,.4); }
-    .nav-avatar-ph { display: inline-flex; align-items: center; justify-content: center; background: rgba(168,85,247,.25); color: #fff; font-size: .75rem; font-weight: 800; }
-    .nav-logout { background: none; border: none; color: var(--muted); font-size: .9rem; font-weight: 700; cursor: pointer; font-family: inherit; }
-    .nav-logout:hover { color: #fff; }
     .profile-wrap { max-width: 640px; margin: 0 auto; padding: 28px 22px 48px; }
     .profile-card { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 24px; }
     .profile-head { display: flex; align-items: center; gap: 18px; margin-bottom: 22px; flex-wrap: wrap; }
@@ -361,6 +412,12 @@
     .subs-badge.on { background: rgba(45,212,191,.2); color: #2dd4bf; }
     .subs-badge.off { background: rgba(154,147,179,.15); color: var(--muted); }
     .subs-empty { text-align: center; color: var(--muted); padding: 40px 20px; }
+    .account-back {
+      display: inline-flex; align-items: center; gap: 6px; margin-bottom: 14px;
+      background: none; border: none; color: var(--muted); font-family: inherit;
+      font-weight: 700; font-size: .85rem; cursor: pointer; padding: 0;
+    }
+    .account-back:hover { color: #fff; }
   </style>
 </head>
 <body>
@@ -385,8 +442,6 @@
   <div class="tribu-tabs">
     <button type="button" class="tribu-tab active" data-tab="camino" onclick="switchTribuTab('camino')">Camino Interior</button>
     <button type="button" class="tribu-tab" data-tab="calendario" onclick="switchTribuTab('calendario')">Calendario</button>
-    <button type="button" class="tribu-tab" data-tab="perfil" id="tabBtnPerfil" style="display:none" onclick="switchTribuTab('perfil')">Mi perfil</button>
-    <button type="button" class="tribu-tab" data-tab="suscripciones" id="tabBtnSuscripciones" style="display:none" onclick="switchTribuTab('suscripciones')">Suscripciones</button>
   </div>
 </div>
 
@@ -414,6 +469,7 @@
 
 <div id="tabPerfil" class="tribu-panel">
   <div class="profile-wrap">
+    <button type="button" class="account-back" onclick="switchTribuTab('camino')">← Volver al contenido</button>
     <div class="profile-card">
       <div class="profile-head">
         <div id="profileAvatarWrap"></div>
@@ -444,6 +500,7 @@
 
 <div id="tabSuscripciones" class="tribu-panel">
   <div class="subs-wrap">
+    <button type="button" class="account-back" onclick="switchTribuTab('camino')">← Volver al contenido</button>
     <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px">
       <h2 style="font-family:'Fraunces',serif;font-size:1.4rem;color:#fff">Mis suscripciones</h2>
       <button type="button" class="profile-btn profile-btn-primary" onclick="abrirModalPlanes()">Ver planes</button>
@@ -631,27 +688,99 @@ function clearStaleLockUi() {
 
 function renderNavAuth() {
   const area = document.getElementById('navAuthArea');
-  const authTabs = ['tabBtnPerfil', 'tabBtnSuscripciones'];
+  if (!area) return;
   if (tribuUser) {
-    authTabs.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = ''; });
     const initial = escapeHtml((tribuUser.nombre || '?').charAt(0).toUpperCase());
     const avatarHtml = tribuUser.foto_url
-      ? `<img src="${escapeHtml(tribuUser.foto_url)}" class="nav-avatar" alt="">`
-      : `<span class="nav-avatar nav-avatar-ph">${initial}</span>`;
+      ? `<img src="${escapeHtml(tribuUser.foto_url)}" class="user-menu-avatar" alt="">`
+      : `<span class="user-menu-avatar-ph">${initial}</span>`;
+    const fullName = escapeHtml(((tribuUser.nombre || '') + ' ' + (tribuUser.apellido || '')).trim() || tribuUser.nombre || 'Usuario');
     area.innerHTML =
-      `<span class="nav-user-wrap">${avatarHtml}<span class="nav-user-name">Hola, ${escapeHtml(tribuUser.nombre)}</span></span>` +
-      `<a onclick="switchTribuTab('perfil')" style="cursor:pointer">Mi perfil</a>` +
-      `<a onclick="switchTribuTab('suscripciones')" style="cursor:pointer">Suscripciones</a>` +
-      `<button class="nav-logout" onclick="doLogout()">Salir</button>`;
+      `<div class="user-menu" id="userMenu">
+        <button type="button" class="user-menu-btn" id="userMenuBtn" onclick="toggleUserMenu(event)" aria-expanded="false" aria-haspopup="true">
+          ${avatarHtml}
+          <span class="user-menu-label">
+            <span class="user-menu-name">${escapeHtml(tribuUser.nombre || 'Usuario')}</span>
+            <span class="user-menu-sub">Mi cuenta</span>
+          </span>
+          <span class="user-menu-chevron" aria-hidden="true">▾</span>
+        </button>
+        <div class="user-menu-panel" id="userMenuPanel" role="menu">
+          <div class="user-menu-head">
+            <div class="user-menu-head-name">${fullName}</div>
+            <div class="user-menu-head-email">${escapeHtml(tribuUser.email || '')}</div>
+          </div>
+          <button type="button" class="user-menu-item" role="menuitem" onclick="navToPerfil()"><span class="mi">👤</span> Mi perfil</button>
+          <button type="button" class="user-menu-item" role="menuitem" onclick="navToSuscripciones()"><span class="mi">💳</span> Suscripciones</button>
+          <div class="user-menu-divider"></div>
+          <button type="button" class="user-menu-item danger" role="menuitem" onclick="navLogout()"><span class="mi">⎋</span> Cerrar sesión</button>
+        </div>
+      </div>`;
   } else {
-    authTabs.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
-    area.innerHTML = "<a onclick='abrirLogin()' style='cursor:pointer'>Iniciar Sesion</a>";
+    closeUserMenu();
+    area.innerHTML = '<button type="button" class="nav-login-link" onclick="abrirLogin()">Iniciar sesión</button>';
     if (document.getElementById('tabPerfil')?.classList.contains('active') ||
         document.getElementById('tabSuscripciones')?.classList.contains('active')) {
       switchTribuTab('camino');
     }
   }
 }
+
+function closeMobileNav() {
+  document.querySelector('nav .links')?.classList.remove('open');
+}
+
+function closeUserMenu() {
+  const menu = document.getElementById('userMenu');
+  const btn = document.getElementById('userMenuBtn');
+  if (menu) menu.classList.remove('open');
+  if (btn) btn.setAttribute('aria-expanded', 'false');
+}
+
+function toggleUserMenu(e) {
+  e.stopPropagation();
+  const menu = document.getElementById('userMenu');
+  const btn = document.getElementById('userMenuBtn');
+  if (!menu || !btn) return;
+  const open = !menu.classList.contains('open');
+  closeUserMenu();
+  if (open) {
+    menu.classList.add('open');
+    btn.setAttribute('aria-expanded', 'true');
+  }
+}
+
+function scrollToContenidoTribu() {
+  document.querySelector('.tribu-tabs-wrap')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function navToPerfil() {
+  closeUserMenu();
+  closeMobileNav();
+  switchTribuTab('perfil');
+  scrollToContenidoTribu();
+}
+
+function navToSuscripciones() {
+  closeUserMenu();
+  closeMobileNav();
+  switchTribuTab('suscripciones');
+  scrollToContenidoTribu();
+}
+
+function navLogout() {
+  closeUserMenu();
+  closeMobileNav();
+  doLogout();
+}
+
+document.addEventListener('click', e => {
+  const menu = document.getElementById('userMenu');
+  if (menu && !menu.contains(e.target)) closeUserMenu();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeUserMenu();
+});
 
 async function tribuFetch(path, options = {}) {
   const headers = { ...(options.headers || {}) };
@@ -747,7 +876,7 @@ async function subirFotoPerfil() {
   const fd = new FormData();
   fd.append('foto', input.files[0]);
   try {
-    const res = await tribuFetch('/tribu-auth/perfil/foto', { method: 'POST', body: fd, headers: {} });
+    const res = await tribuFetch('/tribu-auth/perfil/foto', { method: 'POST', body: fd });
     const d = await res.json();
     if (!res.ok) { setProfileMsg(d.error || 'Error al subir foto', false); return; }
     tribuUser = d.user;
@@ -1152,7 +1281,9 @@ async function switchTribuTab(tab) {
     abrirLoginAuth();
     tab = 'camino';
   }
-  document.querySelectorAll('.tribu-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.querySelectorAll('.tribu-tab').forEach(b => {
+    b.classList.toggle('active', (tab === 'camino' || tab === 'calendario') && b.dataset.tab === tab);
+  });
   document.getElementById('tabCamino').classList.toggle('active', tab === 'camino');
   document.getElementById('tabCalendario').classList.toggle('active', tab === 'calendario');
   document.getElementById('tabPerfil').classList.toggle('active', tab === 'perfil');
