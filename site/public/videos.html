@@ -332,6 +332,35 @@
     .plan-adquirir { padding: 10px 22px; border-radius: 30px; font-size: .9rem; font-weight: 800; font-family: inherit; cursor: pointer; border: none; background: var(--grad-warm); color: #fff; transition: transform .15s, opacity .2s; }
     .plan-adquirir:hover { transform: translateY(-2px); opacity: .9; }
     .plan-adquirir:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+    .nav-user-wrap { display: inline-flex; align-items: center; gap: 8px; margin-right: 6px; }
+    .nav-avatar { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; border: 1px solid rgba(168,85,247,.4); }
+    .nav-avatar-ph { display: inline-flex; align-items: center; justify-content: center; background: rgba(168,85,247,.25); color: #fff; font-size: .75rem; font-weight: 800; }
+    .nav-logout { background: none; border: none; color: var(--muted); font-size: .9rem; font-weight: 700; cursor: pointer; font-family: inherit; }
+    .nav-logout:hover { color: #fff; }
+    .profile-wrap { max-width: 640px; margin: 0 auto; padding: 28px 22px 48px; }
+    .profile-card { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 24px; }
+    .profile-head { display: flex; align-items: center; gap: 18px; margin-bottom: 22px; flex-wrap: wrap; }
+    .profile-avatar { width: 88px; height: 88px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(168,85,247,.45); background: rgba(168,85,247,.15); }
+    .profile-avatar-ph { display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: 800; color: #fff; }
+    .profile-field { margin-bottom: 14px; }
+    .profile-field label { display: block; font-size: .82rem; font-weight: 800; color: var(--muted); margin-bottom: 6px; }
+    .profile-field input { width: 100%; padding: 11px 12px; border-radius: 10px; border: 1px solid rgba(168,85,247,.25); background: rgba(7,7,13,.6); color: #fff; font-family: inherit; }
+    .profile-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+    .profile-btn { padding: 11px 20px; border-radius: 30px; border: none; font-weight: 800; font-family: inherit; cursor: pointer; }
+    .profile-btn-primary { background: var(--grad-warm); color: #fff; }
+    .profile-btn-outline { background: transparent; border: 1px solid rgba(168,85,247,.45); color: #e9d5ff; }
+    .profile-msg { margin-top: 12px; font-size: .88rem; font-weight: 700; min-height: 20px; }
+    .profile-msg.ok { color: #2dd4bf; }
+    .profile-msg.err { color: #fb7185; }
+    .subs-wrap { max-width: 760px; margin: 0 auto; padding: 28px 22px 48px; }
+    .subs-card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; margin-bottom: 12px; }
+    .subs-card.active { border-color: rgba(45,212,191,.45); }
+    .subs-title { font-family: 'Fraunces', serif; font-size: 1.1rem; color: #fff; margin-bottom: 6px; }
+    .subs-meta { font-size: .85rem; color: var(--muted); line-height: 1.5; }
+    .subs-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: .72rem; font-weight: 800; margin-top: 8px; }
+    .subs-badge.on { background: rgba(45,212,191,.2); color: #2dd4bf; }
+    .subs-badge.off { background: rgba(154,147,179,.15); color: var(--muted); }
+    .subs-empty { text-align: center; color: var(--muted); padding: 40px 20px; }
   </style>
 </head>
 <body>
@@ -356,6 +385,8 @@
   <div class="tribu-tabs">
     <button type="button" class="tribu-tab active" data-tab="camino" onclick="switchTribuTab('camino')">Camino Interior</button>
     <button type="button" class="tribu-tab" data-tab="calendario" onclick="switchTribuTab('calendario')">Calendario</button>
+    <button type="button" class="tribu-tab" data-tab="perfil" id="tabBtnPerfil" style="display:none" onclick="switchTribuTab('perfil')">Mi perfil</button>
+    <button type="button" class="tribu-tab" data-tab="suscripciones" id="tabBtnSuscripciones" style="display:none" onclick="switchTribuTab('suscripciones')">Suscripciones</button>
   </div>
 </div>
 
@@ -378,6 +409,46 @@
     <div class="cal-grid" id="calDow"></div>
     <div class="cal-grid" id="calGrid" style="margin-top:8px"></div>
     <div class="cal-empty" id="calLoading">Cargando eventos...</div>
+  </div>
+</div>
+
+<div id="tabPerfil" class="tribu-panel">
+  <div class="profile-wrap">
+    <div class="profile-card">
+      <div class="profile-head">
+        <div id="profileAvatarWrap"></div>
+        <div>
+          <div style="font-family:'Fraunces',serif;font-size:1.35rem;color:#fff" id="profileHeading">Mi perfil</div>
+          <div style="color:var(--muted);font-size:.88rem;margin-top:4px">Actualiza tus datos de contacto</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="profile-field"><label>Nombre</label><input type="text" id="pfNombre" autocomplete="given-name"></div>
+        <div class="profile-field"><label>Apellido</label><input type="text" id="pfApellido" autocomplete="family-name"></div>
+      </div>
+      <div class="profile-field"><label>Correo</label><input type="email" id="pfEmail" autocomplete="email"></div>
+      <div class="profile-field"><label>Celular</label><input type="tel" id="pfTelefono" placeholder="+51 999 999 999" autocomplete="tel"></div>
+      <div class="profile-field">
+        <label>Foto de perfil</label>
+        <input type="file" id="pfFoto" accept="image/jpeg,image/png,image/webp,image/gif">
+      </div>
+      <div class="profile-actions">
+        <button type="button" class="profile-btn profile-btn-primary" id="pfSaveBtn" onclick="guardarPerfil()">Guardar cambios</button>
+        <button type="button" class="profile-btn profile-btn-outline" onclick="subirFotoPerfil()">Subir foto</button>
+        <button type="button" class="profile-btn profile-btn-outline" id="pfRemoveFotoBtn" style="display:none" onclick="quitarFotoPerfil()">Quitar foto</button>
+      </div>
+      <div class="profile-msg" id="pfMsg"></div>
+    </div>
+  </div>
+</div>
+
+<div id="tabSuscripciones" class="tribu-panel">
+  <div class="subs-wrap">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px">
+      <h2 style="font-family:'Fraunces',serif;font-size:1.4rem;color:#fff">Mis suscripciones</h2>
+      <button type="button" class="profile-btn profile-btn-primary" onclick="abrirModalPlanes()">Ver planes</button>
+    </div>
+    <div id="subsLista"><div class="subs-empty">Cargando...</div></div>
   </div>
 </div>
 
@@ -560,10 +631,180 @@ function clearStaleLockUi() {
 
 function renderNavAuth() {
   const area = document.getElementById('navAuthArea');
+  const authTabs = ['tabBtnPerfil', 'tabBtnSuscripciones'];
   if (tribuUser) {
-    area.innerHTML = '<span class="nav-user"><span class="nav-user-name">Hola, ' + tribuUser.nombre + '</span><button class="nav-logout" onclick="doLogout()">Salir</button></span>';
+    authTabs.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = ''; });
+    const initial = escapeHtml((tribuUser.nombre || '?').charAt(0).toUpperCase());
+    const avatarHtml = tribuUser.foto_url
+      ? `<img src="${escapeHtml(tribuUser.foto_url)}" class="nav-avatar" alt="">`
+      : `<span class="nav-avatar nav-avatar-ph">${initial}</span>`;
+    area.innerHTML =
+      `<span class="nav-user-wrap">${avatarHtml}<span class="nav-user-name">Hola, ${escapeHtml(tribuUser.nombre)}</span></span>` +
+      `<a onclick="switchTribuTab('perfil')" style="cursor:pointer">Mi perfil</a>` +
+      `<a onclick="switchTribuTab('suscripciones')" style="cursor:pointer">Suscripciones</a>` +
+      `<button class="nav-logout" onclick="doLogout()">Salir</button>`;
   } else {
+    authTabs.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
     area.innerHTML = "<a onclick='abrirLogin()' style='cursor:pointer'>Iniciar Sesion</a>";
+    if (document.getElementById('tabPerfil')?.classList.contains('active') ||
+        document.getElementById('tabSuscripciones')?.classList.contains('active')) {
+      switchTribuTab('camino');
+    }
+  }
+}
+
+async function tribuFetch(path, options = {}) {
+  const headers = { ...(options.headers || {}) };
+  const token = getToken();
+  if (token) headers.Authorization = 'Bearer ' + token;
+  let body = options.body;
+  if (body instanceof FormData) {
+    delete headers['Content-Type'];
+  } else if (body && typeof body === 'object') {
+    headers['Content-Type'] = 'application/json';
+    body = JSON.stringify(body);
+  }
+  return fetch(API + path, { ...options, headers, body });
+}
+
+function renderProfileAvatar() {
+  const wrap = document.getElementById('profileAvatarWrap');
+  if (!wrap || !tribuUser) return;
+  const initial = escapeHtml((tribuUser.nombre || '?').charAt(0).toUpperCase());
+  if (tribuUser.foto_url) {
+    wrap.innerHTML = `<img src="${escapeHtml(tribuUser.foto_url)}" class="profile-avatar" alt="Foto de perfil">`;
+  } else {
+    wrap.innerHTML = `<div class="profile-avatar profile-avatar-ph">${initial}</div>`;
+  }
+  const rm = document.getElementById('pfRemoveFotoBtn');
+  if (rm) rm.style.display = tribuUser.foto_url ? '' : 'none';
+}
+
+function fillPerfilForm() {
+  if (!tribuUser) return;
+  document.getElementById('pfNombre').value = tribuUser.nombre || '';
+  document.getElementById('pfApellido').value = tribuUser.apellido || '';
+  document.getElementById('pfEmail').value = tribuUser.email || '';
+  document.getElementById('pfTelefono').value = tribuUser.telefono || '';
+  document.getElementById('profileHeading').textContent = (tribuUser.nombre || '') + ' ' + (tribuUser.apellido || '');
+  renderProfileAvatar();
+  const msg = document.getElementById('pfMsg');
+  if (msg) { msg.textContent = ''; msg.className = 'profile-msg'; }
+}
+
+async function cargarPerfilForm() {
+  if (!tribuUser) return;
+  fillPerfilForm();
+  try {
+    const res = await tribuFetch('/tribu-auth/me');
+    if (res.ok) {
+      tribuUser = await res.json();
+      setStoredUser(tribuUser);
+      fillPerfilForm();
+      renderNavAuth();
+    }
+  } catch {}
+}
+
+function setProfileMsg(text, ok) {
+  const el = document.getElementById('pfMsg');
+  if (!el) return;
+  el.textContent = text;
+  el.className = 'profile-msg ' + (ok ? 'ok' : 'err');
+}
+
+async function guardarPerfil() {
+  const btn = document.getElementById('pfSaveBtn');
+  btn.disabled = true;
+  try {
+    const res = await tribuFetch('/tribu-auth/perfil', {
+      method: 'PUT',
+      body: {
+        nombre: document.getElementById('pfNombre').value.trim(),
+        apellido: document.getElementById('pfApellido').value.trim(),
+        email: document.getElementById('pfEmail').value.trim(),
+        telefono: document.getElementById('pfTelefono').value.trim(),
+      },
+    });
+    const d = await res.json();
+    if (!res.ok) { setProfileMsg(d.error || 'Error al guardar', false); return; }
+    if (d.token) setToken(d.token);
+    tribuUser = d.user;
+    setStoredUser(tribuUser);
+    renderNavAuth();
+    fillPerfilForm();
+    setProfileMsg('Perfil actualizado correctamente', true);
+  } catch {
+    setProfileMsg('Error de conexión', false);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function subirFotoPerfil() {
+  const input = document.getElementById('pfFoto');
+  if (!input?.files?.length) { setProfileMsg('Selecciona una imagen primero', false); return; }
+  const fd = new FormData();
+  fd.append('foto', input.files[0]);
+  try {
+    const res = await tribuFetch('/tribu-auth/perfil/foto', { method: 'POST', body: fd, headers: {} });
+    const d = await res.json();
+    if (!res.ok) { setProfileMsg(d.error || 'Error al subir foto', false); return; }
+    tribuUser = d.user;
+    setStoredUser(tribuUser);
+    input.value = '';
+    renderNavAuth();
+    fillPerfilForm();
+    setProfileMsg('Foto actualizada', true);
+  } catch {
+    setProfileMsg('Error de conexión', false);
+  }
+}
+
+async function quitarFotoPerfil() {
+  if (!confirm('¿Quitar tu foto de perfil?')) return;
+  try {
+    const res = await tribuFetch('/tribu-auth/perfil/foto', { method: 'DELETE' });
+    const d = await res.json();
+    if (!res.ok) { setProfileMsg(d.error || 'Error', false); return; }
+    tribuUser = d.user;
+    setStoredUser(tribuUser);
+    renderNavAuth();
+    fillPerfilForm();
+    setProfileMsg('Foto eliminada', true);
+  } catch {
+    setProfileMsg('Error de conexión', false);
+  }
+}
+
+async function cargarMisSuscripciones() {
+  const lista = document.getElementById('subsLista');
+  if (!lista) return;
+  if (!tribuUser) {
+    lista.innerHTML = '<div class="subs-empty">Inicia sesión para ver tus suscripciones.</div>';
+    return;
+  }
+  lista.innerHTML = '<div class="subs-empty">Cargando...</div>';
+  try {
+    const res = await tribuFetch('/tribu-auth/suscripciones');
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.error || 'Error');
+    if (!d.data?.length) {
+      lista.innerHTML = '<div class="subs-card subs-empty">Aún no tienes suscripciones. <button type="button" class="profile-btn profile-btn-primary" style="margin-top:14px" onclick="abrirModalPlanes()">Ver planes</button></div>';
+      return;
+    }
+    lista.innerHTML = d.data.map(s => {
+      const fin = String(s.fecha_fin).slice(0, 10);
+      const ini = String(s.fecha_inicio).slice(0, 10);
+      return `<div class="subs-card${s.activo ? ' active' : ''}">
+        <div class="subs-title">${escapeHtml(s.nombre)}</div>
+        <div class="subs-meta">S/ ${parseFloat(s.precio).toFixed(2)} · ${ini} → ${fin}</div>
+        ${s.descripcion ? `<div class="subs-meta">${escapeHtml(s.descripcion)}</div>` : ''}
+        <span class="subs-badge ${s.activo ? 'on' : 'off'}">${s.activo ? 'Activa' : 'Vencida'}</span>
+      </div>`;
+    }).join('');
+  } catch {
+    lista.innerHTML = '<div class="subs-empty">No se pudieron cargar las suscripciones.</div>';
   }
 }
 
@@ -813,6 +1054,7 @@ async function montarCardBrick(suscripcion_id, monto) {
               try {
                 await cargar();
                 await refreshCalendarioIfActive();
+                await cargarMisSuscripciones();
               } finally {
                 hidePageLoader();
               }
@@ -906,9 +1148,15 @@ async function afterAuthSuccess() {
 }
 
 async function switchTribuTab(tab) {
+  if ((tab === 'perfil' || tab === 'suscripciones') && !tribuUser) {
+    abrirLoginAuth();
+    tab = 'camino';
+  }
   document.querySelectorAll('.tribu-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   document.getElementById('tabCamino').classList.toggle('active', tab === 'camino');
   document.getElementById('tabCalendario').classList.toggle('active', tab === 'calendario');
+  document.getElementById('tabPerfil').classList.toggle('active', tab === 'perfil');
+  document.getElementById('tabSuscripciones').classList.toggle('active', tab === 'suscripciones');
   if (tab === 'calendario') {
     showPageLoader('Cargando calendario...');
     try {
@@ -919,6 +1167,10 @@ async function switchTribuTab(tab) {
     } finally {
       hidePageLoader();
     }
+  } else if (tab === 'perfil') {
+    await cargarPerfilForm();
+  } else if (tab === 'suscripciones') {
+    await cargarMisSuscripciones();
   }
 }
 
