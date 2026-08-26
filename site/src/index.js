@@ -75,7 +75,7 @@ app.use((req, res, next) => {
   }
   // Validate CSRF on state-changing methods (skip public POST endpoints)
   if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {
-    const publicPostPaths = ['/api/reclamos', '/api/clara/chat', '/api/auth/login', '/api/tribu-access/verificar', '/api/tribu-auth/login', '/api/tribu-auth/registro', '/api/tribu-auth/recuperar', '/api/tribu-auth/reset-password', '/api/tribu-pagos/webhook', '/api/tribu-pagos/procesar-pago'];
+    const publicPostPaths = ['/api/reclamos', '/api/clara/chat', '/api/auth/login', '/api/tribu-access/verificar', '/api/tribu-auth/login', '/api/tribu-auth/registro', '/api/tribu-auth/recuperar', '/api/tribu-auth/reset-password', '/api/tribu-auth/cambiar-password-temp', '/api/tribu-pagos/webhook', '/api/tribu-pagos/procesar-pago'];
     const isPublicPost = req.method === 'POST' && publicPostPaths.some(p => req.path === p);
     const isPublicVideoAction = req.method === 'POST' && req.path.startsWith('/api/videos/') && (req.path.endsWith('/vista') || req.path.endsWith('/like'));
     if (!isPublicPost && !isPublicVideoAction) {
