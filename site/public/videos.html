@@ -418,6 +418,28 @@
       font-weight: 700; font-size: .85rem; cursor: pointer; padding: 0;
     }
     .account-back:hover { color: #fff; }
+    .tribu-feedback-box { max-width: 440px; text-align: center; padding-top: 32px; }
+    .tribu-feedback-icon {
+      width: 76px; height: 76px; margin: 0 auto 18px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2rem; line-height: 1; font-weight: 800;
+    }
+    .tribu-feedback-icon.success {
+      background: linear-gradient(135deg, rgba(45,212,191,.22), rgba(56,189,248,.18));
+      border: 1px solid rgba(45,212,191,.45); color: #5eead4;
+      box-shadow: 0 0 48px rgba(45,212,191,.18);
+    }
+    .tribu-feedback-icon.pending {
+      background: linear-gradient(135deg, rgba(251,191,36,.2), rgba(236,72,153,.14));
+      border: 1px solid rgba(251,191,36,.42); color: #fcd34d;
+      box-shadow: 0 0 48px rgba(251,191,36,.12);
+    }
+    .tribu-feedback-eyebrow {
+      font-size: .78rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase;
+      color: #c9b8ee; margin-bottom: 8px;
+    }
+    .tribu-feedback-msg { color: var(--muted); font-size: .95rem; line-height: 1.55; margin: 10px 0 22px; }
+    .tribu-feedback-btn { margin-top: 4px; }
   </style>
 </head>
 <body>
@@ -562,6 +584,16 @@
     <div id="pagoSandboxHint" class="auth-sub" style="display:none;font-size:.82rem;color:#fbbf24;margin-top:8px"></div>
     <div id="pagoContenido" style="margin-top:20px"><div id="cardBrickContainer"></div></div>
     <div id="pagoError" class="auth-error"></div>
+  </div>
+</div>
+<!-- MODAL RESULTADO PAGO -->
+<div class="auth-overlay" id="tribuFeedbackOverlay" role="dialog" aria-modal="true" aria-labelledby="tribuFeedbackTitle">
+  <div class="auth-box tribu-feedback-box">
+    <div class="tribu-feedback-icon success" id="tribuFeedbackIcon" aria-hidden="true">✓</div>
+    <div class="tribu-feedback-eyebrow">La Tribu</div>
+    <div class="auth-title" id="tribuFeedbackTitle">¡Pago exitoso!</div>
+    <p class="tribu-feedback-msg" id="tribuFeedbackMsg">Tu suscripción ha sido activada.</p>
+    <button type="button" class="auth-btn tribu-feedback-btn" id="tribuFeedbackBtn" onclick="cerrarTribuFeedback()">Continuar</button>
   </div>
 </div>
 <!-- MODAL AUTH -->
@@ -779,7 +811,10 @@ document.addEventListener('click', e => {
   if (menu && !menu.contains(e.target)) closeUserMenu();
 });
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') closeUserMenu();
+  if (e.key === 'Escape') {
+    closeUserMenu();
+    if (document.getElementById('tribuFeedbackOverlay')?.classList.contains('show')) cerrarTribuFeedback();
+  }
 });
 
 async function tribuFetch(path, options = {}) {
@@ -1187,11 +1222,21 @@ async function montarCardBrick(suscripcion_id, monto) {
               } finally {
                 hidePageLoader();
               }
-              alert('Pago exitoso! Tu suscripcion ha sido activada.');
+              mostrarTribuFeedback({
+                type: 'success',
+                title: '¡Pago exitoso!',
+                message: 'Tu suscripción ha sido activada. Ya puedes disfrutar de todo el contenido exclusivo de La Tribu.',
+                btnText: 'Explorar contenido'
+              });
               resolve();
             } else if (d.status === 'in_process' || d.status === 'pending' || d.order_status === 'action_required') {
               cerrarModalPago();
-              alert('Tu pago esta pendiente de confirmacion. Te avisaremos cuando se active.');
+              mostrarTribuFeedback({
+                type: 'pending',
+                title: 'Pago en proceso',
+                message: 'Tu pago está pendiente de confirmación. Te avisaremos cuando se active tu suscripción.',
+                btnText: 'Entendido'
+              });
               resolve();
             } else {
               throw new Error('Pago rechazado: ' + (d.status_detail || d.status));
@@ -1214,8 +1259,27 @@ function cerrarModalPago() {
   document.body.style.overflow = '';
 }
 
+function mostrarTribuFeedback({ type = 'success', title, message, btnText = 'Continuar' }) {
+  const overlay = document.getElementById('tribuFeedbackOverlay');
+  const icon = document.getElementById('tribuFeedbackIcon');
+  icon.className = 'tribu-feedback-icon ' + (type === 'pending' ? 'pending' : 'success');
+  icon.textContent = type === 'pending' ? '⏳' : '✓';
+  document.getElementById('tribuFeedbackTitle').textContent = title;
+  document.getElementById('tribuFeedbackMsg').textContent = message;
+  document.getElementById('tribuFeedbackBtn').textContent = btnText;
+  overlay.classList.add('show');
+  document.body.style.overflow = 'hidden';
+  setTimeout(() => document.getElementById('tribuFeedbackBtn').focus(), 80);
+}
+
+function cerrarTribuFeedback() {
+  document.getElementById('tribuFeedbackOverlay').classList.remove('show');
+  document.body.style.overflow = '';
+}
+
 document.getElementById('planesOverlay').addEventListener('click', e => { if (e.target.id === 'planesOverlay') cerrarModalPlanes(); });
 document.getElementById('pagoOverlay').addEventListener('click', e => { if (e.target.id === 'pagoOverlay') cerrarModalPago(); });
+document.getElementById('tribuFeedbackOverlay').addEventListener('click', e => { if (e.target.id === 'tribuFeedbackOverlay') cerrarTribuFeedback(); });
 
 function bannerSinSuscripcion() {
   const logueado = !!tribuUser;
