@@ -9,15 +9,17 @@ function requireAdmin(req, res, next) {
   return res.status(403).json({ error: 'Acceso restringido' });
 }
 
-// Pública: obtener planes activos + visibilidad
+// Pública: planes si suscripciones activas; visible solo controla la landing
 router.get('/public', async (req, res) => {
   try {
     const [cfg] = await pool.execute('SELECT activo, visible FROM config_suscripciones WHERE id = 1');
     const row = cfg[0];
-    if (!row?.activo || !row?.visible) return res.json({ visible: false, data: [] });
+    const activo = !!row?.activo;
+    const visible = !!row?.visible;
+    if (!activo) return res.json({ activo: false, visible, data: [] });
     const [rows] = await pool.execute('SELECT id, nombre, precio, descripcion FROM suscripciones ORDER BY id ASC');
-    res.json({ visible: true, data: rows });
-  } catch { res.json({ visible: false, data: [] }); }
+    res.json({ activo: true, visible, data: rows });
+  } catch { res.json({ activo: false, visible: false, data: [] }); }
 });
 
 router.use(authMiddleware);
