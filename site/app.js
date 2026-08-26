@@ -20,7 +20,11 @@ shell.use(MOUNT_PATH, vhmApp);
 shell.get('/', (req, res) => res.redirect(MOUNT_PATH + '/'));
 
 if (typeof PhusionPassenger !== 'undefined') {
-  PhusionPassenger.configure({ autoInstall: false });
+  PhusionPassenger.configure({
+    autoInstall: false,
+    // Limitar workers Node en hosting compartido (evita picos de procesos)
+    maxPoolSize: parseInt(process.env.PASSENGER_MAX_POOL_SIZE || '2', 10),
+  });
   shell.listen('passenger');
 } else if (require.main === module) {
   const PORT = process.env.PORT || 3001;
