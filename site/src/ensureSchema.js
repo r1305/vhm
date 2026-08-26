@@ -215,6 +215,7 @@ async function crearEsquema() {
   // Columnas reset_token para tribu_users
   await pool.query('ALTER TABLE tribu_users ADD COLUMN reset_token VARCHAR(64) NULL').catch(() => {});
   await pool.query('ALTER TABLE tribu_users ADD COLUMN reset_token_exp DATETIME NULL').catch(() => {});
+  await pool.query('ALTER TABLE tribu_users ADD COLUMN foto_url VARCHAR(500) NULL').catch(() => {});
 
   // Acceso por contraseña a La Tribu
   await pool.query(`
