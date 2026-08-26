@@ -941,6 +941,14 @@ async function quitarFotoPerfil() {
   }
 }
 
+function formatYmd(val) {
+  if (!val) return '';
+  if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}/.test(val)) return val.slice(0, 10);
+  const d = new Date(val);
+  if (Number.isNaN(d.getTime())) return String(val).slice(0, 10);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 async function cargarMisSuscripciones() {
   const lista = document.getElementById('subsLista');
   if (!lista) return;
@@ -958,8 +966,8 @@ async function cargarMisSuscripciones() {
       return;
     }
     lista.innerHTML = d.data.map(s => {
-      const fin = String(s.fecha_fin).slice(0, 10);
-      const ini = String(s.fecha_inicio).slice(0, 10);
+      const fin = formatYmd(s.fecha_fin);
+      const ini = formatYmd(s.fecha_inicio);
       return `<div class="subs-card${s.activo ? ' active' : ''}">
         <div class="subs-title">${escapeHtml(s.nombre)}</div>
         <div class="subs-meta">S/ ${parseFloat(s.precio).toFixed(2)} · ${ini} → ${fin}</div>

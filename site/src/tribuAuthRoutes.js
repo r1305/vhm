@@ -44,6 +44,26 @@ function sanitizeEmail(str) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e) ? e : null;
 }
 
+function toYmd(val) {
+  if (val == null) return null;
+  if (val instanceof Date) {
+    const y = val.getFullYear();
+    const m = String(val.getMonth() + 1).padStart(2, '0');
+    const d = String(val.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+  const s = String(val);
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  const parsed = new Date(val);
+  if (!Number.isNaN(parsed.getTime())) {
+    const y = parsed.getFullYear();
+    const m = String(parsed.getMonth() + 1).padStart(2, '0');
+    const d = String(parsed.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+  return s.slice(0, 10);
+}
+
 function deleteFotoFile(fotoUrl) {
   if (!fotoUrl) return;
   const match = String(fotoUrl).match(/\/uploads\/tribu\/[^?#]+/);
@@ -401,22 +421,22 @@ router.get('/suscripciones', tribuAuthMiddleware, async (req, res) => {
   try {
     const [rows] = await pool.execute(
       `SELECT ts.id, ts.fecha_inicio, ts.fecha_fin, ts.activo,
-              s.nombre, s.precio, s.descripcion
+              s.nombre, s.precio, s.descripcion,
+              (ts.activo = 1 AND ts.fecha_fin >= CURDATE()) AS vigente
        FROM tribu_suscripciones ts
        JOIN suscripciones s ON s.id = ts.suscripcion_id
        WHERE ts.tribu_user_id = ?
        ORDER BY ts.fecha_inicio DESC`,
       [req.tribuUser.id]
     );
-    const hoy = new Date().toISOString().slice(0, 10);
     const data = rows.map(r => ({
       id: r.id,
       nombre: r.nombre,
       precio: r.precio,
       descripcion: r.descripcion,
-      fecha_inicio: r.fecha_inicio,
-      fecha_fin: r.fecha_fin,
-      activo: !!(r.activo && String(r.fecha_fin).slice(0, 10) >= hoy),
+      fecha_inicio: toYmd(r.fecha_inicio),
+      fecha_fin: toYmd(r.fecha_fin),
+      activo: !!r.vigente,
     }));
     res.json({ data });
   } catch (err) {
