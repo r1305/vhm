@@ -1,41 +1,120 @@
 #!/usr/bin/env node
 /**
- * cron-wsp.js — Notificación diaria de citas a terapeutas via WhatsApp (openwa)
+ * cron-wsp.js — Recordatorio WhatsApp a todos los terapeutas (openwa)
  *
- * cPanel Cron (CLI):
+ * Envía el mensaje guardado en cron_config a todos los terapeutas activos con teléfono.
+ * El horario y días los controla node-cron en app.js (America/Lima).
+ *
+ * CLI opcional (cPanel Cron, respeta días/enabled de cron_config):
  *   0 18 * * 1-6   node /home/USUARIO/vhm/crm/cron-wsp.js >> logs/cron-wsp.log 2>&1
- *
- * También invocable desde el CRM (Integraciones → Ejecutar ahora) sin matar el servidor.
  */
 
 require('dotenv').config({ path: __dirname + '/.env' });
 const pool = require('./lib/db');
 const { sendWhatsAppGreen, loadOpenwaConfigFromDB, isOpenwaConfigured } = require('./lib/greenapi');
 
-const DIAS  = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
-const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+const LIMA_DOW = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
 
-function fmtFecha(dateStr) {
-  const d = new Date(dateStr + 'T12:00:00');
-  return `${DIAS[d.getDay()]} ${d.getDate()} de ${MESES[d.getMonth()]}`;
+function getLimaDayOfWeek() {
+  const short = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Lima', weekday: 'short' }).format(new Date());
+  return LIMA_DOW[short];
 }
 
-async function runCronWSP() {
-  const manana = new Date();
-  manana.setDate(manana.getDate() + 1);
-  const fechaStr = manana.toISOString().slice(0, 10);
+async function loadCronConfig() {
+  const [[row]] = await pool.execute(
+    'SELECT enabled, hora, minuto, dias, mensaje FROM cron_config WHERE id=1'
+  );
+  return row || { enabled: 0, hora: 18, minuto: 0, dias: '1,2,3,4,5,6', mensaje: '' };
+}
+
+function isCronDayToday(dias) {
+  const today = String(getLimaDayOfWeek());
+  return String(dias || '')
+    .split(',')
+    .map(d => d.trim())
+    .filter(Boolean)
+    .includes(today);
+}
+
+function personalizeMessage(template, nombre) {
+  return String(template).replace(/\{nombre\}/gi, nombre || '');
+}
+
+async function sendBroadcastToTerapeutas(message) {
+  const stats = { enviados: 0, omitidos: 0, errores: [] };
+
+  const [terapeutas] = await pool.execute(
+    "SELECT nombre, telefono FROM terapeutas WHERE activo=1 AND telefono IS NOT NULL AND telefono != ''"
+  );
+
+  if (!terapeutas.length) {
+    console.log('[cron-wsp] Ningún terapeuta activo con teléfono');
+    return stats;
+  }
+
+  for (const t of terapeutas) {
+    const text = personalizeMessage(message, t.nombre);
+    try {
+      const r = await sendWhatsAppGreen({ to: t.telefono, message: text });
+      if (r.skipped) {
+        console.log(`[cron-wsp] ${t.nombre} — skipped (sin config)`);
+        stats.omitidos++;
+      } else {
+        console.log(`[cron-wsp] ${t.nombre} — enviado ✓`);
+        stats.enviados++;
+      }
+    } catch (err) {
+      console.error(`[cron-wsp] ${t.nombre} — ERROR:`, err.message);
+      stats.errores.push({ terapeuta: t.nombre, error: err.message });
+    }
+    await new Promise(r => setTimeout(r, 1000));
+  }
+
+  return stats;
+}
+
+/**
+ * @param {{ manual?: boolean }} opts — manual=true omite chequeo de día/enabled (Ejecutar ahora)
+ */
+async function runCronWSP(opts = {}) {
+  const manual = !!opts.manual;
+  const cron = await loadCronConfig();
 
   const stats = {
     ok: true,
-    fecha: fechaStr,
     enviados: 0,
     omitidos: 0,
     errores: [],
     sinConfig: false,
-    sinCitas: false,
+    sinMensaje: false,
+    omitido: false,
+    motivo: null,
   };
 
-  console.log(`[cron-wsp] ${new Date().toISOString()} — Procesando citas para ${fechaStr}`);
+  if (!manual) {
+    if (!cron.enabled) {
+      console.log('[cron-wsp] Cron desactivado — omitido');
+      stats.omitido = true;
+      stats.motivo = 'disabled';
+      return stats;
+    }
+    if (!isCronDayToday(cron.dias)) {
+      console.log('[cron-wsp] Hoy no es día de envío — omitido');
+      stats.omitido = true;
+      stats.motivo = 'wrong_day';
+      return stats;
+    }
+  }
+
+  const message = (cron.mensaje || '').trim();
+  if (!message) {
+    console.log('[cron-wsp] Sin mensaje configurado en cron_config — abortando');
+    stats.sinMensaje = true;
+    stats.ok = false;
+    return stats;
+  }
+
+  console.log(`[cron-wsp] ${new Date().toISOString()} — Enviando recordatorio a terapeutas`);
 
   await loadOpenwaConfigFromDB();
   if (!isOpenwaConfigured()) {
@@ -45,67 +124,8 @@ async function runCronWSP() {
     return stats;
   }
 
-  const [citas] = await pool.execute(
-    `SELECT c.fecha, c.modalidad,
-            p.nombre AS pac_nombre, p.apellido AS pac_apellido,
-            t.id AS ter_id, t.nombre AS ter_nombre, t.telefono AS ter_telefono
-     FROM citas c
-     JOIN pacientes p  ON c.paciente_id  = p.id
-     JOIN terapeutas t ON c.terapeuta_id = t.id
-     WHERE c.fecha = ? AND c.estado NOT IN ('cancelada','no_show') AND t.activo = 1
-     ORDER BY t.id`,
-    [fechaStr]
-  );
-
-  if (!citas.length) {
-    console.log('[cron-wsp] Sin citas para mañana');
-    stats.sinCitas = true;
-    return stats;
-  }
-
-  const porTerapeuta = {};
-  for (const c of citas) {
-    if (!porTerapeuta[c.ter_id])
-      porTerapeuta[c.ter_id] = { nombre: c.ter_nombre, telefono: c.ter_telefono, citas: [] };
-    porTerapeuta[c.ter_id].citas.push(c);
-  }
-
-  const ICON = { presencial: '🏢', videollamada: '💻', telefono: '📞' };
-
-  for (const ter of Object.values(porTerapeuta)) {
-    if (!ter.telefono) {
-      console.log(`[cron-wsp] ${ter.nombre} sin teléfono — omitido`);
-      stats.omitidos++;
-      continue;
-    }
-
-    const lineas = ter.citas.map(c =>
-      `• ${c.pac_nombre} ${c.pac_apellido} ${ICON[c.modalidad] || '📅'}`
-    ).join('\n');
-
-    const total = ter.citas.length;
-    const mensaje =
-      `Hola ${ter.nombre} 👋\n` +
-      `Mañana *${fmtFecha(fechaStr)}* tienes *${total} ${total === 1 ? 'cita' : 'citas'}*:\n\n` +
-      `${lineas}\n\n` +
-      `_VHM Centro de Psicología_`;
-
-    try {
-      const r = await sendWhatsAppGreen({ to: ter.telefono, message: mensaje });
-      if (r.skipped) {
-        console.log(`[cron-wsp] ${ter.nombre} — skipped (sin config)`);
-        stats.omitidos++;
-      } else {
-        console.log(`[cron-wsp] ${ter.nombre} — enviado ✓ (${r.messageId || 'ok'})`);
-        stats.enviados++;
-      }
-    } catch (err) {
-      console.error(`[cron-wsp] ${ter.nombre} — ERROR:`, err.message);
-      stats.errores.push({ terapeuta: ter.nombre, error: err.message });
-    }
-
-    await new Promise(r => setTimeout(r, 1000));
-  }
+  const result = await sendBroadcastToTerapeutas(message);
+  Object.assign(stats, result);
 
   console.log('[cron-wsp] Finalizado — enviados:', stats.enviados, 'omitidos:', stats.omitidos);
   return stats;
@@ -114,8 +134,9 @@ async function runCronWSP() {
 async function runCli() {
   let exitCode = 0;
   try {
-    const stats = await runCronWSP();
-    if (stats.sinConfig) exitCode = 0;
+    const stats = await runCronWSP({ manual: false });
+    if (stats.sinConfig || stats.sinMensaje) exitCode = 1;
+    else if (stats.omitido) exitCode = 0;
     else if (stats.errores.length) exitCode = 1;
   } catch (err) {
     console.error('[cron-wsp] Error fatal:', err.message);
@@ -126,6 +147,6 @@ async function runCli() {
   }
 }
 
-module.exports = { runCronWSP };
+module.exports = { runCronWSP, sendBroadcastToTerapeutas, loadCronConfig };
 
 if (require.main === module) runCli();
