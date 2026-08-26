@@ -89,6 +89,57 @@ app.use((req, res, next) => {
   next();
 });
 
+let initPromise = null;
+
+function programarCronTribu() {
+  if (process.env.TRIBU_CRON_ENABLED !== '1') return;
+  const { renovarPassword: renovarTribuPassword } = require('./tribuAccessRoutes');
+
+  function msHastaProximoMiercoles12() {
+    const ahora = new Date();
+    const objetivo = new Date(ahora);
+    const diasHasta = (3 - ahora.getDay() + 7) % 7 || 7;
+    objetivo.setDate(ahora.getDate() + diasHasta);
+    objetivo.setHours(12, 0, 0, 0);
+    return objetivo - ahora;
+  }
+
+  function programar() {
+    const ms = msHastaProximoMiercoles12();
+    const timer = setTimeout(async () => {
+      try {
+        await renovarTribuPassword();
+        console.log('[vhm] Contraseña de La Tribu renovada automáticamente');
+      } catch (e) {
+        console.error('[vhm] Error al renovar contraseña de La Tribu:', e.message);
+      }
+      programar();
+    }, ms);
+    if (typeof timer.unref === 'function') timer.unref();
+  }
+
+  programar();
+}
+
+function initAppOnce() {
+  if (!initPromise) {
+    initPromise = (async () => {
+      try {
+        await require('./ensureSchema').ensureVideoSchema();
+      } catch (err) {
+        console.error('[vhm] No se pudo asegurar el esquema:', err.message);
+      }
+      programarCronTribu();
+    })();
+  }
+  return initPromise;
+}
+
+// Inicialización perezosa: evita conectar BD al arrancar cada worker
+app.use((req, res, next) => {
+  initAppOnce().then(() => next()).catch(() => next());
+});
+
 function sendPublicHtml(res, filename) {
   const base = ((res.locals && res.locals.basePath) || process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
   const filePath = path.join(__dirname, '../public', filename);
@@ -185,9 +236,13 @@ app.get('/api/deploy-info', (req, res) => {
   res.json({
     ok: true,
     version,
+    pid: process.pid,
+    uptimeSec: Math.round(process.uptime()),
+    memoryMb: Math.round(process.memoryUsage().rss / 1024 / 1024),
+    tribuCronEnabled: process.env.TRIBU_CRON_ENABLED === '1',
+    dbPoolMax: process.env.DB_POOL_MAX || '3',
     adminDir: fs.existsSync(ADMIN_DIR),
     adminJs: fs.existsSync(path.join(ADMIN_DIR, 'js', 'api.js')),
-    adminPages: ADMIN_PAGES.filter((p) => fs.existsSync(path.join(ADMIN_DIR, p))),
   });
 });
 
@@ -222,11 +277,11 @@ app.get('/api/pixel-config', async (req, res) => {
     const pool = require('./db');
     const [rows] = await pool.execute('SELECT pixel_id, activo FROM config_pixel WHERE id = 1 AND activo = 1');
     const payload = rows[0] || { pixel_id: null, activo: false };
-    payload._deployVersion = 'html-admin-v2';
+    payload._deployVersion = 'html-admin-v3';
     res.json(payload);
   } catch (err) {
     console.error(err);
-    res.json({ pixel_id: null, activo: false, _deployVersion: 'html-admin-v2' });
+    res.json({ pixel_id: null, activo: false, _deployVersion: 'html-admin-v3' });
   }
 });
 
@@ -267,7 +322,7 @@ app.use('/api/eventos', eventosRoutes);
 app.use('/api/config-facebook-verification', configFacebookVerificationRoutes);
 app.use('/api/suscripciones', require('./suscripcionesRoutes'));
 app.use('/api/config-mercadopago', require('./configMercadoPagoRoutes'));
-const { router: tribuAccessRouter, renovarPassword: renovarTribuPassword } = require('./tribuAccessRoutes');
+const { router: tribuAccessRouter } = require('./tribuAccessRoutes');
 app.use('/api/tribu-access', tribuAccessRouter);
 app.use('/api/tribu-users', require('./tribuUsersRoutes'));
 const { router: tribuAuthRouter } = require('./tribuAuthRoutes');
@@ -280,48 +335,12 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Error interno del servidor' });
 });
 
-// Cron: renovar contraseña de La Tribu cada miércoles al mediodía
-function programarCronTribu() {
-  function msHastaProximoMiercoles12() {
-    const ahora = new Date();
-    const objetivo = new Date(ahora);
-    // 3 = miércoles, 0=dom..6=sab
-    const diasHasta = (3 - ahora.getDay() + 7) % 7 || 7;
-    objetivo.setDate(ahora.getDate() + diasHasta);
-    objetivo.setHours(12, 0, 0, 0);
-    return objetivo - ahora;
-  }
-
-  function programar() {
-    const ms = msHastaProximoMiercoles12();
-    setTimeout(async () => {
-      try {
-        await renovarTribuPassword();
-        console.log('[vhm] Contraseña de La Tribu renovada automáticamente');
-      } catch (e) {
-        console.error('[vhm] Error al renovar contraseña de La Tribu:', e.message);
-      }
-      programar(); // reprogramar para el siguiente miércoles
-    }, ms);
-  }
-
-  programar();
-}
-
-async function main() {
-  try {
-    await require('./ensureSchema').ensureVideoSchema();
-  } catch (err) {
-    console.error('[vhm] No se pudo asegurar el esquema de videos:', err.message);
-  }
-  programarCronTribu();
-  if (require.main === module) {
+if (require.main === module) {
+  initAppOnce().then(() => {
     app.listen(PORT, () => {
       console.log(`Servidor corriendo en http://localhost:${PORT}`);
     });
-  }
+  });
 }
-
-main();
 
 module.exports = app;

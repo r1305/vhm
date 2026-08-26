@@ -1,3 +1,4 @@
-deploy-version=html-admin-v2
-deploy-date=2026-08-25
+deploy-version=html-admin-v3
+deploy-date=2026-08-26
 admin=html-vanilla-js
+optimizations=lazy-init,no-build,cron-off
