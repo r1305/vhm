@@ -173,7 +173,30 @@ async function crearEsquema() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
 
-  // Mercado Pago
+  // Culqi (pasarela de pagos La Tribu)
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS config_culqi (
+      id             INT PRIMARY KEY,
+      activo         TINYINT(1) NOT NULL DEFAULT 0,
+      modo           ENUM('sandbox','produccion') NOT NULL DEFAULT 'sandbox',
+      public_key     VARCHAR(120) NOT NULL DEFAULT '',
+      secret_key     VARCHAR(120) NOT NULL DEFAULT '',
+      fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+  const [culqiRows] = await pool.query('SELECT id FROM config_culqi WHERE id = 1');
+  if (culqiRows.length === 0) {
+    await pool.query("INSERT INTO config_culqi (id, activo, modo, public_key, secret_key) VALUES (1, 0, 'sandbox', '', '')");
+  }
+  // Migración desde Mercado Pago si existía config previa
+  await pool.query(`
+    UPDATE config_culqi c
+    JOIN config_mercadopago m ON m.id = 1
+    SET c.activo = m.activo, c.modo = m.modo, c.public_key = m.public_key, c.secret_key = m.access_token
+    WHERE c.id = 1 AND c.public_key = '' AND c.secret_key = '' AND m.public_key <> ''
+  `).catch(() => {});
+
+  // Mercado Pago (legado — ya no se usa en código)
   await pool.query(`
     CREATE TABLE IF NOT EXISTS config_mercadopago (
       id             INT PRIMARY KEY,
@@ -219,6 +242,19 @@ async function crearEsquema() {
   await pool.query('ALTER TABLE tribu_suscripciones ADD COLUMN mp_card_brand VARCHAR(32) NULL').catch(() => {});
   await pool.query('ALTER TABLE tribu_suscripciones ADD COLUMN next_renovacion_intento DATETIME NULL').catch(() => {});
   await pool.query('ALTER TABLE tribu_suscripciones ADD COLUMN renovacion_intentos INT NOT NULL DEFAULT 0').catch(() => {});
+  await pool.query('ALTER TABLE tribu_suscripciones ADD COLUMN culqi_charge_id VARCHAR(64) NULL').catch(() => {});
+  await pool.query('ALTER TABLE tribu_suscripciones ADD KEY idx_ts_culqi_charge (culqi_charge_id)').catch(() => {});
+  await pool.query('ALTER TABLE tribu_suscripciones ADD COLUMN culqi_customer_id VARCHAR(64) NULL').catch(() => {});
+  await pool.query('ALTER TABLE tribu_suscripciones ADD COLUMN culqi_card_id VARCHAR(64) NULL').catch(() => {});
+  await pool.query('ALTER TABLE tribu_suscripciones ADD COLUMN culqi_card_brand VARCHAR(32) NULL').catch(() => {});
+  await pool.query(`
+    UPDATE tribu_suscripciones
+    SET culqi_charge_id = COALESCE(culqi_charge_id, mp_order_id, mp_payment_id),
+        culqi_customer_id = COALESCE(culqi_customer_id, mp_customer_id),
+        culqi_card_id = COALESCE(culqi_card_id, mp_card_id),
+        culqi_card_brand = COALESCE(culqi_card_brand, mp_card_brand)
+    WHERE culqi_charge_id IS NULL OR culqi_customer_id IS NULL OR culqi_card_id IS NULL
+  `).catch(() => {});
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS tribu_payer_profiles (
@@ -229,6 +265,51 @@ async function crearEsquema() {
       FOREIGN KEY (tribu_user_id) REFERENCES tribu_users(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
+  await pool.query('ALTER TABLE tribu_payer_profiles ADD COLUMN billing_email VARCHAR(150) NULL').catch(() => {});
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS tribu_saved_cards (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      tribu_user_id INT NOT NULL,
+      culqi_customer_id VARCHAR(64) NOT NULL,
+      culqi_card_id VARCHAR(64) NOT NULL,
+      culqi_card_brand VARCHAR(32) NULL,
+      last_four_digits VARCHAR(4) NULL,
+      exp_month INT NULL,
+      exp_year INT NULL,
+      is_default TINYINT(1) NOT NULL DEFAULT 0,
+      activo TINYINT(1) NOT NULL DEFAULT 1,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE KEY uq_user_culqi_card (tribu_user_id, culqi_card_id),
+      KEY idx_tsc_user (tribu_user_id),
+      FOREIGN KEY (tribu_user_id) REFERENCES tribu_users(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+  await pool.query('ALTER TABLE tribu_saved_cards ADD COLUMN culqi_customer_id VARCHAR(64) NULL').catch(() => {});
+  await pool.query('ALTER TABLE tribu_saved_cards ADD COLUMN culqi_card_id VARCHAR(64) NULL').catch(() => {});
+  await pool.query('ALTER TABLE tribu_saved_cards ADD COLUMN culqi_card_brand VARCHAR(32) NULL').catch(() => {});
+  await pool.query('ALTER TABLE tribu_saved_cards MODIFY mp_customer_id VARCHAR(64) NULL').catch(() => {});
+  await pool.query('ALTER TABLE tribu_saved_cards MODIFY mp_card_id VARCHAR(64) NULL').catch(() => {});
+  await pool.query(`
+    UPDATE tribu_saved_cards
+    SET culqi_customer_id = COALESCE(culqi_customer_id, mp_customer_id),
+        culqi_card_id = COALESCE(culqi_card_id, mp_card_id),
+        culqi_card_brand = COALESCE(culqi_card_brand, mp_card_brand)
+    WHERE culqi_card_id IS NULL AND mp_card_id IS NOT NULL
+  `).catch(() => {});
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS tribu_culqi_payment_events (
+      culqi_charge_id VARCHAR(64) NOT NULL PRIMARY KEY,
+      tribu_suscripcion_id INT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      KEY idx_tcpe_sub (tribu_suscripcion_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+  await pool.query(`
+    INSERT IGNORE INTO tribu_culqi_payment_events (culqi_charge_id, tribu_suscripcion_id, created_at)
+    SELECT mp_payment_id, tribu_suscripcion_id, created_at FROM tribu_mp_payment_events
+  `).catch(() => {});
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS tribu_mp_payment_events (

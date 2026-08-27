@@ -6,6 +6,11 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const multer = require('multer');
 const pool = require('./db');
+const {
+  listSavedCards,
+  deactivateSavedCard,
+  applySavedCardToSubscription,
+} = require('./tribuSavedCards');
 const { JWT_SECRET } = require('./auth');
 
 const router = Router();
@@ -348,6 +353,29 @@ router.get('/me', tribuAuthMiddleware, async (req, res) => {
   }
 });
 
+// GET /api/tribu-auth/facturacion — correo de comprobante guardado
+router.get('/facturacion', tribuAuthMiddleware, async (req, res) => {
+  try {
+    const [[profile]] = await pool.execute(
+      'SELECT billing_email, identification_type, identification_number FROM tribu_payer_profiles WHERE tribu_user_id = ? LIMIT 1',
+      [req.tribuUser.id]
+    );
+    const [[user]] = await pool.execute(
+      'SELECT email FROM tribu_users WHERE id = ? LIMIT 1',
+      [req.tribuUser.id]
+    );
+    res.json({
+      billing_email: profile?.billing_email || null,
+      account_email: user?.email || null,
+      identification_type: profile?.identification_type || null,
+      identification_number: profile?.identification_number || null,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al obtener datos de facturación' });
+  }
+});
+
 // PUT /api/tribu-auth/perfil
 router.put('/perfil', tribuAuthMiddleware, async (req, res) => {
   try {
@@ -416,15 +444,64 @@ router.delete('/perfil/foto', tribuAuthMiddleware, async (req, res) => {
   }
 });
 
+// GET /api/tribu-auth/tarjetas — tarjetas guardadas del usuario
+router.get('/tarjetas', tribuAuthMiddleware, async (req, res) => {
+  try {
+    const data = await listSavedCards(req.tribuUser.id);
+    res.json({ data });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al obtener tarjetas' });
+  }
+});
+
+// DELETE /api/tribu-auth/tarjetas/:id — quitar tarjeta guardada
+router.delete('/tarjetas/:id', tribuAuthMiddleware, async (req, res) => {
+  try {
+    const cardId = Number.parseInt(req.params.id, 10);
+    if (!cardId) return res.status(400).json({ error: 'ID inválido' });
+    const ok = await deactivateSavedCard(req.tribuUser.id, cardId);
+    if (!ok) return res.status(404).json({ error: 'Tarjeta no encontrada' });
+    res.json({ ok: true, message: 'Tarjeta eliminada de tus medios de pago guardados.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al eliminar la tarjeta' });
+  }
+});
+
+// PUT /api/tribu-auth/suscripciones/:id/tarjeta — cambiar tarjeta de autorenovación
+router.put('/suscripciones/:id/tarjeta', tribuAuthMiddleware, async (req, res) => {
+  try {
+    const subId = Number.parseInt(req.params.id, 10);
+    const tarjetaId = Number.parseInt(req.body.tarjeta_id, 10);
+    if (!subId || !tarjetaId) return res.status(400).json({ error: 'Datos incompletos' });
+    const result = await applySavedCardToSubscription(req.tribuUser.id, subId, tarjetaId);
+    if (!result.ok) return res.status(400).json({ error: result.error });
+    res.json({
+      ok: true,
+      message: 'Medio de pago actualizado. La autorenovación usará esta tarjeta.',
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al actualizar el medio de pago' });
+  }
+});
+
 // GET /api/tribu-auth/suscripciones
 router.get('/suscripciones', tribuAuthMiddleware, async (req, res) => {
   try {
     const [rows] = await pool.execute(
-      `SELECT ts.id, ts.fecha_inicio, ts.fecha_fin, ts.activo, ts.auto_renovacion, ts.mp_card_id, ts.cancelada_at,
+      `SELECT ts.id, ts.fecha_inicio, ts.fecha_fin, ts.activo, ts.auto_renovacion,
+              ts.culqi_card_id, ts.culqi_card_brand, ts.cancelada_at,
+              tsc.id AS tarjeta_id,
               s.nombre, s.precio, s.descripcion,
               (ts.activo = 1 AND ts.fecha_fin >= CURDATE()) AS vigente
        FROM tribu_suscripciones ts
        JOIN suscripciones s ON s.id = ts.suscripcion_id
+       LEFT JOIN tribu_saved_cards tsc
+         ON tsc.tribu_user_id = ts.tribu_user_id
+        AND tsc.culqi_card_id = ts.culqi_card_id
+        AND tsc.activo = 1
        WHERE ts.tribu_user_id = ?
        ORDER BY ts.fecha_inicio DESC`,
       [req.tribuUser.id]
@@ -437,8 +514,13 @@ router.get('/suscripciones', tribuAuthMiddleware, async (req, res) => {
       fecha_inicio: toYmd(r.fecha_inicio),
       fecha_fin: toYmd(r.fecha_fin),
       activo: !!r.vigente,
-      auto_renovacion: !!(r.auto_renovacion && r.vigente && r.mp_card_id),
-      puede_cancelar: !!(r.vigente && r.auto_renovacion && r.mp_card_id),
+      auto_renovacion: !!(r.auto_renovacion && r.vigente && r.culqi_card_id),
+      puede_cancelar: !!(r.vigente && r.auto_renovacion && r.culqi_card_id),
+      tarjeta_guardada: !!r.culqi_card_id,
+      tarjeta_id: r.tarjeta_id || null,
+      tarjeta_label: r.culqi_card_brand && r.culqi_card_id
+        ? `${String(r.culqi_card_brand).toUpperCase()} · tarjeta guardada`
+        : null,
       cancelada_at: r.cancelada_at ? toYmd(r.cancelada_at) : null,
     }));
     res.json({ data });

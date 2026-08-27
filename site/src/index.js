@@ -39,7 +39,7 @@ app.use((req, res, next) => {
   res.setHeader('X-XSS-Protection', '1; mode=block');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://connect.facebook.net https://*.mlstatic.com https://sdk.mercadopago.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.mlstatic.com; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com https://*.mlstatic.com; connect-src 'self' https://connect.facebook.net https://graph.facebook.com https://*.mercadopago.com https://*.mercadopago.com.pe https://*.mlstatic.com https://*.mercadolibre.com; frame-src https://www.loom.com https://*.mercadopago.com https://*.mercadopago.com.pe https://*.mercadolibre.com; frame-ancestors 'none'");
+  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://connect.facebook.net https://checkout.culqi.com https://js.culqi.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://connect.facebook.net https://graph.facebook.com https://api.culqi.com https://checkout.culqi.com; frame-src https://www.loom.com https://checkout.culqi.com; frame-ancestors 'none'");
   if (process.env.NODE_ENV === 'production') {
     res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   }
@@ -357,7 +357,7 @@ app.use('/api/clara', claraRoutes);
 app.use('/api/eventos', eventosRoutes);
 app.use('/api/config-facebook-verification', configFacebookVerificationRoutes);
 app.use('/api/suscripciones', require('./suscripcionesRoutes'));
-app.use('/api/config-mercadopago', require('./configMercadoPagoRoutes'));
+app.use('/api/config-culqi', require('./configCulqiRoutes'));
 const { router: tribuAccessRouter } = require('./tribuAccessRoutes');
 app.use('/api/tribu-access', tribuAccessRouter);
 app.use('/api/tribu-users', require('./tribuUsersRoutes'));

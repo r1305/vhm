@@ -39,11 +39,12 @@ src/
 ├── configWhatsappRoutes.js
 ├── ensureSchema.js   ← Auto-migración de tablas
 ├── tribuAuthRoutes.js    ← Login/registro La Tribu
-├── tribuPagosRoutes.js   ← Mercado Pago (Orders API)
+├── tribuPagosRoutes.js   ← Culqi (cargos + tarjetas guardadas)
+├── tribuCulqi.js         ← Cliente API Culqi
 ├── tribuAccessRoutes.js  ← Gate contraseña landing
 ├── tribuUsersRoutes.js   ← Admin usuarios La Tribu
 ├── suscripcionesRoutes.js
-├── configMercadoPagoRoutes.js
+├── configCulqiRoutes.js
 └── mailer.js
 lib/
 ├── siteEnv.js        ← Lectura de variables de entorno
@@ -75,7 +76,7 @@ Deploy: sube los archivos editados → Restart en cPanel.
 
 - Página: `public/videos.html` servida en `/site/latribu`
 - Pagos: Checkout API vía Orders API (`/api/tribu-pagos/procesar-pago`)
-- Variables extra: `SITE_URL`, `MP_SANDBOX_PAYER_EMAIL`, `MP_WEBHOOK_SECRET` (ver `.env.example`)
+- Variables extra: `SITE_URL`, `CULQI_WEBHOOK_SECRET`, `TRIBU_RENOVACION_CRON_SECRET` (ver `.env.example`)
 
 ## Deploy cPanel
 
