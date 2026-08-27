@@ -75,12 +75,13 @@ app.use((req, res, next) => {
   }
   // Validate CSRF on state-changing methods (skip public POST endpoints)
   if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {
-    const publicPostPaths = ['/api/reclamos', '/api/clara/chat', '/api/auth/login', '/api/tribu-access/verificar', '/api/tribu-auth/login', '/api/tribu-auth/registro', '/api/tribu-auth/recuperar', '/api/tribu-auth/reset-password', '/api/tribu-auth/cambiar-password-temp', '/api/tribu-pagos/webhook', '/api/tribu-pagos/procesar-pago'];
+    const publicPostPaths = ['/api/reclamos', '/api/clara/chat', '/api/auth/login', '/api/tribu-access/verificar', '/api/tribu-auth/login', '/api/tribu-auth/registro', '/api/tribu-auth/recuperar', '/api/tribu-auth/reset-password', '/api/tribu-auth/cambiar-password-temp', '/api/tribu-pagos/webhook', '/api/tribu-pagos/procesar-pago', '/api/tribu-pagos/cron-renovaciones'];
     const isPublicPost = req.method === 'POST' && publicPostPaths.some(p => req.path === p);
+    const isPublicCronRenovaciones = req.method === 'GET' && req.path === '/api/tribu-pagos/cron-renovaciones';
     const isPublicVideoAction = req.method === 'POST' && req.path.startsWith('/api/videos/') && (req.path.endsWith('/vista') || req.path.endsWith('/like'));
     const isTribuBearer = req.headers.authorization?.startsWith('Bearer ') &&
       (req.path.startsWith('/api/tribu-auth/') || req.path.startsWith('/api/tribu-pagos/'));
-    if (!isPublicPost && !isPublicVideoAction && !isTribuBearer) {
+    if (!isPublicPost && !isPublicVideoAction && !isPublicCronRenovaciones && !isTribuBearer) {
       const headerToken = req.headers['x-csrf-token'] || req.headers['csrf-token'];
       const cookieToken = req.cookies?.csrf_token;
       if (!validateCsrfToken(headerToken) || !validateCsrfToken(cookieToken) || headerToken !== cookieToken) {
@@ -92,6 +93,24 @@ app.use((req, res, next) => {
 });
 
 let initPromise = null;
+
+function programarCronRenovaciones() {
+  if (process.env.TRIBU_RENOVACION_CRON_ENABLED !== '1') return;
+  const { runRenovacionesSuscripciones } = require('./tribuRenovaciones');
+
+  const HOUR_MS = 60 * 60 * 1000;
+  const timer = setInterval(async () => {
+    try {
+      const result = await runRenovacionesSuscripciones();
+      if (result.processed > 0) {
+        console.log(`[vhm] Renovaciones La Tribu: ${result.processed} procesadas`);
+      }
+    } catch (e) {
+      console.error('[vhm] Error en cron renovaciones La Tribu:', e.message);
+    }
+  }, HOUR_MS);
+  if (typeof timer.unref === 'function') timer.unref();
+}
 
 function programarCronTribu() {
   if (process.env.TRIBU_CRON_ENABLED !== '1') return;
@@ -132,6 +151,7 @@ function initAppOnce() {
         console.error('[vhm] No se pudo asegurar el esquema:', err.message);
       }
       programarCronTribu();
+      programarCronRenovaciones();
     })();
   }
   return initPromise;

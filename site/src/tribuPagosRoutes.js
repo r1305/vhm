@@ -2,52 +2,27 @@ const { Router } = require('express');
 const crypto = require('crypto');
 const pool = require('./db');
 const { tribuAuthMiddleware } = require('./tribuAuthRoutes');
+const {
+  getMpConfig,
+  buildExternalRef,
+  getWebhookUrl,
+  resolvePayerEmail,
+  extractBrickPayload,
+  mapMpError,
+  httpStatusForError,
+  buildOrderBody,
+  createMpOrder,
+  fetchMpOrder,
+  resolvePaymentOutcome,
+  vaultCustomerCard,
+} = require('./tribuMpOrders');
+const {
+  activateNewSubscription,
+  applyApprovedOrder,
+  runRenovacionesSuscripciones,
+} = require('./tribuRenovaciones');
 
 const router = Router();
-
-async function getMpConfig() {
-  const [rows] = await pool.execute(
-    'SELECT activo, access_token, modo, public_key FROM config_mercadopago WHERE id = 1'
-  );
-  const cfg = rows[0];
-  if (!cfg || !cfg.activo || !cfg.access_token) {
-    throw new Error('MercadoPago no está configurado o activo');
-  }
-  return cfg;
-}
-
-function formatAmount(value) {
-  const n = Number.parseFloat(value);
-  if (!Number.isFinite(n) || n <= 0) throw new Error('Monto inválido');
-  return n.toFixed(2);
-}
-
-function buildExternalRef(userId, planId) {
-  return `tribu-${userId}-${planId}-${Date.now()}`;
-}
-
-function parseExternalRef(ref) {
-  const raw = String(ref || '');
-  const parts = raw.includes('-') ? raw.split('-') : raw.split('_');
-  return {
-    userId: Number.parseInt(parts[1] || '0', 10),
-    planId: Number.parseInt(parts[2] || '0', 10),
-  };
-}
-
-function getBackUrl() {
-  const siteUrl = (process.env.SITE_URL || '').replace(/\/$/, '');
-  if (!siteUrl || !/^https?:\/\//i.test(siteUrl)) return undefined;
-  const base = (process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
-  return `${siteUrl}${base}/latribu`;
-}
-
-function getSandboxPayerEmail() {
-  const email = (process.env.MP_SANDBOX_PAYER_EMAIL || 'test_user_123456789@testuser.com')
-    .trim()
-    .toLowerCase();
-  return email.includes('@testuser.com') ? email : 'test_user_123456789@testuser.com';
-}
 
 function validateMpCredentials(cfg) {
   const pk = String(cfg.public_key || '').trim();
@@ -69,281 +44,15 @@ function validateMpCredentials(cfg) {
   }
 }
 
-function resolvePayerEmail(brickEmail, userEmail, mpModo) {
-  const fromBrick = String(brickEmail || '').trim().toLowerCase();
-  if (mpModo === 'sandbox') {
-    const configured = getSandboxPayerEmail();
-    // El card_token_id queda ligado al email usado en el Brick; debe coincidir con payer_email.
-    if (fromBrick) {
-      if (fromBrick !== configured) {
-        throw new Error(
-          `El email del pago (${fromBrick}) no coincide con el comprador de prueba configurado (${configured}). `
-          + 'En sandbox usa solo el email de tu cuenta comprador de prueba en MP_SANDBOX_PAYER_EMAIL.'
-        );
-      }
-      return fromBrick;
-    }
-    return configured;
-  }
-  const email = fromBrick || String(userEmail || '').trim().toLowerCase();
-  if (!email) throw new Error('Email del pagador requerido');
-  return email;
-}
-
-function extractBrickPayload(body) {
-  const payer = body.payer || {};
-  const identification = payer.identification || body.identification || {};
-  const paymentTypeId = body.payment_type_id || body.paymentTypeId || 'credit_card';
-  return {
-    token: body.token,
-    paymentMethodId: body.payment_method_id || body.paymentMethodId,
-    paymentType: paymentTypeId === 'debit_card' ? 'debit_card' : 'credit_card',
-    installments: Number(body.installments || 1),
-    email: payer.email || body.email,
-    identificationType: identification.type || body.identificationType || body.identification_type,
-    identificationNumber: identification.number || body.identificationNumber || body.identification_number,
-  };
-}
-
-function recurringFromPlan(plan) {
-  const dias = Number(plan.vigencia_dias) || 30;
-  if (dias >= 28) return { frequency: 1, frequency_type: 'months' };
-  return { frequency: dias, frequency_type: 'days' };
-}
-
-function buildPreapprovalBody({ plan, user, brick, externalRef, mpModo }) {
-  const amount = Number.parseFloat(formatAmount(plan.precio));
-  const email = resolvePayerEmail(brick.email, user.email, mpModo);
-  const recurring = recurringFromPlan(plan);
-  const body = {
-    reason: `La Tribu · ${plan.nombre}`,
-    external_reference: externalRef,
-    payer_email: email,
-    card_token_id: brick.token,
-    status: 'authorized',
-    auto_recurring: {
-      ...recurring,
-      transaction_amount: amount,
-      currency_id: 'PEN',
-    },
-  };
-  const backUrl = getBackUrl();
-  if (backUrl) body.back_url = backUrl;
-  return body;
-}
-
-function parseMpPayloadErrors(payload) {
-  const list = payload?.errors || payload?.cause || [];
-  if (!Array.isArray(list) || !list.length) return null;
-  const parts = list.flatMap((entry) => {
-    const chunk = [entry.message, entry.description, entry.code].filter(Boolean);
-    if (Array.isArray(entry.details)) chunk.push(...entry.details);
-    return chunk;
-  });
-  return parts.length ? parts.join(' · ') : null;
-}
-
-function mapMpError(err) {
-  const payload = err?.payload || {};
-  const code = payload.code || payload?.cause?.[0]?.code;
-  if (code === 'guest_site_mismatch') {
-    return 'Mercado Pago rechazó el pago: el email del comprador no coincide con el token de la tarjeta o las credenciales no son de la misma aplicación (Perú). '
-      + 'En sandbox usa el email del comprador de prueba en MP_SANDBOX_PAYER_EMAIL y las credenciales de prueba APP_USR- del mismo panel.';
-  }
-  const fromPayload = parseMpPayloadErrors(payload);
-  if (fromPayload) return fromPayload;
-
-  const causes = Array.isArray(err?.causes) ? err.causes : [];
-  if (causes.length) {
-    const parts = causes
-      .map((c) => c.description || c.message || c.code)
-      .filter(Boolean);
-    if (parts.length) return parts.join(' · ');
-  }
-  const legacy = err?.cause?.[0] || err?.cause;
-  return legacy?.description || legacy?.message || err?.message || 'Error al procesar el pago';
-}
-
-function httpStatusForError(err) {
-  const msg = String(err?.message || '');
-  if (msg.includes('requerido') || msg.includes('inválido') || msg.includes('incompletos')) return 400;
-  const status = Number(err?.status);
-  if (status === 401 || status === 403) return 502;
-  if (status >= 400 && status < 500) return status;
-  return 500;
-}
-
-function mpHeaders(accessToken, mpModo, extra = {}) {
-  const headers = {
-    Authorization: `Bearer ${accessToken}`,
-    'Content-Type': 'application/json',
-    ...extra,
-  };
-  if (mpModo === 'sandbox') headers['X-scope'] = 'stage';
-  return headers;
-}
-
-async function mpFetch(accessToken, url, options = {}, mpModo = null) {
-  const res = await fetch(url, {
-    ...options,
-    headers: mpHeaders(accessToken, mpModo, options.headers),
-  });
-  const payload = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const err = new Error(parseMpPayloadErrors(payload) || 'Error en Mercado Pago');
-    err.status = res.status;
-    err.payload = payload;
-    throw err;
-  }
-  return payload;
-}
-
-async function createMpPreapproval(accessToken, body, mpModo) {
-  return mpFetch(accessToken, 'https://api.mercadopago.com/preapproval', {
-    method: 'POST',
-    body: JSON.stringify(body),
-  }, mpModo);
-}
-
-async function cancelMpPreapproval(accessToken, preapprovalId, mpModo) {
-  return mpFetch(accessToken, `https://api.mercadopago.com/preapproval/${encodeURIComponent(preapprovalId)}`, {
-    method: 'PUT',
-    body: JSON.stringify({ status: 'cancelled' }),
-  }, mpModo);
-}
-
-async function fetchMpPayment(accessToken, paymentId, mpModo) {
-  return mpFetch(accessToken, `https://api.mercadopago.com/v1/payments/${encodeURIComponent(paymentId)}`, {}, mpModo);
-}
-
-function getPreapprovalIdFromPayment(payment) {
-  return payment?.preapproval_id
-    || payment?.metadata?.preapproval_id
-    || payment?.point_of_interaction?.transaction_data?.subscription_id
-    || null;
-}
-
-async function paymentAlreadyProcessed(paymentId) {
-  const [[row]] = await pool.execute(
-    'SELECT mp_payment_id FROM tribu_mp_payment_events WHERE mp_payment_id = ? LIMIT 1',
-    [String(paymentId)]
-  );
-  return !!row;
-}
-
-async function recordPaymentEvent(paymentId, tribuSuscripcionId) {
-  try {
-    await pool.execute(
-      'INSERT INTO tribu_mp_payment_events (mp_payment_id, tribu_suscripcion_id) VALUES (?, ?)',
-      [String(paymentId), tribuSuscripcionId]
-    );
-    return true;
-  } catch (err) {
-    if (err.code === 'ER_DUP_ENTRY') return false;
-    throw err;
-  }
-}
-
-async function findSubByPreapproval(preapprovalId) {
-  const [[row]] = await pool.execute(
-    `SELECT ts.id, ts.tribu_user_id, ts.fecha_fin, ts.created_at, s.vigencia_dias
-     FROM tribu_suscripciones ts
-     JOIN suscripciones s ON s.id = ts.suscripcion_id
-     WHERE ts.mp_preapproval_id = ?
-     ORDER BY ts.id DESC LIMIT 1`,
-    [String(preapprovalId)]
-  );
-  return row || null;
-}
-
-async function activateSubscription(userId, planId, mpPaymentRef, vigenciaDias, preapprovalId = null) {
-  const ref = String(mpPaymentRef);
-  const preId = preapprovalId ? String(preapprovalId) : null;
-
-  if (preId) {
-    const [[existing]] = await pool.execute(
-      'SELECT id FROM tribu_suscripciones WHERE tribu_user_id = ? AND mp_preapproval_id = ? LIMIT 1',
-      [userId, preId]
-    );
-    if (existing) return existing.id;
-  } else {
-    const [[existing]] = await pool.execute(
-      'SELECT id FROM tribu_suscripciones WHERE tribu_user_id = ? AND mp_payment_id = ? LIMIT 1',
-      [userId, ref]
-    );
-    if (existing) return existing.id;
-  }
-
-  const dias = vigenciaDias || 30;
+async function savePayerProfile(userId, identificationType, identificationNumber) {
+  if (!identificationType || !identificationNumber) return;
   await pool.execute(
-    'UPDATE tribu_suscripciones SET activo = 0, auto_renovacion = 0 WHERE tribu_user_id = ? AND suscripcion_id = ?',
-    [userId, planId]
+    `INSERT INTO tribu_payer_profiles (tribu_user_id, identification_type, identification_number)
+     VALUES (?, ?, ?)
+     ON DUPLICATE KEY UPDATE identification_type = VALUES(identification_type),
+                             identification_number = VALUES(identification_number)`,
+    [userId, identificationType, String(identificationNumber).trim()]
   );
-  const [result] = await pool.execute(
-    `INSERT INTO tribu_suscripciones
-      (tribu_user_id, suscripcion_id, activo, fecha_inicio, fecha_fin, mp_payment_id, mp_preapproval_id, auto_renovacion)
-     VALUES (?, ?, 1, CURDATE(), DATE_ADD(CURDATE(), INTERVAL ? DAY), ?, ?, 1)`,
-    [userId, planId, dias, ref, preId]
-  );
-  await pool.execute('UPDATE tribu_users SET is_suscribed = 1 WHERE id = ?', [userId]);
-  return result.insertId;
-}
-
-async function extendSubscriptionPeriod(subId, vigenciaDias) {
-  const dias = vigenciaDias || 30;
-  await pool.execute(
-    `UPDATE tribu_suscripciones
-     SET fecha_fin = DATE_ADD(GREATEST(fecha_fin, CURDATE()), INTERVAL ? DAY),
-         activo = 1
-     WHERE id = ?`,
-    [dias, subId]
-  );
-}
-
-async function applyApprovedPayment(payment) {
-  const paymentId = payment?.id;
-  if (!paymentId || payment.status !== 'approved') return;
-  if (await paymentAlreadyProcessed(paymentId)) return;
-
-  const preapprovalId = getPreapprovalIdFromPayment(payment);
-  const { userId, planId } = parseExternalRef(payment.external_reference);
-
-  let sub = preapprovalId ? await findSubByPreapproval(preapprovalId) : null;
-
-  if (!sub && userId && planId) {
-    const [[plan]] = await pool.execute(
-      'SELECT vigencia_dias FROM suscripciones WHERE id = ?',
-      [planId]
-    );
-    if (!plan) return;
-    const subId = await activateSubscription(
-      userId,
-      planId,
-      paymentId,
-      plan.vigencia_dias,
-      preapprovalId
-    );
-    await recordPaymentEvent(paymentId, subId);
-    return;
-  }
-
-  if (!sub) return;
-
-  const recorded = await recordPaymentEvent(paymentId, sub.id);
-  if (!recorded) return;
-
-  const dias = sub.vigencia_dias || 30;
-  const [[fresh]] = await pool.execute(
-    `SELECT TIMESTAMPDIFF(MINUTE, created_at, NOW()) AS mins,
-            DATEDIFF(fecha_fin, CURDATE()) AS dias_rest
-     FROM tribu_suscripciones WHERE id = ? LIMIT 1`,
-    [sub.id]
-  );
-  if (fresh && fresh.mins <= 10 && fresh.dias_rest >= dias - 3) {
-    return;
-  }
-
-  await extendSubscriptionPeriod(sub.id, dias);
 }
 
 function validateWebhookSignature(req) {
@@ -374,7 +83,19 @@ function validateWebhookSignature(req) {
   }
 }
 
-// POST /api/tribu-pagos/procesar-pago — suscripción recurrente Mercado Pago (preapproval)
+function validateCronToken(req) {
+  const secret = process.env.TRIBU_RENOVACION_CRON_SECRET;
+  if (!secret) return false;
+  const token = req.query.token || req.headers['x-cron-token'];
+  if (!token || typeof token !== 'string') return false;
+  try {
+    return crypto.timingSafeEqual(Buffer.from(token), Buffer.from(secret));
+  } catch {
+    return false;
+  }
+}
+
+// POST /api/tribu-pagos/procesar-pago — Card Brick + Orders API + tarjeta guardada
 router.post('/procesar-pago', tribuAuthMiddleware, async (req, res) => {
   try {
     const { suscripcion_id, ...rawForm } = req.body;
@@ -383,6 +104,9 @@ router.post('/procesar-pago', tribuAuthMiddleware, async (req, res) => {
     const brick = extractBrickPayload(rawForm);
     if (!brick.token || !brick.paymentMethodId) {
       return res.status(400).json({ error: 'Datos de tarjeta incompletos' });
+    }
+    if (!brick.identificationType || !brick.identificationNumber) {
+      return res.status(400).json({ error: 'Documento de identidad requerido (DNI, CE o RUC)' });
     }
 
     const [[plan]] = await pool.execute(
@@ -393,54 +117,64 @@ router.post('/procesar-pago', tribuAuthMiddleware, async (req, res) => {
 
     const cfg = await getMpConfig();
     validateMpCredentials(cfg);
+
+    const email = resolvePayerEmail(brick.email, req.tribuUser.email, cfg.modo);
     const externalRef = buildExternalRef(req.tribuUser.id, plan.id);
+    const callbackUrl = getWebhookUrl();
+    const identification = {
+      type: brick.identificationType,
+      number: String(brick.identificationNumber).trim(),
+    };
 
-    const preapproval = await createMpPreapproval(cfg.access_token, buildPreapprovalBody({
-      plan,
-      user: req.tribuUser,
-      brick,
-      externalRef,
+    const vault = await vaultCustomerCard({
+      accessToken: cfg.access_token,
       mpModo: cfg.modo,
-    }), cfg.modo);
+      email,
+      token: brick.token,
+    });
 
-    if (preapproval.status === 'authorized') {
+    const orderBody = buildOrderBody({
+      plan,
+      email,
+      identification,
+      externalRef,
+      callbackUrl,
+      paymentMethodId: brick.paymentMethodId,
+      paymentType: brick.paymentType,
+      customerId: vault.customerId,
+      cardId: vault.cardId,
+    });
+
+    const orderResult = await createMpOrder(cfg.access_token, orderBody, cfg.modo);
+    const outcome = resolvePaymentOutcome(orderResult);
+
+    if (outcome.status === 'approved') {
       try {
-        await activateSubscription(
-          req.tribuUser.id,
-          suscripcion_id,
-          preapproval.id,
-          plan.vigencia_dias,
-          preapproval.id
-        );
+        await savePayerProfile(req.tribuUser.id, brick.identificationType, brick.identificationNumber);
+        await activateNewSubscription({
+          userId: req.tribuUser.id,
+          planId: suscripcion_id,
+          orderId: outcome.order_id,
+          paymentId: outcome.payment_id,
+          customerId: vault.customerId,
+          cardId: vault.cardId,
+          mpCardBrand: brick.paymentMethodId,
+          vigenciaDias: plan.vigencia_dias,
+        });
       } catch (dbErr) {
         console.error('[tribu-pagos procesar-pago] suscripcion', dbErr.message);
         return res.status(500).json({
-          error: 'La suscripción fue autorizada pero no se pudo activar localmente. Contacta soporte.',
-          preapproval_id: preapproval.id,
-          status: preapproval.status,
+          error: 'El pago fue aprobado pero no se pudo activar la suscripción. Contacta soporte.',
+          order_id: outcome.order_id,
+          status: outcome.status,
         });
       }
-      return res.json({
-        status: 'approved',
-        preapproval_id: preapproval.id,
-        next_payment_date: preapproval.next_payment_date || null,
-        recurring: true,
-      });
     }
 
-    if (preapproval.status === 'pending') {
-      return res.json({
-        status: 'pending',
-        preapproval_id: preapproval.id,
-        order_status: 'action_required',
-        recurring: true,
-      });
-    }
-
-    return res.json({
-      status: 'rejected',
-      status_detail: preapproval.status,
-      preapproval_id: preapproval.id,
+    res.json({
+      ...outcome,
+      recurring: true,
+      auto_renovacion: outcome.status === 'approved',
     });
   } catch (err) {
     const msg = mapMpError(err);
@@ -449,14 +183,14 @@ router.post('/procesar-pago', tribuAuthMiddleware, async (req, res) => {
   }
 });
 
-// POST /api/tribu-pagos/cancelar-renovacion
+// POST /api/tribu-pagos/cancelar-renovacion — solo desactiva flag local (Orders API)
 router.post('/cancelar-renovacion', tribuAuthMiddleware, async (req, res) => {
   try {
     const suscripcionId = Number.parseInt(req.body.suscripcion_id, 10);
     if (!suscripcionId) return res.status(400).json({ error: 'suscripcion_id requerido' });
 
     const [[row]] = await pool.execute(
-      `SELECT ts.id, ts.mp_preapproval_id, ts.auto_renovacion,
+      `SELECT ts.id, ts.auto_renovacion, ts.mp_card_id,
               (ts.activo = 1 AND ts.fecha_fin >= CURDATE()) AS vigente
        FROM tribu_suscripciones ts
        WHERE ts.id = ? AND ts.tribu_user_id = ? LIMIT 1`,
@@ -466,11 +200,6 @@ router.post('/cancelar-renovacion', tribuAuthMiddleware, async (req, res) => {
     if (!row.vigente) return res.status(400).json({ error: 'Esta suscripción ya no está vigente' });
     if (!row.auto_renovacion) {
       return res.status(400).json({ error: 'La autorenovación ya está cancelada' });
-    }
-
-    if (row.mp_preapproval_id) {
-      const cfg = await getMpConfig();
-      await cancelMpPreapproval(cfg.access_token, row.mp_preapproval_id, cfg.modo);
     }
 
     await pool.execute(
@@ -483,13 +212,29 @@ router.post('/cancelar-renovacion', tribuAuthMiddleware, async (req, res) => {
       message: 'Autorenovación cancelada. Mantendrás acceso hasta la fecha de vencimiento.',
     });
   } catch (err) {
-    const msg = mapMpError(err);
-    console.error('[tribu-pagos cancelar-renovacion]', msg);
-    res.status(httpStatusForError(err)).json({ error: msg });
+    console.error('[tribu-pagos cancelar-renovacion]', err.message);
+    res.status(500).json({ error: 'No se pudo cancelar la autorenovación' });
   }
 });
 
-// POST /api/tribu-pagos/webhook
+// GET|POST /api/tribu-pagos/cron-renovaciones?token=... — cobros automáticos (cPanel cron)
+async function handleCronRenovaciones(req, res) {
+  if (!validateCronToken(req)) {
+    return res.status(401).json({ error: 'Token inválido' });
+  }
+  try {
+    const result = await runRenovacionesSuscripciones();
+    res.json(result);
+  } catch (err) {
+    console.error('[tribu-pagos cron-renovaciones]', err.message);
+    res.status(500).json({ error: 'Error al procesar renovaciones' });
+  }
+}
+
+router.get('/cron-renovaciones', handleCronRenovaciones);
+router.post('/cron-renovaciones', handleCronRenovaciones);
+
+// POST /api/tribu-pagos/webhook — eventos Orders (+ Pagos como respaldo)
 router.post('/webhook', async (req, res) => {
   try {
     if (!validateWebhookSignature(req)) {
@@ -504,26 +249,25 @@ router.post('/webhook', async (req, res) => {
     const cfg = await getMpConfig();
     const actionStr = String(action || '');
 
-    const isPaymentEvent =
-      type === 'payment' || actionStr.startsWith('payment.');
-    const isPreapprovalEvent =
-      type === 'subscription_preapproval' || type === 'preapproval' || actionStr.startsWith('preapproval.');
+    const isOrderEvent =
+      type === 'order' || actionStr.startsWith('order.') || req.query?.topic === 'order';
+    const isPaymentEvent = type === 'payment' || actionStr.startsWith('payment.');
 
-    if (isPaymentEvent) {
-      const payment = await fetchMpPayment(cfg.access_token, resourceId, cfg.modo);
-      await applyApprovedPayment(payment);
-    } else if (isPreapprovalEvent) {
-      const preapproval = await mpFetch(
-        cfg.access_token,
-        `https://api.mercadopago.com/preapproval/${encodeURIComponent(resourceId)}`,
-        {},
-        cfg.modo
+    if (isOrderEvent) {
+      const orderResult = await fetchMpOrder(cfg.access_token, resourceId, cfg.modo);
+      await applyApprovedOrder(orderResult);
+    } else if (isPaymentEvent) {
+      const resPay = await fetch(
+        `https://api.mercadopago.com/v1/payments/${encodeURIComponent(resourceId)}`,
+        { headers: { Authorization: `Bearer ${cfg.access_token}` } }
       );
-      if (preapproval.status === 'cancelled') {
-        await pool.execute(
-          'UPDATE tribu_suscripciones SET auto_renovacion = 0, cancelada_at = COALESCE(cancelada_at, NOW()) WHERE mp_preapproval_id = ?',
-          [String(resourceId)]
-        );
+      const payment = await resPay.json().catch(() => ({}));
+      if (payment.status === 'approved') {
+        const orderId = payment.order?.id || payment.metadata?.order_id;
+        if (orderId) {
+          const orderResult = await fetchMpOrder(cfg.access_token, orderId, cfg.modo);
+          await applyApprovedOrder(orderResult);
+        }
       }
     }
 
