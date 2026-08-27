@@ -285,18 +285,6 @@ async function crearEsquema() {
       FOREIGN KEY (tribu_user_id) REFERENCES tribu_users(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
-  await pool.query('ALTER TABLE tribu_saved_cards ADD COLUMN culqi_customer_id VARCHAR(64) NULL').catch(() => {});
-  await pool.query('ALTER TABLE tribu_saved_cards ADD COLUMN culqi_card_id VARCHAR(64) NULL').catch(() => {});
-  await pool.query('ALTER TABLE tribu_saved_cards ADD COLUMN culqi_card_brand VARCHAR(32) NULL').catch(() => {});
-  await pool.query('ALTER TABLE tribu_saved_cards MODIFY mp_customer_id VARCHAR(64) NULL').catch(() => {});
-  await pool.query('ALTER TABLE tribu_saved_cards MODIFY mp_card_id VARCHAR(64) NULL').catch(() => {});
-  await pool.query(`
-    UPDATE tribu_saved_cards
-    SET culqi_customer_id = COALESCE(culqi_customer_id, mp_customer_id),
-        culqi_card_id = COALESCE(culqi_card_id, mp_card_id),
-        culqi_card_brand = COALESCE(culqi_card_brand, mp_card_brand)
-    WHERE culqi_card_id IS NULL AND mp_card_id IS NOT NULL
-  `).catch(() => {});
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS tribu_culqi_payment_events (
@@ -304,6 +292,35 @@ async function crearEsquema() {
       tribu_suscripcion_id INT NOT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       KEY idx_tcpe_sub (tribu_suscripcion_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS tribu_culqi_transactions (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      culqi_charge_id VARCHAR(64) NOT NULL,
+      tribu_user_id INT NULL,
+      suscripcion_plan_id INT NULL,
+      tribu_suscripcion_id INT NULL,
+      amount_cents INT NULL,
+      currency_code VARCHAR(3) DEFAULT 'PEN',
+      status VARCHAR(20) NOT NULL,
+      outcome_type VARCHAR(40) NULL,
+      outcome_code VARCHAR(20) NULL,
+      merchant_message VARCHAR(255) NULL,
+      user_message VARCHAR(255) NULL,
+      external_reference VARCHAR(64) NULL,
+      event_source VARCHAR(30) NOT NULL DEFAULT 'api',
+      card_brand VARCHAR(20) NULL,
+      card_last_four VARCHAR(4) NULL,
+      payer_email_masked VARCHAR(150) NULL,
+      culqi_created_at DATETIME NULL,
+      payload_json JSON NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE KEY uq_tct_charge (culqi_charge_id),
+      KEY idx_tct_user (tribu_user_id),
+      KEY idx_tct_status (status),
+      KEY idx_tct_created (created_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
   await pool.query(`
@@ -348,6 +365,7 @@ async function crearEsquema() {
       [pwd, 'Ingresa la contraseña para acceder a La Tribu']
     );
   }
+
 }
 
 // Renumera el campo "orden" de los videos por categoría (según fecha de subida)
