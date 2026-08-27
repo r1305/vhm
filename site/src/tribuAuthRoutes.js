@@ -8,8 +8,10 @@ const multer = require('multer');
 const pool = require('./db');
 const {
   listSavedCards,
+  getSavedCard,
+  getDefaultSavedCard,
+  setDefaultCard,
   deactivateSavedCard,
-  applySavedCardToSubscription,
 } = require('./tribuSavedCards');
 const { JWT_SECRET } = require('./auth');
 
@@ -77,6 +79,27 @@ function deleteFotoFile(fotoUrl) {
   fs.unlink(filePath, () => {});
 }
 
+async function syncSubscriptionAccess(userId) {
+  await pool.execute(
+    `UPDATE tribu_suscripciones
+     SET activo = 0, auto_renovacion = 0
+     WHERE tribu_user_id = ? AND activo = 1 AND fecha_fin < CURDATE()`,
+    [userId]
+  );
+  const [[row]] = await pool.execute(
+    `SELECT COUNT(*) AS total
+     FROM tribu_suscripciones
+     WHERE tribu_user_id = ? AND activo = 1 AND fecha_fin >= CURDATE()`,
+    [userId]
+  );
+  const subscribed = (row?.total || 0) > 0;
+  await pool.execute(
+    'UPDATE tribu_users SET is_suscribed = ? WHERE id = ?',
+    [subscribed ? 1 : 0, userId]
+  );
+  return subscribed;
+}
+
 async function fetchUserPublic(id) {
   const [rows] = await pool.execute(
     'SELECT id, nombre, apellido, email, telefono, foto_url, psw_temp, is_suscribed FROM tribu_users WHERE id = ? LIMIT 1',
@@ -84,6 +107,8 @@ async function fetchUserPublic(id) {
   );
   if (!rows.length) return null;
   const user = rows[0];
+
+  await syncSubscriptionAccess(id);
 
   const [sus] = await pool.execute(
     `SELECT ts.id, s.nombre, ts.fecha_fin
@@ -93,9 +118,11 @@ async function fetchUserPublic(id) {
      ORDER BY ts.fecha_fin DESC LIMIT 1`,
     [id]
   );
-  user.suscripcion_activa = sus.length > 0 ? { nombre: sus[0].nombre, fecha_fin: sus[0].fecha_fin } : null;
+  user.suscripcion_activa = sus.length > 0
+    ? { nombre: sus[0].nombre, fecha_fin: toYmd(sus[0].fecha_fin) }
+    : null;
   user.psw_temp = !!user.psw_temp;
-  user.is_suscribed = !!user.is_suscribed;
+  user.is_suscribed = !!user.suscripcion_activa;
   return user;
 }
 
@@ -444,7 +471,63 @@ router.delete('/perfil/foto', tribuAuthMiddleware, async (req, res) => {
   }
 });
 
-// GET /api/tribu-auth/tarjetas — tarjetas guardadas del usuario
+
+function cardLabelFromRow(brand, lastFour) {
+  if (!brand && !lastFour) return null;
+  const labels = { visa: 'Visa', mastercard: 'Mastercard', amex: 'Amex', diners: 'Diners' };
+  const name = labels[String(brand || '').toLowerCase()] || brand || 'Tarjeta';
+  return lastFour ? `${name} ···· ${lastFour}` : name;
+}
+
+// GET /api/tribu-auth/suscripciones
+router.get('/suscripciones', tribuAuthMiddleware, async (req, res) => {
+  try {
+    const [rows] = await pool.execute(
+      `SELECT ts.id, ts.fecha_inicio, ts.fecha_fin, ts.activo, ts.auto_renovacion,
+              ts.culqi_card_id, ts.culqi_card_brand, ts.cancelada_at,
+              s.nombre, s.precio, s.descripcion, s.vigencia_dias,
+              (ts.activo = 1 AND ts.fecha_fin >= CURDATE()) AS vigente,
+              sc.last_four_digits
+       FROM tribu_suscripciones ts
+       JOIN suscripciones s ON s.id = ts.suscripcion_id
+       LEFT JOIN tribu_saved_cards sc
+         ON sc.tribu_user_id = ts.tribu_user_id
+        AND sc.culqi_card_id = ts.culqi_card_id
+        AND sc.activo = 1
+       WHERE ts.tribu_user_id = ?
+       ORDER BY ts.fecha_inicio DESC`,
+      [req.tribuUser.id]
+    );
+    const savedCards = await listSavedCards(req.tribuUser.id);
+    const data = rows.map((r) => {
+      const vigente = !!r.vigente;
+      const hasCard = !!r.culqi_card_id;
+      const autoOn = !!(r.auto_renovacion && vigente && hasCard);
+      return {
+        id: r.id,
+        nombre: r.nombre,
+        precio: r.precio,
+        descripcion: r.descripcion,
+        vigencia_dias: r.vigencia_dias,
+        fecha_inicio: toYmd(r.fecha_inicio),
+        fecha_fin: toYmd(r.fecha_fin),
+        activo: vigente,
+        auto_renovacion: autoOn,
+        tarjeta_label: cardLabelFromRow(r.culqi_card_brand, r.last_four_digits),
+        puede_cancelar_autorenovacion: autoOn,
+        puede_activar_autorenovacion: vigente && !autoOn && savedCards.length > 0,
+        proxima_renovacion: autoOn ? toYmd(r.fecha_fin) : null,
+        cancelada_at: r.cancelada_at ? toYmd(r.cancelada_at) : null,
+      };
+    });
+    res.json({ data, tarjetas: savedCards });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al obtener suscripciones' });
+  }
+});
+
+// GET /api/tribu-auth/tarjetas
 router.get('/tarjetas', tribuAuthMiddleware, async (req, res) => {
   try {
     const data = await listSavedCards(req.tribuUser.id);
@@ -455,78 +538,101 @@ router.get('/tarjetas', tribuAuthMiddleware, async (req, res) => {
   }
 });
 
-// DELETE /api/tribu-auth/tarjetas/:id — quitar tarjeta guardada
+// DELETE /api/tribu-auth/tarjetas/:id
 router.delete('/tarjetas/:id', tribuAuthMiddleware, async (req, res) => {
   try {
     const cardId = Number.parseInt(req.params.id, 10);
-    if (!cardId) return res.status(400).json({ error: 'ID inválido' });
+    if (!Number.isFinite(cardId)) return res.status(400).json({ error: 'Tarjeta inválida' });
     const ok = await deactivateSavedCard(req.tribuUser.id, cardId);
     if (!ok) return res.status(404).json({ error: 'Tarjeta no encontrada' });
-    res.json({ ok: true, message: 'Tarjeta eliminada de tus medios de pago guardados.' });
+    res.json({ message: 'Tarjeta eliminada. La autorenovación asociada fue desactivada.' });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Error al eliminar la tarjeta' });
+    res.status(500).json({ error: 'No se pudo eliminar la tarjeta' });
   }
 });
 
-// PUT /api/tribu-auth/suscripciones/:id/tarjeta — cambiar tarjeta de autorenovación
-router.put('/suscripciones/:id/tarjeta', tribuAuthMiddleware, async (req, res) => {
+// PUT /api/tribu-auth/tarjetas/:id/default
+router.put('/tarjetas/:id/default', tribuAuthMiddleware, async (req, res) => {
+  try {
+    const cardId = Number.parseInt(req.params.id, 10);
+    if (!Number.isFinite(cardId)) return res.status(400).json({ error: 'Tarjeta inválida' });
+    const ok = await setDefaultCard(req.tribuUser.id, cardId);
+    if (!ok) return res.status(404).json({ error: 'Tarjeta no encontrada' });
+    res.json({ message: 'Tarjeta principal actualizada' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'No se pudo actualizar la tarjeta' });
+  }
+});
+
+// PUT /api/tribu-auth/suscripciones/:id/auto-renovacion
+router.put('/suscripciones/:id/auto-renovacion', tribuAuthMiddleware, async (req, res) => {
   try {
     const subId = Number.parseInt(req.params.id, 10);
-    const tarjetaId = Number.parseInt(req.body.tarjeta_id, 10);
-    if (!subId || !tarjetaId) return res.status(400).json({ error: 'Datos incompletos' });
-    const result = await applySavedCardToSubscription(req.tribuUser.id, subId, tarjetaId);
-    if (!result.ok) return res.status(400).json({ error: result.error });
-    res.json({
-      ok: true,
-      message: 'Medio de pago actualizado. La autorenovación usará esta tarjeta.',
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Error al actualizar el medio de pago' });
-  }
-});
+    if (!Number.isFinite(subId)) return res.status(400).json({ error: 'Suscripción inválida' });
 
-// GET /api/tribu-auth/suscripciones
-router.get('/suscripciones', tribuAuthMiddleware, async (req, res) => {
-  try {
-    const [rows] = await pool.execute(
-      `SELECT ts.id, ts.fecha_inicio, ts.fecha_fin, ts.activo, ts.auto_renovacion,
-              ts.culqi_card_id, ts.culqi_card_brand, ts.cancelada_at,
-              tsc.id AS tarjeta_id,
-              s.nombre, s.precio, s.descripcion,
+    const enabled = req.body.enabled !== false && req.body.enabled !== 0 && req.body.enabled !== '0';
+    const tarjetaId = req.body.tarjeta_id
+      ? Number.parseInt(String(req.body.tarjeta_id), 10)
+      : null;
+
+    const [[sub]] = await pool.execute(
+      `SELECT ts.id, ts.tribu_user_id, ts.culqi_card_id, ts.culqi_customer_id, ts.culqi_card_brand,
               (ts.activo = 1 AND ts.fecha_fin >= CURDATE()) AS vigente
        FROM tribu_suscripciones ts
-       JOIN suscripciones s ON s.id = ts.suscripcion_id
-       LEFT JOIN tribu_saved_cards tsc
-         ON tsc.tribu_user_id = ts.tribu_user_id
-        AND tsc.culqi_card_id = ts.culqi_card_id
-        AND tsc.activo = 1
-       WHERE ts.tribu_user_id = ?
-       ORDER BY ts.fecha_inicio DESC`,
-      [req.tribuUser.id]
+       WHERE ts.id = ? AND ts.tribu_user_id = ? LIMIT 1`,
+      [subId, req.tribuUser.id]
     );
-    const data = rows.map(r => ({
-      id: r.id,
-      nombre: r.nombre,
-      precio: r.precio,
-      descripcion: r.descripcion,
-      fecha_inicio: toYmd(r.fecha_inicio),
-      fecha_fin: toYmd(r.fecha_fin),
-      activo: !!r.vigente,
-      auto_renovacion: !!(r.auto_renovacion && r.vigente && r.culqi_card_id),
-      puede_cancelar: !!(r.vigente && r.auto_renovacion && r.culqi_card_id),
-      tarjeta_guardada: !!r.culqi_card_id,
-      tarjeta_id: r.tarjeta_id || null,
-      tarjeta_label: r.culqi_card_brand && r.culqi_card_id
-        ? `${String(r.culqi_card_brand).toUpperCase()} · tarjeta guardada`
-        : null,
-      cancelada_at: r.cancelada_at ? toYmd(r.cancelada_at) : null,
-    }));
-    res.json({ data });
+    if (!sub) return res.status(404).json({ error: 'Suscripción no encontrada' });
+    if (!sub.vigente) return res.status(400).json({ error: 'La suscripción no está vigente' });
+
+    if (!enabled) {
+      await pool.execute(
+        'UPDATE tribu_suscripciones SET auto_renovacion = 0, cancelada_at = NOW() WHERE id = ?',
+        [subId]
+      );
+      return res.json({ message: 'Autorenovación cancelada. Tu acceso sigue activo hasta la fecha de vencimiento.' });
+    }
+
+    let customerId = sub.culqi_customer_id;
+    let cardId = sub.culqi_card_id;
+    let cardBrand = sub.culqi_card_brand;
+
+    if (tarjetaId) {
+      const saved = await getSavedCard(req.tribuUser.id, tarjetaId);
+      if (!saved) return res.status(400).json({ error: 'Tarjeta no encontrada' });
+      customerId = saved.culqi_customer_id;
+      cardId = saved.culqi_card_id;
+      cardBrand = saved.culqi_card_brand;
+    } else if (!cardId) {
+      const fallback = await getDefaultSavedCard(req.tribuUser.id);
+      if (!fallback) {
+        return res.status(400).json({
+          error: 'Para activar la autorenovación necesitas una tarjeta guardada. Paga un plan marcando la opción de renovación automática.',
+        });
+      }
+      customerId = fallback.culqi_customer_id;
+      cardId = fallback.culqi_card_id;
+      cardBrand = fallback.culqi_card_brand;
+    }
+
+    await pool.execute(
+      `UPDATE tribu_suscripciones
+       SET auto_renovacion = 1,
+           cancelada_at = NULL,
+           renovacion_intentos = 0,
+           next_renovacion_intento = NULL,
+           culqi_customer_id = ?,
+           culqi_card_id = ?,
+           culqi_card_brand = ?
+       WHERE id = ?`,
+      [String(customerId), String(cardId), cardBrand, subId]
+    );
+    res.json({ message: 'Autorenovación activada. Cobraremos automáticamente al vencer tu plan.' });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Error al obtener suscripciones' });
+    res.status(500).json({ error: 'No se pudo actualizar la autorenovación' });
   }
 });
 

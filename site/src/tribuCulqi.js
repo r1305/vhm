@@ -170,22 +170,14 @@ async function culqiFetch(secretKey, path, options = {}) {
   return payload;
 }
 
-function buildAntifraudDetails(user, identification) {
-  const firstName = String(user?.nombre || 'Cliente').trim().slice(0, 50);
-  const lastName = String(user?.apellido || 'Tribu').trim().slice(0, 50);
-  const phone = String(user?.telefono || '999999999').replace(/\D/g, '').slice(0, 15) || '999999999';
-  const details = {
-    first_name: firstName,
-    last_name: lastName,
-    address: 'Lima',
-    address_city: 'Lima',
-    country_code: 'PE',
-    phone_number: phone,
-  };
+function buildCulqiAddress(identification) {
+  const street = 'Av. Lima 123, San Isidro';
   if (identification?.number) {
-    details.address = `Doc ${identification.type || 'DNI'} ${identification.number}`.slice(0, 120);
+    const doc = `${identification.type || 'DNI'} ${String(identification.number).trim()}`;
+    const withDoc = `${street}, ${doc}`.slice(0, 99);
+    if (withDoc.length >= 6) return withDoc;
   }
-  return details;
+  return street;
 }
 
 function mapDocTypeToCulqi(type) {
@@ -195,30 +187,81 @@ function mapDocTypeToCulqi(type) {
   return 'DNI';
 }
 
+function buildAntifraudDetails(user, identification) {
+  const firstName = String(user?.nombre || 'Cliente').trim().slice(0, 50);
+  const lastName = String(user?.apellido || 'Tribu').trim().slice(0, 50);
+  const phone = normalizePeruPhone(user?.telefono);
+  return {
+    first_name: firstName,
+    last_name: lastName,
+    address: buildCulqiAddress(identification),
+    address_city: 'San Isidro',
+    country_code: 'PE',
+    phone_number: phone,
+  };
+}
+
+function buildCustomerBody(user, identification, email) {
+  const antifraud = buildAntifraudDetails(user, identification);
+  return {
+    email,
+    first_name: antifraud.first_name,
+    last_name: antifraud.last_name,
+    phone_number: antifraud.phone_number,
+    // Culqi exige address/address_city en la raíz al crear o actualizar clientes
+    address: antifraud.address,
+    address_city: antifraud.address_city,
+    country_code: antifraud.country_code,
+    antifraud_details: antifraud,
+    metadata: identification?.number
+      ? {
+          document_type: mapDocTypeToCulqi(identification.type),
+          document_number: String(identification.number).trim(),
+        }
+      : {},
+  };
+}
+
+async function syncCustomerProfile(secretKey, customerId, user, identification, email) {
+  const body = buildCustomerBody(user, identification, email);
+  await culqiFetch(secretKey, `/customers/${encodeURIComponent(String(customerId))}`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      first_name: body.first_name,
+      last_name: body.last_name,
+      phone_number: body.phone_number,
+      address: body.address,
+      address_city: body.address_city,
+      country_code: body.country_code,
+      antifraud_details: body.antifraud_details,
+    }),
+  });
+}
+
 async function findOrCreateCustomer(secretKey, email, user, identification) {
+  let existing = null;
   try {
     const listed = await culqiFetch(
       secretKey,
       `/customers?email=${encodeURIComponent(email)}&limit=1`
     );
-    const existing = listed?.data?.[0];
-    if (existing?.id) return existing;
+    existing = listed?.data?.[0] || null;
   } catch {
     // continuar con creación
   }
 
+  if (existing?.id) {
+    try {
+      await syncCustomerProfile(secretKey, existing.id, user, identification, email);
+    } catch (err) {
+      console.warn('[tribu-culqi customer sync]', mapCulqiError(err));
+    }
+    return existing;
+  }
+
   return culqiFetch(secretKey, '/customers', {
     method: 'POST',
-    body: JSON.stringify({
-      email,
-      first_name: String(user?.nombre || 'Cliente').trim().slice(0, 50),
-      last_name: String(user?.apellido || 'Tribu').trim().slice(0, 50),
-      phone_number: String(user?.telefono || '999999999').replace(/\D/g, '').slice(0, 15) || '999999999',
-      antifraud_details: buildAntifraudDetails(user, identification),
-      metadata: identification?.number
-        ? { document_type: mapDocTypeToCulqi(identification.type), document_number: identification.number }
-        : {},
-    }),
+    body: JSON.stringify(buildCustomerBody(user, identification, email)),
   });
 }
 
@@ -303,27 +346,77 @@ function isChargePaid(charge) {
   return resolveChargeOutcome(charge).status === 'approved';
 }
 
+function normalizePeruPhone(telefono) {
+  const digits = String(telefono || '').replace(/\D/g, '');
+  if (digits.length >= 9) return digits.slice(-9);
+  return '999999999';
+}
+
+function parseCulqiCardRecord(card, fallbackCustomerId) {
+  const cardId = card?.id || card?.card_id || null;
+  if (!cardId || !String(cardId).startsWith('crd_')) {
+    throw new Error('Culqi no devolvió una tarjeta guardada válida');
+  }
+  const tokenBlock = card?.token || card?.source || {};
+  const brandRaw =
+    card?.iin?.card_brand ||
+    tokenBlock?.iin?.card_brand ||
+    card?.source?.iin?.card_brand ||
+    null;
+  const lastFour =
+    card?.last_four ||
+    tokenBlock?.last_four ||
+    card?.source?.last_four ||
+    null;
+  const customerId = card?.customer_id || fallbackCustomerId || null;
+  if (!customerId || !String(customerId).startsWith('cus_')) {
+    throw new Error('Culqi no devolvió un cliente válido para la tarjeta');
+  }
+  return {
+    customerId: String(customerId),
+    cardId: String(cardId),
+    cardBrand: brandRaw ? String(brandRaw).toLowerCase() : null,
+    lastFour: lastFour ? String(lastFour).slice(-4) : null,
+    expMonth: card?.expiration_month || tokenBlock?.expiration_month || null,
+    expYear: card?.expiration_year || tokenBlock?.expiration_year || null,
+  };
+}
+
+function extractVaultFromCharge(charge) {
+  if (!charge || typeof charge !== 'object') return null;
+  const sourceId = charge.source_id || charge.source?.id || null;
+  if (!sourceId || !String(sourceId).startsWith('crd_')) return null;
+  const source = charge.source || {};
+  const customerId = source.customer_id || charge.customer_id || null;
+  if (!customerId) return null;
+  const brandRaw = source.iin?.card_brand || source.card_brand || null;
+  return {
+    customerId: String(customerId),
+    cardId: String(sourceId),
+    cardBrand: brandRaw ? String(brandRaw).toLowerCase() : null,
+    lastFour: source.last_four ? String(source.last_four).slice(-4) : null,
+    expMonth: null,
+    expYear: null,
+  };
+}
+
 async function vaultCustomerCard({ secretKey, email, tokenId, user, identification }) {
   const customer = await findOrCreateCustomer(secretKey, email, user, identification);
   const card = await saveCustomerCard(secretKey, customer.id, tokenId);
-  const brand = card?.iin?.card_brand || card?.source?.iin?.card_brand || null;
-  return {
-    customerId: String(customer.id),
-    cardId: String(card.id),
-    cardBrand: brand ? String(brand).toLowerCase() : null,
-    lastFour: card?.last_four || card?.source?.last_four || null,
-    expMonth: card?.expiration_month || null,
-    expYear: card?.expiration_year || null,
-  };
+  return parseCulqiCardRecord(card, customer.id);
 }
 
 async function vaultCustomerCardSafe(params) {
   try {
     const vault = await vaultCustomerCard(params);
+    if (!vault?.cardId || !vault?.customerId) {
+      throw new Error('No se pudo vincular la tarjeta al cliente en Culqi');
+    }
     return { ok: true, vault };
   } catch (err) {
-    console.warn('[tribu-culqi vault]', mapCulqiError(err));
-    return { ok: false, error: err };
+    const message = mapCulqiError(err);
+    console.warn('[tribu-culqi vault]', message, err.payload || err.message || '');
+    return { ok: false, error: err, errorMessage: message };
   }
 }
 
@@ -361,6 +454,7 @@ module.exports = {
   isChargePaid,
   vaultCustomerCard,
   vaultCustomerCardSafe,
+  extractVaultFromCharge,
   validateCulqiCredentials,
   getCulqiCredentialInfo,
   validateWebhookSignature,

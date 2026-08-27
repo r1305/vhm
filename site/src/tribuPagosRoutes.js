@@ -12,19 +12,19 @@ const {
   createCulqiCharge,
   fetchCulqiCharge,
   resolveChargeOutcome,
-  vaultCustomerCardSafe,
   validateCulqiCredentials,
   validateWebhookSignature,
+  vaultCustomerCardSafe,
+  extractVaultFromCharge,
 } = require('./tribuCulqi');
-const {
-  getSavedCardForUser,
-  upsertSavedCard,
-} = require('./tribuSavedCards');
 const {
   activateNewSubscription,
   applyApprovedCharge,
   runRenovacionesSuscripciones,
 } = require('./tribuRenovaciones');
+const { recordCulqiTransaction } = require('./tribuCulqiTransactionLog');
+const { getSavedCard, upsertSavedCard } = require('./tribuSavedCards');
+const { authMiddleware } = require('./auth');
 
 const router = Router();
 
@@ -61,6 +61,11 @@ async function savePayerProfile(userId, identificationType, identificationNumber
   );
 }
 
+function requireAdmin(req, res, next) {
+  if (req.user && (req.user.rol === 'SUPER_ADMIN' || req.user.rol === 'ADMIN')) return next();
+  return res.status(403).json({ error: 'Acceso restringido' });
+}
+
 function validateCronToken(req) {
   const secret = process.env.TRIBU_RENOVACION_CRON_SECRET;
   if (!secret) return false;
@@ -74,23 +79,6 @@ function validateCronToken(req) {
   }
 }
 
-function parseBool(v) {
-  return v === true || v === 1 || v === '1' || v === 'true';
-}
-
-async function loadPayerIdentification(userId) {
-  const [[profile]] = await pool.execute(
-    `SELECT identification_type, identification_number
-     FROM tribu_payer_profiles WHERE tribu_user_id = ? LIMIT 1`,
-    [userId]
-  );
-  if (!profile?.identification_type || !profile?.identification_number) return null;
-  return {
-    type: profile.identification_type,
-    number: String(profile.identification_number).trim(),
-  };
-}
-
 async function fetchTribuUser(userId) {
   const [[user]] = await pool.execute(
     'SELECT nombre, apellido, email, telefono FROM tribu_users WHERE id = ? LIMIT 1',
@@ -99,20 +87,17 @@ async function fetchTribuUser(userId) {
   return user || {};
 }
 
-// POST /api/tribu-pagos/procesar-pago — Culqi Checkout token + tarjeta guardada
+// POST /api/tribu-pagos/procesar-pago — Culqi Checkout token o tarjeta guardada
 router.post('/procesar-pago', tribuAuthMiddleware, async (req, res) => {
   try {
     const {
       suscripcion_id,
       billing_email: billingEmailRaw,
-      guardar_tarjeta: guardarTarjetaRaw,
+      auto_renovacion: autoRenovacionRaw,
       tarjeta_id: tarjetaIdRaw,
       ...rawForm
     } = req.body;
     if (!suscripcion_id) return res.status(400).json({ error: 'suscripcion_id requerido' });
-
-    const wantsSaveCard = parseBool(guardarTarjetaRaw);
-    const savedCardRowId = tarjetaIdRaw ? Number.parseInt(tarjetaIdRaw, 10) : null;
 
     const [[plan]] = await pool.execute(
       'SELECT id, nombre, precio, vigencia_dias FROM suscripciones WHERE id = ?',
@@ -124,78 +109,68 @@ router.post('/procesar-pago', tribuAuthMiddleware, async (req, res) => {
     validateCulqiConfig(cfg);
 
     const tribuUser = await fetchTribuUser(req.tribuUser.id);
-    let checkout = null;
-    let identification = null;
-    let sourceId = null;
-    let customerId = null;
-    let cardId = null;
-    let culqiCardBrand = null;
-    let vaultMeta = null;
-    let usedSavedCard = false;
+    const checkout = extractCheckoutPayload(rawForm);
+    const wantsAutoRenew = autoRenovacionRaw !== false && autoRenovacionRaw !== '0' && autoRenovacionRaw !== 0;
+    const tarjetaId = tarjetaIdRaw ? Number.parseInt(String(tarjetaIdRaw), 10) : null;
 
-    if (savedCardRowId) {
-      const saved = await getSavedCardForUser(req.tribuUser.id, savedCardRowId);
-      if (!saved) return res.status(404).json({ error: 'Tarjeta guardada no encontrada' });
-      identification = await loadPayerIdentification(req.tribuUser.id);
-      if (!identification) {
-        return res.status(400).json({
-          error: 'Para pagar con una tarjeta guardada necesitas haber registrado tu documento (DNI, CE o RUC) en un pago anterior.',
-        });
-      }
-      customerId = saved.culqi_customer_id;
-      cardId = saved.culqi_card_id;
-      culqiCardBrand = saved.culqi_card_brand;
+    let sourceId = checkout.tokenId;
+    let vaultInfo = null;
+    let vaultError = null;
+
+    if (tarjetaId) {
+      const saved = await getSavedCard(req.tribuUser.id, tarjetaId);
+      if (!saved) return res.status(400).json({ error: 'Tarjeta guardada no encontrada' });
       sourceId = saved.culqi_card_id;
-      usedSavedCard = true;
+      vaultInfo = {
+        customerId: saved.culqi_customer_id,
+        cardId: saved.culqi_card_id,
+        cardBrand: saved.culqi_card_brand,
+        lastFour: saved.last_four_digits,
+      };
     } else {
-      checkout = extractCheckoutPayload(rawForm);
       if (!checkout.tokenId) {
         return res.status(400).json({ error: 'Token de Culqi requerido' });
       }
-      if (!checkout.identificationType || !checkout.identificationNumber) {
-        return res.status(400).json({ error: 'Documento de identidad requerido (DNI, CE o RUC)' });
-      }
-      identification = {
-        type: checkout.identificationType,
-        number: String(checkout.identificationNumber).trim(),
-      };
-
-      const emailForVault = resolvePayerEmail(
-        checkout.email,
-        req.tribuUser.email,
-        cfg.modo,
-        billingEmailRaw
-      );
-
-      if (wantsSaveCard) {
-        const vaultResult = await vaultCustomerCardSafe({
-          secretKey: cfg.secret_key,
-          email: emailForVault,
-          tokenId: checkout.tokenId,
-          user: tribuUser,
-          identification,
-        });
-        if (vaultResult.ok) {
-          customerId = vaultResult.vault.customerId;
-          cardId = vaultResult.vault.cardId;
-          culqiCardBrand = vaultResult.vault.cardBrand;
-          vaultMeta = vaultResult.vault;
-          sourceId = vaultResult.vault.cardId;
-        } else {
-          sourceId = checkout.tokenId;
-        }
-      } else {
-        sourceId = checkout.tokenId;
-      }
     }
 
+    if (!checkout.identificationType || !checkout.identificationNumber) {
+      return res.status(400).json({ error: 'Documento de identidad requerido (DNI, CE o RUC)' });
+    }
+
+    const identification = {
+      type: checkout.identificationType,
+      number: String(checkout.identificationNumber).trim(),
+    };
+
     const email = resolvePayerEmail(
-      checkout?.email,
+      checkout.email,
       req.tribuUser.email,
       cfg.modo,
       billingEmailRaw
     );
     const externalRef = buildExternalRef(req.tribuUser.id, plan.id);
+
+    if (!tarjetaId && wantsAutoRenew) {
+      const vaultResult = await vaultCustomerCardSafe({
+        secretKey: cfg.secret_key,
+        email,
+        tokenId: checkout.tokenId,
+        user: tribuUser,
+        identification,
+      });
+      if (vaultResult.ok && vaultResult.vault?.cardId) {
+        vaultInfo = vaultResult.vault;
+        sourceId = vaultInfo.cardId;
+        try {
+          await upsertSavedCard(req.tribuUser.id, vaultInfo);
+        } catch (saveErr) {
+          console.error('[tribu-pagos procesar-pago] guardar tarjeta BD', saveErr.message);
+        }
+      } else {
+        vaultError = vaultResult.errorMessage || 'No se pudo guardar la tarjeta en Culqi';
+        console.warn('[tribu-pagos procesar-pago] vault falló:', vaultError);
+      }
+    }
 
     const chargeBody = buildChargeBody({
       plan,
@@ -209,29 +184,41 @@ router.post('/procesar-pago', tribuAuthMiddleware, async (req, res) => {
 
     const charge = await createCulqiCharge(cfg.secret_key, chargeBody);
     const outcome = resolveChargeOutcome(charge);
-    const hasVaultForRenewal = !!(customerId && cardId);
+    let tribuSuscripcionId = null;
+
+    if (!vaultInfo?.cardId) {
+      const fromCharge = extractVaultFromCharge(charge);
+      if (fromCharge?.cardId) {
+        vaultInfo = fromCharge;
+        if (wantsAutoRenew) {
+          try {
+            await upsertSavedCard(req.tribuUser.id, fromCharge);
+          } catch (saveErr) {
+            console.error('[tribu-pagos procesar-pago] guardar tarjeta BD (charge)', saveErr.message);
+          }
+        }
+      }
+    }
+
+    const autoRenovacionActiva = wantsAutoRenew && !!vaultInfo?.cardId;
 
     if (outcome.status === 'approved') {
       try {
-        if (checkout) {
-          await savePayerProfile(
-            req.tribuUser.id,
-            checkout.identificationType,
-            checkout.identificationNumber,
-            cfg.modo === 'produccion' ? email : null
-          );
-        }
-        if (vaultMeta && wantsSaveCard) {
-          await upsertSavedCard(req.tribuUser.id, vaultMeta);
-        }
-        await activateNewSubscription({
+        await savePayerProfile(
+          req.tribuUser.id,
+          checkout.identificationType,
+          checkout.identificationNumber,
+          cfg.modo === 'produccion' ? email : null
+        );
+        tribuSuscripcionId = await activateNewSubscription({
           userId: req.tribuUser.id,
           planId: suscripcion_id,
           chargeId: outcome.charge_id,
-          customerId,
-          cardId,
-          culqiCardBrand,
           vigenciaDias: plan.vigencia_dias,
+          customerId: vaultInfo?.customerId || null,
+          cardId: vaultInfo?.cardId || null,
+          cardBrand: vaultInfo?.cardBrand || null,
+          autoRenovacion: autoRenovacionActiva,
         });
       } catch (dbErr) {
         console.error('[tribu-pagos procesar-pago] suscripcion', dbErr.message);
@@ -243,50 +230,25 @@ router.post('/procesar-pago', tribuAuthMiddleware, async (req, res) => {
       }
     }
 
+    await recordCulqiTransaction(charge, {
+      source: tarjetaId ? 'api_tarjeta_guardada' : 'api',
+      tribuUserId: req.tribuUser.id,
+      planId: suscripcion_id,
+      tribuSuscripcionId,
+      payerEmail: email,
+    });
+
     res.json({
       ...outcome,
-      auto_renovacion: outcome.status === 'approved' && hasVaultForRenewal,
-      tarjeta_guardada: !!(vaultMeta && wantsSaveCard) || usedSavedCard,
-      vault_intentado: wantsSaveCard && !usedSavedCard,
-      vault_ok: !!(vaultMeta && wantsSaveCard),
+      auto_renovacion: autoRenovacionActiva,
+      auto_renovacion_solicitada: wantsAutoRenew,
+      tarjeta_guardada: !!vaultInfo?.cardId,
+      vault_error: wantsAutoRenew && !autoRenovacionActiva ? vaultError : null,
     });
   } catch (err) {
     const msg = mapCulqiError(err);
     console.error('[tribu-pagos procesar-pago]', msg, err.status || '', err.payload || err.message || '');
     res.status(httpStatusForError(err)).json({ error: msg });
-  }
-});
-
-router.post('/cancelar-renovacion', tribuAuthMiddleware, async (req, res) => {
-  try {
-    const suscripcionId = Number.parseInt(req.body.suscripcion_id, 10);
-    if (!suscripcionId) return res.status(400).json({ error: 'suscripcion_id requerido' });
-
-    const [[row]] = await pool.execute(
-      `SELECT ts.id, ts.auto_renovacion, ts.culqi_card_id,
-              (ts.activo = 1 AND ts.fecha_fin >= CURDATE()) AS vigente
-       FROM tribu_suscripciones ts
-       WHERE ts.id = ? AND ts.tribu_user_id = ? LIMIT 1`,
-      [suscripcionId, req.tribuUser.id]
-    );
-    if (!row) return res.status(404).json({ error: 'Suscripción no encontrada' });
-    if (!row.vigente) return res.status(400).json({ error: 'Esta suscripción ya no está vigente' });
-    if (!row.auto_renovacion) {
-      return res.status(400).json({ error: 'La autorenovación ya está cancelada' });
-    }
-
-    await pool.execute(
-      'UPDATE tribu_suscripciones SET auto_renovacion = 0, cancelada_at = NOW() WHERE id = ?',
-      [suscripcionId]
-    );
-
-    res.json({
-      ok: true,
-      message: 'Autorenovación cancelada. Mantendrás acceso hasta la fecha de vencimiento.',
-    });
-  } catch (err) {
-    console.error('[tribu-pagos cancelar-renovacion]', err.message);
-    res.status(500).json({ error: 'No se pudo cancelar la autorenovación' });
   }
 });
 
@@ -329,13 +291,55 @@ router.post('/webhook', async (req, res) => {
       const charge = chargeData?.object === 'charge'
         ? chargeData
         : await fetchCulqiCharge(cfg.secret_key, chargeId);
-      await applyApprovedCharge(charge);
+      const applied = await applyApprovedCharge(charge);
+      await recordCulqiTransaction(charge, {
+        source: 'webhook',
+        tribuSuscripcionId: applied?.tribuSuscripcionId ?? null,
+        payerEmail: charge.email || null,
+      });
     }
 
     res.sendStatus(200);
   } catch (err) {
     console.error('[tribu-pagos webhook]', err.message);
     res.sendStatus(500);
+  }
+});
+
+router.get('/transacciones', authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 50, 1), 200);
+    const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
+    const status = req.query.status ? String(req.query.status).slice(0, 20) : null;
+
+    const where = status ? 'WHERE t.status = ?' : '';
+    const params = status ? [status, limit, offset] : [limit, offset];
+
+    const [rows] = await pool.execute(
+      `SELECT t.id, t.culqi_charge_id, t.tribu_user_id, t.suscripcion_plan_id,
+              t.tribu_suscripcion_id, t.amount_cents, t.currency_code, t.status,
+              t.outcome_type, t.outcome_code, t.merchant_message, t.user_message,
+              t.external_reference, t.event_source, t.card_brand, t.card_last_four,
+              t.payer_email_masked, t.culqi_created_at, t.created_at,
+              u.email AS tribu_user_email, s.nombre AS plan_nombre
+       FROM tribu_culqi_transactions t
+       LEFT JOIN tribu_users u ON u.id = t.tribu_user_id
+       LEFT JOIN suscripciones s ON s.id = t.suscripcion_plan_id
+       ${where}
+       ORDER BY t.created_at DESC
+       LIMIT ? OFFSET ?`,
+      params
+    );
+
+    const [[{ total }]] = await pool.execute(
+      `SELECT COUNT(*) AS total FROM tribu_culqi_transactions t ${where}`,
+      status ? [status] : []
+    );
+
+    res.json({ total, limit, offset, transacciones: rows });
+  } catch (err) {
+    console.error('[tribu-pagos transacciones]', err.message);
+    res.status(500).json({ error: 'No se pudo listar transacciones' });
   }
 });
 

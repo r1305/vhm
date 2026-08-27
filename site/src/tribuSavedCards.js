@@ -1,10 +1,18 @@
 /**
- * Tarjetas guardadas de usuarios La Tribu (referencias Culqi Customer/Card API).
+ * Tarjetas guardadas en Culqi (Customer/Card API) para autorenovación La Tribu.
  */
 const pool = require('./db');
 
+const BRAND_LABELS = {
+  visa: 'Visa',
+  mastercard: 'Mastercard',
+  amex: 'Amex',
+  diners: 'Diners',
+};
+
 function formatCardPublic(row) {
-  const brand = String(row.culqi_card_brand || 'tarjeta').toUpperCase();
+  const brandKey = String(row.culqi_card_brand || 'tarjeta').toLowerCase();
+  const brand = BRAND_LABELS[brandKey] || String(row.culqi_card_brand || 'Tarjeta');
   const last4 = row.last_four_digits || '????';
   return {
     id: row.id,
@@ -12,7 +20,7 @@ function formatCardPublic(row) {
     last_four: row.last_four_digits,
     exp_month: row.exp_month,
     exp_year: row.exp_year,
-    label: `${brand} ****${last4}`,
+    label: `${brand} ···· ${last4}`,
     is_default: !!row.is_default,
   };
 }
@@ -29,25 +37,40 @@ async function listSavedCards(userId) {
   return rows.map(formatCardPublic);
 }
 
-async function getSavedCardForUser(userId, cardRowId) {
+async function getSavedCard(userId, cardRowId) {
   const [[row]] = await pool.execute(
-    `SELECT id, tribu_user_id, culqi_customer_id, culqi_card_id, culqi_card_brand,
-            last_four_digits, exp_month, exp_year, is_default
+    `SELECT id, culqi_customer_id, culqi_card_id, culqi_card_brand, last_four_digits,
+            exp_month, exp_year, is_default
      FROM tribu_saved_cards
-     WHERE id = ? AND tribu_user_id = ? AND activo = 1 LIMIT 1`,
-    [cardRowId, userId]
+     WHERE tribu_user_id = ? AND id = ? AND activo = 1 LIMIT 1`,
+    [userId, cardRowId]
+  );
+  return row || null;
+}
+
+async function getDefaultSavedCard(userId) {
+  const [[row]] = await pool.execute(
+    `SELECT id, culqi_customer_id, culqi_card_id, culqi_card_brand, last_four_digits,
+            exp_month, exp_year, is_default
+     FROM tribu_saved_cards
+     WHERE tribu_user_id = ? AND activo = 1
+     ORDER BY is_default DESC, id DESC LIMIT 1`,
+    [userId]
   );
   return row || null;
 }
 
 async function upsertSavedCard(userId, vault) {
+  const customerId = String(vault.customerId);
+  const cardId = String(vault.cardId);
   await pool.execute(
-    'UPDATE tribu_saved_cards SET is_default = 0 WHERE tribu_user_id = ? AND activo = 1',
+    'UPDATE tribu_saved_cards SET is_default = 0 WHERE tribu_user_id = ?',
     [userId]
   );
   await pool.execute(
     `INSERT INTO tribu_saved_cards
-      (tribu_user_id, culqi_customer_id, culqi_card_id, culqi_card_brand, last_four_digits, exp_month, exp_year, is_default, activo)
+      (tribu_user_id, culqi_customer_id, culqi_card_id, culqi_card_brand,
+       last_four_digits, exp_month, exp_year, is_default, activo)
      VALUES (?, ?, ?, ?, ?, ?, ?, 1, 1)
      ON DUPLICATE KEY UPDATE
        culqi_customer_id = VALUES(culqi_customer_id),
@@ -59,74 +82,66 @@ async function upsertSavedCard(userId, vault) {
        activo = 1`,
     [
       userId,
-      vault.customerId,
-      vault.cardId,
+      customerId,
+      cardId,
       vault.cardBrand || null,
       vault.lastFour || null,
       vault.expMonth || null,
       vault.expYear || null,
     ]
   );
+  const [[saved]] = await pool.execute(
+    'SELECT id FROM tribu_saved_cards WHERE tribu_user_id = ? AND culqi_card_id = ? LIMIT 1',
+    [userId, cardId]
+  );
+  return saved?.id || null;
 }
 
-async function setDefaultSavedCard(userId, cardRowId) {
-  const card = await getSavedCardForUser(userId, cardRowId);
-  if (!card) return null;
-  await pool.execute(
-    'UPDATE tribu_saved_cards SET is_default = 0 WHERE tribu_user_id = ? AND activo = 1',
-    [userId]
-  );
-  await pool.execute(
-    'UPDATE tribu_saved_cards SET is_default = 1 WHERE id = ? AND tribu_user_id = ?',
-    [cardRowId, userId]
-  );
-  return card;
-}
-
-async function deactivateSavedCard(userId, cardRowId) {
-  const card = await getSavedCardForUser(userId, cardRowId);
+async function setDefaultCard(userId, cardRowId) {
+  const card = await getSavedCard(userId, cardRowId);
   if (!card) return false;
+  await pool.execute('UPDATE tribu_saved_cards SET is_default = 0 WHERE tribu_user_id = ?', [userId]);
   await pool.execute(
-    'UPDATE tribu_saved_cards SET activo = 0, is_default = 0 WHERE id = ? AND tribu_user_id = ?',
-    [cardRowId, userId]
-  );
-  await pool.execute(
-    'UPDATE tribu_suscripciones SET auto_renovacion = 0 WHERE tribu_user_id = ? AND culqi_card_id = ?',
-    [userId, card.culqi_card_id]
+    'UPDATE tribu_saved_cards SET is_default = 1 WHERE tribu_user_id = ? AND id = ?',
+    [userId, cardRowId]
   );
   return true;
 }
 
-async function applySavedCardToSubscription(userId, tribuSubId, cardRowId) {
-  const [[sub]] = await pool.execute(
-    `SELECT ts.id, (ts.activo = 1 AND ts.fecha_fin >= CURDATE()) AS vigente
-     FROM tribu_suscripciones ts
-     WHERE ts.id = ? AND ts.tribu_user_id = ? LIMIT 1`,
-    [tribuSubId, userId]
+async function deactivateSavedCard(userId, cardRowId) {
+  const card = await getSavedCard(userId, cardRowId);
+  if (!card) return false;
+  await pool.execute(
+    'UPDATE tribu_saved_cards SET activo = 0, is_default = 0 WHERE tribu_user_id = ? AND id = ?',
+    [userId, cardRowId]
   );
-  if (!sub) return { ok: false, error: 'Suscripción no encontrada' };
-  if (!sub.vigente) return { ok: false, error: 'La suscripción no está vigente' };
-
-  const card = await getSavedCardForUser(userId, cardRowId);
-  if (!card) return { ok: false, error: 'Tarjeta no encontrada' };
-
-  await setDefaultSavedCard(userId, cardRowId);
   await pool.execute(
     `UPDATE tribu_suscripciones
-     SET culqi_customer_id = ?, culqi_card_id = ?, culqi_card_brand = ?,
-         auto_renovacion = 1, cancelada_at = NULL
-     WHERE id = ? AND tribu_user_id = ?`,
-    [card.culqi_customer_id, card.culqi_card_id, card.culqi_card_brand, tribuSubId, userId]
+     SET auto_renovacion = 0
+     WHERE tribu_user_id = ? AND activo = 1 AND culqi_card_id = ?`,
+    [userId, card.culqi_card_id]
   );
-  return { ok: true };
+  const [[next]] = await pool.execute(
+    `SELECT id FROM tribu_saved_cards
+     WHERE tribu_user_id = ? AND activo = 1
+     ORDER BY id DESC LIMIT 1`,
+    [userId]
+  );
+  if (next) {
+    await pool.execute(
+      'UPDATE tribu_saved_cards SET is_default = 1 WHERE tribu_user_id = ? AND id = ?',
+      [userId, next.id]
+    );
+  }
+  return true;
 }
 
 module.exports = {
-  listSavedCards,
-  getSavedCardForUser,
-  upsertSavedCard,
-  setDefaultSavedCard,
-  deactivateSavedCard,
-  applySavedCardToSubscription,
   formatCardPublic,
+  listSavedCards,
+  getSavedCard,
+  getDefaultSavedCard,
+  upsertSavedCard,
+  setDefaultCard,
+  deactivateSavedCard,
 };

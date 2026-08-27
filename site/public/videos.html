@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>La Tribu - VHM</title>
   <script src="__app_base__.js"></script>
-  <script src="https://checkout.culqi.com/js/v4"></script>
+  <script src="https://js.culqi.com/checkout-js"></script>
   <link rel="icon" type="image/jpeg" href="logo_vhm.jpeg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -329,6 +329,111 @@
     .user-menu-divider { height: 1px; background: rgba(168,85,247,.16); margin: 6px 4px; }
     .auth-overlay { display: none; position: fixed; inset: 0; background: rgba(7,7,13,.88); backdrop-filter: blur(10px); z-index: 2000; padding: 20px; align-items: center; justify-content: center; }
     .auth-overlay.show { display: flex; }
+    #pagoOverlay { overflow-y: auto; overscroll-behavior: contain; align-items: center; padding: 16px; }
+    #pagoOverlay .pago-box {
+      max-width: 520px; width: 100%; margin: auto;
+      padding: 28px 26px 22px;
+      background: linear-gradient(180deg, rgba(22,18,36,.98) 0%, rgba(12,10,20,.98) 100%);
+    }
+    #pagoOverlay .pago-box-head { text-align: center; margin-bottom: 18px; }
+    #pagoOverlay .pago-box-head .auth-logo { margin-bottom: 6px; font-size: 1.65rem; }
+    #pagoOverlay .pago-box-head .auth-title {
+      margin-bottom: 10px; font-family: 'Fraunces', serif; font-size: 1.28rem; font-weight: 700;
+    }
+    #pagoOverlay .pago-price-chip {
+      display: inline-flex; align-items: baseline; gap: 6px; flex-wrap: wrap; justify-content: center;
+      padding: 10px 18px; border-radius: 999px;
+      background: rgba(168,85,247,.12); border: 1px solid rgba(168,85,247,.28);
+    }
+    #pagoOverlay .pago-price-amount {
+      font-size: 1.45rem; font-weight: 800; color: #fff; line-height: 1;
+    }
+    #pagoOverlay .pago-price-period { font-size: .88rem; color: #c9b8ee; font-weight: 700; }
+    #pagoOverlay .pago-box-scroll { overflow: visible; display: flex; flex-direction: column; gap: 14px; }
+    #pagoOverlay .pago-info-pill {
+      display: flex; align-items: flex-start; gap: 10px; padding: 11px 13px;
+      border-radius: 12px; background: rgba(56,189,248,.08); border: 1px solid rgba(56,189,248,.18);
+      color: #bae6fd; font-size: .78rem; line-height: 1.45;
+    }
+    #pagoOverlay .pago-info-pill.warn {
+      background: rgba(251,191,36,.08); border-color: rgba(251,191,36,.22); color: #fde68a;
+    }
+    #pagoOverlay .pago-info-icon { flex-shrink: 0; font-size: .95rem; line-height: 1.2; }
+    #pagoOverlay .pago-section {
+      padding: 16px; border-radius: 16px;
+      background: rgba(255,255,255,.03); border: 1px solid rgba(168,85,247,.16);
+    }
+    #pagoOverlay .pago-section-card,
+    #pagoOverlay .pago-section-pay {
+      padding: 0; background: transparent; border: none; box-shadow: none;
+    }
+    #pagoOverlay .pago-pay-lead {
+      font-size: .82rem; color: #b8aacf; line-height: 1.45; margin: 0 0 10px;
+    }
+    #pagoOverlay .pago-section-head {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      margin-bottom: 8px;
+    }
+    #pagoOverlay .pago-section-title {
+      font-size: .82rem; font-weight: 700; letter-spacing: 0; text-transform: none;
+      color: #ece9f5;
+    }
+    #pagoOverlay .pago-section > .pago-section-title { margin-bottom: 12px; }
+    #pagoOverlay .pago-secure-tag {
+      display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 999px;
+      background: rgba(45,212,191,.12); border: 1px solid rgba(45,212,191,.22);
+      color: #99f6e4; font-size: .68rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase;
+    }
+    #pagoOverlay .pago-field label {
+      display: block; font-size: .74rem; font-weight: 800; color: #b8aacf;
+      margin-bottom: 6px; text-transform: uppercase; letter-spacing: .04em;
+    }
+    #pagoOverlay .pago-field input,
+    #pagoOverlay .pago-field select {
+      width: 100%; padding: 11px 12px; border-radius: 11px;
+      border: 1px solid rgba(168,85,247,.22); background: rgba(7,7,13,.72); color: #fff;
+      font-size: .92rem; font-family: inherit; transition: border-color .2s, background .2s, box-shadow .2s;
+    }
+    #pagoOverlay .pago-field input:focus,
+    #pagoOverlay .pago-field select:focus {
+      outline: none; border-color: rgba(168,85,247,.55);
+      background: rgba(168,85,247,.08); box-shadow: 0 0 0 3px rgba(168,85,247,.12);
+    }
+    #pagoOverlay .pago-doc-grid { display: grid; grid-template-columns: 118px 1fr; gap: 10px; }
+    #pagoOverlay .pago-doc-grid .pago-field { margin: 0; }
+    #pagoOverlay .pago-trust {
+      text-align: center; font-size: .74rem; color: #8b7aa8; line-height: 1.4; margin: 2px 0 0;
+    }
+    #pagoOverlay .pago-trust span { color: #c4b5fd; font-weight: 700; }
+    #pagoOverlay #pagoError {
+      margin-top: 4px; padding: 10px 12px; border-radius: 12px;
+      background: rgba(251,113,133,.08); border: 1px solid rgba(251,113,133,.18);
+    }
+    #pagoOverlay #pagoError:empty { display: none; padding: 0; border: 0; background: none; min-height: 0; margin: 0; }
+    #pagoOverlay #pagoCulqiLoading {
+      display: none; align-items: center; justify-content: center; gap: 10px;
+      padding: 10px 0 4px; font-size: .84rem; color: #c9b8ee; font-weight: 700;
+    }
+    #pagoOverlay #pagoCulqiLoading.show { display: flex; }
+    #pagoOverlay .pago-mini-spinner {
+      width: 16px; height: 16px; border-radius: 50%;
+      border: 2px solid rgba(168,85,247,.22); border-top-color: #ec4899;
+      animation: tribuSpin .8s linear infinite;
+    }
+    #pagoOverlay .profile-field label { font-size: .74rem; font-weight: 800; color: #b8aacf; text-transform: uppercase; letter-spacing: .04em; }
+    #pagoOverlay .profile-field input,
+    #pagoOverlay .profile-field select {
+      width: 100%; padding: 11px 12px; border-radius: 11px;
+      border: 1px solid rgba(168,85,247,.22); background: rgba(7,7,13,.72); color: #fff;
+      font-size: .92rem; font-family: inherit;
+    }
+    #pagoOverlay .pago-help { font-size: .74rem; color: #8b7aa8; line-height: 1.4; margin-top: 6px; }
+    #pagoOverlay #pagoContenido { display: flex; flex-direction: column; gap: 14px; }
+    @media (max-width: 480px) {
+      #pagoOverlay .pago-box { padding: 22px 18px 18px; }
+      #pagoOverlay .pago-doc-grid { grid-template-columns: 1fr; }
+      #pagoOverlay .pago-section-head { flex-direction: column; align-items: flex-start; }
+    }
     .auth-box { background: var(--panel); border: 1px solid rgba(168,85,247,.35); border-radius: 24px; width: 100%; max-width: 420px; padding: 36px 32px 28px; position: relative; box-shadow: 0 40px 90px -30px rgba(168,85,247,.45); animation: authIn .25s ease; }
     @keyframes authIn { from { opacity:0; transform: scale(.95) translateY(12px); } to { opacity:1; transform: scale(1) translateY(0); } }
     .auth-box .auth-logo { text-align: center; margin-bottom: 6px; font-family: 'Fraunces', serif; font-size: 1.8rem; font-weight: 700; background: var(--grad-warm); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
@@ -344,6 +449,16 @@
     .auth-btn { width: 100%; padding: 13px; margin-top: 6px; background: var(--grad-warm); border: none; border-radius: 12px; color: #fff; font-size: 1rem; font-weight: 800; font-family: inherit; cursor: pointer; transition: opacity .2s, transform .15s; }
     .auth-btn:hover:not(:disabled) { opacity: .9; transform: translateY(-1px); }
     .auth-btn:disabled { opacity: .5; cursor: not-allowed; }
+    .culqi-embed { margin-top: 0; border-radius: 14px; overflow: hidden; line-height: 0; isolation: isolate; }
+    .culqi-embed:empty { display: none; }
+    #pagoOverlay .culqi-embed {
+      background: #14101f;
+      border: 1px solid rgba(168,85,247,.24);
+    }
+    #pagoOverlay .culqi-embed iframe {
+      width: 100% !important; border: 0 !important; display: block !important;
+      overflow: hidden !important; background: #14101f !important; border-radius: 0 !important;
+    }
     .auth-error { color: #fb7185; font-size: .83rem; font-weight: 700; margin-top: 10px; text-align: center; min-height: 20px; }
     .auth-footer { text-align: center; margin-top: 18px; font-size: .85rem; color: var(--muted); }
     .auth-footer a { color: #c9b8ee; font-weight: 700; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
@@ -420,6 +535,84 @@
     }
     .subs-cancel-btn:hover { background: rgba(251,113,133,.12); color: #fff; }
     .subs-empty { text-align: center; color: var(--muted); padding: 40px 20px; }
+    .subs-renewal-panel {
+      background: linear-gradient(135deg, rgba(45,212,191,.08), rgba(168,85,247,.1));
+      border: 1px solid rgba(45,212,191,.28); border-radius: 18px;
+      padding: 18px 20px; margin-bottom: 18px;
+    }
+    .subs-renewal-panel h3 {
+      font-family: 'Fraunces', serif; font-size: 1.05rem; color: #fff; margin: 0 0 6px;
+    }
+    .subs-renewal-panel p { margin: 0; font-size: .84rem; color: #c9b8ee; line-height: 1.5; }
+    .subs-renewal-meta { margin-top: 10px; font-size: .82rem; color: #2dd4bf; font-weight: 700; }
+    .subs-cards-panel {
+      background: var(--panel); border: 1px solid var(--line); border-radius: 16px;
+      padding: 16px 18px; margin-bottom: 16px;
+    }
+    .subs-cards-panel h3 { font-size: .92rem; color: #fff; margin: 0 0 12px; font-weight: 800; }
+    .subs-card-row {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 10px 0; border-bottom: 1px solid rgba(168,85,247,.12);
+    }
+    .subs-card-row:last-child { border-bottom: 0; padding-bottom: 0; }
+    .subs-card-chip {
+      font-size: .84rem; color: #ece9f5; font-weight: 700;
+    }
+    .subs-card-chip small { display: block; font-size: .72rem; color: var(--muted); font-weight: 600; margin-top: 2px; }
+    .subs-link-btn {
+      background: none; border: none; color: #c4b5fd; font-family: inherit;
+      font-size: .78rem; font-weight: 800; cursor: pointer; padding: 4px 0;
+    }
+    .subs-link-btn:hover { color: #fff; text-decoration: underline; }
+    .subs-link-btn.danger { color: #fb7185; }
+    .pago-auto-renew {
+      padding: 14px 16px; border-radius: 14px;
+      background: rgba(45,212,191,.06); border: 1px solid rgba(45,212,191,.22);
+    }
+    .pago-toggle {
+      display: flex; align-items: flex-start; gap: 12px; cursor: pointer; user-select: none;
+    }
+    .pago-toggle input { position: absolute; opacity: 0; width: 0; height: 0; }
+    .pago-toggle-ui {
+      flex-shrink: 0; width: 44px; height: 26px; border-radius: 999px;
+      background: rgba(154,147,179,.25); position: relative; transition: background .2s;
+      margin-top: 2px;
+    }
+    .pago-toggle-ui::after {
+      content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px;
+      border-radius: 50%; background: #fff; transition: transform .2s;
+    }
+    .pago-toggle input:checked + .pago-toggle-ui { background: rgba(45,212,191,.55); }
+    .pago-toggle input:checked + .pago-toggle-ui::after { transform: translateX(18px); }
+    .pago-toggle-text strong { display: block; color: #fff; font-size: .88rem; margin-bottom: 4px; }
+    .pago-toggle-text small { display: block; color: #b8aacf; font-size: .76rem; line-height: 1.45; }
+    .pago-saved-wrap {
+      padding: 14px 16px; border-radius: 14px;
+      background: rgba(168,85,247,.08); border: 1px solid rgba(168,85,247,.2);
+    }
+    .pago-saved-title { font-size: .78rem; font-weight: 800; color: #c9b8ee; margin-bottom: 10px; text-transform: uppercase; letter-spacing: .04em; }
+    .pago-saved-options { display: flex; flex-direction: column; gap: 8px; }
+    .pago-saved-option {
+      display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px;
+      border: 1px solid rgba(168,85,247,.22); background: rgba(255,255,255,.02);
+      cursor: pointer; transition: border-color .15s, background .15s;
+    }
+    .pago-saved-option:hover, .pago-saved-option.selected {
+      border-color: rgba(168,85,247,.5); background: rgba(168,85,247,.12);
+    }
+    .pago-saved-option input { accent-color: #a855f7; }
+    .pago-saved-label { font-size: .84rem; color: #fff; font-weight: 700; }
+    .pago-saved-pay-btn {
+      margin-top: 12px; width: 100%; padding: 12px 16px; border: none; border-radius: 999px;
+      background: var(--grad-warm); color: #fff; font-weight: 800; font-family: inherit;
+      cursor: pointer; font-size: .9rem;
+    }
+    .pago-saved-pay-btn:disabled { opacity: .55; cursor: not-allowed; }
+    .pago-new-card-link {
+      margin-top: 10px; background: none; border: none; color: #c4b5fd;
+      font-family: inherit; font-size: .8rem; font-weight: 700; cursor: pointer; padding: 0;
+    }
+    .pago-new-card-link:hover { color: #fff; text-decoration: underline; }
     .account-back {
       display: inline-flex; align-items: center; gap: 6px; margin-bottom: 14px;
       background: none; border: none; color: var(--muted); font-family: inherit;
@@ -442,6 +635,28 @@
       border: 1px solid rgba(251,191,36,.42); color: #fcd34d;
       box-shadow: 0 0 48px rgba(251,191,36,.12);
     }
+    .tribu-feedback-icon.error {
+      background: linear-gradient(135deg, rgba(251,113,133,.18), rgba(236,72,153,.12));
+      border: 1px solid rgba(251,113,133,.42); color: #fb7185;
+      box-shadow: 0 0 48px rgba(251,113,133,.12);
+    }
+    .tribu-feedback-icon.warn {
+      background: linear-gradient(135deg, rgba(251,191,36,.18), rgba(236,72,153,.1));
+      border: 1px solid rgba(251,191,36,.4); color: #fcd34d;
+      box-shadow: 0 0 48px rgba(251,191,36,.12);
+    }
+    .tribu-feedback-icon.processing {
+      background: linear-gradient(135deg, rgba(168,85,247,.18), rgba(236,72,153,.12));
+      border: 1px solid rgba(168,85,247,.38); color: transparent;
+      box-shadow: 0 0 48px rgba(168,85,247,.14);
+    }
+    .tribu-feedback-spinner {
+      width: 34px; height: 34px; border-radius: 50%;
+      border: 3px solid rgba(196,181,253,.22); border-top-color: #ec4899;
+      animation: tribuSpin .8s linear infinite;
+    }
+    #tribuFeedbackOverlay.no-dismiss { cursor: wait; }
+    #tribuFeedbackOverlay.no-dismiss .auth-box { pointer-events: none; }
     .tribu-feedback-eyebrow {
       font-size: .78rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase;
       color: #c9b8ee; margin-bottom: 8px;
@@ -535,11 +750,12 @@
       <h2 style="font-family:'Fraunces',serif;font-size:1.4rem;color:#fff">Mis suscripciones</h2>
       <button type="button" class="profile-btn profile-btn-primary" onclick="abrirModalPlanes()">Ver planes</button>
     </div>
-    <div id="subsLista"><div class="subs-empty">Cargando...</div></div>
-    <div id="subsTarjetasWrap" style="margin-top:28px;display:none">
-      <h3 style="font-family:'Fraunces',serif;font-size:1.1rem;color:#fff;margin-bottom:10px">Mis tarjetas guardadas</h3>
-      <div id="subsTarjetasLista"></div>
+    <div id="subsRenewalPanel" class="subs-renewal-panel" style="display:none"></div>
+    <div id="subsCardsPanel" class="subs-cards-panel" style="display:none">
+      <h3>Métodos de pago guardados</h3>
+      <div id="subsCardsList"></div>
     </div>
+    <div id="subsLista"><div class="subs-empty">Cargando...</div></div>
   </div>
 </div>
 
@@ -588,52 +804,73 @@
 </div>
 <!-- MODAL PAGO -->
 <div class="auth-overlay" id="pagoOverlay">
-  <div class="auth-box" style="max-width:500px;width:100%">
-    <button class="auth-close" onclick="cerrarModalPago()">&times;</button>
-    <div class="auth-logo">La Tribu</div>
-    <div class="auth-title" id="pagoTitulo">Adquirir plan</div>
-    <div class="auth-sub" id="pagoSub"></div>
-    <div class="auth-sub" id="pagoRecurringNote" style="font-size:.82rem;color:#c9b8ee;margin-top:8px;line-height:1.45">
-      Suscripción recurrente: si marcas «Guardar tarjeta», se debitará automáticamente cada mes. Puedes cancelar la autorenovación o cambiar de tarjeta desde Mis suscripciones.
-    </div>
-    <div id="pagoSandboxHint" class="auth-sub" style="display:none;font-size:.82rem;color:#fbbf24;margin-top:8px"></div>
-    <div class="profile-field" id="pagoBillingWrap" style="margin-top:16px;display:none">
-      <label for="pagoBillingEmail">Correo para comprobante de pago</label>
-      <input type="email" id="pagoBillingEmail" autocomplete="email" placeholder="">
-      <div class="auth-sub" style="font-size:.78rem;margin-top:6px;line-height:1.4">
-        Opcional. Culqi enviará el comprobante a este correo. Si lo dejas vacío, usamos el de tu cuenta La Tribu.
+  <div class="auth-box pago-box">
+    <button class="auth-close" onclick="cerrarModalPago()" aria-label="Cerrar">&times;</button>
+    <div class="pago-box-head">
+      <div class="auth-logo">La Tribu</div>
+      <div class="auth-title" id="pagoTitulo">Adquirir plan</div>
+      <div class="pago-price-chip" id="pagoSub">
+        <span class="pago-price-amount" id="pagoPrecioMonto">S/ 0.00</span>
+        <span class="pago-price-period">/ mes</span>
       </div>
     </div>
-    <div class="profile-field" id="pagoSavedCardsWrap" style="margin-top:16px;display:none">
-      <label for="pagoMetodoPago">Medio de pago</label>
-      <select id="pagoMetodoPago" class="auth-field" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:#1a1228;color:#fff" onchange="onPagoMetodoChange()">
-        <option value="new">Nueva tarjeta</option>
-      </select>
-    </div>
-    <label id="pagoGuardarTarjetaWrap" style="display:flex;align-items:flex-start;gap:10px;margin-top:14px;font-size:.88rem;color:#e8ddf5;line-height:1.45;cursor:pointer">
-      <input type="checkbox" id="pagoGuardarTarjeta" checked style="width:auto;margin-top:3px;flex-shrink:0">
-      <span>Guardar tarjeta para renovaciones y pagos futuros</span>
-    </label>
-    <div id="pagoContenido" style="margin-top:20px">
-      <div style="display:grid;grid-template-columns:120px 1fr;gap:10px;margin-bottom:14px">
-        <div class="profile-field" style="margin:0">
-          <label for="pagoDocType">Documento</label>
-          <select id="pagoDocType" class="auth-field" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:#1a1228;color:#fff">
-            <option value="DNI">DNI</option>
-            <option value="CE">CE</option>
-            <option value="RUC">RUC</option>
-          </select>
+    <div class="pago-box-scroll">
+      <div id="pagoSandboxHint" class="pago-info-pill warn" style="display:none">
+        <span class="pago-info-icon" aria-hidden="true">🧪</span>
+        <span>Modo prueba: tarjeta 4111 1111 1111 1111, CVV 123 y vencimiento futuro.</span>
+      </div>
+      <div class="profile-field" id="pagoBillingWrap" style="display:none">
+        <label for="pagoBillingEmail">Correo para comprobante</label>
+        <input type="email" id="pagoBillingEmail" autocomplete="email" placeholder="">
+        <div class="pago-help">Opcional. Si lo dejas vacío, usamos el correo de tu cuenta La Tribu.</div>
+      </div>
+      <div id="pagoContenido">
+        <div class="pago-section">
+          <div class="pago-section-title">Datos de facturación</div>
+          <div class="pago-doc-grid">
+            <div class="pago-field">
+              <label for="pagoDocType">Documento</label>
+              <select id="pagoDocType">
+                <option value="DNI">DNI</option>
+                <option value="CE">CE</option>
+                <option value="RUC">RUC</option>
+              </select>
+            </div>
+            <div class="pago-field">
+              <label for="pagoDocNumber">Número</label>
+              <input type="text" id="pagoDocNumber" inputmode="numeric" autocomplete="off" placeholder="12345678">
+            </div>
+          </div>
         </div>
-        <div class="profile-field" style="margin:0">
-          <label for="pagoDocNumber">Número</label>
-          <input type="text" id="pagoDocNumber" inputmode="numeric" autocomplete="off" placeholder="12345678" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:#1a1228;color:#fff">
+        <div class="pago-auto-renew" id="pagoAutoRenewWrap">
+          <label class="pago-toggle" for="pagoAutoRenovar">
+            <input type="checkbox" id="pagoAutoRenovar" checked>
+            <span class="pago-toggle-ui" aria-hidden="true"></span>
+            <span class="pago-toggle-text">
+              <strong>Renovación automática mensual</strong>
+              <small id="pagoAutoRenovarHint">Guardaremos tu tarjeta de forma segura en Culqi para cobrar al vencer. Puedes cancelarlo en Mis suscripciones.</small>
+            </span>
+          </label>
+        </div>
+        <div class="pago-saved-wrap" id="pagoSavedWrap" style="display:none">
+          <div class="pago-saved-title">Pagar más rápido</div>
+          <div class="pago-saved-options" id="pagoSavedOptions"></div>
+          <button type="button" class="pago-saved-pay-btn" id="pagoSavedPayBtn" onclick="pagarConTarjetaGuardada()" disabled>
+            Pagar con tarjeta seleccionada
+          </button>
+          <button type="button" class="pago-new-card-link" id="pagoUseNewCardBtn" onclick="mostrarFormularioTarjetaNueva()">
+            Usar otra tarjeta
+          </button>
+        </div>
+        <div id="pagoNuevaTarjetaWrap">
+        <div class="pago-section pago-section-pay">
+          <p class="pago-pay-lead">Ingresa los datos de tu tarjeta para activar tu suscripción.</p>
+          <div id="culqi-container" class="culqi-embed"></div>
+          <div id="pagoCulqiLoading"><span class="pago-mini-spinner" aria-hidden="true"></span><span>Procesando pago...</span></div>
+        </div>
         </div>
       </div>
-      <button type="button" class="auth-btn" id="pagoBtnCulqi" onclick="abrirCulqiPago()">Pagar con tarjeta segura</button>
-      <div class="auth-sub" style="font-size:.78rem;margin-top:10px;line-height:1.4">Se abrirá el formulario seguro de Culqi para ingresar los datos de tu tarjeta.</div>
-    </div>
-    <div id="pagoSavedPayWrap" style="display:none;margin-top:16px">
-      <button type="button" class="auth-btn" id="pagoBtnSaved" onclick="pagarConTarjetaGuardada()">Pagar con tarjeta guardada</button>
+      <p class="pago-trust">Pago protegido por <span>Culqi</span> · cumplimiento PCI DSS</p>
     </div>
     <div id="pagoError" class="auth-error"></div>
   </div>
@@ -749,7 +986,27 @@ function setToken(t) { localStorage.setItem('tribu_token', t); }
 function clearToken() { localStorage.removeItem('tribu_token'); localStorage.removeItem('tribu_user'); }
 function getStoredUser() { try { return JSON.parse(localStorage.getItem('tribu_user') || 'null'); } catch { return null; } }
 function setStoredUser(u) { localStorage.setItem('tribu_user', JSON.stringify(u)); }
-function tieneSuscripcion() { return !!(tribuUser && tribuUser.suscripcion_activa); }
+function hoyYmdLocal() {
+  const t = new Date();
+  return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+}
+
+function suscripcionVigente(sub) {
+  if (!sub || !sub.fecha_fin) return false;
+  return formatYmd(sub.fecha_fin) >= hoyYmdLocal();
+}
+
+function normalizarSuscripcionUsuario(user) {
+  if (!user) return user;
+  if (user.suscripcion_activa && !suscripcionVigente(user.suscripcion_activa)) {
+    user.suscripcion_activa = null;
+  }
+  return user;
+}
+
+function tieneSuscripcion() {
+  return !!(tribuUser && suscripcionVigente(tribuUser.suscripcion_activa));
+}
 
 let pageLoaderDepth = 0;
 function showPageLoader(message) {
@@ -914,7 +1171,7 @@ async function cargarPerfilForm() {
   try {
     const res = await tribuFetch('/tribu-auth/me');
     if (res.ok) {
-      tribuUser = await res.json();
+      tribuUser = normalizarSuscripcionUsuario(await res.json());
       setStoredUser(tribuUser);
       fillPerfilForm();
       renderNavAuth();
@@ -945,7 +1202,7 @@ async function guardarPerfil() {
     const d = await res.json();
     if (!res.ok) { setProfileMsg(d.error || 'Error al guardar', false); return; }
     if (d.token) setToken(d.token);
-    tribuUser = d.user;
+    tribuUser = normalizarSuscripcionUsuario(d.user);
     setStoredUser(tribuUser);
     renderNavAuth();
     fillPerfilForm();
@@ -966,7 +1223,7 @@ async function subirFotoPerfil() {
     const res = await tribuFetch('/tribu-auth/perfil/foto', { method: 'POST', body: fd });
     const d = await res.json();
     if (!res.ok) { setProfileMsg(d.error || 'Error al subir foto', false); return; }
-    tribuUser = d.user;
+    tribuUser = normalizarSuscripcionUsuario(d.user);
     setStoredUser(tribuUser);
     input.value = '';
     renderNavAuth();
@@ -983,7 +1240,7 @@ async function quitarFotoPerfil() {
     const res = await tribuFetch('/tribu-auth/perfil/foto', { method: 'DELETE' });
     const d = await res.json();
     if (!res.ok) { setProfileMsg(d.error || 'Error', false); return; }
-    tribuUser = d.user;
+    tribuUser = normalizarSuscripcionUsuario(d.user);
     setStoredUser(tribuUser);
     renderNavAuth();
     fillPerfilForm();
@@ -1003,29 +1260,74 @@ function formatYmd(val) {
 
 async function cargarMisSuscripciones() {
   const lista = document.getElementById('subsLista');
+  const renewalPanel = document.getElementById('subsRenewalPanel');
+  const cardsPanel = document.getElementById('subsCardsPanel');
+  const cardsList = document.getElementById('subsCardsList');
   if (!lista) return;
   if (!tribuUser) {
     lista.innerHTML = '<div class="subs-empty">Inicia sesión para ver tus suscripciones.</div>';
+    if (renewalPanel) renewalPanel.style.display = 'none';
+    if (cardsPanel) cardsPanel.style.display = 'none';
     return;
   }
   lista.innerHTML = '<div class="subs-empty">Cargando...</div>';
-  let tarjetas = [];
-  try {
-    const tr = await tribuFetch('/tribu-auth/tarjetas');
-    const td = await tr.json();
-    if (tr.ok) tarjetas = td.data || [];
-  } catch {}
-  window._savedCardsSubs = tarjetas;
   try {
     const res = await tribuFetch('/tribu-auth/suscripciones');
     const d = await res.json();
     if (!res.ok) throw new Error(d.error || 'Error');
-    if (!d.data?.length) {
+    const subs = d.data || [];
+    const tarjetas = d.tarjetas || [];
+    window._tribuTarjetasCache = tarjetas;
+
+    const activaAuto = subs.find(s => s.activo && s.auto_renovacion);
+    const activaSinAuto = subs.find(s => s.activo && !s.auto_renovacion);
+
+    if (renewalPanel) {
+      if (activaAuto) {
+        renewalPanel.style.display = 'block';
+        renewalPanel.innerHTML =
+          '<h3>Renovación automática activa</h3>' +
+          '<p>Tu plan <strong>' + escapeHtml(activaAuto.nombre) + '</strong> se renovará el <strong>' + escapeHtml(activaAuto.proxima_renovacion || activaAuto.fecha_fin) + '</strong>.' +
+          (activaAuto.tarjeta_label ? ' Cobro con ' + escapeHtml(activaAuto.tarjeta_label) + '.' : '') + '</p>' +
+          '<div class="subs-renewal-meta">Puedes cancelar en cualquier momento; mantendrás acceso hasta la fecha de vencimiento.</div>';
+      } else if (activaSinAuto) {
+        renewalPanel.style.display = 'block';
+        renewalPanel.innerHTML =
+          '<h3>Sin renovación automática</h3>' +
+          '<p>Tu plan vence el <strong>' + escapeHtml(activaSinAuto.fecha_fin) + '</strong>. ' +
+          (tarjetas.length
+            ? 'Activa la autorenovación en tu suscripción para no perder el acceso.'
+            : 'Al renovar, activa la opción de cobro automático para mayor comodidad.') +
+          '</p>';
+      } else {
+        renewalPanel.style.display = 'none';
+      }
+    }
+
+    if (cardsPanel && cardsList) {
+      if (tarjetas.length) {
+        cardsPanel.style.display = 'block';
+        cardsList.innerHTML = tarjetas.map(t =>
+          '<div class="subs-card-row">' +
+            '<div class="subs-card-chip">' + escapeHtml(t.label) +
+            (t.is_default ? '<small>Principal</small>' : '') + '</div>' +
+            '<div style="display:flex;gap:10px;flex-wrap:wrap">' +
+            (!t.is_default ? '<button type="button" class="subs-link-btn" onclick="marcarTarjetaDefault(' + t.id + ')">Hacer principal</button>' : '') +
+            '<button type="button" class="subs-link-btn danger" onclick="eliminarTarjetaGuardada(' + t.id + ')">Eliminar</button>' +
+            '</div></div>'
+        ).join('');
+      } else {
+        cardsPanel.style.display = 'none';
+        cardsList.innerHTML = '';
+      }
+    }
+
+    if (!subs.length) {
       lista.innerHTML = '<div class="subs-card subs-empty">Aún no tienes suscripciones. <button type="button" class="profile-btn profile-btn-primary" style="margin-top:14px" onclick="abrirModalPlanes()">Ver planes</button></div>';
-      renderSubsTarjetasGuardadas(tarjetas);
       return;
     }
-    lista.innerHTML = d.data.map(s => {
+
+    lista.innerHTML = subs.map(s => {
       const fin = formatYmd(s.fecha_fin);
       const ini = formatYmd(s.fecha_inicio);
       let badgeClass = 'off';
@@ -1037,167 +1339,109 @@ async function cargarMisSuscripciones() {
         badgeClass = 'warn';
         badgeText = 'Activa · sin autorenovación';
       }
-      let subsNote = '';
-      if (s.puede_cancelar) {
-        subsNote = `<div class="subs-actions"><button type="button" class="subs-cancel-btn" onclick="cancelarAutorenovacion(${s.id})">Cancelar autorenovación</button></div>`;
-      } else if (s.activo && !s.auto_renovacion) {
-        if (s.cancelada_at) {
-          subsNote = '<div class="subs-meta" style="margin-top:10px">Autorenovación cancelada. Acceso hasta la fecha de vencimiento.</div>';
-        } else if (!s.tarjeta_guardada) {
-          subsNote = '<div class="subs-meta" style="margin-top:10px">Marca "Guardar tarjeta" al pagar para habilitar la autorenovación.</div>';
-        } else {
-          subsNote = '<div class="subs-meta" style="margin-top:10px">No se renovará al vencer.</div>';
-        }
+      let actions = '';
+      if (s.activo && s.puede_cancelar_autorenovacion) {
+        actions += '<button type="button" class="subs-cancel-btn" onclick="cancelarAutorenovacion(' + s.id + ')">Cancelar autorenovación</button>';
       }
-      let cardPicker = '';
-      if (s.activo && tarjetas.length) {
-        const opts = tarjetas.map(t =>
-          `<option value="${t.id}"${String(t.id) === String(s.tarjeta_id) ? ' selected' : ''}>${escapeHtml(t.label)}</option>`
-        ).join('');
-        cardPicker = `<div class="subs-meta" style="margin-top:12px">
-          <label style="display:block;margin-bottom:6px;color:#c9b8ee">Medio de pago para autorenovación</label>
-          <select class="auth-field" style="width:100%;max-width:320px;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:#1a1228;color:#fff" onchange="cambiarTarjetaSuscripcion(${s.id}, this.value)">${opts}</select>
-          <div style="font-size:.78rem;margin-top:6px;color:#9b8bb8">Cámbiala si venció o fue robada. Al pagar con una tarjeta nueva también puedes guardarla.</div>
-        </div>`;
-      } else if (s.activo) {
-        cardPicker = '<div class="subs-meta" style="margin-top:10px">Aún no tienes tarjetas guardadas. Al pagar un plan marca "Guardar tarjeta".</div>';
+      if (s.activo && s.puede_activar_autorenovacion) {
+        actions += '<button type="button" class="profile-btn profile-btn-outline" style="padding:8px 14px;font-size:.82rem" onclick="activarAutorenovacion(' + s.id + ')">Activar autorenovación</button>';
       }
-      return `<div class="subs-card${s.activo ? ' active' : ''}">
-        <div class="subs-title">${escapeHtml(s.nombre)}</div>
-        <div class="subs-meta">S/ ${parseFloat(s.precio).toFixed(2)} · ${ini} → ${fin}</div>
-        ${s.descripcion ? `<div class="subs-meta">${escapeHtml(s.descripcion)}</div>` : ''}
-        <span class="subs-badge ${badgeClass}">${badgeText}</span>
-        ${cardPicker}
-        ${subsNote}
-      </div>`;
+      if (!s.activo) {
+        actions += '<button type="button" class="profile-btn profile-btn-primary" style="padding:8px 14px;font-size:.82rem" onclick="abrirModalPlanes()">Renovar plan</button>';
+      }
+      const renewLine = s.auto_renovacion && s.proxima_renovacion
+        ? '<div class="subs-meta">Próximo cobro: ' + escapeHtml(s.proxima_renovacion) + (s.tarjeta_label ? ' · ' + escapeHtml(s.tarjeta_label) : '') + '</div>'
+        : (s.tarjeta_label ? '<div class="subs-meta">Tarjeta: ' + escapeHtml(s.tarjeta_label) + '</div>' : '');
+      return '<div class="subs-card' + (s.activo ? ' active' : '') + '">' +
+        '<div class="subs-title">' + escapeHtml(s.nombre) + '</div>' +
+        '<div class="subs-meta">S/ ' + parseFloat(s.precio).toFixed(2) + ' · ' + ini + ' → ' + fin + '</div>' +
+        renewLine +
+        (s.descripcion ? '<div class="subs-meta">' + escapeHtml(s.descripcion) + '</div>' : '') +
+        '<span class="subs-badge ' + badgeClass + '">' + badgeText + '</span>' +
+        (actions ? '<div class="subs-actions">' + actions + '</div>' : '') +
+      '</div>';
     }).join('');
-    renderSubsTarjetasGuardadas(tarjetas);
   } catch {
     lista.innerHTML = '<div class="subs-empty">No se pudieron cargar las suscripciones.</div>';
   }
 }
 
-function renderSubsTarjetasGuardadas(tarjetas) {
-  const wrap = document.getElementById('subsTarjetasWrap');
-  const lista = document.getElementById('subsTarjetasLista');
-  if (!wrap || !lista) return;
-  if (!tarjetas.length) {
-    wrap.style.display = 'none';
-    lista.innerHTML = '';
-    return;
-  }
-  wrap.style.display = 'block';
-  lista.innerHTML = tarjetas.map(t => `
-    <div class="subs-card" style="margin-bottom:10px;padding:14px 16px">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
-        <div>
-          <div class="subs-title" style="font-size:1rem">${escapeHtml(t.label)}</div>
-          ${t.exp_month && t.exp_year ? `<div class="subs-meta">Vence ${String(t.exp_month).padStart(2,'0')}/${t.exp_year}</div>` : ''}
-          ${t.is_default ? '<div class="subs-meta" style="color:#86efac">Predeterminada</div>' : ''}
-        </div>
-        <button type="button" class="subs-cancel-btn" onclick="eliminarTarjetaGuardada(${t.id})">Eliminar</button>
-      </div>
-    </div>
-  `).join('');
-}
-
-async function cambiarTarjetaSuscripcion(subId, tarjetaId) {
-  if (!tarjetaId) return;
-  showPageLoader('Actualizando medio de pago...');
+async function cancelarAutorenovacion(subId) {
+  if (!confirm('¿Cancelar la renovación automática? Seguirás con acceso hasta la fecha de vencimiento.')) return;
   try {
-    const res = await tribuFetch('/tribu-auth/suscripciones/' + subId + '/tarjeta', {
+    const res = await tribuFetch('/tribu-auth/suscripciones/' + subId + '/auto-renovacion', {
       method: 'PUT',
-      body: JSON.stringify({ tarjeta_id: parseInt(tarjetaId, 10) }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled: false }),
     });
     const d = await res.json();
-    if (!res.ok) throw new Error(d.error || 'No se pudo actualizar');
+    if (!res.ok) throw new Error(d.error || 'Error');
     await cargarMisSuscripciones();
-    mostrarTribuFeedback({
-      type: 'success',
-      title: 'Tarjeta actualizada',
-      message: d.message || 'La autorenovación usará este medio de pago.',
-      btnText: 'Entendido',
-    });
+    alert(d.message || 'Autorenovación cancelada');
   } catch (err) {
-    mostrarTribuFeedback({
-      type: 'pending',
-      title: 'No se pudo cambiar',
-      message: err.message || 'Intenta de nuevo.',
-      btnText: 'Cerrar',
-    });
-    await cargarMisSuscripciones();
-  } finally {
-    hidePageLoader();
+    alert(err.message || 'No se pudo cancelar');
   }
 }
 
-async function eliminarTarjetaGuardada(id) {
-  if (!confirm('¿Eliminar esta tarjeta de tus medios de pago guardados?')) return;
-  showPageLoader('Eliminando tarjeta...');
+async function activarAutorenovacion(subId) {
   try {
-    const res = await tribuFetch('/tribu-auth/tarjetas/' + id, { method: 'DELETE' });
+    const res = await tribuFetch('/tribu-auth/suscripciones/' + subId + '/auto-renovacion', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled: true }),
+    });
     const d = await res.json();
-    if (!res.ok) throw new Error(d.error || 'No se pudo eliminar');
+    if (!res.ok) throw new Error(d.error || 'Error');
     await cargarMisSuscripciones();
-    mostrarTribuFeedback({
-      type: 'pending',
-      title: 'Tarjeta eliminada',
-      message: d.message || 'Ya no aparecerá en tus medios de pago.',
-      btnText: 'Entendido',
-    });
+    alert(d.message || 'Autorenovación activada');
   } catch (err) {
-    mostrarTribuFeedback({
-      type: 'pending',
-      title: 'Error',
-      message: err.message || 'No se pudo eliminar la tarjeta.',
-      btnText: 'Cerrar',
-    });
-  } finally {
-    hidePageLoader();
+    alert(err.message || 'No se pudo activar');
   }
 }
 
-async function cancelarAutorenovacion(id) {
-  if (!confirm('¿Cancelar la autorenovación? Seguirás con acceso hasta la fecha de vencimiento.')) return;
-  showPageLoader('Cancelando autorenovación...');
+async function eliminarTarjetaGuardada(cardId) {
+  if (!confirm('¿Eliminar esta tarjeta? Se desactivará la autorenovación vinculada a ella.')) return;
   try {
-    const res = await tribuFetch('/tribu-pagos/cancelar-renovacion', {
-      method: 'POST',
-      body: JSON.stringify({ suscripcion_id: id }),
-    });
+    const res = await tribuFetch('/tribu-auth/tarjetas/' + cardId, { method: 'DELETE' });
     const d = await res.json();
-    if (!res.ok) throw new Error(d.error || 'No se pudo cancelar');
-    await verificarSesion();
+    if (!res.ok) throw new Error(d.error || 'Error');
     await cargarMisSuscripciones();
-    mostrarTribuFeedback({
-      type: 'pending',
-      title: 'Autorenovación cancelada',
-      message: d.message || 'Mantendrás acceso hasta la fecha de vencimiento de tu plan.',
-      btnText: 'Entendido',
-    });
   } catch (err) {
-    mostrarTribuFeedback({
-      type: 'pending',
-      title: 'No se pudo cancelar',
-      message: err.message || 'Intenta de nuevo más tarde.',
-      btnText: 'Cerrar',
-    });
-  } finally {
-    hidePageLoader();
+    alert(err.message || 'No se pudo eliminar');
+  }
+}
+
+async function marcarTarjetaDefault(cardId) {
+  try {
+    const res = await tribuFetch('/tribu-auth/tarjetas/' + cardId + '/default', { method: 'PUT' });
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.error || 'Error');
+    await cargarMisSuscripciones();
+  } catch (err) {
+    alert(err.message || 'No se pudo actualizar');
   }
 }
 
 async function verificarSesion() {
   const token = getToken();
   if (!token) { tribuUser = null; renderNavAuth(); return; }
-  tribuUser = getStoredUser();
+  tribuUser = normalizarSuscripcionUsuario(getStoredUser());
   renderNavAuth();
   try {
     const res = await fetch(API + '/tribu-auth/me', { headers: { Authorization: 'Bearer ' + token } });
-    if (res.ok) { tribuUser = await res.json(); setStoredUser(tribuUser); }
-    else { clearToken(); tribuUser = null; }
-  } catch { tribuUser = getStoredUser(); }
+    if (res.ok) {
+      tribuUser = normalizarSuscripcionUsuario(await res.json());
+      setStoredUser(tribuUser);
+    } else {
+      clearToken();
+      tribuUser = null;
+    }
+  } catch {
+    tribuUser = normalizarSuscripcionUsuario(getStoredUser());
+    if (tribuUser) setStoredUser(tribuUser);
+  }
   renderNavAuth();
+  if (tribuUser && !tieneSuscripcion()) clearStaleLockUi();
 }
 
 function abrirLogin() { abrirAuth("authLogin"); }
@@ -1232,7 +1476,7 @@ async function doLogin() {
     const res = await fetch(API + '/tribu-auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
     const d = await res.json();
     if (!res.ok) { errEl.textContent = d.error || 'Error al iniciar sesion'; return; }
-    setToken(d.token); setStoredUser(d.user); tribuUser = d.user;
+    setToken(d.token); setStoredUser(d.user); tribuUser = normalizarSuscripcionUsuario(d.user);
     await afterAuthSuccess();
     if (videoPendiente !== null) { const id = videoPendiente; videoPendiente = null; abrirVideo(id); }
   } catch { errEl.textContent = 'Error de conexion'; }
@@ -1252,7 +1496,7 @@ async function doRegistro() {
     const res = await fetch(API + '/tribu-auth/registro', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre, apellido, email, password }) });
     const d = await res.json();
     if (!res.ok) { errEl.textContent = d.error || 'Error al crear cuenta'; return; }
-    setToken(d.token); setStoredUser(d.user); tribuUser = d.user;
+    setToken(d.token); setStoredUser(d.user); tribuUser = normalizarSuscripcionUsuario(d.user);
     await afterAuthSuccess();
   } catch { errEl.textContent = 'Error de conexion'; }
   finally { btn.disabled = false; btn.textContent = 'Crear cuenta'; }
@@ -1392,117 +1636,38 @@ async function loadPagoBillingEmail() {
 }
 
 let pagoBillingRemountTimer = null;
-window._savedCardsPago = [];
-
-async function loadTarjetasGuardadasPago() {
-  window._savedCardsPago = [];
-  if (!getToken()) return;
-  try {
-    const res = await tribuFetch('/tribu-auth/tarjetas');
-    const d = await res.json();
-    if (res.ok) window._savedCardsPago = d.data || [];
-  } catch {}
-}
-
-function renderPagoMetodoSelector() {
-  const wrap = document.getElementById('pagoSavedCardsWrap');
-  const sel = document.getElementById('pagoMetodoPago');
-  if (!wrap || !sel) return;
-  const cards = window._savedCardsPago || [];
-  if (!cards.length) {
-    wrap.style.display = 'none';
-    sel.innerHTML = '<option value="new">Nueva tarjeta</option>';
-    onPagoMetodoChange(true);
-    return;
-  }
-  wrap.style.display = '';
-  sel.innerHTML = '<option value="new">Nueva tarjeta</option>' +
-    cards.map(c => `<option value="${c.id}">${escapeHtml(c.label)}</option>`).join('');
-  sel.value = 'new';
-  onPagoMetodoChange(true);
-}
-
-function onPagoMetodoChange(skipRemount) {
-  const sel = document.getElementById('pagoMetodoPago');
-  const useSaved = sel && sel.value !== 'new';
-  const brickWrap = document.getElementById('pagoContenido');
-  const savedPayWrap = document.getElementById('pagoSavedPayWrap');
-  const guardarWrap = document.getElementById('pagoGuardarTarjetaWrap');
-  if (useSaved) {
-    if (brickWrap) brickWrap.style.display = 'none';
-    if (savedPayWrap) savedPayWrap.style.display = '';
-    if (guardarWrap) guardarWrap.style.display = 'none';
-  } else {
-    if (brickWrap) brickWrap.style.display = '';
-    if (savedPayWrap) savedPayWrap.style.display = 'none';
-    if (guardarWrap) guardarWrap.style.display = 'flex';
-    if (!skipRemount && planActual) montarCulqiCheckout(planActual.id, planActual.precio);
-  }
-}
-
-async function pagarConTarjetaGuardada() {
-  if (!planActual) return;
-  const sel = document.getElementById('pagoMetodoPago');
-  const tarjetaId = sel ? parseInt(sel.value, 10) : 0;
-  if (!tarjetaId) return;
-  const errEl = document.getElementById('pagoError');
-  const btn = document.getElementById('pagoBtnSaved');
-  errEl.textContent = '';
-  if (btn) { btn.disabled = true; btn.textContent = 'Procesando...'; }
-  try {
-    const payload = { suscripcion_id: planActual.id, tarjeta_id: tarjetaId };
-    const payCfg = window._culqiPayCfg;
-    if (payCfg && payCfg.modo === 'produccion') {
-      const billingRaw = document.getElementById('pagoBillingEmail')?.value.trim() || '';
-      if (billingRaw) {
-        if (!isValidEmail(billingRaw)) throw new Error('Correo de facturación inválido');
-        payload.billing_email = billingRaw.toLowerCase();
-      }
-    }
-    const res = await fetch(API + '/tribu-pagos/procesar-pago', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + getToken() },
-      body: JSON.stringify(payload),
-    });
-    const d = await res.json();
-    if (!res.ok) throw new Error(d.error || 'Error al procesar el pago');
-    await handlePagoResultado(d);
-  } catch (err) {
-    errEl.textContent = err.message;
-  } finally {
-    if (btn) { btn.disabled = false; btn.textContent = 'Pagar con tarjeta guardada'; }
-  }
-}
 
 async function handlePagoResultado(d) {
+  cerrarModalPago();
   if (d.status === 'approved') {
-    cerrarModalPago();
-    await verificarSesion();
-    showPageLoader('Actualizando contenido...');
-    clearStaleLockUi();
-    try {
-      await cargar();
-      await refreshCalendarioIfActive();
-      await cargarMisSuscripciones();
-    } finally {
-      hidePageLoader();
+    if (d.auto_renovacion) {
+      mostrarTribuFeedback({
+        type: 'success',
+        title: '¡Suscripción activada!',
+        message: 'Tu plan está activo y se renovará automáticamente al vencer. Puedes cancelarlo en Mis suscripciones.',
+        btnText: 'Explorar contenido',
+      });
+    } else if (d.auto_renovacion_solicitada) {
+      const detalle = d.vault_error
+        ? ' Motivo: ' + d.vault_error
+        : ' No pudimos guardar tu tarjeta en Culqi.';
+      mostrarTribuFeedback({
+        type: 'warn',
+        title: 'Pago exitoso · sin autorenovación',
+        message: 'Tu plan quedó activo, pero la renovación automática no se activó.' + detalle
+          + ' Ve a Mis suscripciones para activarla o paga de nuevo con la opción encendida.',
+        btnText: 'Entendido',
+      });
+    } else {
+      mostrarTribuFeedback({
+        type: 'success',
+        title: '¡Suscripción activada!',
+        message: 'Tu plan está activo hasta la fecha de vencimiento.',
+        btnText: 'Explorar contenido',
+      });
     }
-    let msg = d.auto_renovacion
-      ? 'Tu plan está activo con autorenovación mensual. Puedes cancelarla cuando quieras desde Mis suscripciones.'
-      : 'Tu plan está activo hasta la fecha de vencimiento.';
-    if (d.vault_intentado && !d.vault_ok) {
-      msg += ' No pudimos guardar la tarjeta en Culqi; la autorenovación no quedó activa. Puedes intentar de nuevo marcando "Guardar tarjeta".';
-    } else if (d.tarjeta_guardada && d.auto_renovacion) {
-      msg = 'Tu plan está activo y tu tarjeta quedó guardada para renovaciones automáticas.';
-    }
-    mostrarTribuFeedback({
-      type: 'success',
-      title: '¡Suscripción activada!',
-      message: msg,
-      btnText: 'Explorar contenido',
-    });
+    refrescarContenidoTrasPago();
   } else if (d.status === 'in_process' || d.status === 'pending' || d.order_status === 'action_required') {
-    cerrarModalPago();
     mostrarTribuFeedback({
       type: 'pending',
       title: 'Pago en proceso',
@@ -1510,8 +1675,47 @@ async function handlePagoResultado(d) {
       btnText: 'Entendido',
     });
   } else {
-    throw new Error('Pago rechazado: ' + (d.status_detail || d.status));
+    mostrarPagoErrorFeedback('Pago no completado', d.status_detail || d.status || 'No se pudo aprobar el pago.');
   }
+}
+
+async function refrescarContenidoTrasPago() {
+  try {
+    await verificarSesion();
+    clearStaleLockUi();
+    await cargar();
+    await refreshCalendarioIfActive();
+    await cargarMisSuscripciones();
+  } catch (_) {}
+}
+
+function reabrirModalPagoTrasError() {
+  if (!planActual) return;
+  document.getElementById('pagoError').textContent = '';
+  document.getElementById('pagoOverlay').classList.add('show');
+  document.body.style.overflow = 'hidden';
+  prepararMetodosPago(planActual.id, planActual.precio);
+}
+
+function mostrarPagoErrorFeedback(title, message) {
+  mostrarTribuFeedback({
+    type: 'error',
+    title: title || 'No se pudo procesar el pago',
+    message: message || 'Intenta de nuevo o usa otra tarjeta.',
+    btnText: 'Reintentar pago',
+    onClose: reabrirModalPagoTrasError,
+  });
+}
+
+function iniciarProcesamientoPago() {
+  destruirCulqiCheckout();
+  document.getElementById('pagoOverlay').classList.remove('show');
+  mostrarTribuFeedback({
+    type: 'processing',
+    title: 'Procesando tu pago…',
+    message: 'Estamos confirmando tu transacción. Esto suele tardar unos segundos.',
+    hideButton: true,
+  });
 }
 
 function schedulePagoBrickRemount() {
@@ -1531,18 +1735,128 @@ async function adquirirPlan(id, nombre, precio) {
   cerrarModalPlanes();
   planActual = { id, nombre, precio };
   document.getElementById('pagoTitulo').textContent = nombre;
-  document.getElementById('pagoSub').textContent = 'S/ ' + parseFloat(precio).toFixed(2) + ' / mes';
+  const precioEl = document.getElementById('pagoPrecioMonto');
+  if (precioEl) precioEl.textContent = 'S/ ' + parseFloat(precio).toFixed(2);
   document.getElementById('pagoError').textContent = '';
-  const guardarCb = document.getElementById('pagoGuardarTarjeta');
-  if (guardarCb) guardarCb.checked = true;
+  const autoCb = document.getElementById('pagoAutoRenovar');
+  if (autoCb) autoCb.checked = true;
+  const hint = document.getElementById('pagoAutoRenovarHint');
+  if (hint) {
+    hint.textContent = 'Guardaremos tu tarjeta en Culqi para cobrar S/ ' + parseFloat(precio).toFixed(2)
+      + ' al vencer. Cancela cuando quieras en Mis suscripciones.';
+  }
+  window._pagoTarjetaSeleccionada = null;
   document.getElementById('pagoOverlay').classList.add('show');
   document.body.style.overflow = 'hidden';
   await loadPagoBillingEmail();
   await loadPagoDocFromProfile();
-  await loadTarjetasGuardadasPago();
-  renderPagoMetodoSelector();
-  const sel = document.getElementById('pagoMetodoPago');
-  if (!sel || sel.value === 'new') await montarCulqiCheckout(id, precio);
+  await prepararMetodosPago(id, precio);
+}
+
+async function prepararMetodosPago(planId, precio) {
+  await cargarTarjetasParaPago();
+  const tarjetas = window._pagoTarjetasCache || [];
+  const savedWrap = document.getElementById('pagoSavedWrap');
+  const nuevaWrap = document.getElementById('pagoNuevaTarjetaWrap');
+  const autoWrap = document.getElementById('pagoAutoRenewWrap');
+
+  if (tarjetas.length && savedWrap && nuevaWrap) {
+    savedWrap.style.display = 'block';
+    nuevaWrap.style.display = 'none';
+    renderPagoSavedOptions(tarjetas);
+    if (autoWrap) autoWrap.style.display = 'none';
+  } else {
+    if (savedWrap) savedWrap.style.display = 'none';
+    if (nuevaWrap) nuevaWrap.style.display = 'block';
+    if (autoWrap) autoWrap.style.display = 'block';
+    await montarCulqiCheckout(planId, precio);
+  }
+}
+
+async function cargarTarjetasParaPago() {
+  window._pagoTarjetasCache = [];
+  if (!getToken()) return;
+  try {
+    const res = await tribuFetch('/tribu-auth/tarjetas');
+    const d = await res.json();
+    if (res.ok && d.data) window._pagoTarjetasCache = d.data;
+  } catch {}
+}
+
+function renderPagoSavedOptions(tarjetas) {
+  const box = document.getElementById('pagoSavedOptions');
+  const btn = document.getElementById('pagoSavedPayBtn');
+  if (!box) return;
+  const defaultId = (tarjetas.find(t => t.is_default) || tarjetas[0])?.id;
+  window._pagoTarjetaSeleccionada = defaultId || null;
+  box.innerHTML = tarjetas.map(t =>
+    '<label class="pago-saved-option' + (t.id === defaultId ? ' selected' : '') + '">' +
+      '<input type="radio" name="pagoTarjeta" value="' + t.id + '"' + (t.id === defaultId ? ' checked' : '') +
+      ' onchange="seleccionarTarjetaPago(' + t.id + ', this)">' +
+      '<span class="pago-saved-label">' + escapeHtml(t.label) + '</span>' +
+    '</label>'
+  ).join('');
+  if (btn) btn.disabled = !defaultId;
+}
+
+function seleccionarTarjetaPago(id, input) {
+  window._pagoTarjetaSeleccionada = id;
+  document.querySelectorAll('.pago-saved-option').forEach(el => el.classList.remove('selected'));
+  input?.closest('.pago-saved-option')?.classList.add('selected');
+  const btn = document.getElementById('pagoSavedPayBtn');
+  if (btn) btn.disabled = !id;
+}
+
+function mostrarFormularioTarjetaNueva() {
+  const savedWrap = document.getElementById('pagoSavedWrap');
+  const nuevaWrap = document.getElementById('pagoNuevaTarjetaWrap');
+  const autoWrap = document.getElementById('pagoAutoRenewWrap');
+  if (savedWrap) savedWrap.style.display = 'none';
+  if (nuevaWrap) nuevaWrap.style.display = 'block';
+  if (autoWrap) autoWrap.style.display = 'block';
+  window._pagoTarjetaSeleccionada = null;
+  if (planActual) montarCulqiCheckout(planActual.id, planActual.precio);
+}
+
+async function pagarConTarjetaGuardada() {
+  const tarjetaId = window._pagoTarjetaSeleccionada;
+  if (!tarjetaId || !planActual) return;
+  const btn = document.getElementById('pagoSavedPayBtn');
+  if (btn) btn.disabled = true;
+  try {
+    const payCfg = window._culqiPayCfg || {};
+    const payload = {
+      suscripcion_id: planActual.id,
+      tarjeta_id: tarjetaId,
+      auto_renovacion: true,
+      identification_type: document.getElementById('pagoDocType')?.value,
+      identification_number: document.getElementById('pagoDocNumber')?.value.trim(),
+      email: getPagoBillingEmail(payCfg),
+    };
+    if (!payload.identification_type || !payload.identification_number) {
+      throw new Error('Completa tu documento de identidad antes de pagar');
+    }
+    if (payCfg.modo === 'produccion') {
+      const billingRaw = document.getElementById('pagoBillingEmail')?.value.trim() || '';
+      if (billingRaw) {
+        if (!isValidEmail(billingRaw)) throw new Error('Correo de facturación inválido');
+        payload.billing_email = billingRaw.toLowerCase();
+      }
+    }
+    iniciarProcesamientoPago();
+    const res = await fetch(API + '/tribu-pagos/procesar-pago', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + getToken() },
+      body: JSON.stringify(payload),
+    });
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.error || 'Error al procesar el pago');
+    await handlePagoResultado(d);
+  } catch (err) {
+    mostrarPagoErrorFeedback('No se pudo procesar el pago', err.message);
+  } finally {
+    if (btn) btn.disabled = !window._pagoTarjetaSeleccionada;
+  }
 }
 
 async function loadPagoDocFromProfile() {
@@ -1558,7 +1872,117 @@ async function loadPagoDocFromProfile() {
   } catch {}
 }
 
+let culqiCheckoutInstance = null;
+
+function destruirCulqiCheckout() {
+  if (window._culqiEmbedTimer) {
+    clearInterval(window._culqiEmbedTimer);
+    window._culqiEmbedTimer = null;
+  }
+  if (window._culqiEmbedObserver) {
+    window._culqiEmbedObserver.disconnect();
+    window._culqiEmbedObserver = null;
+  }
+  if (culqiCheckoutInstance && typeof culqiCheckoutInstance.close === 'function') {
+    try { culqiCheckoutInstance.close(); } catch (_) {}
+  }
+  culqiCheckoutInstance = null;
+  const container = document.getElementById('culqi-container');
+  if (container) {
+    container.innerHTML = '';
+    container.style.height = '';
+    container.style.minHeight = '';
+  }
+}
+
+function leerAlturaCulqiIframe(iframe) {
+  const attrs = [
+    iframe.getAttribute('height'),
+    iframe.height,
+    iframe.style.height,
+  ];
+  for (const raw of attrs) {
+    const n = parseInt(String(raw || '').replace('px', ''), 10);
+    if (Number.isFinite(n) && n > 180) return n;
+  }
+  return 480;
+}
+
+function ajustarCulqiEmbed() {
+  const container = document.getElementById('culqi-container');
+  if (!container) return false;
+  const iframe = container.querySelector('iframe');
+  if (!iframe) return false;
+
+  const h = leerAlturaCulqiIframe(iframe);
+  iframe.setAttribute('scrolling', 'no');
+  iframe.style.width = '100%';
+  iframe.style.border = '0';
+  iframe.style.display = 'block';
+  iframe.style.overflow = 'hidden';
+  iframe.style.height = h + 'px';
+  iframe.style.minHeight = h + 'px';
+  iframe.style.maxHeight = 'none';
+  container.style.height = h + 'px';
+  container.style.minHeight = h + 'px';
+  container.style.overflow = 'visible';
+  return true;
+}
+
+function observarCulqiEmbed() {
+  const container = document.getElementById('culqi-container');
+  if (!container) return;
+  if (window._culqiEmbedObserver) {
+    window._culqiEmbedObserver.disconnect();
+    window._culqiEmbedObserver = null;
+  }
+  window._culqiEmbedObserver = new MutationObserver(function () {
+    ajustarCulqiEmbed();
+  });
+  window._culqiEmbedObserver.observe(container, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['height', 'style'],
+  });
+}
+
+function programarAjusteCulqiEmbed() {
+  if (window._culqiEmbedTimer) clearInterval(window._culqiEmbedTimer);
+  let tries = 0;
+  window._culqiEmbedTimer = setInterval(function () {
+    if (ajustarCulqiEmbed() || ++tries > 30) {
+      clearInterval(window._culqiEmbedTimer);
+      window._culqiEmbedTimer = null;
+      if (tries <= 30) observarCulqiEmbed();
+    }
+  }, 120);
+}
+
+function handleCulqiCheckoutAction() {
+  const inst = culqiCheckoutInstance;
+  if (!inst) return;
+  const errEl = document.getElementById('pagoError');
+  if (inst.token && inst.token.id) {
+    const docType = document.getElementById('pagoDocType')?.value;
+    const docNumber = document.getElementById('pagoDocNumber')?.value.trim();
+    if (!docType || !docNumber) {
+      if (errEl) errEl.textContent = 'Indica tu documento de identidad antes de pagar.';
+      return;
+    }
+    if (errEl) errEl.textContent = '';
+    const tokenId = inst.token.id;
+    iniciarProcesamientoPago();
+    try { inst.close(); } catch (_) {}
+    procesarTokenCulqi(tokenId);
+  } else if (inst.error) {
+    const msg = inst.error.user_message || inst.error.merchant_message || 'Error al tokenizar la tarjeta';
+    if (errEl) errEl.textContent = msg;
+  }
+}
+
 async function montarCulqiCheckout(suscripcion_id, monto) {
+  destruirCulqiCheckout();
   try {
     const cfgRes = await fetch(API + '/config-culqi/public');
     const cfg = await cfgRes.json();
@@ -1568,66 +1992,142 @@ async function montarCulqiCheckout(suscripcion_id, monto) {
     const sandboxHint = document.getElementById('pagoSandboxHint');
     const billingWrap = document.getElementById('pagoBillingWrap');
     if (cfg.modo === 'sandbox') {
-      sandboxHint.style.display = 'block';
-      sandboxHint.textContent = 'Modo prueba Culqi: usa tarjeta 4111 1111 1111 1111, CVV 123, vencimiento futuro.';
+      sandboxHint.style.display = 'flex';
       if (billingWrap) billingWrap.style.display = 'none';
     } else {
       sandboxHint.style.display = 'none';
-      sandboxHint.textContent = '';
       if (billingWrap) billingWrap.style.display = '';
     }
-    if (typeof Culqi === 'undefined') throw new Error('No se pudo cargar Culqi Checkout');
-    Culqi.publicKey = cfg.public_key;
-    Culqi.settings({
-      title: 'La Tribu VHM',
-      currency: 'PEN',
-      amount: Math.round(parseFloat(monto) * 100),
-    });
-    Culqi.options({
-      lang: 'es',
-      installments: false,
-      paymentMethods: {
-        tarjeta: true,
-        yape: false,
-        bancaMovil: false,
-        agente: false,
-        billetera: false,
-        cuotealo: false,
+    if (typeof CulqiCheckout === 'undefined') throw new Error('No se pudo cargar Culqi Checkout');
+
+    const clientEmail = getPagoBillingEmail(cfg);
+    const paymentMethods = { tarjeta: true, yape: false, bancaMovil: false, agente: false, billetera: false, cuotealo: false };
+    const config = {
+      settings: {
+        title: 'La Tribu VHM',
+        currency: 'PEN',
+        amount: Math.round(parseFloat(monto) * 100),
       },
-    });
+      client: clientEmail ? { email: clientEmail } : {},
+      options: {
+        lang: 'es',
+        installments: false,
+        modal: false,
+        container: '#culqi-container',
+        paymentMethods,
+        paymentMethodsSort: Object.keys(paymentMethods),
+      },
+      appearance: {
+        theme: 'default',
+        hiddenCulqiLogo: true,
+        hiddenBanner: true,
+        hiddenBannerContent: true,
+        hiddenToolBarAmount: true,
+        hiddenEmail: true,
+        menuType: 'select',
+        buttonCardPayText: 'Pagar ahora',
+        defaultStyle: {
+          bannerColor: '#14101f',
+          buttonBackground: '#9333ea',
+          menuColor: '#ddd6fe',
+          linksColor: '#c4b5fd',
+          buttonTextColor: '#ffffff',
+          priceColor: '#e9d5ff',
+        },
+        variables: {
+          fontFamily: 'Nunito, system-ui, sans-serif',
+          fontWeightNormal: '600',
+          borderRadius: '12px',
+          colorBackground: '#14101f',
+          colorPrimary: '#9333ea',
+          colorPrimaryText: '#ffffff',
+          colorText: '#f5f3ff',
+          colorTextSecondary: '#ddd6fe',
+          colorTextPlaceholder: '#8b7aa8',
+          colorIconTab: '#c4b5fd',
+        },
+        rules: {
+          '.Culqi-Main-Container': {
+            background: '#14101f',
+            padding: '12px 14px 8px',
+            minHeight: '0',
+            borderRadius: '0',
+          },
+          '.Culqi-Main-Method': {
+            background: '#14101f',
+            padding: '0',
+            color: '#f5f3ff',
+          },
+          '.Culqi-Toolbar-Price': { display: 'none' },
+          '.Culqi-Menu': { display: 'none' },
+          '.Culqi-Footer': { display: 'none' },
+          '.Culqi-Footer-Secure': { display: 'none' },
+          '.Culqi-Secure-Purchase': { display: 'none' },
+          '.Culqi-Toolbar-Footer': { display: 'none' },
+          '.Culqi-Logo-PCI': { display: 'none' },
+          '.Culqi-Logo-Visa': { display: 'none' },
+          '.Culqi-Label': {
+            color: '#ddd6fe',
+            fontSize: '13px',
+            fontWeight: '700',
+            marginBottom: '6px',
+          },
+          '.Culqi-Input': {
+            border: '1px solid rgba(168,85,247,.32)',
+            background: 'rgba(7,7,13,.88)',
+            color: '#ffffff',
+            borderRadius: '12px',
+            padding: '13px 14px',
+            fontSize: '15px',
+          },
+          '.Culqi-Input:focus': {
+            border: '1px solid rgba(168,85,247,.65)',
+            boxShadow: '0 0 0 3px rgba(168,85,247,.16)',
+            background: 'rgba(20,16,31,.95)',
+          },
+          '.Culqi-Input.input-valid': {
+            border: '1px solid rgba(45,212,191,.45)',
+            background: 'rgba(7,7,13,.88)',
+            color: '#ffffff',
+          },
+          '.Culqi-Input-Icon': { color: '#a78bfa' },
+          '.Culqi-Button': {
+            background: 'linear-gradient(135deg, #7c3aed 0%, #db2777 100%)',
+            borderRadius: '12px',
+            fontWeight: '800',
+            fontSize: '15px',
+            padding: '14px 16px',
+            marginTop: '14px',
+            boxShadow: '0 10px 28px rgba(124,58,237,.28)',
+          },
+          '.Culqi-Button:disabled, .Culqi-Button[disabled]': { opacity: '0.55', boxShadow: 'none' },
+          '.Culqi-message-error': {
+            background: 'rgba(251,113,133,.12)',
+            color: '#fda4af',
+            borderRadius: '10px',
+          },
+        },
+      },
+    };
+
+    culqiCheckoutInstance = new CulqiCheckout(cfg.public_key, config);
+    culqiCheckoutInstance.culqi = handleCulqiCheckoutAction;
+    culqiCheckoutInstance.open();
+    programarAjusteCulqiEmbed();
   } catch (err) {
     document.getElementById('pagoError').textContent = err.message;
   }
 }
 
-function abrirCulqiPago() {
-  const docType = document.getElementById('pagoDocType')?.value;
-  const docNumber = document.getElementById('pagoDocNumber')?.value.trim();
-  const errEl = document.getElementById('pagoError');
-  if (!docType || !docNumber) {
-    errEl.textContent = 'Indica tu documento de identidad antes de pagar.';
-    return;
-  }
-  errEl.textContent = '';
-  if (typeof Culqi === 'undefined' || !Culqi.open) {
-    errEl.textContent = 'Culqi no está listo. Recarga la página e intenta de nuevo.';
-    return;
-  }
-  Culqi.open();
-}
-
 async function procesarTokenCulqi(tokenId) {
-  const errEl = document.getElementById('pagoError');
-  const btn = document.getElementById('pagoBtnCulqi');
-  if (btn) { btn.disabled = true; btn.textContent = 'Procesando...'; }
   try {
     const payCfg = window._culqiPayCfg || {};
     const payload = {
       suscripcion_id: window._culqiSuscripcionId || planActual?.id,
       token_id: tokenId,
+      auto_renovacion: document.getElementById('pagoAutoRenovar')?.checked !== false,
       identification_type: document.getElementById('pagoDocType')?.value,
       identification_number: document.getElementById('pagoDocNumber')?.value.trim(),
-      guardar_tarjeta: !!document.getElementById('pagoGuardarTarjeta')?.checked,
       email: getPagoBillingEmail(payCfg),
     };
     if (payCfg.modo === 'produccion') {
@@ -1646,50 +2146,65 @@ async function procesarTokenCulqi(tokenId) {
     if (!res.ok) throw new Error(d.error || 'Error al procesar el pago');
     await handlePagoResultado(d);
   } catch (err) {
-    errEl.textContent = err.message;
-  } finally {
-    if (btn) { btn.disabled = false; btn.textContent = 'Pagar con tarjeta segura'; }
+    mostrarPagoErrorFeedback('No se pudo procesar el pago', err.message);
   }
 }
 
-window.culqi = function culqiCallback() {
-  if (typeof Culqi !== 'undefined' && Culqi.token && Culqi.token.id) {
-    Culqi.close();
-    procesarTokenCulqi(Culqi.token.id);
-  } else if (typeof Culqi !== 'undefined' && Culqi.error) {
-    const msg = Culqi.error.user_message || Culqi.error.merchant_message || 'Error al tokenizar la tarjeta';
-    document.getElementById('pagoError').textContent = msg;
-  }
-};
-
 function cerrarModalPago() {
+  destruirCulqiCheckout();
   document.getElementById('pagoOverlay').classList.remove('show');
   document.body.style.overflow = '';
 }
 
-function mostrarTribuFeedback({ type = 'success', title, message, btnText = 'Continuar' }) {
+function mostrarTribuFeedback({ type = 'success', title, message, btnText = 'Continuar', hideButton = false, onClose = null }) {
   const overlay = document.getElementById('tribuFeedbackOverlay');
   const icon = document.getElementById('tribuFeedbackIcon');
-  icon.className = 'tribu-feedback-icon ' + (type === 'pending' ? 'pending' : 'success');
-  icon.textContent = type === 'pending' ? '⏳' : '✓';
+  const btn = document.getElementById('tribuFeedbackBtn');
+  window._tribuFeedbackOnClose = typeof onClose === 'function' ? onClose : null;
+
+  icon.className = 'tribu-feedback-icon ' + type;
+  if (type === 'processing') {
+    icon.innerHTML = '<span class="tribu-feedback-spinner" aria-hidden="true"></span>';
+  } else if (type === 'error') {
+    icon.textContent = '✕';
+  } else if (type === 'warn') {
+    icon.textContent = '!';
+  } else if (type === 'pending') {
+    icon.textContent = '⏳';
+  } else {
+    icon.textContent = '✓';
+  }
+
   document.getElementById('tribuFeedbackTitle').textContent = title;
   document.getElementById('tribuFeedbackMsg').textContent = message;
-  document.getElementById('tribuFeedbackBtn').textContent = btnText;
+  if (btn) {
+    btn.textContent = btnText;
+    btn.style.display = hideButton ? 'none' : '';
+  }
+  overlay.classList.toggle('no-dismiss', type === 'processing');
   overlay.classList.add('show');
   document.body.style.overflow = 'hidden';
-  setTimeout(() => document.getElementById('tribuFeedbackBtn').focus(), 80);
+  if (!hideButton && btn) setTimeout(() => btn.focus(), 80);
 }
 
 function cerrarTribuFeedback() {
-  document.getElementById('tribuFeedbackOverlay').classList.remove('show');
+  const overlay = document.getElementById('tribuFeedbackOverlay');
+  overlay.classList.remove('show', 'no-dismiss');
   document.body.style.overflow = '';
+  const onClose = window._tribuFeedbackOnClose;
+  window._tribuFeedbackOnClose = null;
+  if (typeof onClose === 'function') onClose();
 }
 
 document.getElementById('planesOverlay').addEventListener('click', e => { if (e.target.id === 'planesOverlay') cerrarModalPlanes(); });
 document.getElementById('pagoOverlay').addEventListener('click', e => { if (e.target.id === 'pagoOverlay') cerrarModalPago(); });
 document.getElementById('pagoBillingEmail')?.addEventListener('input', schedulePagoBrickRemount);
 document.getElementById('pagoBillingEmail')?.addEventListener('blur', schedulePagoBrickRemount);
-document.getElementById('tribuFeedbackOverlay').addEventListener('click', e => { if (e.target.id === 'tribuFeedbackOverlay') cerrarTribuFeedback(); });
+document.getElementById('tribuFeedbackOverlay').addEventListener('click', e => {
+  if (e.target.id === 'tribuFeedbackOverlay' && !e.currentTarget.classList.contains('no-dismiss')) {
+    cerrarTribuFeedback();
+  }
+});
 
 function bannerSinSuscripcion() {
   const logueado = !!tribuUser;
@@ -1923,6 +2438,10 @@ function cardHtml(v) {
 }
 
 async function cargar() {
+  if (tribuUser) {
+    tribuUser = normalizarSuscripcionUsuario(tribuUser);
+    setStoredUser(tribuUser);
+  }
   try {
     const [vRes, cRes] = await Promise.all([
       fetch(`${API}/videos`),
