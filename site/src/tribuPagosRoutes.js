@@ -173,14 +173,20 @@ function httpStatusForError(err) {
   return 500;
 }
 
-async function mpFetch(accessToken, url, options = {}) {
+function mpHeaders(accessToken, mpModo, extra = {}) {
+  const headers = {
+    Authorization: `Bearer ${accessToken}`,
+    'Content-Type': 'application/json',
+    ...extra,
+  };
+  if (mpModo === 'sandbox') headers['X-scope'] = 'stage';
+  return headers;
+}
+
+async function mpFetch(accessToken, url, options = {}, mpModo = null) {
   const res = await fetch(url, {
     ...options,
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-      ...(options.headers || {}),
-    },
+    headers: mpHeaders(accessToken, mpModo, options.headers),
   });
   const payload = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -192,22 +198,22 @@ async function mpFetch(accessToken, url, options = {}) {
   return payload;
 }
 
-async function createMpPreapproval(accessToken, body) {
+async function createMpPreapproval(accessToken, body, mpModo) {
   return mpFetch(accessToken, 'https://api.mercadopago.com/preapproval', {
     method: 'POST',
     body: JSON.stringify(body),
-  });
+  }, mpModo);
 }
 
-async function cancelMpPreapproval(accessToken, preapprovalId) {
+async function cancelMpPreapproval(accessToken, preapprovalId, mpModo) {
   return mpFetch(accessToken, `https://api.mercadopago.com/preapproval/${encodeURIComponent(preapprovalId)}`, {
     method: 'PUT',
     body: JSON.stringify({ status: 'cancelled' }),
-  });
+  }, mpModo);
 }
 
-async function fetchMpPayment(accessToken, paymentId) {
-  return mpFetch(accessToken, `https://api.mercadopago.com/v1/payments/${encodeURIComponent(paymentId)}`);
+async function fetchMpPayment(accessToken, paymentId, mpModo) {
+  return mpFetch(accessToken, `https://api.mercadopago.com/v1/payments/${encodeURIComponent(paymentId)}`, {}, mpModo);
 }
 
 function getPreapprovalIdFromPayment(payment) {
@@ -395,7 +401,7 @@ router.post('/procesar-pago', tribuAuthMiddleware, async (req, res) => {
       brick,
       externalRef,
       mpModo: cfg.modo,
-    }));
+    }), cfg.modo);
 
     if (preapproval.status === 'authorized') {
       try {
@@ -464,7 +470,7 @@ router.post('/cancelar-renovacion', tribuAuthMiddleware, async (req, res) => {
 
     if (row.mp_preapproval_id) {
       const cfg = await getMpConfig();
-      await cancelMpPreapproval(cfg.access_token, row.mp_preapproval_id);
+      await cancelMpPreapproval(cfg.access_token, row.mp_preapproval_id, cfg.modo);
     }
 
     await pool.execute(
@@ -504,12 +510,14 @@ router.post('/webhook', async (req, res) => {
       type === 'subscription_preapproval' || type === 'preapproval' || actionStr.startsWith('preapproval.');
 
     if (isPaymentEvent) {
-      const payment = await fetchMpPayment(cfg.access_token, resourceId);
+      const payment = await fetchMpPayment(cfg.access_token, resourceId, cfg.modo);
       await applyApprovedPayment(payment);
     } else if (isPreapprovalEvent) {
       const preapproval = await mpFetch(
         cfg.access_token,
-        `https://api.mercadopago.com/preapproval/${encodeURIComponent(resourceId)}`
+        `https://api.mercadopago.com/preapproval/${encodeURIComponent(resourceId)}`,
+        {},
+        cfg.modo
       );
       if (preapproval.status === 'cancelled') {
         await pool.execute(
