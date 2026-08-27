@@ -101,14 +101,81 @@ function parseMpPayloadErrors(payload) {
 
 function mapMpError(err) {
   const payload = err?.payload || {};
-  const code = payload.code || payload?.cause?.[0]?.code;
+  const code = String(payload.code || payload?.cause?.[0]?.code || '');
+  const causeText = [
+    payload.message,
+    payload?.cause?.[0]?.description,
+    parseMpPayloadErrors(payload),
+  ].filter(Boolean).join(' ');
   if (code === 'guest_site_mismatch') {
     return 'Mercado Pago rechazó el pago: el email del comprador no coincide con el token de la tarjeta. '
       + 'En sandbox usa MP_SANDBOX_PAYER_EMAIL del comprador de prueba de tu aplicación.';
   }
+  if (code === '300' || /live credentials/i.test(causeText)) {
+    return 'Mercado Pago detectó credenciales de PRODUCCIÓN en un flujo de prueba. '
+      + 'Con Orders API, Public Key y Access Token de prueba también empiezan con APP_USR-; '
+      + 'debes copiarlos desde Pruebas → Credenciales de prueba (no desde Producción).';
+  }
   const fromPayload = parseMpPayloadErrors(payload);
   if (fromPayload) return fromPayload;
   return err?.message || 'Error en Mercado Pago';
+}
+
+async function fetchMpUserMe(accessToken) {
+  const res = await fetch('https://api.mercadopago.com/users/me', {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+  });
+  const payload = await res.json().catch(() => ({}));
+  return { ok: res.ok, status: res.status, payload };
+}
+
+async function validateMpCredentialsForModo(accessToken, publicKey, modo) {
+  const token = String(accessToken || '').trim();
+  const pk = String(publicKey || '').trim();
+  if (!token) throw new Error('Access Token requerido');
+  if (!pk) throw new Error('Public Key requerida');
+
+  const mpKey = /^(APP_USR-|TEST-)/;
+  if (!mpKey.test(pk) || !mpKey.test(token)) {
+    throw new Error('Public Key y Access Token deben empezar con APP_USR- o TEST-');
+  }
+
+  const { ok, payload } = await fetchMpUserMe(token);
+  if (!ok) {
+    throw new Error(parseMpPayloadErrors(payload) || 'Access Token inválido o revocado');
+  }
+
+  const liveMode = payload.live_mode === true;
+  if (modo === 'sandbox' && liveMode) {
+    throw new Error(
+      'Este Access Token es de PRODUCCIÓN (live_mode=true). El prefijo APP_USR- no indica prueba: '
+      + 'copia el par desde Tus integraciones → Pruebas → Credenciales de prueba. '
+      + 'Si no aparecen, pulsa "Activar credenciales" en esa sección.'
+    );
+  }
+  if (modo === 'produccion' && !liveMode) {
+    throw new Error(
+      'Este Access Token es de PRUEBA (live_mode=false). Para producción usa '
+      + 'Tus integraciones → Producción → Credenciales de producción.'
+    );
+  }
+}
+
+async function getMpCredentialInfo(accessToken) {
+  const token = String(accessToken || '').trim();
+  if (!token) return { ok: false, error: 'Sin Access Token' };
+  const { ok, payload } = await fetchMpUserMe(token);
+  if (!ok) {
+    return { ok: false, error: parseMpPayloadErrors(payload) || 'Token inválido' };
+  }
+  return {
+    ok: true,
+    live_mode: payload.live_mode === true,
+    mp_user_id: payload.id || null,
+  };
 }
 
 function httpStatusForError(err) {
@@ -126,7 +193,12 @@ function mpHeaders(accessToken, mpModo, extra = {}) {
     'Content-Type': 'application/json',
     ...extra,
   };
-  if (mpModo === 'sandbox') headers['X-scope'] = 'stage';
+  // Orders API (APP_USR): el entorno lo define live_mode del token, no X-scope.
+  // X-scope: stage aplica a integraciones legacy TEST- / preapproval y provoca error 300
+  // si se combina mal con tokens de producción.
+  if (mpModo === 'sandbox' && String(accessToken).startsWith('TEST-')) {
+    headers['X-scope'] = 'stage';
+  }
   return headers;
 }
 
@@ -320,4 +392,6 @@ module.exports = {
   resolvePaymentOutcome,
   isOrderPaid,
   vaultCustomerCard,
+  validateMpCredentialsForModo,
+  getMpCredentialInfo,
 };
