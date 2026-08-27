@@ -132,6 +132,14 @@ async function fetchMpUserMe(accessToken) {
   return { ok: res.ok, status: res.status, payload };
 }
 
+function isMpProductionToken(payload) {
+  if (payload?.live_mode === true) return true;
+  if (payload?.live_mode === false) return false;
+  if (payload?.test_data?.test_user === true) return false;
+  if (Array.isArray(payload?.tags) && payload.tags.includes('test_user')) return false;
+  return true;
+}
+
 async function validateMpCredentialsForModo(accessToken, publicKey, modo) {
   const token = String(accessToken || '').trim();
   const pk = String(publicKey || '').trim();
@@ -148,17 +156,15 @@ async function validateMpCredentialsForModo(accessToken, publicKey, modo) {
     throw new Error(parseMpPayloadErrors(payload) || 'Access Token inválido o revocado');
   }
 
-  const liveMode = payload.live_mode === true;
-  if (modo === 'sandbox' && liveMode) {
+  const isProduction = isMpProductionToken(payload);
+  if (modo === 'sandbox' && isProduction) {
     throw new Error(
-      'Este Access Token es de PRODUCCIÓN (live_mode=true). El prefijo APP_USR- no indica prueba: '
-      + 'copia el par desde Tus integraciones → Pruebas → Credenciales de prueba. '
-      + 'Si no aparecen, pulsa "Activar credenciales" en esa sección.'
+      'Este Access Token es de PRODUCCIÓN. Copia el par desde Tus integraciones → Pruebas → Credenciales de prueba.'
     );
   }
-  if (modo === 'produccion' && !liveMode) {
+  if (modo === 'produccion' && !isProduction) {
     throw new Error(
-      'Este Access Token es de PRUEBA (live_mode=false). Para producción usa '
+      'Este Access Token es de PRUEBA (cuenta test_user). Para producción usa '
       + 'Tus integraciones → Producción → Credenciales de producción.'
     );
   }
@@ -171,9 +177,12 @@ async function getMpCredentialInfo(accessToken) {
   if (!ok) {
     return { ok: false, error: parseMpPayloadErrors(payload) || 'Token inválido' };
   }
+  const isProduction = isMpProductionToken(payload);
   return {
     ok: true,
-    live_mode: payload.live_mode === true,
+    live_mode: isProduction,
+    is_test_user: !isProduction,
+    mp_email: payload.email || null,
     mp_user_id: payload.id || null,
   };
 }

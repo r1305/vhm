@@ -42,10 +42,11 @@ router.get('/', requireAdmin, async (req, res) => {
     let credenciales_ok = null;
     let credenciales_error = null;
     let mp_live_mode = null;
+    let mpInfo = null;
     if (accessToken && publicKey) {
-      const info = await getMpCredentialInfo(accessToken);
-      if (info.ok) {
-        mp_live_mode = info.live_mode;
+      mpInfo = await getMpCredentialInfo(accessToken);
+      if (mpInfo.ok) {
+        mp_live_mode = mpInfo.live_mode;
         try {
           await validateMpCredentialsForModo(accessToken, publicKey, modo);
           credenciales_ok = true;
@@ -55,7 +56,7 @@ router.get('/', requireAdmin, async (req, res) => {
         }
       } else {
         credenciales_ok = false;
-        credenciales_error = info.error;
+        credenciales_error = mpInfo.error;
       }
     }
 
@@ -68,6 +69,8 @@ router.get('/', requireAdmin, async (req, res) => {
       credenciales_ok,
       credenciales_error,
       mp_live_mode,
+      is_test_user: mpInfo?.ok ? mpInfo.is_test_user : null,
+      mp_email: mpInfo?.ok ? mpInfo.mp_email : null,
       access_token_suffix: accessToken.length >= 8 ? accessToken.slice(-8) : null,
       public_key_prefix: publicKey.length >= 16 ? publicKey.slice(0, 16) : null,
     });
