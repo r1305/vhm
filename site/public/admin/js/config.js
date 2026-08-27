@@ -521,9 +521,12 @@
       return;
     }
     if (d.mp_live_mode === true) {
-      parts.push('MP detecta token: PRODUCCIÓN (live_mode=true)');
-    } else if (d.mp_live_mode === false) {
-      parts.push('MP detecta token: PRUEBA (live_mode=false)');
+      parts.push('MP detecta token: PRODUCCIÓN');
+    } else if (d.mp_live_mode === false || d.is_test_user) {
+      parts.push('MP detecta token: PRUEBA (test_user)');
+    }
+    if (d.mp_email) {
+      parts.push('Cuenta MP: ' + d.mp_email);
     }
     if (d.access_token_suffix) {
       parts.push('Token termina en …' + d.access_token_suffix);
