@@ -60,8 +60,12 @@ async function activateNewSubscription({
     `INSERT INTO tribu_suscripciones
       (tribu_user_id, suscripcion_id, activo, fecha_inicio, fecha_fin,
        mp_payment_id, mp_order_id, mp_customer_id, mp_card_id, mp_card_brand, auto_renovacion, renovacion_intentos)
-     VALUES (?, ?, 1, CURDATE(), DATE_ADD(CURDATE(), INTERVAL ? DAY), ?, ?, ?, ?, ?, 1, 0)`,
-    [userId, planId, dias, String(paymentId || ref), ref, customerId, cardId, mpCardBrand || null]
+     VALUES (?, ?, 1, CURDATE(), DATE_ADD(CURDATE(), INTERVAL ? DAY), ?, ?, ?, ?, ?, ?, 0)`,
+    [
+      userId, planId, dias, String(paymentId || ref), ref,
+      customerId, cardId, mpCardBrand || null,
+      customerId && cardId ? 1 : 0,
+    ]
   );
   await pool.execute('UPDATE tribu_users SET is_suscribed = 1 WHERE id = ?', [userId]);
   await recordPaymentEvent(ref, result.insertId);

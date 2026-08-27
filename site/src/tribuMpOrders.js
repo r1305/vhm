@@ -112,9 +112,9 @@ function mapMpError(err) {
       + 'En sandbox usa MP_SANDBOX_PAYER_EMAIL del comprador de prueba de tu aplicación.';
   }
   if (code === '300' || /live credentials/i.test(causeText)) {
-    return 'Mercado Pago detectó credenciales de PRODUCCIÓN en un flujo de prueba. '
-      + 'Con Orders API, Public Key y Access Token de prueba también empiezan con APP_USR-; '
-      + 'debes copiarlos desde Pruebas → Credenciales de prueba (no desde Producción).';
+    return 'Mercado Pago rechazó la operación (código 300). Si ya desplegaste el último código, '
+      + 'puede ser la API de Customers con cuenta test: en sandbox el pago va directo sin guardar tarjeta. '
+      + 'Usa el email del comprador de prueba (Cuentas de prueba → Buyer) en MP_SANDBOX_PAYER_EMAIL.';
   }
   const fromPayload = parseMpPayloadErrors(payload);
   if (fromPayload) return fromPayload;
