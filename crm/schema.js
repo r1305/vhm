@@ -205,6 +205,15 @@ async function ensureSchema() {
     try { await conn.execute('INSERT IGNORE INTO cron_config (id) VALUES (1)'); } catch (_) {}
     try { await conn.execute('ALTER TABLE cron_config ADD COLUMN mensaje TEXT DEFAULT NULL'); } catch (_) {}
 
+    // Candado anti-duplicado: un envío automático por día (America/Lima)
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS cron_send_guard (
+        guard_key  VARCHAR(80) NOT NULL PRIMARY KEY,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        KEY idx_cron_send_guard_created (created_at)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
     // Re-agregar hora_inicio y hora_fin a citas con defaults
     try { await conn.execute("ALTER TABLE citas ADD COLUMN hora_inicio TIME NOT NULL DEFAULT '17:00:00'"); } catch (_) {}
     try { await conn.execute("ALTER TABLE citas ADD COLUMN hora_fin TIME NOT NULL DEFAULT '18:00:00'"); } catch (_) {}

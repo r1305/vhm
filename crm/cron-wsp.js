@@ -4,9 +4,11 @@
  *
  * Envía el mensaje guardado en cron_config a todos los terapeutas activos con teléfono.
  * El horario y días los controla node-cron en app.js (America/Lima).
+ * Anti-duplicado: máximo un envío automático por día (tabla cron_send_guard).
  *
  * CLI opcional (cPanel Cron, respeta días/enabled de cron_config):
  *   0 18 * * 1-6   node /home/USUARIO/vhm/crm/cron-wsp.js >> logs/cron-wsp.log 2>&1
+ * Si usas node-cron en app.js, no configures también el CLI (mismo guard evita doble envío).
  */
 
 require('dotenv').config({ path: __dirname + '/.env' });
@@ -18,6 +20,28 @@ const LIMA_DOW = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
 function getLimaDayOfWeek() {
   const short = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Lima', weekday: 'short' }).format(new Date());
   return LIMA_DOW[short];
+}
+
+function getLimaDateKey() {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(new Date());
+}
+
+/** @returns {{ acquired: boolean, guardKey: string }} */
+async function tryAcquireAutoSendGuard() {
+  const guardKey = `wsp_terapeutas:auto:${getLimaDateKey()}`;
+  try {
+    await pool.execute('INSERT INTO cron_send_guard (guard_key) VALUES (?)', [guardKey]);
+    return { acquired: true, guardKey };
+  } catch (err) {
+    if (err.code === 'ER_DUP_ENTRY') return { acquired: false, guardKey };
+    throw err;
+  }
+}
+
+async function cleanupOldSendGuards() {
+  await pool.execute(
+    'DELETE FROM cron_send_guard WHERE created_at < DATE_SUB(NOW(), INTERVAL 90 DAY)'
+  );
 }
 
 async function loadCronConfig() {
@@ -89,6 +113,7 @@ async function runCronWSP(opts = {}) {
     sinMensaje: false,
     omitido: false,
     motivo: null,
+    duplicado: false,
   };
 
   if (!manual) {
@@ -114,8 +139,6 @@ async function runCronWSP(opts = {}) {
     return stats;
   }
 
-  console.log(`[cron-wsp] ${new Date().toISOString()} — Enviando recordatorio a terapeutas`);
-
   await loadOpenwaConfigFromDB();
   if (!isOpenwaConfigured()) {
     console.log('[cron-wsp] OpenWA no configurado — abortando');
@@ -123,6 +146,22 @@ async function runCronWSP(opts = {}) {
     stats.ok = false;
     return stats;
   }
+
+  if (!manual) {
+    const guard = await tryAcquireAutoSendGuard();
+    if (!guard.acquired) {
+      console.log(`[cron-wsp] Envío automático ya realizado hoy (${guard.guardKey}) — omitido (anti-duplicado)`);
+      stats.omitido = true;
+      stats.motivo = 'duplicate';
+      stats.duplicado = true;
+      return stats;
+    }
+    cleanupOldSendGuards().catch(err => {
+      console.warn('[cron-wsp] Limpieza cron_send_guard:', err.message);
+    });
+  }
+
+  console.log(`[cron-wsp] ${new Date().toISOString()} — Enviando recordatorio a terapeutas`);
 
   const result = await sendBroadcastToTerapeutas(message);
   Object.assign(stats, result);
@@ -147,6 +186,12 @@ async function runCli() {
   }
 }
 
-module.exports = { runCronWSP, sendBroadcastToTerapeutas, loadCronConfig };
+module.exports = {
+  runCronWSP,
+  sendBroadcastToTerapeutas,
+  loadCronConfig,
+  tryAcquireAutoSendGuard,
+  getLimaDateKey,
+};
 
 if (require.main === module) runCli();
