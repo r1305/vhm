@@ -82,7 +82,13 @@
     '.clara-send:disabled{opacity:.5;cursor:default;}' +
     '.clara-disclaimer{font-size:.68rem;color:#6f6885;text-align:center;padding:0 12px 10px;background:#101019;}' +
 
-    '@media (max-width:520px){.clara-panel{right:12px;left:12px;width:auto;bottom:166px;height:calc(100vh - 200px);}}';
+    '@media (max-width:768px){' +
+    '.clara-launcher{bottom:calc(78px + env(safe-area-inset-bottom,0px));right:calc(16px + env(safe-area-inset-right,0px));width:52px;height:52px;}' +
+    '.clara-launcher svg{width:26px;height:26px;}' +
+    '.clara-panel{right:12px;left:12px;width:auto;bottom:calc(142px + env(safe-area-inset-bottom,0px));height:min(520px,calc(100dvh - 168px));max-height:none;}' +
+    '}' +
+    '@media (max-width:768px){html:not(.tribu-has-wa) .clara-launcher{bottom:calc(18px + env(safe-area-inset-bottom,0px));}}' +
+    '@media (max-width:768px){html:not(.tribu-has-wa) .clara-panel{bottom:calc(82px + env(safe-area-inset-bottom,0px));}}';
 
   var style = el('style');
   style.textContent = css;
