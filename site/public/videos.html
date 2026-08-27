@@ -269,7 +269,7 @@
       .tribu-tab { font-size: .82rem; padding: 12px 8px; }
       .tribu-tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
       .tribu-tabs::-webkit-scrollbar { display: none; }
-      .profile-wrap, .subs-wrap { padding-left: 16px; padding-right: 16px; }
+      .profile-wrap, .subs-wrap, .cards-wrap { padding-left: 16px; padding-right: 16px; }
       .profile-head { flex-direction: column; align-items: flex-start; }
       .cal-day { height: 90px; }
       .cal-ev { font-size: .68rem; }
@@ -565,6 +565,40 @@
     }
     .subs-link-btn:hover { color: #fff; text-decoration: underline; }
     .subs-link-btn.danger { color: #fb7185; }
+    .cards-wrap { max-width: 760px; margin: 0 auto; padding: 28px 22px 48px; }
+    .cards-lead { color: var(--muted); font-size: .88rem; line-height: 1.55; margin: 6px 0 20px; max-width: 560px; }
+    .cards-list { display: flex; flex-direction: column; gap: 12px; }
+    .cards-item {
+      display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;
+      background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .cards-item.is-default { border-color: rgba(45,212,191,.4); box-shadow: 0 0 0 1px rgba(45,212,191,.08); }
+    .cards-item-main { display: flex; align-items: center; gap: 14px; min-width: 0; }
+    .cards-item-icon {
+      width: 46px; height: 46px; border-radius: 12px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center; font-size: 1.35rem;
+      background: linear-gradient(135deg, rgba(168,85,247,.18), rgba(236,72,153,.14));
+      border: 1px solid rgba(168,85,247,.25);
+    }
+    .cards-item-label { font-size: .92rem; font-weight: 800; color: #fff; }
+    .cards-item-meta { font-size: .78rem; color: var(--muted); margin-top: 3px; font-weight: 600; }
+    .cards-default-badge {
+      display: inline-block; margin-top: 6px; padding: 2px 9px; border-radius: 999px;
+      font-size: .68rem; font-weight: 800; color: #2dd4bf; background: rgba(45,212,191,.14);
+      border: 1px solid rgba(45,212,191,.28);
+    }
+    .cards-item-actions { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+    .cards-empty {
+      text-align: center; color: var(--muted); padding: 36px 20px 28px;
+      background: var(--panel); border: 1px dashed rgba(168,85,247,.28); border-radius: 18px;
+    }
+    .cards-empty-icon { font-size: 2rem; margin-bottom: 10px; opacity: .85; }
+    .cards-empty p { margin: 0 0 8px; line-height: 1.55; }
+    .cards-empty-hint { font-size: .84rem; max-width: 420px; margin: 0 auto 18px !important; }
+    .cards-footnote {
+      margin-top: 16px; font-size: .78rem; color: var(--muted); line-height: 1.5; font-weight: 600;
+    }
     .pago-auto-renew {
       padding: 14px 16px; border-radius: 14px;
       background: rgba(45,212,191,.06); border: 1px solid rgba(45,212,191,.22);
@@ -663,6 +697,28 @@
     }
     .tribu-feedback-msg { color: var(--muted); font-size: .95rem; line-height: 1.55; margin: 10px 0 22px; }
     .tribu-feedback-btn { margin-top: 4px; }
+    .tribu-confirm-box { max-width: 440px; text-align: center; padding: 28px 26px 24px; }
+    .tribu-confirm-actions {
+      display: flex; gap: 10px; margin-top: 6px;
+    }
+    .tribu-confirm-btn {
+      flex: 1; min-width: 0; padding: 12px 14px; border-radius: 999px;
+      font-weight: 800; font-family: inherit; font-size: .88rem; cursor: pointer;
+      transition: opacity .15s, transform .15s;
+    }
+    .tribu-confirm-btn:hover { opacity: .92; }
+    .tribu-confirm-btn:active { transform: scale(.98); }
+    .tribu-confirm-btn.outline {
+      background: transparent; border: 1px solid rgba(168,85,247,.45); color: #e9d5ff;
+    }
+    .tribu-confirm-btn.danger {
+      border: none; color: #fff;
+      background: linear-gradient(135deg, #be123c 0%, #db2777 100%);
+      box-shadow: 0 8px 24px rgba(219,39,119,.22);
+    }
+    .tribu-confirm-btn.primary {
+      border: none; color: #fff; background: var(--grad-warm);
+    }
   </style>
 </head>
 <body>
@@ -751,11 +807,16 @@
       <button type="button" class="profile-btn profile-btn-primary" onclick="abrirModalPlanes()">Ver planes</button>
     </div>
     <div id="subsRenewalPanel" class="subs-renewal-panel" style="display:none"></div>
-    <div id="subsCardsPanel" class="subs-cards-panel" style="display:none">
-      <h3>Métodos de pago guardados</h3>
-      <div id="subsCardsList"></div>
-    </div>
     <div id="subsLista"><div class="subs-empty">Cargando...</div></div>
+  </div>
+</div>
+
+<div id="tabTarjetas" class="tribu-panel">
+  <div class="cards-wrap">
+    <button type="button" class="account-back" onclick="switchTribuTab('camino')">← Volver al contenido</button>
+    <h2 style="font-family:'Fraunces',serif;font-size:1.4rem;color:#fff;margin-bottom:4px">Mis tarjetas</h2>
+    <p class="cards-lead">Tarjetas que guardaste al pagar con renovación automática. Se almacenan de forma segura en Culqi para cobros y autorenovación.</p>
+    <div id="cardsLista"><div class="subs-empty">Cargando...</div></div>
   </div>
 </div>
 
@@ -883,6 +944,19 @@
     <div class="auth-title" id="tribuFeedbackTitle">¡Pago exitoso!</div>
     <p class="tribu-feedback-msg" id="tribuFeedbackMsg">Tu suscripción ha sido activada.</p>
     <button type="button" class="auth-btn tribu-feedback-btn" id="tribuFeedbackBtn" onclick="cerrarTribuFeedback()">Continuar</button>
+  </div>
+</div>
+<!-- MODAL CONFIRMACIÓN -->
+<div class="auth-overlay" id="tribuConfirmOverlay" role="dialog" aria-modal="true" aria-labelledby="tribuConfirmTitle">
+  <div class="auth-box tribu-confirm-box">
+    <div class="tribu-feedback-icon warn" id="tribuConfirmIcon" aria-hidden="true">?</div>
+    <div class="tribu-feedback-eyebrow">La Tribu</div>
+    <div class="auth-title" id="tribuConfirmTitle">¿Confirmar acción?</div>
+    <p class="tribu-feedback-msg" id="tribuConfirmMsg"></p>
+    <div class="tribu-confirm-actions">
+      <button type="button" class="tribu-confirm-btn outline" id="tribuConfirmCancel">Volver</button>
+      <button type="button" class="tribu-confirm-btn danger" id="tribuConfirmOk">Confirmar</button>
+    </div>
   </div>
 </div>
 <!-- MODAL AUTH -->
@@ -1052,7 +1126,8 @@ function renderNavAuth() {
             <div class="user-menu-head-email">${escapeHtml(tribuUser.email || '')}</div>
           </div>
           <button type="button" class="user-menu-item" role="menuitem" onclick="navToPerfil()"><span class="mi">👤</span> Mi perfil</button>
-          <button type="button" class="user-menu-item" role="menuitem" onclick="navToSuscripciones()"><span class="mi">💳</span> Suscripciones</button>
+          <button type="button" class="user-menu-item" role="menuitem" onclick="navToSuscripciones()"><span class="mi">📋</span> Suscripciones</button>
+          <button type="button" class="user-menu-item" role="menuitem" onclick="navToTarjetas()"><span class="mi">💳</span> Mis tarjetas</button>
           <div class="user-menu-divider"></div>
           <button type="button" class="user-menu-item danger" role="menuitem" onclick="navLogout()"><span class="mi">⎋</span> Cerrar sesión</button>
         </div>
@@ -1106,6 +1181,13 @@ function navToSuscripciones() {
   closeUserMenu();
   closeMobileNav();
   switchTribuTab('suscripciones');
+  scrollToContenidoTribu();
+}
+
+function navToTarjetas() {
+  closeUserMenu();
+  closeMobileNav();
+  switchTribuTab('tarjetas');
   scrollToContenidoTribu();
 }
 
@@ -1258,16 +1340,75 @@ function formatYmd(val) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+function formatTarjetaExp(t) {
+  if (!t?.exp_month || !t?.exp_year) return '';
+  const y = String(t.exp_year).slice(-2);
+  return String(t.exp_month).padStart(2, '0') + '/' + y;
+}
+
+function renderTarjetasHtml(tarjetas) {
+  if (!tarjetas.length) {
+    return '<div class="cards-empty">' +
+      '<div class="cards-empty-icon" aria-hidden="true">💳</div>' +
+      '<p>Aún no tienes tarjetas guardadas.</p>' +
+      '<p class="cards-empty-hint">Al pagar un plan con la opción de renovación automática, tu tarjeta aparecerá aquí.</p>' +
+      '<button type="button" class="profile-btn profile-btn-primary" onclick="abrirModalPlanes()">Ver planes</button>' +
+    '</div>';
+  }
+  return '<div class="cards-list">' + tarjetas.map(t => {
+    const exp = formatTarjetaExp(t);
+    return '<div class="cards-item' + (t.is_default ? ' is-default' : '') + '">' +
+      '<div class="cards-item-main">' +
+        '<div class="cards-item-icon" aria-hidden="true">💳</div>' +
+        '<div>' +
+          '<div class="cards-item-label">' + escapeHtml(t.label) + '</div>' +
+          (exp ? '<div class="cards-item-meta">Vence ' + escapeHtml(exp) + '</div>' : '') +
+          (t.is_default ? '<span class="cards-default-badge">Principal</span>' : '') +
+        '</div>' +
+      '</div>' +
+      '<div class="cards-item-actions">' +
+        (!t.is_default ? '<button type="button" class="subs-link-btn" onclick="marcarTarjetaDefault(' + t.id + ')">Hacer principal</button>' : '') +
+        '<button type="button" class="subs-link-btn danger" onclick="eliminarTarjetaGuardada(' + t.id + ')">Eliminar</button>' +
+      '</div>' +
+    '</div>';
+  }).join('') + '</div>' +
+  '<p class="cards-footnote">Las tarjetas se almacenan en Culqi (PCI DSS). Eliminar una tarjeta desactiva la autorenovación vinculada a ella.</p>';
+}
+
+async function cargarMisTarjetas() {
+  const lista = document.getElementById('cardsLista');
+  if (!lista) return;
+  if (!tribuUser) {
+    lista.innerHTML = '<div class="cards-empty">Inicia sesión para ver tus tarjetas.</div>';
+    return;
+  }
+  lista.innerHTML = '<div class="subs-empty">Cargando...</div>';
+  try {
+    const res = await tribuFetch('/tribu-auth/tarjetas');
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.error || 'Error');
+    const tarjetas = d.data || [];
+    window._tribuTarjetasCache = tarjetas;
+    lista.innerHTML = renderTarjetasHtml(tarjetas);
+  } catch {
+    lista.innerHTML = '<div class="cards-empty">No se pudieron cargar tus tarjetas.</div>';
+  }
+}
+
+async function refreshTarjetasViews() {
+  const tasks = [];
+  if (document.getElementById('tabTarjetas')?.classList.contains('active')) tasks.push(cargarMisTarjetas());
+  if (document.getElementById('tabSuscripciones')?.classList.contains('active')) tasks.push(cargarMisSuscripciones());
+  if (tasks.length) await Promise.all(tasks);
+}
+
 async function cargarMisSuscripciones() {
   const lista = document.getElementById('subsLista');
   const renewalPanel = document.getElementById('subsRenewalPanel');
-  const cardsPanel = document.getElementById('subsCardsPanel');
-  const cardsList = document.getElementById('subsCardsList');
   if (!lista) return;
   if (!tribuUser) {
     lista.innerHTML = '<div class="subs-empty">Inicia sesión para ver tus suscripciones.</div>';
     if (renewalPanel) renewalPanel.style.display = 'none';
-    if (cardsPanel) cardsPanel.style.display = 'none';
     return;
   }
   lista.innerHTML = '<div class="subs-empty">Cargando...</div>';
@@ -1296,29 +1437,11 @@ async function cargarMisSuscripciones() {
           '<h3>Sin renovación automática</h3>' +
           '<p>Tu plan vence el <strong>' + escapeHtml(activaSinAuto.fecha_fin) + '</strong>. ' +
           (tarjetas.length
-            ? 'Activa la autorenovación en tu suscripción para no perder el acceso.'
-            : 'Al renovar, activa la opción de cobro automático para mayor comodidad.') +
+            ? 'Activa la autorenovación en tu suscripción o gestiona tus tarjetas en <button type="button" class="subs-link-btn" onclick="navToTarjetas()">Mis tarjetas</button>.'
+            : 'Al renovar, activa la opción de cobro automático para guardar tu tarjeta en Mis tarjetas.') +
           '</p>';
       } else {
         renewalPanel.style.display = 'none';
-      }
-    }
-
-    if (cardsPanel && cardsList) {
-      if (tarjetas.length) {
-        cardsPanel.style.display = 'block';
-        cardsList.innerHTML = tarjetas.map(t =>
-          '<div class="subs-card-row">' +
-            '<div class="subs-card-chip">' + escapeHtml(t.label) +
-            (t.is_default ? '<small>Principal</small>' : '') + '</div>' +
-            '<div style="display:flex;gap:10px;flex-wrap:wrap">' +
-            (!t.is_default ? '<button type="button" class="subs-link-btn" onclick="marcarTarjetaDefault(' + t.id + ')">Hacer principal</button>' : '') +
-            '<button type="button" class="subs-link-btn danger" onclick="eliminarTarjetaGuardada(' + t.id + ')">Eliminar</button>' +
-            '</div></div>'
-        ).join('');
-      } else {
-        cardsPanel.style.display = 'none';
-        cardsList.innerHTML = '';
       }
     }
 
@@ -1367,7 +1490,13 @@ async function cargarMisSuscripciones() {
 }
 
 async function cancelarAutorenovacion(subId) {
-  if (!confirm('¿Cancelar la renovación automática? Seguirás con acceso hasta la fecha de vencimiento.')) return;
+  const ok = await mostrarTribuConfirm({
+    title: '¿Cancelar autorenovación?',
+    message: 'Seguirás con acceso hasta la fecha de vencimiento. Después tendrás que renovar manualmente si quieres continuar en La Tribu.',
+    confirmText: 'Sí, cancelar',
+    cancelText: 'No, mantener',
+  });
+  if (!ok) return;
   try {
     const res = await tribuFetch('/tribu-auth/suscripciones/' + subId + '/auto-renovacion', {
       method: 'PUT',
@@ -1377,9 +1506,19 @@ async function cancelarAutorenovacion(subId) {
     const d = await res.json();
     if (!res.ok) throw new Error(d.error || 'Error');
     await cargarMisSuscripciones();
-    alert(d.message || 'Autorenovación cancelada');
+    mostrarTribuFeedback({
+      type: 'success',
+      title: 'Autorenovación cancelada',
+      message: d.message || 'Tu acceso sigue activo hasta la fecha de vencimiento.',
+      btnText: 'Entendido',
+    });
   } catch (err) {
-    alert(err.message || 'No se pudo cancelar');
+    mostrarTribuFeedback({
+      type: 'error',
+      title: 'No se pudo cancelar',
+      message: err.message || 'Intenta de nuevo en unos momentos.',
+      btnText: 'Cerrar',
+    });
   }
 }
 
@@ -1400,14 +1539,31 @@ async function activarAutorenovacion(subId) {
 }
 
 async function eliminarTarjetaGuardada(cardId) {
-  if (!confirm('¿Eliminar esta tarjeta? Se desactivará la autorenovación vinculada a ella.')) return;
+  const ok = await mostrarTribuConfirm({
+    title: '¿Eliminar esta tarjeta?',
+    message: 'Se desactivará la autorenovación vinculada a ella. Tu acceso actual no se ve afectado hasta la fecha de vencimiento.',
+    confirmText: 'Sí, eliminar',
+    cancelText: 'Cancelar',
+  });
+  if (!ok) return;
   try {
     const res = await tribuFetch('/tribu-auth/tarjetas/' + cardId, { method: 'DELETE' });
     const d = await res.json();
     if (!res.ok) throw new Error(d.error || 'Error');
-    await cargarMisSuscripciones();
+    await refreshTarjetasViews();
+    mostrarTribuFeedback({
+      type: 'success',
+      title: 'Tarjeta eliminada',
+      message: d.message || 'La tarjeta fue eliminada correctamente.',
+      btnText: 'Entendido',
+    });
   } catch (err) {
-    alert(err.message || 'No se pudo eliminar');
+    mostrarTribuFeedback({
+      type: 'error',
+      title: 'No se pudo eliminar',
+      message: err.message || 'Intenta de nuevo en unos momentos.',
+      btnText: 'Cerrar',
+    });
   }
 }
 
@@ -1416,9 +1572,20 @@ async function marcarTarjetaDefault(cardId) {
     const res = await tribuFetch('/tribu-auth/tarjetas/' + cardId + '/default', { method: 'PUT' });
     const d = await res.json();
     if (!res.ok) throw new Error(d.error || 'Error');
-    await cargarMisSuscripciones();
+    await refreshTarjetasViews();
+    mostrarTribuFeedback({
+      type: 'success',
+      title: 'Tarjeta principal',
+      message: d.message || 'Tarjeta principal actualizada.',
+      btnText: 'Entendido',
+    });
   } catch (err) {
-    alert(err.message || 'No se pudo actualizar');
+    mostrarTribuFeedback({
+      type: 'error',
+      title: 'No se pudo actualizar',
+      message: err.message || 'Intenta de nuevo en unos momentos.',
+      btnText: 'Cerrar',
+    });
   }
 }
 
@@ -2190,12 +2357,60 @@ function mostrarTribuFeedback({ type = 'success', title, message, btnText = 'Con
 function cerrarTribuFeedback() {
   const overlay = document.getElementById('tribuFeedbackOverlay');
   overlay.classList.remove('show', 'no-dismiss');
-  document.body.style.overflow = '';
+  if (!document.getElementById('tribuConfirmOverlay')?.classList.contains('show')) {
+    document.body.style.overflow = '';
+  }
   const onClose = window._tribuFeedbackOnClose;
   window._tribuFeedbackOnClose = null;
   if (typeof onClose === 'function') onClose();
 }
 
+function mostrarTribuConfirm({
+  title,
+  message,
+  confirmText = 'Confirmar',
+  cancelText = 'Volver',
+  danger = true,
+}) {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById('tribuConfirmOverlay');
+    const okBtn = document.getElementById('tribuConfirmOk');
+    const cancelBtn = document.getElementById('tribuConfirmCancel');
+    if (!overlay || !okBtn || !cancelBtn) {
+      resolve(false);
+      return;
+    }
+    document.getElementById('tribuConfirmTitle').textContent = title || '¿Confirmar acción?';
+    document.getElementById('tribuConfirmMsg').textContent = message || '';
+    okBtn.textContent = confirmText;
+    cancelBtn.textContent = cancelText;
+    okBtn.className = 'tribu-confirm-btn ' + (danger ? 'danger' : 'primary');
+    window._tribuConfirmResolve = resolve;
+    overlay.classList.add('show');
+    document.body.style.overflow = 'hidden';
+    setTimeout(() => cancelBtn.focus(), 80);
+  });
+}
+
+function cerrarTribuConfirm(result) {
+  const overlay = document.getElementById('tribuConfirmOverlay');
+  if (overlay) overlay.classList.remove('show');
+  if (!document.getElementById('tribuFeedbackOverlay')?.classList.contains('show')) {
+    document.body.style.overflow = '';
+  }
+  const resolve = window._tribuConfirmResolve;
+  window._tribuConfirmResolve = null;
+  if (typeof resolve === 'function') resolve(!!result);
+}
+
+document.getElementById('tribuConfirmCancel')?.addEventListener('click', () => cerrarTribuConfirm(false));
+document.getElementById('tribuConfirmOk')?.addEventListener('click', () => cerrarTribuConfirm(true));
+document.getElementById('tribuConfirmOverlay')?.addEventListener('click', e => {
+  if (e.target.id === 'tribuConfirmOverlay') cerrarTribuConfirm(false);
+});
+document.getElementById('tribuConfirmOverlay')?.addEventListener('keydown', e => {
+  if (e.key === 'Escape') cerrarTribuConfirm(false);
+});
 document.getElementById('planesOverlay').addEventListener('click', e => { if (e.target.id === 'planesOverlay') cerrarModalPlanes(); });
 document.getElementById('pagoOverlay').addEventListener('click', e => { if (e.target.id === 'pagoOverlay') cerrarModalPago(); });
 document.getElementById('pagoBillingEmail')?.addEventListener('input', schedulePagoBrickRemount);
@@ -2266,7 +2481,7 @@ async function afterAuthSuccess() {
 }
 
 async function switchTribuTab(tab) {
-  if ((tab === 'perfil' || tab === 'suscripciones') && !tribuUser) {
+  if ((tab === 'perfil' || tab === 'suscripciones' || tab === 'tarjetas') && !tribuUser) {
     abrirLoginAuth();
     tab = 'camino';
   }
@@ -2277,6 +2492,7 @@ async function switchTribuTab(tab) {
   document.getElementById('tabCalendario').classList.toggle('active', tab === 'calendario');
   document.getElementById('tabPerfil').classList.toggle('active', tab === 'perfil');
   document.getElementById('tabSuscripciones').classList.toggle('active', tab === 'suscripciones');
+  document.getElementById('tabTarjetas').classList.toggle('active', tab === 'tarjetas');
   if (tab === 'calendario') {
     showPageLoader('Cargando calendario...');
     try {
@@ -2291,6 +2507,8 @@ async function switchTribuTab(tab) {
     await cargarPerfilForm();
   } else if (tab === 'suscripciones') {
     await cargarMisSuscripciones();
+  } else if (tab === 'tarjetas') {
+    await cargarMisTarjetas();
   }
 }
 
