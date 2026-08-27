@@ -306,10 +306,11 @@
             <p>1. Ingresa a <a href="https://www.mercadopago.com.pe/developers/panel" target="_blank" rel="noopener noreferrer">mercadopago.com.pe/developers/panel</a>.</p>
             <p>2. Crea o selecciona una aplicación.</p>
             <p>3. En <strong>Credenciales</strong> encontrarás la <strong>Public Key</strong> y el <strong>Access Token</strong> tanto para Sandbox como para Producción.</p>
-            <p>4. Usa las credenciales de <strong>Sandbox</strong> para pruebas (Public Key y Access Token que empiezan con <code>TEST-</code>) y las de <strong>Producción</strong> cuando vayas en vivo.</p>
+            <p>4. En <strong>Credenciales de prueba</strong> copia Public Key y Access Token (empiezan con <code>APP_USR-</code>). En producción usa las de <strong>Credenciales de producción</strong>. Marca el modo correspondiente abajo.</p>
             <p>5. Crea una <strong>cuenta de prueba Comprador</strong> en la app y define su email en el servidor como <code>MP_SANDBOX_PAYER_EMAIL</code> (debe terminar en <code>@testuser.com</code>).</p>
-            <p>6. Configura el webhook en Mercado Pago apuntando a <code id="mp-webhook-url"></code> (eventos <strong>Pagos</strong> y <strong>Suscripciones</strong> / preapproval).</p>
-            <p>7. En el servidor, define <code>SITE_URL</code> con la URL pública del sitio (ej. <code>https://tudominio.com/site</code>) y opcionalmente <code>MP_WEBHOOK_SECRET</code> para validar la firma.</p>
+            <p>6. La Tribu usa <strong>Suscripciones recurrentes</strong> (API preapproval), no Orders API. Las mismas credenciales <code>APP_USR-</code> sirven para ambas APIs en la misma aplicación.</p>
+            <p>7. Configura el webhook apuntando a <code id="mp-webhook-url"></code> (eventos <strong>Pagos</strong> y <strong>Suscripciones</strong> / preapproval).</p>
+            <p>8. En el servidor define <code>SITE_URL</code> y opcionalmente <code>MP_WEBHOOK_SECRET</code>.</p>
           </div>
         </div>
       </div>

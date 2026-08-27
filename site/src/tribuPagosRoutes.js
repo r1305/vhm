@@ -52,17 +52,20 @@ function getSandboxPayerEmail() {
 function validateMpCredentials(cfg) {
   const pk = String(cfg.public_key || '').trim();
   const at = String(cfg.access_token || '').trim();
-  const sandbox = cfg.modo === 'sandbox';
-  const pkTest = pk.startsWith('TEST-');
-  const atTest = at.startsWith('TEST-');
-  if (sandbox && pk && !pkTest) {
-    throw new Error('Modo sandbox: usa la Public Key de prueba (TEST-...) de la misma aplicación en Mercado Pago.');
+  if (!pk || !at) {
+    throw new Error('Configura Public Key y Access Token de Mercado Pago en el panel de administración.');
   }
-  if (sandbox && at && !atTest) {
-    throw new Error('Modo sandbox: usa el Access Token de prueba (TEST-...) de la misma aplicación en Mercado Pago.');
+  const mpKey = /^(APP_USR-|TEST-)/;
+  if (!mpKey.test(pk)) {
+    throw new Error('Public Key inválida. Debe empezar con APP_USR- (credenciales actuales) o TEST- (legado).');
   }
-  if (!sandbox && pk && pkTest) {
-    throw new Error('Modo producción: no uses credenciales TEST-. Cambia a credenciales de producción.');
+  if (!mpKey.test(at)) {
+    throw new Error('Access Token inválido. Debe empezar con APP_USR- (credenciales actuales) o TEST- (legado).');
+  }
+  const pkLegacy = pk.startsWith('TEST-');
+  const atLegacy = at.startsWith('TEST-');
+  if (pkLegacy !== atLegacy) {
+    throw new Error('Public Key y Access Token deben ser del mismo tipo (ambos APP_USR- o ambos TEST-).');
   }
 }
 
@@ -144,9 +147,8 @@ function mapMpError(err) {
   const payload = err?.payload || {};
   const code = payload.code || payload?.cause?.[0]?.code;
   if (code === 'guest_site_mismatch') {
-    return 'Mercado Pago rechazó el pago: el comprador o las credenciales no corresponden a la misma aplicación/país. '
-      + 'Revisa que Public Key y Access Token sean de la misma app (Perú), del mismo modo (sandbox o producción), '
-      + 'y que en pruebas uses el email del comprador de prueba en MP_SANDBOX_PAYER_EMAIL.';
+    return 'Mercado Pago rechazó el pago: el email del comprador no coincide con el token de la tarjeta o las credenciales no son de la misma aplicación (Perú). '
+      + 'En sandbox usa el email del comprador de prueba en MP_SANDBOX_PAYER_EMAIL y las credenciales de prueba APP_USR- del mismo panel.';
   }
   const fromPayload = parseMpPayloadErrors(payload);
   if (fromPayload) return fromPayload;
