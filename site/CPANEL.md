@@ -23,12 +23,13 @@ APP_MOUNT_PATH=/site
 SITE_URL=https://vhm.com.pe/site
 CORS_ORIGIN=https://vhm.com.pe
 JWT_SECRET=<secret fuerte>
-MP_SANDBOX_PAYER_EMAIL=test_user_XXXXX@testuser.com   # solo sandbox
+CULQI_WEBHOOK_SECRET=   # opcional, firma webhook Culqi
+TRIBU_RENOVACION_CRON_SECRET=<generar con node -e "...">
 ```
 
 4. **Restart** la aplicación Node
 
-5. La primera vez que arranca, `ensureSchema.js` crea/actualiza tablas (incl. La Tribu y Mercado Pago)
+5. La primera vez que arranca, `ensureSchema.js` crea/actualiza tablas (incl. La Tribu y Culqi)
 
 ### Flujo habitual (cualquier cambio)
 
@@ -71,14 +72,15 @@ Ver guía completa: `site/DEPLOY.md`
 
 Archivos en `public/admin/` — editas HTML/JS/CSS y subes directo.
 
-## La Tribu + Mercado Pago
+## La Tribu + Culqi
 
 | Recurso | URL |
 |---------|-----|
 | La Tribu | `/site/latribu` |
-| Webhook MP | `https://vhm.com.pe/site/api/tribu-pagos/webhook` |
+| Webhook Culqi | `https://vhm.com.pe/site/api/tribu-pagos/webhook` |
+| Cron renovaciones | `https://vhm.com.pe/site/api/tribu-pagos/cron-renovaciones?token=...` |
 
-En el panel admin → **Ajustes → Mercado Pago**: Public Key, Access Token y modo (sandbox/producción).
+En el panel admin → **Ajustes → Culqi**: Public Key, Secret Key y modo (sandbox/producción).
 
 ## Health check
 

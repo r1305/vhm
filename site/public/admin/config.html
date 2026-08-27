@@ -63,7 +63,7 @@
       <button type="button" data-tab="redes">🌐 Redes Sociales</button>
       <button type="button" data-tab="facebook">🔗 Facebook</button>
       <button type="button" data-tab="suscripciones">💳 Suscripciones</button>
-      <button type="button" data-tab="mercadopago">💰 Mercado Pago</button>
+      <button type="button" data-tab="culqi">💳 Culqi</button>
     </div>
 
     <!-- EMAIL -->
@@ -261,57 +261,55 @@
       </div>
     </div>
 
-    <!-- MERCADO PAGO -->
-    <div data-panel="mercadopago" style="display:none">
+    <!-- CULQI -->
+    <div data-panel="culqi" style="display:none">
       <div class="config-grid">
         <div class="config-section">
-          <h3>💰 Integración con Mercado Pago</h3>
+          <h3>💳 Integración con Culqi</h3>
           <div class="form-group" style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
-            <label style="margin:0">Habilitar Mercado Pago</label>
+            <label style="margin:0">Habilitar Culqi</label>
             <label class="switch">
-              <input type="checkbox" id="mp-activo">
+              <input type="checkbox" id="culqi-activo">
               <span class="slider"></span>
             </label>
-            <span style="font-size:.85rem;color:var(--text-muted)" id="mp-activo-label">🔴 Inactivo</span>
+            <span style="font-size:.85rem;color:var(--text-muted)" id="culqi-activo-label">🔴 Inactivo</span>
           </div>
           <div class="form-group">
-            <label for="mp-modo">Modo</label>
-            <select id="mp-modo">
-              <option value="sandbox">🧪 Sandbox (pruebas)</option>
+            <label for="culqi-modo">Modo</label>
+            <select id="culqi-modo">
+              <option value="sandbox">🧪 Sandbox (integración)</option>
               <option value="produccion">🚀 Producción</option>
             </select>
-            <div class="field-hint">Usa Sandbox para probar pagos sin dinero real. Cambia a Producción cuando estés listo.</div>
+            <div class="field-hint">Sandbox usa llaves pk_test_ / sk_test_. Producción usa pk_live_ / sk_live_.</div>
           </div>
           <div class="form-group">
-            <label for="mp-public-key">Public Key</label>
-            <input type="text" id="mp-public-key" placeholder="APP_USR-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
-            <div class="field-hint">Clave pública de tu aplicación en Mercado Pago. Se usa en el frontend para inicializar el checkout.</div>
+            <label for="culqi-public-key">Public Key</label>
+            <input type="text" id="culqi-public-key" placeholder="pk_test_xxxxxxxxxxxxxxxx">
+            <div class="field-hint">Llave pública del CulqiPanel. Se usa en Culqi Checkout en el frontend.</div>
           </div>
           <div class="form-group">
-            <label for="mp-access-token">Access Token</label>
+            <label for="culqi-secret-key">Secret Key</label>
             <div class="mp-token-wrap">
-              <input type="password" id="mp-access-token"
-                placeholder="APP_USR-0000000000000000-000000-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx-000000000">
-              <button type="button" class="mp-token-toggle" id="btn-mp-token-toggle" title="Mostrar">👁️</button>
+              <input type="password" id="culqi-secret-key" placeholder="sk_test_xxxxxxxxxxxxxxxx">
+              <button type="button" class="mp-token-toggle" id="btn-culqi-key-toggle" title="Mostrar">👁️</button>
             </div>
-            <div class="field-hint">Token privado de tu aplicación. Nunca lo compartas ni lo expongas en el frontend.</div>
+            <div class="field-hint">Llave privada del CulqiPanel. Solo en el servidor; nunca en el frontend.</div>
           </div>
-          <div style="font-size:.85rem;margin-top:8px;min-height:1.2em" id="mp-credenciales-status"></div>
-          <div style="font-size:.8rem;color:var(--text-muted)" id="mp-fecha"></div>
+          <div style="font-size:.85rem;margin-top:8px;min-height:1.2em" id="culqi-credenciales-status"></div>
+          <div style="font-size:.8rem;color:var(--text-muted)" id="culqi-fecha"></div>
           <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap">
-            <button type="button" class="btn btn-primary" id="btn-guardar-mp">💾 Guardar configuración</button>
+            <button type="button" class="btn btn-primary" id="btn-guardar-culqi">💾 Guardar configuración</button>
           </div>
-          <div class="msg-box" id="mp-msg"></div>
+          <div class="msg-box" id="culqi-msg"></div>
           <div class="info-box" style="margin-top:20px">
             <h4>ℹ️ ¿Cómo obtener las credenciales?</h4>
-            <p>1. Ingresa a <a href="https://www.mercadopago.com.pe/developers/panel" target="_blank" rel="noopener noreferrer">mercadopago.com.pe/developers/panel</a>.</p>
-            <p>2. Crea o selecciona una aplicación.</p>
-            <p>3. En <strong>Credenciales</strong> encontrarás la <strong>Public Key</strong> y el <strong>Access Token</strong> tanto para Sandbox como para Producción.</p>
-            <p>4. Con <strong>Checkout API Orders</strong>, las credenciales de prueba también empiezan con <code>APP_USR-</code> (igual que producción). Mercado Pago las distingue por <code>live_mode</code>, no por el prefijo. Copia el par desde <strong>Pruebas → Credenciales de prueba</strong> (activar si no aparecen), nunca desde Producción.</p>
-            <p>5. Crea una <strong>cuenta de prueba Comprador</strong> en la app y define su email en el servidor como <code>MP_SANDBOX_PAYER_EMAIL</code> (debe terminar en <code>@testuser.com</code>).</p>
-            <p>6. La Tribu usa <strong>Checkout API Orders</strong> (<code>POST /v1/orders</code>) con tarjeta guardada en Customer API. La renovación automática la ejecuta un cron del servidor (no MP preapproval).</p>
-            <p>7. Configura el webhook apuntando a <code id="mp-webhook-url"></code> (eventos <strong>Orders</strong> y <strong>Pagos</strong>).</p>
-            <p>8. En el servidor define <code>SITE_URL</code>, <code>TRIBU_RENOVACION_CRON_SECRET</code> y opcionalmente <code>MP_WEBHOOK_SECRET</code>. Programa un cron HTTP diario a <code>/api/tribu-pagos/cron-renovaciones?token=...</code>.</p>
+            <p>1. Ingresa a <a href="https://integraciones.culqi.com/" target="_blank" rel="noopener noreferrer">CulqiPanel</a> (Integración o Producción).</p>
+            <p>2. Ve a <strong>Desarrollo → API Keys</strong> y copia <strong>Public Key</strong> y <strong>Secret Key</strong>.</p>
+            <p>3. La Tribu usa <strong>Culqi Checkout</strong> (token) + API de <strong>Cargos</strong> y <strong>Tarjetas</strong> para guardar medios de pago y autorenovación.</p>
+            <p>4. Configura el webhook en Culqi apuntando a <code id="culqi-webhook-url"></code> (evento <strong>charge.succeeded</strong>).</p>
+            <p>5. En el servidor define <code>SITE_URL</code>, <code>TRIBU_RENOVACION_CRON_SECRET</code> y opcionalmente <code>CULQI_WEBHOOK_SECRET</code>.</p>
+            <p>6. Programa un cron HTTP diario a <code>/api/tribu-pagos/cron-renovaciones?token=...</code> para renovaciones con tarjeta guardada.</p>
+            <p>7. Tarjeta de prueba: <code>4111 1111 1111 1111</code>, CVV <code>123</code>, vencimiento futuro.</p>
           </div>
         </div>
       </div>

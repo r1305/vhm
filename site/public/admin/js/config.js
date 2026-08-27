@@ -10,10 +10,10 @@
   let guardandoRedes = false;
   let guardandoFb = false;
   let guardandoSus = false;
-  let guardandoMp = false;
+  let guardandoCulqi = false;
   let enviandoTest = false;
-  let mpTokenVisible = false;
-  let mpModoPrev = null;
+  let culqiKeyVisible = false;
+  let culqiModoPrev = null;
 
   const el = {
     emailHost: document.getElementById('email-host'),
@@ -61,17 +61,17 @@
     susVigencia: document.getElementById('sus-vigencia'),
     susDescripcion: document.getElementById('sus-descripcion'),
     btnGuardarPlan: document.getElementById('btn-guardar-plan'),
-    mpActivo: document.getElementById('mp-activo'),
-    mpActivoLabel: document.getElementById('mp-activo-label'),
-    mpModo: document.getElementById('mp-modo'),
-    mpPublicKey: document.getElementById('mp-public-key'),
-    mpAccessToken: document.getElementById('mp-access-token'),
-    mpFecha: document.getElementById('mp-fecha'),
-    mpMsg: document.getElementById('mp-msg'),
-    mpCredencialesStatus: document.getElementById('mp-credenciales-status'),
-    mpWebhookUrl: document.getElementById('mp-webhook-url'),
-    btnGuardarMp: document.getElementById('btn-guardar-mp'),
-    btnMpTokenToggle: document.getElementById('btn-mp-token-toggle'),
+    culqiActivo: document.getElementById('culqi-activo'),
+    culqiActivoLabel: document.getElementById('culqi-activo-label'),
+    culqiModo: document.getElementById('culqi-modo'),
+    culqiPublicKey: document.getElementById('culqi-public-key'),
+    culqiSecretKey: document.getElementById('culqi-secret-key'),
+    culqiFecha: document.getElementById('culqi-fecha'),
+    culqiMsg: document.getElementById('culqi-msg'),
+    culqiCredencialesStatus: document.getElementById('culqi-credenciales-status'),
+    culqiWebhookUrl: document.getElementById('culqi-webhook-url'),
+    btnGuardarCulqi: document.getElementById('btn-guardar-culqi'),
+    btnCulqiKeyToggle: document.getElementById('btn-culqi-key-toggle'),
     testEmailDest: document.getElementById('test-email-dest'),
     testEmailMensaje: document.getElementById('test-email-mensaje'),
     btnEnviarTest: document.getElementById('btn-enviar-test'),
@@ -95,15 +95,15 @@
     el.susActivoLabel.textContent = checked ? '🟢 Habilitado' : '🔴 Deshabilitado';
   }
 
-  function updateMpActivoLabel(checked) {
-    el.mpActivoLabel.textContent = checked ? '🟢 Activo' : '🔴 Inactivo';
+  function updateCulqiActivoLabel(checked) {
+    el.culqiActivoLabel.textContent = checked ? '🟢 Activo' : '🔴 Inactivo';
   }
 
-  function setMpTokenVisible(visible) {
-    mpTokenVisible = visible;
-    el.mpAccessToken.type = visible ? 'text' : 'password';
-    el.btnMpTokenToggle.textContent = visible ? '🙈' : '👁️';
-    el.btnMpTokenToggle.title = visible ? 'Ocultar' : 'Mostrar';
+  function setCulqiKeyVisible(visible) {
+    culqiKeyVisible = visible;
+    el.culqiSecretKey.type = visible ? 'text' : 'password';
+    el.btnCulqiKeyToggle.textContent = visible ? '🙈' : '👁️';
+    el.btnCulqiKeyToggle.title = visible ? 'Ocultar' : 'Mostrar';
   }
 
   /* ── EMAIL ── */
@@ -507,86 +507,83 @@
     }
   }
 
-  function renderMpCredencialesStatus(d) {
-    if (!el.mpCredencialesStatus) return;
+  function renderCulqiCredencialesStatus(d) {
+    if (!el.culqiCredencialesStatus) return;
     const parts = [];
     if (d.credenciales_ok === true) {
-      parts.push('✅ Credenciales válidas para modo ' + (d.modo === 'sandbox' ? 'Sandbox (prueba)' : 'Producción'));
-      el.mpCredencialesStatus.style.color = '#15803d';
+      parts.push('✅ Credenciales válidas para modo ' + (d.modo === 'sandbox' ? 'Sandbox (integración)' : 'Producción'));
+      el.culqiCredencialesStatus.style.color = '#15803d';
     } else if (d.credenciales_ok === false) {
       parts.push('⚠️ ' + (d.credenciales_error || 'Las credenciales no coinciden con el modo seleccionado'));
-      el.mpCredencialesStatus.style.color = '#b91c1c';
+      el.culqiCredencialesStatus.style.color = '#b91c1c';
     } else {
-      el.mpCredencialesStatus.textContent = '';
+      el.culqiCredencialesStatus.textContent = '';
       return;
     }
-    if (d.mp_live_mode === true) {
-      parts.push('MP detecta token: PRODUCCIÓN');
-    } else if (d.mp_live_mode === false || d.is_test_user) {
-      parts.push('MP detecta token: PRUEBA (test_user)');
+    if (d.culqi_live_mode === true) {
+      parts.push('Llaves live (producción)');
+    } else if (d.culqi_live_mode === false || d.is_test) {
+      parts.push('Llaves test (integración)');
     }
-    if (d.mp_email) {
-      parts.push('Cuenta MP: ' + d.mp_email);
+    if (d.secret_key_suffix) {
+      parts.push('Secret termina en …' + d.secret_key_suffix);
     }
-    if (d.access_token_suffix) {
-      parts.push('Token termina en …' + d.access_token_suffix);
-    }
-    el.mpCredencialesStatus.textContent = parts.join(' · ');
+    el.culqiCredencialesStatus.textContent = parts.join(' · ');
   }
 
-  /* ── MERCADO PAGO ── */
-  async function cargarMp() {
-    el.mpWebhookUrl.textContent = webhookUrl();
+  /* ── CULQI ── */
+  async function cargarCulqi() {
+    el.culqiWebhookUrl.textContent = webhookUrl();
     try {
-      const res = await AdminApi.apiFetch('/config-mercadopago', { headers: AdminApi.authHeaders() });
+      const res = await AdminApi.apiFetch('/config-culqi', { headers: AdminApi.authHeaders() });
       const d = await res.json();
-      el.mpActivo.checked = !!d.activo;
-      updateMpActivoLabel(el.mpActivo.checked);
-      el.mpModo.value = d.modo || 'sandbox';
-      mpModoPrev = el.mpModo.value;
-      el.mpPublicKey.value = d.public_key || '';
-      el.mpAccessToken.value = d.access_token || '';
-      el.mpFecha.textContent = d.fecha_actualizacion ? fmtFecha(d.fecha_actualizacion) : '';
-      renderMpCredencialesStatus(d);
+      el.culqiActivo.checked = !!d.activo;
+      updateCulqiActivoLabel(el.culqiActivo.checked);
+      el.culqiModo.value = d.modo || 'sandbox';
+      culqiModoPrev = el.culqiModo.value;
+      el.culqiPublicKey.value = d.public_key || '';
+      el.culqiSecretKey.value = d.secret_key || '';
+      el.culqiFecha.textContent = d.fecha_actualizacion ? fmtFecha(d.fecha_actualizacion) : '';
+      renderCulqiCredencialesStatus(d);
     } catch {
-      AdminUtils.mostrarMsg(el.mpMsg, 'Error al cargar configuración', false);
+      AdminUtils.mostrarMsg(el.culqiMsg, 'Error al cargar configuración', false);
     }
   }
 
-  async function guardarMp() {
-    if (guardandoMp) return;
-    if (!el.mpPublicKey.value.trim() || !el.mpAccessToken.value.trim()) {
+  async function guardarCulqi() {
+    if (guardandoCulqi) return;
+    if (!el.culqiPublicKey.value.trim() || !el.culqiSecretKey.value.trim()) {
       AdminUtils.mostrarMsg(
-        el.mpMsg,
-        'Public Key y Access Token son obligatorios. Al usar Sandbox, copia ambos desde "Credenciales de prueba" en Mercado Pago.',
+        el.culqiMsg,
+        'Public Key y Secret Key son obligatorios. En sandbox usa pk_test_ / sk_test_ del CulqiPanel.',
         false
       );
       return;
     }
-    guardandoMp = true;
-    el.btnGuardarMp.disabled = true;
-    el.btnGuardarMp.textContent = 'Guardando...';
+    guardandoCulqi = true;
+    el.btnGuardarCulqi.disabled = true;
+    el.btnGuardarCulqi.textContent = 'Guardando...';
     try {
       const body = {
-        activo: el.mpActivo.checked,
-        modo: el.mpModo.value,
-        public_key: el.mpPublicKey.value,
-        access_token: el.mpAccessToken.value,
+        activo: el.culqiActivo.checked,
+        modo: el.culqiModo.value,
+        public_key: el.culqiPublicKey.value,
+        secret_key: el.culqiSecretKey.value,
       };
-      const res = await AdminApi.apiFetch('/config-mercadopago', {
+      const res = await AdminApi.apiFetch('/config-culqi', {
         method: 'PUT',
         headers: AdminApi.authHeaders(),
         body: JSON.stringify(body),
       });
       const d = await res.json();
-      AdminUtils.mostrarMsg(el.mpMsg, res.ok ? d.message : d.error, res.ok);
-      if (res.ok) await cargarMp();
+      AdminUtils.mostrarMsg(el.culqiMsg, res.ok ? d.message : d.error, res.ok);
+      if (res.ok) await cargarCulqi();
     } catch {
-      AdminUtils.mostrarMsg(el.mpMsg, 'Error de conexión', false);
+      AdminUtils.mostrarMsg(el.culqiMsg, 'Error de conexión', false);
     } finally {
-      guardandoMp = false;
-      el.btnGuardarMp.disabled = false;
-      el.btnGuardarMp.textContent = '💾 Guardar configuración';
+      guardandoCulqi = false;
+      el.btnGuardarCulqi.disabled = false;
+      el.btnGuardarCulqi.textContent = '💾 Guardar configuración';
     }
   }
 
@@ -600,7 +597,7 @@
     else if (tab === 'redes') cargarRedes();
     else if (tab === 'facebook') cargarFacebook();
     else if (tab === 'suscripciones') cargarSuscripciones();
-    else if (tab === 'mercadopago') cargarMp();
+    else if (tab === 'culqi') cargarCulqi();
   };
 
   function bindEvents() {
@@ -627,27 +624,27 @@
     el.btnGuardarPlan.addEventListener('click', guardarPlan);
     el.susPlanesWrap.addEventListener('click', onSusPlanesClick);
 
-    el.mpActivo.addEventListener('change', function () {
-      updateMpActivoLabel(this.checked);
+    el.culqiActivo.addEventListener('change', function () {
+      updateCulqiActivoLabel(this.checked);
     });
-    el.mpModo.addEventListener('change', function () {
-      if (mpModoPrev !== null && mpModoPrev !== this.value) {
-        el.mpPublicKey.value = '';
-        el.mpAccessToken.value = '';
+    el.culqiModo.addEventListener('change', function () {
+      if (culqiModoPrev !== null && culqiModoPrev !== this.value) {
+        el.culqiPublicKey.value = '';
+        el.culqiSecretKey.value = '';
         AdminUtils.mostrarMsg(
-          el.mpMsg,
+          el.culqiMsg,
           this.value === 'sandbox'
-            ? 'Pega Public Key y Access Token de "Credenciales de prueba" (no uses las de producción).'
-            : 'Pega Public Key y Access Token de "Credenciales de producción".',
+            ? 'Pega Public Key y Secret Key de Integración (pk_test_ / sk_test_).'
+            : 'Pega Public Key y Secret Key de Producción (pk_live_ / sk_live_).',
           false
         );
-        if (el.mpCredencialesStatus) el.mpCredencialesStatus.textContent = '';
+        if (el.culqiCredencialesStatus) el.culqiCredencialesStatus.textContent = '';
       }
-      mpModoPrev = this.value;
+      culqiModoPrev = this.value;
     });
-    el.btnGuardarMp.addEventListener('click', guardarMp);
-    el.btnMpTokenToggle.addEventListener('click', function () {
-      setMpTokenVisible(!mpTokenVisible);
+    el.btnGuardarCulqi.addEventListener('click', guardarCulqi);
+    el.btnCulqiKeyToggle.addEventListener('click', function () {
+      setCulqiKeyVisible(!culqiKeyVisible);
     });
   }
 

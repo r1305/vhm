@@ -1,31 +1,30 @@
 /**
- * Suscripciones La Tribu: activación, renovación automática (Orders API + tarjeta guardada).
+ * Suscripciones La Tribu: activación, renovación automática (Culqi + tarjeta guardada).
  */
 const pool = require('./db');
 const {
-  getMpConfig,
+  getCulqiConfig,
   buildRenewExternalRef,
-  buildOrderBody,
-  createMpOrder,
-  getWebhookUrl,
-  resolvePaymentOutcome,
-  isOrderPaid,
+  buildChargeBody,
+  createCulqiCharge,
+  resolveChargeOutcome,
+  isChargePaid,
   parseExternalRef,
-} = require('./tribuMpOrders');
+} = require('./tribuCulqi');
 
-async function paymentAlreadyProcessed(orderId) {
+async function paymentAlreadyProcessed(chargeId) {
   const [[row]] = await pool.execute(
-    'SELECT mp_payment_id FROM tribu_mp_payment_events WHERE mp_payment_id = ? LIMIT 1',
-    [String(orderId)]
+    'SELECT culqi_charge_id FROM tribu_culqi_payment_events WHERE culqi_charge_id = ? LIMIT 1',
+    [String(chargeId)]
   );
   return !!row;
 }
 
-async function recordPaymentEvent(orderId, tribuSuscripcionId) {
+async function recordPaymentEvent(chargeId, tribuSuscripcionId) {
   try {
     await pool.execute(
-      'INSERT INTO tribu_mp_payment_events (mp_payment_id, tribu_suscripcion_id) VALUES (?, ?)',
-      [String(orderId), tribuSuscripcionId]
+      'INSERT INTO tribu_culqi_payment_events (culqi_charge_id, tribu_suscripcion_id) VALUES (?, ?)',
+      [String(chargeId), tribuSuscripcionId]
     );
     return true;
   } catch (err) {
@@ -37,16 +36,15 @@ async function recordPaymentEvent(orderId, tribuSuscripcionId) {
 async function activateNewSubscription({
   userId,
   planId,
-  orderId,
-  paymentId,
+  chargeId,
   customerId,
   cardId,
-  mpCardBrand,
+  culqiCardBrand,
   vigenciaDias,
 }) {
-  const ref = String(orderId || paymentId);
+  const ref = String(chargeId);
   const [[existing]] = await pool.execute(
-    'SELECT id FROM tribu_suscripciones WHERE tribu_user_id = ? AND mp_order_id = ? LIMIT 1',
+    'SELECT id FROM tribu_suscripciones WHERE tribu_user_id = ? AND culqi_charge_id = ? LIMIT 1',
     [userId, ref]
   );
   if (existing) return existing.id;
@@ -59,11 +57,11 @@ async function activateNewSubscription({
   const [result] = await pool.execute(
     `INSERT INTO tribu_suscripciones
       (tribu_user_id, suscripcion_id, activo, fecha_inicio, fecha_fin,
-       mp_payment_id, mp_order_id, mp_customer_id, mp_card_id, mp_card_brand, auto_renovacion, renovacion_intentos)
-     VALUES (?, ?, 1, CURDATE(), DATE_ADD(CURDATE(), INTERVAL ? DAY), ?, ?, ?, ?, ?, ?, 0)`,
+       culqi_charge_id, culqi_customer_id, culqi_card_id, culqi_card_brand, auto_renovacion, renovacion_intentos)
+     VALUES (?, ?, 1, CURDATE(), DATE_ADD(CURDATE(), INTERVAL ? DAY), ?, ?, ?, ?, ?, 0)`,
     [
-      userId, planId, dias, String(paymentId || ref), ref,
-      customerId, cardId, mpCardBrand || null,
+      userId, planId, dias, ref,
+      customerId, cardId, culqiCardBrand || null,
       customerId && cardId ? 1 : 0,
     ]
   );
@@ -72,8 +70,8 @@ async function activateNewSubscription({
   return result.insertId;
 }
 
-async function extendSubscriptionRenewal(tribuSubId, orderId, paymentId, vigenciaDias) {
-  const ref = String(orderId || paymentId);
+async function extendSubscriptionRenewal(tribuSubId, chargeId, vigenciaDias) {
+  const ref = String(chargeId);
   if (await paymentAlreadyProcessed(ref)) return false;
 
   const dias = vigenciaDias || 30;
@@ -81,12 +79,11 @@ async function extendSubscriptionRenewal(tribuSubId, orderId, paymentId, vigenci
     `UPDATE tribu_suscripciones
      SET fecha_fin = DATE_ADD(GREATEST(fecha_fin, CURDATE()), INTERVAL ? DAY),
          activo = 1,
-         mp_order_id = ?,
-         mp_payment_id = ?,
+         culqi_charge_id = ?,
          renovacion_intentos = 0,
          next_renovacion_intento = NULL
      WHERE id = ?`,
-    [dias, ref, String(paymentId || ref), tribuSubId]
+    [dias, ref, tribuSubId]
   );
   await recordPaymentEvent(ref, tribuSubId);
   return true;
@@ -103,13 +100,14 @@ async function markRenewalFailed(tribuSubId, errorMsg) {
   console.error(`[tribu-renovacion] fallo sub=${tribuSubId}: ${errorMsg}`);
 }
 
-async function applyApprovedOrder(orderResult) {
-  const outcome = resolvePaymentOutcome(orderResult);
+async function applyApprovedCharge(charge) {
+  const outcome = resolveChargeOutcome(charge);
   if (outcome.status !== 'approved') return;
-  const orderId = outcome.order_id;
-  if (!orderId || await paymentAlreadyProcessed(orderId)) return;
+  const chargeId = outcome.charge_id;
+  if (!chargeId || await paymentAlreadyProcessed(chargeId)) return;
 
-  const parsed = parseExternalRef(orderResult.external_reference);
+  const externalRef = charge?.metadata?.external_reference;
+  const parsed = parseExternalRef(externalRef);
 
   if (parsed.type === 'renew' && parsed.tribuSubId) {
     const [[sub]] = await pool.execute(
@@ -120,7 +118,7 @@ async function applyApprovedOrder(orderResult) {
       [parsed.tribuSubId]
     );
     if (sub) {
-      await extendSubscriptionRenewal(sub.id, orderId, outcome.payment_id, sub.vigencia_dias);
+      await extendSubscriptionRenewal(sub.id, chargeId, sub.vigencia_dias);
     }
     return;
   }
@@ -135,19 +133,18 @@ async function applyApprovedOrder(orderResult) {
   if (!plan) return;
 
   const [[existingSub]] = await pool.execute(
-    'SELECT id FROM tribu_suscripciones WHERE tribu_user_id = ? AND mp_order_id = ? LIMIT 1',
-    [userId, String(orderId)]
+    'SELECT id FROM tribu_suscripciones WHERE tribu_user_id = ? AND culqi_charge_id = ? LIMIT 1',
+    [userId, String(chargeId)]
   );
   if (existingSub) {
-    await recordPaymentEvent(orderId, existingSub.id);
+    await recordPaymentEvent(chargeId, existingSub.id);
     return;
   }
 
   await activateNewSubscription({
     userId,
     planId,
-    orderId,
-    paymentId: outcome.payment_id,
+    chargeId,
     customerId: null,
     cardId: null,
     vigenciaDias: plan.vigencia_dias,
@@ -155,7 +152,7 @@ async function applyApprovedOrder(orderResult) {
 }
 
 async function procesarRenovacionSuscripcion(row, cfg) {
-  if (!row.mp_customer_id || !row.mp_card_id) {
+  if (!row.culqi_customer_id || !row.culqi_card_id) {
     throw new Error('Sin tarjeta guardada para renovación');
   }
 
@@ -164,24 +161,26 @@ async function procesarRenovacionSuscripcion(row, cfg) {
     ? { type: row.identification_type, number: row.identification_number }
     : null;
 
-  const orderBody = buildOrderBody({
+  const chargeBody = buildChargeBody({
     plan: { nombre: row.plan_nombre, precio: row.precio },
     email: row.email,
+    user: {
+      nombre: row.nombre,
+      apellido: row.apellido,
+      telefono: row.telefono,
+    },
     identification,
     externalRef,
-    callbackUrl: getWebhookUrl(),
-    paymentMethodId: row.mp_card_brand || 'visa',
-    paymentType: 'credit_card',
-    customerId: row.mp_customer_id,
-    cardId: row.mp_card_id,
+    sourceId: row.culqi_card_id,
+    description: `Renovación ${row.plan_nombre}`,
   });
 
-  const orderResult = await createMpOrder(cfg.access_token, orderBody, cfg.modo);
-  const outcome = resolvePaymentOutcome(orderResult);
+  const charge = await createCulqiCharge(cfg.secret_key, chargeBody);
+  const outcome = resolveChargeOutcome(charge);
 
   if (outcome.status === 'approved') {
-    await extendSubscriptionRenewal(row.id, outcome.order_id, outcome.payment_id, row.vigencia_dias);
-    return { id: row.id, ok: true, order_id: outcome.order_id };
+    await extendSubscriptionRenewal(row.id, outcome.charge_id, row.vigencia_dias);
+    return { id: row.id, ok: true, charge_id: outcome.charge_id };
   }
 
   await markRenewalFailed(row.id, outcome.status_detail || outcome.status);
@@ -191,16 +190,16 @@ async function procesarRenovacionSuscripcion(row, cfg) {
 async function runRenovacionesSuscripciones() {
   let cfg;
   try {
-    cfg = await getMpConfig();
+    cfg = await getCulqiConfig();
   } catch {
-    return { ok: false, reason: 'mercadopago_inactivo', processed: 0, results: [] };
+    return { ok: false, reason: 'culqi_inactivo', processed: 0, results: [] };
   }
 
   const [rows] = await pool.execute(
-    `SELECT ts.id, ts.mp_customer_id, ts.mp_card_id, ts.mp_card_brand,
+    `SELECT ts.id, ts.culqi_customer_id, ts.culqi_card_id, ts.culqi_card_brand,
             ts.renovacion_intentos,
             s.nombre AS plan_nombre, s.precio, s.vigencia_dias,
-            u.email,
+            u.email, u.nombre, u.apellido, u.telefono,
             tp.identification_type, tp.identification_number
      FROM tribu_suscripciones ts
      JOIN suscripciones s ON s.id = ts.suscripcion_id
@@ -208,8 +207,8 @@ async function runRenovacionesSuscripciones() {
      LEFT JOIN tribu_payer_profiles tp ON tp.tribu_user_id = ts.tribu_user_id
      WHERE ts.auto_renovacion = 1
        AND ts.activo = 1
-       AND ts.mp_customer_id IS NOT NULL
-       AND ts.mp_card_id IS NOT NULL
+       AND ts.culqi_customer_id IS NOT NULL
+       AND ts.culqi_card_id IS NOT NULL
        AND ts.fecha_fin <= CURDATE()
        AND ts.renovacion_intentos < 4
        AND (ts.next_renovacion_intento IS NULL OR ts.next_renovacion_intento <= NOW())
@@ -233,7 +232,7 @@ async function runRenovacionesSuscripciones() {
 module.exports = {
   activateNewSubscription,
   extendSubscriptionRenewal,
-  applyApprovedOrder,
+  applyApprovedCharge,
   runRenovacionesSuscripciones,
-  isOrderPaid,
+  isChargePaid,
 };

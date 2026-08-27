@@ -1,87 +1,64 @@
 const { Router } = require('express');
-const crypto = require('crypto');
 const pool = require('./db');
 const { tribuAuthMiddleware } = require('./tribuAuthRoutes');
 const {
-  getMpConfig,
+  getCulqiConfig,
   buildExternalRef,
-  getWebhookUrl,
   resolvePayerEmail,
-  extractBrickPayload,
-  mapMpError,
+  extractCheckoutPayload,
+  mapCulqiError,
   httpStatusForError,
-  buildOrderBody,
-  createMpOrder,
-  fetchMpOrder,
-  resolvePaymentOutcome,
-  vaultCustomerCard,
-  validateMpCredentialsForModo,
-} = require('./tribuMpOrders');
+  buildChargeBody,
+  createCulqiCharge,
+  fetchCulqiCharge,
+  resolveChargeOutcome,
+  vaultCustomerCardSafe,
+  validateCulqiCredentials,
+  validateWebhookSignature,
+} = require('./tribuCulqi');
+const {
+  getSavedCardForUser,
+  upsertSavedCard,
+} = require('./tribuSavedCards');
 const {
   activateNewSubscription,
-  applyApprovedOrder,
+  applyApprovedCharge,
   runRenovacionesSuscripciones,
 } = require('./tribuRenovaciones');
 
 const router = Router();
 
-function validateMpCredentials(cfg) {
+function validateCulqiConfig(cfg) {
   const pk = String(cfg.public_key || '').trim();
-  const at = String(cfg.access_token || '').trim();
-  if (!pk || !at) {
-    throw new Error('Configura Public Key y Access Token de Mercado Pago en el panel de administración.');
+  const sk = String(cfg.secret_key || '').trim();
+  if (!pk || !sk) {
+    throw new Error('Configura Public Key y Secret Key de Culqi en el panel de administración.');
   }
-  const mpKey = /^(APP_USR-|TEST-)/;
-  if (!mpKey.test(pk)) {
-    throw new Error('Public Key inválida. Debe empezar con APP_USR- (credenciales actuales) o TEST- (legado).');
-  }
-  if (!mpKey.test(at)) {
-    throw new Error('Access Token inválido. Debe empezar con APP_USR- (credenciales actuales) o TEST- (legado).');
-  }
-  const pkLegacy = pk.startsWith('TEST-');
-  const atLegacy = at.startsWith('TEST-');
-  if (pkLegacy !== atLegacy) {
-    throw new Error('Public Key y Access Token deben ser del mismo tipo (ambos APP_USR- o ambos TEST-).');
-  }
+  validateCulqiCredentials(sk, pk, cfg.modo);
 }
 
-async function savePayerProfile(userId, identificationType, identificationNumber) {
-  if (!identificationType || !identificationNumber) return;
+async function savePayerProfile(userId, identificationType, identificationNumber, billingEmail) {
+  const billing = billingEmail
+    ? String(billingEmail).trim().toLowerCase().slice(0, 150)
+    : null;
+  if (billing && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(billing)) {
+    throw new Error('Correo de facturación inválido');
+  }
+  if (!identificationType && !identificationNumber && !billing) return;
   await pool.execute(
-    `INSERT INTO tribu_payer_profiles (tribu_user_id, identification_type, identification_number)
-     VALUES (?, ?, ?)
-     ON DUPLICATE KEY UPDATE identification_type = VALUES(identification_type),
-                             identification_number = VALUES(identification_number)`,
-    [userId, identificationType, String(identificationNumber).trim()]
+    `INSERT INTO tribu_payer_profiles (tribu_user_id, identification_type, identification_number, billing_email)
+     VALUES (?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE
+       identification_type = COALESCE(VALUES(identification_type), identification_type),
+       identification_number = COALESCE(VALUES(identification_number), identification_number),
+       billing_email = COALESCE(VALUES(billing_email), billing_email)`,
+    [
+      userId,
+      identificationType || null,
+      identificationNumber ? String(identificationNumber).trim() : null,
+      billing,
+    ]
   );
-}
-
-function validateWebhookSignature(req) {
-  const secret = process.env.MP_WEBHOOK_SECRET;
-  if (!secret) return true;
-
-  const xSignature = req.headers['x-signature'];
-  const xRequestId = req.headers['x-request-id'];
-  if (!xSignature || !xRequestId) return false;
-
-  const parts = Object.fromEntries(
-    xSignature.split(',').map((part) => {
-      const [key, value] = part.split('=');
-      return [key.trim(), value.trim()];
-    })
-  );
-  const ts = parts.ts;
-  const received = parts.v1;
-  if (!ts || !received) return false;
-
-  const dataId = req.body?.data?.id;
-  const manifest = `id:${dataId};request-id:${xRequestId};ts:${ts};`;
-  const expected = crypto.createHmac('sha256', secret).update(manifest).digest('hex');
-  try {
-    return crypto.timingSafeEqual(Buffer.from(received), Buffer.from(expected));
-  } catch {
-    return false;
-  }
 }
 
 function validateCronToken(req) {
@@ -89,6 +66,7 @@ function validateCronToken(req) {
   if (!secret) return false;
   const token = req.query.token || req.headers['x-cron-token'];
   if (!token || typeof token !== 'string') return false;
+  const crypto = require('crypto');
   try {
     return crypto.timingSafeEqual(Buffer.from(token), Buffer.from(secret));
   } catch {
@@ -96,19 +74,45 @@ function validateCronToken(req) {
   }
 }
 
-// POST /api/tribu-pagos/procesar-pago — Card Brick + Orders API + tarjeta guardada
+function parseBool(v) {
+  return v === true || v === 1 || v === '1' || v === 'true';
+}
+
+async function loadPayerIdentification(userId) {
+  const [[profile]] = await pool.execute(
+    `SELECT identification_type, identification_number
+     FROM tribu_payer_profiles WHERE tribu_user_id = ? LIMIT 1`,
+    [userId]
+  );
+  if (!profile?.identification_type || !profile?.identification_number) return null;
+  return {
+    type: profile.identification_type,
+    number: String(profile.identification_number).trim(),
+  };
+}
+
+async function fetchTribuUser(userId) {
+  const [[user]] = await pool.execute(
+    'SELECT nombre, apellido, email, telefono FROM tribu_users WHERE id = ? LIMIT 1',
+    [userId]
+  );
+  return user || {};
+}
+
+// POST /api/tribu-pagos/procesar-pago — Culqi Checkout token + tarjeta guardada
 router.post('/procesar-pago', tribuAuthMiddleware, async (req, res) => {
   try {
-    const { suscripcion_id, ...rawForm } = req.body;
+    const {
+      suscripcion_id,
+      billing_email: billingEmailRaw,
+      guardar_tarjeta: guardarTarjetaRaw,
+      tarjeta_id: tarjetaIdRaw,
+      ...rawForm
+    } = req.body;
     if (!suscripcion_id) return res.status(400).json({ error: 'suscripcion_id requerido' });
 
-    const brick = extractBrickPayload(rawForm);
-    if (!brick.token || !brick.paymentMethodId) {
-      return res.status(400).json({ error: 'Datos de tarjeta incompletos' });
-    }
-    if (!brick.identificationType || !brick.identificationNumber) {
-      return res.status(400).json({ error: 'Documento de identidad requerido (DNI, CE o RUC)' });
-    }
+    const wantsSaveCard = parseBool(guardarTarjetaRaw);
+    const savedCardRowId = tarjetaIdRaw ? Number.parseInt(tarjetaIdRaw, 10) : null;
 
     const [[plan]] = await pool.execute(
       'SELECT id, nombre, precio, vigencia_dias FROM suscripciones WHERE id = ?',
@@ -116,67 +120,124 @@ router.post('/procesar-pago', tribuAuthMiddleware, async (req, res) => {
     );
     if (!plan) return res.status(404).json({ error: 'Plan no encontrado' });
 
-    const cfg = await getMpConfig();
-    validateMpCredentials(cfg);
-    await validateMpCredentialsForModo(cfg.access_token, cfg.public_key, cfg.modo);
+    const cfg = await getCulqiConfig();
+    validateCulqiConfig(cfg);
 
-    const email = resolvePayerEmail(brick.email, req.tribuUser.email, cfg.modo);
-    const externalRef = buildExternalRef(req.tribuUser.id, plan.id);
-    const callbackUrl = getWebhookUrl();
-    const identification = {
-      type: brick.identificationType,
-      number: String(brick.identificationNumber).trim(),
-    };
-
-    const useCardVault = cfg.modo === 'produccion';
+    const tribuUser = await fetchTribuUser(req.tribuUser.id);
+    let checkout = null;
+    let identification = null;
+    let sourceId = null;
     let customerId = null;
     let cardId = null;
+    let culqiCardBrand = null;
+    let vaultMeta = null;
+    let usedSavedCard = false;
 
-    if (useCardVault) {
-      const vault = await vaultCustomerCard({
-        accessToken: cfg.access_token,
-        mpModo: cfg.modo,
-        email,
-        token: brick.token,
-      });
-      customerId = vault.customerId;
-      cardId = vault.cardId;
+    if (savedCardRowId) {
+      const saved = await getSavedCardForUser(req.tribuUser.id, savedCardRowId);
+      if (!saved) return res.status(404).json({ error: 'Tarjeta guardada no encontrada' });
+      identification = await loadPayerIdentification(req.tribuUser.id);
+      if (!identification) {
+        return res.status(400).json({
+          error: 'Para pagar con una tarjeta guardada necesitas haber registrado tu documento (DNI, CE o RUC) en un pago anterior.',
+        });
+      }
+      customerId = saved.culqi_customer_id;
+      cardId = saved.culqi_card_id;
+      culqiCardBrand = saved.culqi_card_brand;
+      sourceId = saved.culqi_card_id;
+      usedSavedCard = true;
+    } else {
+      checkout = extractCheckoutPayload(rawForm);
+      if (!checkout.tokenId) {
+        return res.status(400).json({ error: 'Token de Culqi requerido' });
+      }
+      if (!checkout.identificationType || !checkout.identificationNumber) {
+        return res.status(400).json({ error: 'Documento de identidad requerido (DNI, CE o RUC)' });
+      }
+      identification = {
+        type: checkout.identificationType,
+        number: String(checkout.identificationNumber).trim(),
+      };
+
+      const emailForVault = resolvePayerEmail(
+        checkout.email,
+        req.tribuUser.email,
+        cfg.modo,
+        billingEmailRaw
+      );
+
+      if (wantsSaveCard) {
+        const vaultResult = await vaultCustomerCardSafe({
+          secretKey: cfg.secret_key,
+          email: emailForVault,
+          tokenId: checkout.tokenId,
+          user: tribuUser,
+          identification,
+        });
+        if (vaultResult.ok) {
+          customerId = vaultResult.vault.customerId;
+          cardId = vaultResult.vault.cardId;
+          culqiCardBrand = vaultResult.vault.cardBrand;
+          vaultMeta = vaultResult.vault;
+          sourceId = vaultResult.vault.cardId;
+        } else {
+          sourceId = checkout.tokenId;
+        }
+      } else {
+        sourceId = checkout.tokenId;
+      }
     }
 
-    const orderBody = buildOrderBody({
+    const email = resolvePayerEmail(
+      checkout?.email,
+      req.tribuUser.email,
+      cfg.modo,
+      billingEmailRaw
+    );
+    const externalRef = buildExternalRef(req.tribuUser.id, plan.id);
+
+    const chargeBody = buildChargeBody({
       plan,
       email,
+      user: tribuUser,
       identification,
       externalRef,
-      callbackUrl,
-      paymentMethodId: brick.paymentMethodId,
-      paymentType: brick.paymentType,
-      token: useCardVault ? undefined : brick.token,
-      customerId,
-      cardId,
+      sourceId,
+      description: plan.nombre,
     });
 
-    const orderResult = await createMpOrder(cfg.access_token, orderBody, cfg.modo);
-    const outcome = resolvePaymentOutcome(orderResult);
+    const charge = await createCulqiCharge(cfg.secret_key, chargeBody);
+    const outcome = resolveChargeOutcome(charge);
+    const hasVaultForRenewal = !!(customerId && cardId);
 
     if (outcome.status === 'approved') {
       try {
-        await savePayerProfile(req.tribuUser.id, brick.identificationType, brick.identificationNumber);
+        if (checkout) {
+          await savePayerProfile(
+            req.tribuUser.id,
+            checkout.identificationType,
+            checkout.identificationNumber,
+            cfg.modo === 'produccion' ? email : null
+          );
+        }
+        if (vaultMeta && wantsSaveCard) {
+          await upsertSavedCard(req.tribuUser.id, vaultMeta);
+        }
         await activateNewSubscription({
           userId: req.tribuUser.id,
           planId: suscripcion_id,
-          orderId: outcome.order_id,
-          paymentId: outcome.payment_id,
+          chargeId: outcome.charge_id,
           customerId,
           cardId,
-          mpCardBrand: brick.paymentMethodId,
+          culqiCardBrand,
           vigenciaDias: plan.vigencia_dias,
         });
       } catch (dbErr) {
         console.error('[tribu-pagos procesar-pago] suscripcion', dbErr.message);
         return res.status(500).json({
           error: 'El pago fue aprobado pero no se pudo activar la suscripción. Contacta soporte.',
-          order_id: outcome.order_id,
+          charge_id: outcome.charge_id,
           status: outcome.status,
         });
       }
@@ -184,24 +245,25 @@ router.post('/procesar-pago', tribuAuthMiddleware, async (req, res) => {
 
     res.json({
       ...outcome,
-      recurring: useCardVault,
-      auto_renovacion: outcome.status === 'approved' && useCardVault,
+      auto_renovacion: outcome.status === 'approved' && hasVaultForRenewal,
+      tarjeta_guardada: !!(vaultMeta && wantsSaveCard) || usedSavedCard,
+      vault_intentado: wantsSaveCard && !usedSavedCard,
+      vault_ok: !!(vaultMeta && wantsSaveCard),
     });
   } catch (err) {
-    const msg = mapMpError(err);
+    const msg = mapCulqiError(err);
     console.error('[tribu-pagos procesar-pago]', msg, err.status || '', err.payload || err.message || '');
     res.status(httpStatusForError(err)).json({ error: msg });
   }
 });
 
-// POST /api/tribu-pagos/cancelar-renovacion — solo desactiva flag local (Orders API)
 router.post('/cancelar-renovacion', tribuAuthMiddleware, async (req, res) => {
   try {
     const suscripcionId = Number.parseInt(req.body.suscripcion_id, 10);
     if (!suscripcionId) return res.status(400).json({ error: 'suscripcion_id requerido' });
 
     const [[row]] = await pool.execute(
-      `SELECT ts.id, ts.auto_renovacion, ts.mp_card_id,
+      `SELECT ts.id, ts.auto_renovacion, ts.culqi_card_id,
               (ts.activo = 1 AND ts.fecha_fin >= CURDATE()) AS vigente
        FROM tribu_suscripciones ts
        WHERE ts.id = ? AND ts.tribu_user_id = ? LIMIT 1`,
@@ -228,7 +290,6 @@ router.post('/cancelar-renovacion', tribuAuthMiddleware, async (req, res) => {
   }
 });
 
-// GET|POST /api/tribu-pagos/cron-renovaciones?token=... — cobros automáticos (cPanel cron)
 async function handleCronRenovaciones(req, res) {
   if (!validateCronToken(req)) {
     return res.status(401).json({ error: 'Token inválido' });
@@ -245,7 +306,6 @@ async function handleCronRenovaciones(req, res) {
 router.get('/cron-renovaciones', handleCronRenovaciones);
 router.post('/cron-renovaciones', handleCronRenovaciones);
 
-// POST /api/tribu-pagos/webhook — eventos Orders (+ Pagos como respaldo)
 router.post('/webhook', async (req, res) => {
   try {
     if (!validateWebhookSignature(req)) {
@@ -253,33 +313,23 @@ router.post('/webhook', async (req, res) => {
       return res.sendStatus(401);
     }
 
-    const { type, data, action } = req.body;
-    const resourceId = data?.id;
-    if (!resourceId) return res.sendStatus(200);
+    const eventType = req.body?.type || req.body?.event || '';
+    const chargeData = req.body?.data;
+    const chargeId = chargeData?.id || req.body?.id;
 
-    const cfg = await getMpConfig();
-    const actionStr = String(action || '');
+    if (!chargeId && !chargeData) return res.sendStatus(200);
 
-    const isOrderEvent =
-      type === 'order' || actionStr.startsWith('order.') || req.query?.topic === 'order';
-    const isPaymentEvent = type === 'payment' || actionStr.startsWith('payment.');
+    const cfg = await getCulqiConfig();
+    const isChargeSuccess =
+      String(eventType).includes('charge.succeeded') ||
+      String(eventType).includes('charge.success') ||
+      chargeData?.outcome?.type === 'venta_exitosa';
 
-    if (isOrderEvent) {
-      const orderResult = await fetchMpOrder(cfg.access_token, resourceId, cfg.modo);
-      await applyApprovedOrder(orderResult);
-    } else if (isPaymentEvent) {
-      const resPay = await fetch(
-        `https://api.mercadopago.com/v1/payments/${encodeURIComponent(resourceId)}`,
-        { headers: { Authorization: `Bearer ${cfg.access_token}` } }
-      );
-      const payment = await resPay.json().catch(() => ({}));
-      if (payment.status === 'approved') {
-        const orderId = payment.order?.id || payment.metadata?.order_id;
-        if (orderId) {
-          const orderResult = await fetchMpOrder(cfg.access_token, orderId, cfg.modo);
-          await applyApprovedOrder(orderResult);
-        }
-      }
+    if (isChargeSuccess) {
+      const charge = chargeData?.object === 'charge'
+        ? chargeData
+        : await fetchCulqiCharge(cfg.secret_key, chargeId);
+      await applyApprovedCharge(charge);
     }
 
     res.sendStatus(200);
