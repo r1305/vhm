@@ -296,6 +296,7 @@
             </div>
             <div class="field-hint">Token privado de tu aplicación. Nunca lo compartas ni lo expongas en el frontend.</div>
           </div>
+          <div style="font-size:.85rem;margin-top:8px;min-height:1.2em" id="mp-credenciales-status"></div>
           <div style="font-size:.8rem;color:var(--text-muted)" id="mp-fecha"></div>
           <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap">
             <button type="button" class="btn btn-primary" id="btn-guardar-mp">💾 Guardar configuración</button>
@@ -306,7 +307,7 @@
             <p>1. Ingresa a <a href="https://www.mercadopago.com.pe/developers/panel" target="_blank" rel="noopener noreferrer">mercadopago.com.pe/developers/panel</a>.</p>
             <p>2. Crea o selecciona una aplicación.</p>
             <p>3. En <strong>Credenciales</strong> encontrarás la <strong>Public Key</strong> y el <strong>Access Token</strong> tanto para Sandbox como para Producción.</p>
-            <p>4. En <strong>Credenciales de prueba</strong> copia Public Key y Access Token (empiezan con <code>APP_USR-</code>). En producción usa las de <strong>Credenciales de producción</strong>. Marca el modo correspondiente abajo.</p>
+            <p>4. Con <strong>Checkout API Orders</strong>, las credenciales de prueba también empiezan con <code>APP_USR-</code> (igual que producción). Mercado Pago las distingue por <code>live_mode</code>, no por el prefijo. Copia el par desde <strong>Pruebas → Credenciales de prueba</strong> (activar si no aparecen), nunca desde Producción.</p>
             <p>5. Crea una <strong>cuenta de prueba Comprador</strong> en la app y define su email en el servidor como <code>MP_SANDBOX_PAYER_EMAIL</code> (debe terminar en <code>@testuser.com</code>).</p>
             <p>6. La Tribu usa <strong>Checkout API Orders</strong> (<code>POST /v1/orders</code>) con tarjeta guardada en Customer API. La renovación automática la ejecuta un cron del servidor (no MP preapproval).</p>
             <p>7. Configura el webhook apuntando a <code id="mp-webhook-url"></code> (eventos <strong>Orders</strong> y <strong>Pagos</strong>).</p>

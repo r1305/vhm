@@ -15,6 +15,7 @@ const {
   fetchMpOrder,
   resolvePaymentOutcome,
   vaultCustomerCard,
+  validateMpCredentialsForModo,
 } = require('./tribuMpOrders');
 const {
   activateNewSubscription,
@@ -117,6 +118,7 @@ router.post('/procesar-pago', tribuAuthMiddleware, async (req, res) => {
 
     const cfg = await getMpConfig();
     validateMpCredentials(cfg);
+    await validateMpCredentialsForModo(cfg.access_token, cfg.public_key, cfg.modo);
 
     const email = resolvePayerEmail(brick.email, req.tribuUser.email, cfg.modo);
     const externalRef = buildExternalRef(req.tribuUser.id, plan.id);

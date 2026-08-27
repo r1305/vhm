@@ -67,11 +67,25 @@ function validateCsrfToken(token) {
   const expected = crypto.createHmac('sha256', CSRF_SECRET).update(val).digest('hex').slice(0, 16);
   try { return crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected)); } catch { return false; }
 }
+function csrfCookieOptions() {
+  return {
+    httpOnly: false,
+    sameSite: 'strict',
+    path: BASE_PATH || '/',
+    secure: process.env.NODE_ENV === 'production',
+  };
+}
+function setCsrfCookie(res) {
+  const token = generateCsrfToken();
+  res.cookie('csrf_token', token, csrfCookieOptions());
+}
 app.use((req, res, next) => {
-  // Set CSRF cookie on GET requests
-  if (req.method === 'GET' && !req.cookies?.csrf_token) {
-    const token = generateCsrfToken();
-    res.cookie('csrf_token', token, { httpOnly: false, sameSite: 'strict', path: BASE_PATH || '/' });
+  // Renovar cookie CSRF en GET si falta o quedó inválida (p. ej. tras cambiar JWT_SECRET)
+  if (req.method === 'GET') {
+    const existing = req.cookies?.csrf_token;
+    if (!existing || !validateCsrfToken(existing)) {
+      setCsrfCookie(res);
+    }
   }
   // Validate CSRF on state-changing methods (skip public POST endpoints)
   if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {

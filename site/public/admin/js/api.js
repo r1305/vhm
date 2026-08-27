@@ -29,7 +29,7 @@
   }
 
   async function apiFetch(url, options) {
-    const res = await fetch(API_BASE + url, options || {});
+    const res = await fetch(API_BASE + url, { credentials: 'same-origin', ...(options || {}) });
     if (res.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');

@@ -13,6 +13,7 @@
   let guardandoMp = false;
   let enviandoTest = false;
   let mpTokenVisible = false;
+  let mpModoPrev = null;
 
   const el = {
     emailHost: document.getElementById('email-host'),
@@ -67,6 +68,7 @@
     mpAccessToken: document.getElementById('mp-access-token'),
     mpFecha: document.getElementById('mp-fecha'),
     mpMsg: document.getElementById('mp-msg'),
+    mpCredencialesStatus: document.getElementById('mp-credenciales-status'),
     mpWebhookUrl: document.getElementById('mp-webhook-url'),
     btnGuardarMp: document.getElementById('btn-guardar-mp'),
     btnMpTokenToggle: document.getElementById('btn-mp-token-toggle'),
@@ -505,6 +507,30 @@
     }
   }
 
+  function renderMpCredencialesStatus(d) {
+    if (!el.mpCredencialesStatus) return;
+    const parts = [];
+    if (d.credenciales_ok === true) {
+      parts.push('✅ Credenciales válidas para modo ' + (d.modo === 'sandbox' ? 'Sandbox (prueba)' : 'Producción'));
+      el.mpCredencialesStatus.style.color = '#15803d';
+    } else if (d.credenciales_ok === false) {
+      parts.push('⚠️ ' + (d.credenciales_error || 'Las credenciales no coinciden con el modo seleccionado'));
+      el.mpCredencialesStatus.style.color = '#b91c1c';
+    } else {
+      el.mpCredencialesStatus.textContent = '';
+      return;
+    }
+    if (d.mp_live_mode === true) {
+      parts.push('MP detecta token: PRODUCCIÓN (live_mode=true)');
+    } else if (d.mp_live_mode === false) {
+      parts.push('MP detecta token: PRUEBA (live_mode=false)');
+    }
+    if (d.access_token_suffix) {
+      parts.push('Token termina en …' + d.access_token_suffix);
+    }
+    el.mpCredencialesStatus.textContent = parts.join(' · ');
+  }
+
   /* ── MERCADO PAGO ── */
   async function cargarMp() {
     el.mpWebhookUrl.textContent = webhookUrl();
@@ -514,9 +540,11 @@
       el.mpActivo.checked = !!d.activo;
       updateMpActivoLabel(el.mpActivo.checked);
       el.mpModo.value = d.modo || 'sandbox';
+      mpModoPrev = el.mpModo.value;
       el.mpPublicKey.value = d.public_key || '';
       el.mpAccessToken.value = d.access_token || '';
       el.mpFecha.textContent = d.fecha_actualizacion ? fmtFecha(d.fecha_actualizacion) : '';
+      renderMpCredencialesStatus(d);
     } catch {
       AdminUtils.mostrarMsg(el.mpMsg, 'Error al cargar configuración', false);
     }
@@ -524,6 +552,14 @@
 
   async function guardarMp() {
     if (guardandoMp) return;
+    if (!el.mpPublicKey.value.trim() || !el.mpAccessToken.value.trim()) {
+      AdminUtils.mostrarMsg(
+        el.mpMsg,
+        'Public Key y Access Token son obligatorios. Al usar Sandbox, copia ambos desde "Credenciales de prueba" en Mercado Pago.',
+        false
+      );
+      return;
+    }
     guardandoMp = true;
     el.btnGuardarMp.disabled = true;
     el.btnGuardarMp.textContent = 'Guardando...';
@@ -590,6 +626,21 @@
 
     el.mpActivo.addEventListener('change', function () {
       updateMpActivoLabel(this.checked);
+    });
+    el.mpModo.addEventListener('change', function () {
+      if (mpModoPrev !== null && mpModoPrev !== this.value) {
+        el.mpPublicKey.value = '';
+        el.mpAccessToken.value = '';
+        AdminUtils.mostrarMsg(
+          el.mpMsg,
+          this.value === 'sandbox'
+            ? 'Pega Public Key y Access Token de "Credenciales de prueba" (no uses las de producción).'
+            : 'Pega Public Key y Access Token de "Credenciales de producción".',
+          false
+        );
+        if (el.mpCredencialesStatus) el.mpCredencialesStatus.textContent = '';
+      }
+      mpModoPrev = this.value;
     });
     el.btnGuardarMp.addEventListener('click', guardarMp);
     el.btnMpTokenToggle.addEventListener('click', function () {
