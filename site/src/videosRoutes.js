@@ -14,34 +14,48 @@ function requireAdmin(req, res, next) {
   return res.status(403).json({ error: 'Acceso restringido a administradores' });
 }
 
-/** Convierte enlace compartido de Google Drive a URL /preview para iframe. */
-function parseGoogleDriveEmbed(input) {
+/** Extrae el ID de archivo desde un enlace compartido de Google Drive. */
+function parseGoogleDriveFileId(input) {
   if (!input || typeof input !== 'string') return null;
   const trimmed = input.trim();
   if (!trimmed) return null;
-  let fileId = null;
   try {
     const u = new URL(trimmed);
     if (!/^drive\.google\.com$/i.test(u.hostname)) return null;
     const pathMatch = u.pathname.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
-    if (pathMatch) fileId = pathMatch[1];
-    else if (u.searchParams.get('id')) fileId = u.searchParams.get('id');
+    if (pathMatch) return pathMatch[1];
+    if (u.searchParams.get('id')) return u.searchParams.get('id');
   } catch (_) {
     return null;
   }
+  return null;
+}
+
+/** Convierte enlace compartido de Google Drive a URL /preview para iframe (fallback). */
+function parseGoogleDriveEmbed(input) {
+  const fileId = parseGoogleDriveFileId(input);
   if (!fileId || !/^[a-zA-Z0-9_-]+$/.test(fileId)) return null;
   return `https://drive.google.com/file/d/${fileId}/preview`;
+}
+
+/** URL para reproductor HTML5 nativo (evita iframe de login de Google). */
+function parseGoogleDriveVideoSrc(input) {
+  const fileId = parseGoogleDriveFileId(input);
+  if (!fileId || !/^[a-zA-Z0-9_-]+$/.test(fileId)) return null;
+  return `https://drive.google.com/uc?export=download&id=${fileId}`;
 }
 
 function landingPayload(row) {
   const cfg = row || {};
   const heroVideoUrl = cfg.hero_video_url ? String(cfg.hero_video_url).trim() : '';
-  const heroVideoEmbed = heroVideoUrl ? parseGoogleDriveEmbed(heroVideoUrl) : null;
+  const fileId = heroVideoUrl ? parseGoogleDriveFileId(heroVideoUrl) : null;
   return {
     intro: cfg.intro != null ? cfg.intro : LANDING_INTRO_DEFAULT,
     pacto: cfg.pacto != null ? cfg.pacto : LANDING_PACTO_DEFAULT,
     hero_video_url: heroVideoUrl || null,
-    hero_video_embed: heroVideoEmbed,
+    hero_video_file_id: fileId,
+    hero_video_src: heroVideoUrl ? parseGoogleDriveVideoSrc(heroVideoUrl) : null,
+    hero_video_embed: heroVideoUrl ? parseGoogleDriveEmbed(heroVideoUrl) : null,
   };
 }
 
