@@ -212,6 +212,23 @@ async function crearEsquema() {
   await pool.query('ALTER TABLE tribu_suscripciones ADD KEY idx_ts_preapproval (mp_preapproval_id)').catch(() => {});
   await pool.query('ALTER TABLE tribu_suscripciones ADD COLUMN auto_renovacion TINYINT(1) NOT NULL DEFAULT 1').catch(() => {});
   await pool.query('ALTER TABLE tribu_suscripciones ADD COLUMN cancelada_at TIMESTAMP NULL').catch(() => {});
+  await pool.query('ALTER TABLE tribu_suscripciones ADD COLUMN mp_order_id VARCHAR(64) NULL').catch(() => {});
+  await pool.query('ALTER TABLE tribu_suscripciones ADD KEY idx_ts_order (mp_order_id)').catch(() => {});
+  await pool.query('ALTER TABLE tribu_suscripciones ADD COLUMN mp_customer_id VARCHAR(64) NULL').catch(() => {});
+  await pool.query('ALTER TABLE tribu_suscripciones ADD COLUMN mp_card_id VARCHAR(64) NULL').catch(() => {});
+  await pool.query('ALTER TABLE tribu_suscripciones ADD COLUMN mp_card_brand VARCHAR(32) NULL').catch(() => {});
+  await pool.query('ALTER TABLE tribu_suscripciones ADD COLUMN next_renovacion_intento DATETIME NULL').catch(() => {});
+  await pool.query('ALTER TABLE tribu_suscripciones ADD COLUMN renovacion_intentos INT NOT NULL DEFAULT 0').catch(() => {});
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS tribu_payer_profiles (
+      tribu_user_id INT NOT NULL PRIMARY KEY,
+      identification_type VARCHAR(10) NULL,
+      identification_number VARCHAR(20) NULL,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      FOREIGN KEY (tribu_user_id) REFERENCES tribu_users(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS tribu_mp_payment_events (
