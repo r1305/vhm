@@ -43,6 +43,20 @@
     no_show:    { label: 'No se presentó', css: 'badge-gray'   },
   };
 
+  const ESTADO_CITA_SELECT_EXCLUDE = new Set(['confirmada']);
+
+  function estadoCitaSelectEntries() {
+    return Object.entries(ESTADO_CITA).filter(([k]) => !ESTADO_CITA_SELECT_EXCLUDE.has(k));
+  }
+
+  /** Opciones HTML para selects de estado de cita (sin Confirmada). */
+  function estadoCitaOptionsHtml(selected = null) {
+    const sel = ESTADO_CITA_SELECT_EXCLUDE.has(selected) ? 'pendiente' : selected;
+    return estadoCitaSelectEntries()
+      .map(([k, v]) => `<option value="${k}"${k === sel ? ' selected' : ''}>${v.label}</option>`)
+      .join('');
+  }
+
   /* ── API helper (usa cookie de sesión automáticamente) ── */
   async function api(path, opts = {}) {
     const url = `${API}${path.startsWith('/') ? path : '/' + path}`;
@@ -145,6 +159,7 @@
     api, toast, esc, fmtDate, fmtMoney, badge, fullName,
     openModal, closeModal,
     ESTADO_PACIENTE, ESTADO_LEAD, FUENTE_ICON, ESTADO_CITA,
+    estadoCitaOptionsHtml, estadoCitaSelectEntries,
     pacientesCache: [],
   };
 

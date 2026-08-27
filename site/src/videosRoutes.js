@@ -14,6 +14,37 @@ function requireAdmin(req, res, next) {
   return res.status(403).json({ error: 'Acceso restringido a administradores' });
 }
 
+/** Convierte enlace compartido de Google Drive a URL /preview para iframe. */
+function parseGoogleDriveEmbed(input) {
+  if (!input || typeof input !== 'string') return null;
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+  let fileId = null;
+  try {
+    const u = new URL(trimmed);
+    if (!/^drive\.google\.com$/i.test(u.hostname)) return null;
+    const pathMatch = u.pathname.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+    if (pathMatch) fileId = pathMatch[1];
+    else if (u.searchParams.get('id')) fileId = u.searchParams.get('id');
+  } catch (_) {
+    return null;
+  }
+  if (!fileId || !/^[a-zA-Z0-9_-]+$/.test(fileId)) return null;
+  return `https://drive.google.com/file/d/${fileId}/preview`;
+}
+
+function landingPayload(row) {
+  const cfg = row || {};
+  const heroVideoUrl = cfg.hero_video_url ? String(cfg.hero_video_url).trim() : '';
+  const heroVideoEmbed = heroVideoUrl ? parseGoogleDriveEmbed(heroVideoUrl) : null;
+  return {
+    intro: cfg.intro != null ? cfg.intro : LANDING_INTRO_DEFAULT,
+    pacto: cfg.pacto != null ? cfg.pacto : LANDING_PACTO_DEFAULT,
+    hero_video_url: heroVideoUrl || null,
+    hero_video_embed: heroVideoEmbed,
+  };
+}
+
 // --- Subida de miniaturas con nombres aleatorios seguros ---
 const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
 const storage = multer.diskStorage({
@@ -140,15 +171,13 @@ function eliminarArchivoLocal(thumbUrl) {
 // Configuración del landing (textos del hero de Camino Interior)
 router.get('/landing', async (req, res) => {
   try {
-    const [rows] = await pool.query('SELECT intro, pacto FROM video_landing WHERE id = 1');
-    const cfg = rows[0] || {};
-    res.json({
-      intro: cfg.intro != null ? cfg.intro : LANDING_INTRO_DEFAULT,
-      pacto: cfg.pacto != null ? cfg.pacto : LANDING_PACTO_DEFAULT
-    });
+    const [rows] = await pool.query(
+      'SELECT intro, pacto, hero_video_url FROM video_landing WHERE id = 1'
+    );
+    res.json(landingPayload(rows[0]));
   } catch (err) {
     console.error(err);
-    res.json({ intro: LANDING_INTRO_DEFAULT, pacto: LANDING_PACTO_DEFAULT });
+    res.json(landingPayload(null));
   }
 });
 
@@ -160,12 +189,22 @@ router.put('/landing', authMiddleware, requireAdmin, async (req, res) => {
     if (!intro || !pacto) {
       return res.status(400).json({ error: 'Ambos textos son obligatorios' });
     }
+    let heroVideoUrl = null;
+    if (req.body && req.body.hero_video_url != null) {
+      const raw = String(req.body.hero_video_url).trim();
+      if (raw) {
+        if (!parseGoogleDriveEmbed(raw)) {
+          return res.status(400).json({ error: 'URL de Google Drive no válida. Usa un enlace compartido tipo drive.google.com/file/d/.../view' });
+        }
+        heroVideoUrl = raw.slice(0, 500);
+      }
+    }
     await pool.query(
-      `INSERT INTO video_landing (id, intro, pacto) VALUES (1, ?, ?)
-       ON DUPLICATE KEY UPDATE intro = VALUES(intro), pacto = VALUES(pacto)`,
-      [intro, pacto]
+      `INSERT INTO video_landing (id, intro, pacto, hero_video_url) VALUES (1, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE intro = VALUES(intro), pacto = VALUES(pacto), hero_video_url = VALUES(hero_video_url)`,
+      [intro, pacto, heroVideoUrl]
     );
-    res.json({ message: 'Landing actualizado', intro, pacto });
+    res.json({ message: 'Landing actualizado', ...landingPayload({ intro, pacto, hero_video_url: heroVideoUrl }) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error al guardar el landing' });

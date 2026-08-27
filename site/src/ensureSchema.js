@@ -83,6 +83,9 @@ async function crearEsquema() {
       [LANDING_INTRO_DEFAULT, LANDING_PACTO_DEFAULT]
     );
   }
+  try {
+    await pool.query('ALTER TABLE video_landing ADD COLUMN hero_video_url VARCHAR(500) NULL');
+  } catch (_) { /* ya existe */ }
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS tribu_eventos (

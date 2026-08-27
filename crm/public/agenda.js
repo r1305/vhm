@@ -4,7 +4,7 @@
 (function () {
   'use strict';
 
-  const { api, toast, esc, openModal, badge, ESTADO_CITA, fullName } = window.CRM;
+  const { api, toast, esc, openModal, badge, ESTADO_CITA, estadoCitaOptionsHtml, fullName } = window.CRM;
 
   let terapeutaId        = document.getElementById('agendaTerapeuta')?.value || '';
   let pacientesCache     = [];
@@ -235,8 +235,7 @@
   function showCargaMasiva() {
     const tipoOpts = [['primera_vez','Primera consulta'],['seguimiento','Tratamiento'],['evaluacion','Seguimiento'],['urgencia','Urgencia']]
       .map(([v,l]) => `<option value="${v}">${l}</option>`).join('');
-    const estadoOpts = Object.entries(ESTADO_CITA)
-      .map(([k,v]) => `<option value="${k}" ${k==='realizada'?'selected':''}>${v.label}</option>`).join('');
+    const estadoOpts = estadoCitaOptionsHtml('realizada');
     const modalidadOpts = [['presencial','Presencial'],['videollamada','Videollamada','selected'],['telefono','Teléfono']]
       .map(([v,l,s]) => `<option value="${v}" ${s||''}>${l}</option>`).join('');
 
@@ -442,7 +441,7 @@
       <div class="form-group">
         <label class="form-label">Estado</label>
         <select class="form-select" id="f_estado_cita">
-          ${Object.entries(ESTADO_CITA).map(([k,v]) => `<option value="${k}" ${k===actual?'selected':''}>${v.label}</option>`).join('')}
+          ${estadoCitaOptionsHtml(actual)}
         </select>
       </div>
       <div class="form-group">
@@ -517,7 +516,7 @@
         <div class="form-group">
           <label class="form-label">Estado</label>
           <select class="form-select" id="f_estado">
-            ${Object.entries(ESTADO_CITA).map(([k,v]) => `<option value="${k}">${v.label}</option>`).join('')}
+            ${estadoCitaOptionsHtml('pendiente')}
           </select>
         </div>
       </div>

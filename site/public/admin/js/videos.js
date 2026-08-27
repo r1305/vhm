@@ -442,6 +442,7 @@
       var cfg = await res.json();
       document.getElementById('landing-intro').value = cfg.intro || '';
       document.getElementById('landing-pacto').value = cfg.pacto || '';
+      document.getElementById('landing-video-url').value = cfg.hero_video_url || '';
     } catch (e) {
       toast('No se pudo cargar el landing', 'error');
     }
@@ -450,12 +451,13 @@
   async function guardarLanding() {
     var intro = document.getElementById('landing-intro').value.trim();
     var pacto = document.getElementById('landing-pacto').value.trim();
+    var heroVideoUrl = document.getElementById('landing-video-url').value.trim();
     if (!intro || !pacto) return toast('Ambos textos son obligatorios', 'error');
     try {
       var res = await AdminApi.apiFetch('/videos/landing', {
         method: 'PUT',
         headers: AdminApi.authHeaders(),
-        body: JSON.stringify({ intro: intro, pacto: pacto }),
+        body: JSON.stringify({ intro: intro, pacto: pacto, hero_video_url: heroVideoUrl }),
       });
       var d = await res.json();
       toast(res.ok ? 'Textos guardados' : (d.error || 'Error'), res.ok ? 'success' : 'error');
