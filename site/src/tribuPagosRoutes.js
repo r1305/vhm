@@ -128,12 +128,20 @@ router.post('/procesar-pago', tribuAuthMiddleware, async (req, res) => {
       number: String(brick.identificationNumber).trim(),
     };
 
-    const vault = await vaultCustomerCard({
-      accessToken: cfg.access_token,
-      mpModo: cfg.modo,
-      email,
-      token: brick.token,
-    });
+    const useCardVault = cfg.modo === 'produccion';
+    let customerId = null;
+    let cardId = null;
+
+    if (useCardVault) {
+      const vault = await vaultCustomerCard({
+        accessToken: cfg.access_token,
+        mpModo: cfg.modo,
+        email,
+        token: brick.token,
+      });
+      customerId = vault.customerId;
+      cardId = vault.cardId;
+    }
 
     const orderBody = buildOrderBody({
       plan,
@@ -143,8 +151,9 @@ router.post('/procesar-pago', tribuAuthMiddleware, async (req, res) => {
       callbackUrl,
       paymentMethodId: brick.paymentMethodId,
       paymentType: brick.paymentType,
-      customerId: vault.customerId,
-      cardId: vault.cardId,
+      token: useCardVault ? undefined : brick.token,
+      customerId,
+      cardId,
     });
 
     const orderResult = await createMpOrder(cfg.access_token, orderBody, cfg.modo);
@@ -158,8 +167,8 @@ router.post('/procesar-pago', tribuAuthMiddleware, async (req, res) => {
           planId: suscripcion_id,
           orderId: outcome.order_id,
           paymentId: outcome.payment_id,
-          customerId: vault.customerId,
-          cardId: vault.cardId,
+          customerId,
+          cardId,
           mpCardBrand: brick.paymentMethodId,
           vigenciaDias: plan.vigencia_dias,
         });
@@ -175,8 +184,8 @@ router.post('/procesar-pago', tribuAuthMiddleware, async (req, res) => {
 
     res.json({
       ...outcome,
-      recurring: true,
-      auto_renovacion: outcome.status === 'approved',
+      recurring: useCardVault,
+      auto_renovacion: outcome.status === 'approved' && useCardVault,
     });
   } catch (err) {
     const msg = mapMpError(err);
