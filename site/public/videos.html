@@ -891,7 +891,7 @@
       <div class="camino-hero-video-inner">
         <video id="caminoHeroVideo" class="camino-hero-video-el" controls playsinline preload="none" controlsList="nodownload noplaybackrate"></video>
         <div id="caminoHeroVideoError" class="camino-hero-video-error" hidden>
-          <p>No pudimos reproducir el video aquí. Verifica que el archivo en Google Drive esté en MP4 y compartido como «Cualquier persona con el enlace».</p>
+          <p>No pudimos cargar el video. Comprueba que exista <code>/media/tribu-hero.mp4</code> en el servidor y pulsa reproducir de nuevo.</p>
         </div>
       </div>
     </div>
@@ -3030,42 +3030,31 @@ function mostrarHeroVideo(cfg) {
   video.hidden = false;
   if (errEl) errEl.hidden = true;
 
+  const isDrive = cfg.hero_video_type === 'drive' || (!cfg.hero_video_type && heroDriveFileId(cfg));
   const fileId = heroDriveFileId(cfg);
-  if (fileId && cfg.hero_video_type === 'drive') {
+  if (isDrive && fileId) {
     video.poster = `https://drive.google.com/thumbnail?id=${encodeURIComponent(fileId)}&sz=w1280`;
   } else {
     video.removeAttribute('poster');
   }
 
-  let failed = false;
   const showError = () => {
-    if (failed) return;
-    failed = true;
-    video.hidden = true;
-    video.removeAttribute('src');
-    video.removeAttribute('poster');
-    video.load();
-    if (!errEl) return;
-    errEl.innerHTML = '<p>No pudimos reproducir el video. Comprueba que el archivo exista en <code>media/</code> y que la ruta en el admin sea correcta (ej. <code>/media/tribu-hero.mp4</code>).</p>';
-    errEl.hidden = false;
+    if (errEl) {
+      errEl.innerHTML = '<p>No pudimos cargar el video. Comprueba que exista <code>/media/tribu-hero.mp4</code> en el servidor. Prueba abrir <a href="' + escapeHtml(sources[0]) + '" target="_blank" rel="noopener noreferrer" style="color:var(--gold)">el enlace directo</a>.</p>';
+      errEl.hidden = false;
+    }
   };
 
-  const hideError = () => {
-    if (errEl) errEl.hidden = true;
-    failed = false;
-  };
-
-  video.onloadedmetadata = hideError;
-  video.oncanplay = hideError;
+  video.onerror = null;
+  video.onloadedmetadata = () => { if (errEl) errEl.hidden = true; };
+  video.onplaying = () => { if (errEl) errEl.hidden = true; };
   video.onerror = () => {
-    window.setTimeout(() => {
-      if (failed || video.readyState >= 1) return;
-      showError();
-    }, 2000);
+    if (video.readyState >= 2) return;
+    showError();
   };
 
-  video.src = sources[0];
-  video.load();
+  const baseSrc = sources[0];
+  video.src = baseSrc + (baseSrc.includes('?') ? '&' : '?') + 'v=3';
 }
 
 // Botón flotante de WhatsApp (igual que el landing principal)

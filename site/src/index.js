@@ -201,6 +201,9 @@ function sendPublicHtml(res, filename) {
     }
     html = rewriteRootPaths(html, base);
   }
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
   res.type('html').send(html);
 }
 
