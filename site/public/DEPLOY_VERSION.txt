@@ -1,4 +1,4 @@
-deploy-version=html-admin-v4
+deploy-version=html-admin-v4b
 deploy-date=2026-08-28
 admin=html-vanilla-js
 optimizations=lazy-init,no-build,local-hero-video
