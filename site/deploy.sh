@@ -30,24 +30,7 @@ for arg in "$@"; do
 done
 
 echo "==> Repo: $ROOT"
-git fetch origin main
-git reset --hard origin/main
-
-if git lfs version >/dev/null 2>&1; then
-  echo "==> Git LFS: descargando media/*.mp4"
-  git lfs install
-  git lfs pull origin main
-else
-  echo "==> Git LFS no disponible; descarga con Node..."
-  node site/scripts/fetch-hero-media.js
-fi
-
-HERO="$ROOT/media/tribu-hero.mp4"
-if [ -f "$HERO" ] && [ "$(wc -c < "$HERO")" -lt 1000000 ]; then
-  echo "==> ERROR: $HERO parece puntero Git LFS, no el MP4 real."
-  echo "    Ejecuta: git lfs pull   o sube el archivo por FTP/cPanel File Manager."
-  exit 1
-fi
+git pull
 
 cd site
 npm install --omit=dev
