@@ -139,9 +139,9 @@
         <div class="card-body" style="padding:20px">
           <p style="font-size:.85rem;color:var(--text-muted);margin-bottom:16px">Estos textos aparecen en la pestaña <strong>Camino Interior</strong> de La Tribu.</p>
           <div class="form-group">
-            <label>Video de bienvenida <span class="optional">(Google Drive, opcional)</span></label>
-            <input type="url" id="landing-video-url" placeholder="https://drive.google.com/file/d/.../view" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text)">
-            <p style="font-size:.78rem;color:var(--text-muted);margin-top:6px">Pega el enlace compartido de Google Drive (archivo de video MP4). Debe estar en <strong>Cualquier persona con el enlace</strong>. Se reproduce sin iframe de Google para evitar errores de inicio de sesión.</p>
+            <label>Video de bienvenida <span class="optional">(opcional)</span></label>
+            <input type="text" id="landing-video-url" placeholder="/media/tribu-hero.mp4" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text)">
+            <p style="font-size:.78rem;color:var(--text-muted);margin-top:6px">Sube el MP4 a la carpeta <code>media/</code> en la raíz del repo (vía git) y escribe aquí <strong>/media/nombre-del-archivo.mp4</strong>. También puedes usar una URL HTTPS directa a un MP4.</p>
           </div>
           <div class="form-group">
             <label>Texto introductorio <span class="optional">(empieza con "Cada masterclass...")</span></label>

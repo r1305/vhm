@@ -2,6 +2,8 @@ const { Router } = require('express');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
+const { Readable } = require('stream');
+const { pipeline } = require('stream/promises');
 const multer = require('multer');
 const pool = require('./db');
 const { authMiddleware } = require('./auth');
@@ -31,31 +33,155 @@ function parseGoogleDriveFileId(input) {
   return null;
 }
 
-/** Convierte enlace compartido de Google Drive a URL /preview para iframe (fallback). */
-function parseGoogleDriveEmbed(input) {
-  const fileId = parseGoogleDriveFileId(input);
-  if (!fileId || !/^[a-zA-Z0-9_-]+$/.test(fileId)) return null;
-  return `https://drive.google.com/file/d/${fileId}/preview`;
+function buildHeroVideoSources(fileId) {
+  if (!fileId) return [];
+  return ['/api/videos/landing/hero-stream'];
 }
 
-/** URL para reproductor HTML5 nativo (evita iframe de login de Google). */
-function parseGoogleDriveVideoSrc(input) {
-  const fileId = parseGoogleDriveFileId(input);
-  if (!fileId || !/^[a-zA-Z0-9_-]+$/.test(fileId)) return null;
-  return `https://drive.google.com/uc?export=download&id=${fileId}`;
+/** Valida y clasifica la URL del video hero (archivo local en /media o Google Drive). */
+function parseHeroVideoUrl(input) {
+  if (!input || typeof input !== 'string') return null;
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+
+  const driveId = parseGoogleDriveFileId(trimmed);
+  if (driveId) {
+    return { type: 'drive', fileId: driveId, stored: trimmed.slice(0, 500) };
+  }
+
+  const localMatch = trimmed.match(/^\/?media\/([a-zA-Z0-9._-]+\.(?:mp4|webm))$/i);
+  if (localMatch) {
+    const src = `/media/${localMatch[1]}`;
+    return { type: 'static', src, stored: src };
+  }
+
+  try {
+    const u = new URL(trimmed);
+    if (!/^https?:$/i.test(u.protocol)) return null;
+    if (!/\.(mp4|webm)$/i.test(u.pathname)) return null;
+    return { type: 'static', src: trimmed.slice(0, 500), stored: trimmed.slice(0, 500) };
+  } catch (_) {
+    return null;
+  }
+}
+
+function heroVideoSources(parsed) {
+  if (!parsed) return [];
+  if (parsed.type === 'drive') return buildHeroVideoSources(parsed.fileId);
+  if (parsed.type === 'static') return [parsed.src];
+  return [];
+}
+
+const DRIVE_FETCH_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+const DRIVE_MEDIA_CACHE = new Map(); // fileId -> { url, exp }
+
+function isVideoLikeContentType(contentType) {
+  const ct = String(contentType || '').toLowerCase();
+  if (!ct || ct.includes('text/html') || ct.includes('application/json')) return false;
+  return ct.includes('video/') || ct.includes('octet-stream');
+}
+
+async function fetchDriveCandidate(url, rangeHeader, method) {
+  const headers = { 'User-Agent': DRIVE_FETCH_UA };
+  if (rangeHeader) headers.Range = rangeHeader;
+  return fetch(url, { method: method || 'GET', headers, redirect: 'follow' });
+}
+
+async function resolveGoogleDriveMediaUrl(fileId) {
+  const cached = DRIVE_MEDIA_CACHE.get(fileId);
+  if (cached && cached.exp > Date.now()) return cached.url;
+
+  const directUrl = `https://drive.usercontent.google.com/download?id=${fileId}&export=download&confirm=t`;
+  let probe = await fetchDriveCandidate(directUrl, 'bytes=0-0');
+  if (probe.ok && isVideoLikeContentType(probe.headers.get('content-type'))) {
+    const url = probe.url || directUrl;
+    DRIVE_MEDIA_CACHE.set(fileId, { url, exp: Date.now() + 30 * 60 * 1000 });
+    return url;
+  }
+
+  const bootstrapUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
+  let bootstrap = await fetchDriveCandidate(bootstrapUrl, null);
+  const bootstrapType = (bootstrap.headers.get('content-type') || '').toLowerCase();
+  if (bootstrap.ok && isVideoLikeContentType(bootstrapType)) {
+    const url = bootstrap.url || bootstrapUrl;
+    DRIVE_MEDIA_CACHE.set(fileId, { url, exp: Date.now() + 30 * 60 * 1000 });
+    return url;
+  }
+  if (bootstrapType.includes('text/html')) {
+    const html = await bootstrap.text();
+    const confirm =
+      html.match(/confirm=([0-9A-Za-z_-]+)/)?.[1]
+      || html.match(/name="confirm"\s+value="([^"]+)"/)?.[1];
+    if (confirm) {
+      const retryUrl = `https://drive.google.com/uc?export=download&id=${fileId}&confirm=${confirm}`;
+      probe = await fetchDriveCandidate(retryUrl, 'bytes=0-0');
+      if (probe.ok && isVideoLikeContentType(probe.headers.get('content-type'))) {
+        const url = probe.url || retryUrl;
+        DRIVE_MEDIA_CACHE.set(fileId, { url, exp: Date.now() + 30 * 60 * 1000 });
+        return url;
+      }
+    }
+  }
+
+  return null;
+}
+
+/** Resuelve enlace de descarga pública y reenvía el stream al cliente (sin iframe de Google). */
+// SECURITY-REVIEW: fetch externo a Google Drive con fileId validado desde BD (solo hero configurado).
+async function pipeGoogleDriveVideo(fileId, req, res) {
+  const mediaUrl = await resolveGoogleDriveMediaUrl(fileId);
+  if (!mediaUrl) {
+    res.status(502).end();
+    return;
+  }
+
+  const upstream = await fetchDriveCandidate(mediaUrl, req.headers.range);
+  const contentType = upstream.headers.get('content-type');
+  if (!upstream.ok || !isVideoLikeContentType(contentType)) {
+    DRIVE_MEDIA_CACHE.delete(fileId);
+    res.status(502).end();
+    return;
+  }
+
+  await forwardVideoStream(upstream, res);
+}
+
+async function forwardVideoStream(upstream, res) {
+  res.setHeader('Content-Type', 'video/mp4');
+  res.setHeader('Accept-Ranges', upstream.headers.get('accept-ranges') || 'bytes');
+  res.setHeader('Cache-Control', 'private, max-age=3600');
+
+  const contentLength = upstream.headers.get('content-length');
+  if (contentLength) res.setHeader('Content-Length', contentLength);
+
+  const contentRange = upstream.headers.get('content-range');
+  if (contentRange) {
+    res.status(206);
+    res.setHeader('Content-Range', contentRange);
+  } else {
+    res.status(upstream.status === 206 ? 206 : 200);
+  }
+
+  if (!upstream.body) {
+    res.end();
+    return;
+  }
+  await pipeline(Readable.fromWeb(upstream.body), res);
 }
 
 function landingPayload(row) {
   const cfg = row || {};
   const heroVideoUrl = cfg.hero_video_url ? String(cfg.hero_video_url).trim() : '';
-  const fileId = heroVideoUrl ? parseGoogleDriveFileId(heroVideoUrl) : null;
+  const parsed = heroVideoUrl ? parseHeroVideoUrl(heroVideoUrl) : null;
+  const sources = heroVideoSources(parsed);
   return {
     intro: cfg.intro != null ? cfg.intro : LANDING_INTRO_DEFAULT,
     pacto: cfg.pacto != null ? cfg.pacto : LANDING_PACTO_DEFAULT,
     hero_video_url: heroVideoUrl || null,
-    hero_video_file_id: fileId,
-    hero_video_src: heroVideoUrl ? parseGoogleDriveVideoSrc(heroVideoUrl) : null,
-    hero_video_embed: heroVideoUrl ? parseGoogleDriveEmbed(heroVideoUrl) : null,
+    hero_video_type: parsed ? parsed.type : null,
+    hero_video_file_id: parsed && parsed.type === 'drive' ? parsed.fileId : null,
+    hero_video_src: sources[0] || null,
+    hero_video_sources: sources,
   };
 }
 
@@ -195,6 +321,21 @@ router.get('/landing', async (req, res) => {
   }
 });
 
+// Proxy del video hero (Google Drive → mismo origen, compatible con <video>)
+router.get('/landing/hero-stream', async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      'SELECT hero_video_url FROM video_landing WHERE id = 1'
+    );
+    const fileId = parseGoogleDriveFileId(rows[0] && rows[0].hero_video_url);
+    if (!fileId) return res.status(404).end();
+    await pipeGoogleDriveVideo(fileId, req, res);
+  } catch (err) {
+    console.error('hero-stream:', err.message);
+    if (!res.headersSent) res.status(502).end();
+  }
+});
+
 // Actualizar textos del landing (admin)
 router.put('/landing', authMiddleware, requireAdmin, async (req, res) => {
   try {
@@ -207,10 +348,13 @@ router.put('/landing', authMiddleware, requireAdmin, async (req, res) => {
     if (req.body && req.body.hero_video_url != null) {
       const raw = String(req.body.hero_video_url).trim();
       if (raw) {
-        if (!parseGoogleDriveEmbed(raw)) {
-          return res.status(400).json({ error: 'URL de Google Drive no válida. Usa un enlace compartido tipo drive.google.com/file/d/.../view' });
+        const parsed = parseHeroVideoUrl(raw);
+        if (!parsed) {
+          return res.status(400).json({
+            error: 'URL de video no válida. Usa /media/archivo.mp4 (carpeta media/ del repo) o un enlace HTTPS directo a MP4/WebM.',
+          });
         }
-        heroVideoUrl = raw.slice(0, 500);
+        heroVideoUrl = parsed.stored;
       }
     }
     await pool.query(

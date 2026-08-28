@@ -244,6 +244,10 @@
       background: #000;
     }
     video.camino-hero-video-el { object-fit: contain; }
+    .camino-hero-video-error {
+      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      padding: 24px; text-align: center; color: rgba(255,255,255,.82); font-size: .95rem; line-height: 1.5;
+    }
 
     /* CALENDARIO */
     .cal-wrap { max-width: 960px; margin: 0 auto; padding: 32px 22px 50px; }
@@ -885,8 +889,10 @@
   <div class="camino-intro">
     <div id="caminoHeroVideoWrap" class="camino-hero-video" hidden>
       <div class="camino-hero-video-inner">
-        <video id="caminoHeroVideo" class="camino-hero-video-el" controls playsinline preload="metadata" controlsList="nodownload noplaybackrate" hidden></video>
-        <iframe id="caminoHeroVideoFrame" class="camino-hero-video-el" title="Video de bienvenida — La Tribu" allow="autoplay; encrypted-media; picture-in-picture" loading="lazy" hidden></iframe>
+        <video id="caminoHeroVideo" class="camino-hero-video-el" controls playsinline preload="metadata" controlsList="nodownload noplaybackrate"></video>
+        <div id="caminoHeroVideoError" class="camino-hero-video-error" hidden>
+          <p>No pudimos reproducir el video aquí. Verifica que el archivo en Google Drive esté en MP4 y compartido como «Cualquier persona con el enlace».</p>
+        </div>
       </div>
     </div>
     <p class="intro" id="heroIntro">Cada masterclass y entrenamiento que encontrarás aquí, nació de historias reales. Estás entrando a un espacio diseñado para devolverte claridad, fuerza y dirección cuando más lo necesitas.</p>
@@ -2979,53 +2985,87 @@ verificarSesion().then(cargar);
     const cfg = await res.json();
     if (cfg.intro) document.getElementById('heroIntro').textContent = cfg.intro;
     if (cfg.pacto) document.getElementById('heroPacto').textContent = cfg.pacto;
-    if (cfg.hero_video_src || cfg.hero_video_embed) {
+    if (cfg.hero_video_src || (cfg.hero_video_sources && cfg.hero_video_sources.length) || cfg.hero_video_url || cfg.hero_video_embed) {
       mostrarHeroVideo(cfg);
     }
   } catch {}
 })();
 
+function heroDriveFileId(cfg) {
+  if (cfg.hero_video_file_id) return cfg.hero_video_file_id;
+  const raw = cfg.hero_video_url || cfg.hero_video_embed || '';
+  const m = String(raw).match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+  return m ? m[1] : null;
+}
+
+function heroVideoStreamSources(cfg) {
+  const base = window.__APP_BASE__ || '';
+  const abs = (src) => {
+    if (/^https?:\/\//i.test(src)) return src;
+    if (src.startsWith('/')) return base + src;
+    return `${base}/${src}`;
+  };
+  const raw = Array.isArray(cfg.hero_video_sources) && cfg.hero_video_sources.length
+    ? cfg.hero_video_sources.slice()
+    : (cfg.hero_video_src ? [cfg.hero_video_src] : []);
+  if (raw.length) return raw.map(abs);
+  if (cfg.hero_video_type === 'drive' || heroDriveFileId(cfg)) {
+    return [abs('/api/videos/landing/hero-stream')];
+  }
+  const url = (cfg.hero_video_url || '').trim();
+  if (url) return [abs(url.startsWith('/') ? url : `/${url}`)];
+  return [];
+}
+
 function mostrarHeroVideo(cfg) {
   const wrap = document.getElementById('caminoHeroVideoWrap');
   const video = document.getElementById('caminoHeroVideo');
-  const frame = document.getElementById('caminoHeroVideoFrame');
-  if (!wrap) return;
+  const errEl = document.getElementById('caminoHeroVideoError');
+  if (!wrap || !video) return;
 
-  const usarIframe = () => {
-    if (!cfg.hero_video_embed || !frame) return;
-    if (video) {
-      video.hidden = true;
-      video.removeAttribute('src');
-      video.load();
-    }
-    frame.hidden = false;
-    frame.src = cfg.hero_video_embed;
-    wrap.hidden = false;
-  };
+  const sources = heroVideoStreamSources(cfg);
+  if (!sources.length) return;
 
   wrap.hidden = false;
+  video.hidden = false;
+  if (errEl) errEl.hidden = true;
 
-  if (video && cfg.hero_video_src) {
-    video.hidden = false;
-    if (frame) {
-      frame.hidden = true;
-      frame.removeAttribute('src');
-    }
-    video.onerror = () => {
-      if (cfg.hero_video_file_id && video.dataset.fallback !== 'preview') {
-        video.dataset.fallback = 'preview';
-        video.src = `https://drive.google.com/uc?export=preview&id=${cfg.hero_video_file_id}`;
-        video.load();
-        return;
-      }
-      usarIframe();
-    };
-    video.src = cfg.hero_video_src;
-    video.load();
-    return;
+  const fileId = heroDriveFileId(cfg);
+  if (fileId && cfg.hero_video_type === 'drive') {
+    video.poster = `https://drive.google.com/thumbnail?id=${encodeURIComponent(fileId)}&sz=w1280`;
+  } else {
+    video.removeAttribute('poster');
   }
 
-  usarIframe();
+  let failed = false;
+  const showError = () => {
+    if (failed) return;
+    failed = true;
+    video.hidden = true;
+    video.removeAttribute('src');
+    video.removeAttribute('poster');
+    video.load();
+    if (!errEl) return;
+    errEl.innerHTML = '<p>No pudimos reproducir el video. Comprueba que el archivo exista en <code>media/</code> y que la ruta en el admin sea correcta (ej. <code>/media/tribu-hero.mp4</code>).</p>';
+    errEl.hidden = false;
+  };
+
+  const hideError = () => {
+    if (errEl) errEl.hidden = true;
+    failed = false;
+  };
+
+  video.onloadedmetadata = hideError;
+  video.oncanplay = hideError;
+  video.onerror = () => {
+    window.setTimeout(() => {
+      if (failed || video.readyState >= 1) return;
+      showError();
+    }, 2000);
+  };
+
+  video.src = sources[0];
+  video.load();
 }
 
 // Botón flotante de WhatsApp (igual que el landing principal)
