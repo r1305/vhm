@@ -59,6 +59,11 @@ function parseHeroVideoUrl(input) {
     const u = new URL(trimmed);
     if (!/^https?:$/i.test(u.protocol)) return null;
     if (!/\.(mp4|webm)$/i.test(u.pathname)) return null;
+    const mediaMatch = u.pathname.match(/\/media\/([a-zA-Z0-9._-]+\.(?:mp4|webm))$/i);
+    if (mediaMatch) {
+      const src = `/media/${mediaMatch[1]}`;
+      return { type: 'static', src, stored: src };
+    }
     return { type: 'static', src: trimmed.slice(0, 500), stored: trimmed.slice(0, 500) };
   } catch (_) {
     return null;
