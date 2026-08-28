@@ -15,9 +15,8 @@ if git lfs version >/dev/null 2>&1; then
   git lfs install
   git lfs pull origin main
 else
-  echo "==> AVISO: git-lfs no está instalado en el servidor."
-  echo "    Sin LFS, media/tribu-hero.mp4 queda como puntero (~135 bytes) y el video no reproduce."
-  echo "    Instala Git LFS o sube media/tribu-hero.mp4 manualmente (~1.3 GB)."
+  echo "==> Git LFS no disponible; descarga con Node..."
+  node site/scripts/fetch-hero-media.js
 fi
 
 HERO="$ROOT/media/tribu-hero.mp4"
