@@ -31,6 +31,7 @@ done
 
 echo "==> Repo: $ROOT"
 git pull
+source /home/***REMOVED***/nodevenv/public_html/site/22/bin/activate
 
 cd site
 npm install --omit=dev
