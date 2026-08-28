@@ -124,11 +124,12 @@
     detail.innerHTML = '<div class="view-loading">Cargando citas…</div>';
     try {
       const citas = await api(`/citas?paciente_id=${pacienteId}`);
-      const total      = citas.length;
-      const realizadas = citas.filter(c => c.estado==='realizada').length;
-      const pendientes = citas.filter(c => ['pendiente','confirmada','reagendada'].includes(c.estado)).length;
       const sesionesTotal = parseInt(p.sesiones_total || 0, 10);
-      const porAgendar = Math.max(0, sesionesTotal - realizadas);
+      const sesionesConsumidas = citas.filter(c => c.estado === 'realizada' || c.estado === 'no_show').length;
+      const total      = sesionesTotal;
+      const realizadas = sesionesConsumidas;
+      const pendientes = citas.filter(c => ['pendiente','confirmada','reagendada'].includes(c.estado)).length;
+      const porAgendar = Math.max(0, sesionesTotal - sesionesConsumidas);
       const inicial    = (p.nombre?.[0]||'?').toUpperCase();
       const metaParts  = [p.telefono, p.email, p.terapeuta_nombre].filter(Boolean);
       const porMes = {}, ordenMes = [];
