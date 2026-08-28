@@ -58,6 +58,8 @@ router.post('/', auth, async (req, res) => {
   let { hora_inicio, hora_fin } = req.body || {};
   if (!paciente_id || !terapeuta_id || !fecha)
     return res.status(400).json({ error: 'Campos requeridos faltantes' });
+  if (req.user.rol === 'terapeuta' && pid(terapeuta_id) !== req.user.id)
+    return res.status(403).json({ error: 'Solo puedes crear citas propias' });
   hora_inicio = hora_inicio || '17:00';
   hora_fin    = hora_fin    || '18:00';
   try {
@@ -124,25 +126,63 @@ router.delete('/:cid', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+router.put('/:cid', auth, async (req, res) => {
+  const cid = pid(req.params.cid);
+  if (!cid) return res.status(400).json({ error: 'ID inválido' });
+  const { fecha, hora_inicio, hora_fin, modalidad, tipo, estado, notas } = req.body || {};
+  try {
+    const [[cita]] = await pool.execute('SELECT * FROM citas WHERE id=?', [cid]);
+    if (!cita) return res.status(404).json({ error: 'No encontrada' });
+    const esAdmin = req.user.rol !== 'terapeuta';
+    if (!esAdmin && cita.terapeuta_id !== req.user.id)
+      return res.status(403).json({ error: 'Sin acceso' });
+    const updates = {};
+    if (fecha != null && fecha !== '') {
+      const fechaVal = t(fecha, 10);
+      if (!fechaVal || !/^\d{4}-\d{2}-\d{2}$/.test(fechaVal))
+        return res.status(400).json({ error: 'Fecha inválida' });
+      updates.fecha = fechaVal;
+    }
+    if (hora_inicio != null) updates.hora_inicio = t(hora_inicio, 8) || cita.hora_inicio;
+    if (hora_fin != null) updates.hora_fin = t(hora_fin, 8) || cita.hora_fin;
+    if (modalidad != null) updates.modalidad = modalidad;
+    if (tipo != null) updates.tipo = tipo;
+    if (estado != null) updates.estado = estado;
+    if (notas != null) updates.notas = t(notas, 2000);
+    if (!Object.keys(updates).length) return res.status(400).json({ error: 'Sin cambios' });
+    const sets = Object.keys(updates).map(k => `${k}=?`).join(', ');
+    await pool.execute(`UPDATE citas SET ${sets} WHERE id=?`, [...Object.values(updates), cid]);
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 router.patch('/:cid/estado', auth, async (req, res) => {
+  const cid = pid(req.params.cid);
+  if (!cid) return res.status(400).json({ error: 'ID inválido' });
   const { estado, notas, fecha } = req.body || {};
-  const sets = ['estado=?'];
-  const vals = [estado];
-  if (notas) { sets.push('notas=?'); vals.push(t(notas, 2000)); }
-  if (fecha != null && fecha !== '') {
-    if (req.user.rol === 'terapeuta') {
-      return res.status(403).json({ error: 'Sin permiso para cambiar la fecha' });
+  try {
+    const [[cita]] = await pool.execute('SELECT terapeuta_id FROM citas WHERE id=?', [cid]);
+    if (!cita) return res.status(404).json({ error: 'No encontrada' });
+    if (req.user.rol === 'terapeuta' && cita.terapeuta_id !== req.user.id)
+      return res.status(403).json({ error: 'Sin acceso' });
+    const sets = ['estado=?'];
+    const vals = [estado];
+    if (notas) { sets.push('notas=?'); vals.push(t(notas, 2000)); }
+    if (fecha != null && fecha !== '') {
+      if (req.user.rol === 'terapeuta') {
+        return res.status(403).json({ error: 'Sin permiso para cambiar la fecha' });
+      }
+      const fechaVal = t(fecha, 10);
+      if (!fechaVal || !/^\d{4}-\d{2}-\d{2}$/.test(fechaVal)) {
+        return res.status(400).json({ error: 'Fecha inválida' });
+      }
+      sets.push('fecha=?');
+      vals.push(fechaVal);
     }
-    const fechaVal = t(fecha, 10);
-    if (!fechaVal || !/^\d{4}-\d{2}-\d{2}$/.test(fechaVal)) {
-      return res.status(400).json({ error: 'Fecha inválida' });
-    }
-    sets.push('fecha=?');
-    vals.push(fechaVal);
-  }
-  vals.push(req.params.cid);
-  await pool.execute(`UPDATE citas SET ${sets.join(',')} WHERE id=?`, vals);
-  res.json({ ok: true });
+    vals.push(cid);
+    await pool.execute(`UPDATE citas SET ${sets.join(',')} WHERE id=?`, vals);
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // Enviar recordatorio manual

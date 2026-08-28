@@ -27,9 +27,12 @@
 
 .ag-detail-header { padding: 14px 20px; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
 .ag-detail-avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 18px; flex-shrink: 0; }
-.ag-detail-name { font-weight: 700; font-size: 15px; }
+.ag-detail-info { flex: 1; min-width: 0; }
+.ag-detail-name { font-weight: 700; font-size: 15px; line-height: 1.25; }
 .ag-detail-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; word-break: break-word; }
-.ag-detail-stats { display: flex; gap: 16px; margin-left: auto; flex-shrink: 0; }
+.ag-btn-nueva-cita { white-space: nowrap; flex-shrink: 0; margin-left: auto; }
+.ag-btn-nueva-cita .ag-btn-label { margin-left: 4px; }
+.ag-detail-stats { display: flex; gap: 16px; flex-shrink: 0; }
 .ag-stat { text-align: center; }
 .ag-stat-val { font-size: 18px; font-weight: 700; color: var(--primary); line-height: 1; }
 .ag-stat-lbl { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .4px; margin-top: 2px; }
@@ -80,11 +83,55 @@
   .ag-sidebar-btns { flex-direction: column; }
   .ag-back-btn { display: inline-flex; }
 
-  .ag-detail-header { padding: 12px 14px; flex-wrap: wrap; }
-  .ag-detail-stats { width: 100%; margin-left: 0; justify-content: space-around; margin-top: 4px; }
-  .ag-timeline { padding: 12px 14px; }
+  .ag-detail-header {
+    padding: 10px 12px;
+    gap: 8px 10px;
+    align-items: center;
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+  }
+  .ag-back-btn { grid-column: 1; grid-row: 1; }
+  .ag-detail-avatar { width: 40px; height: 40px; font-size: 16px; grid-column: 2; grid-row: 1; }
+  .ag-detail-info { grid-column: 3; grid-row: 1; min-width: 0; padding-top: 0; }
+  .ag-detail-name { font-size: 14px; }
+  .ag-detail-meta { font-size: 11px; line-height: 1.35; }
+  .ag-btn-nueva-cita {
+    grid-column: 4;
+    grid-row: 1;
+    margin-left: 0;
+    align-self: center;
+    min-width: 40px;
+    min-height: 40px;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 50%;
+  }
+  .ag-btn-nueva-cita .ag-btn-label { display: none; }
+  .ag-detail-stats {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+    width: 100%;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+    margin-top: 2px;
+  }
+  .ag-stat { min-width: 0; }
+  .ag-stat-val { font-size: 16px; }
+  .ag-stat-lbl { font-size: 9px; letter-spacing: 0; }
 
-  .ag-cita-card { flex-wrap: wrap; align-items: flex-start; }
-  .ag-cita-right { width: 100%; flex-direction: row; align-items: center; justify-content: space-between; }
-  .ag-cita-actions .btn-icon { min-width: 44px; min-height: 44px; }
+  .ag-timeline { padding: 10px 12px; gap: 16px; }
+
+  .ag-cita-card { flex-wrap: wrap; align-items: flex-start; padding: 10px 12px; gap: 10px; }
+  .ag-cita-date { min-width: 40px; padding: 5px 3px; }
+  .ag-cita-day { font-size: 16px; }
+  .ag-cita-body { flex-basis: calc(100% - 52px); }
+  .ag-cita-right { width: 100%; flex-direction: row; align-items: center; justify-content: space-between; gap: 8px; }
+  .ag-cita-actions { flex: 1; justify-content: flex-end; }
+  .ag-cita-actions .btn-icon { min-width: 40px; min-height: 40px; }
 }

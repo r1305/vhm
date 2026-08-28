@@ -5,7 +5,7 @@
   'use strict';
 
   const { api, toast, esc, fmtDate, badge, fullName,
-          openModal, closeModal, ESTADO_PACIENTE } = window.CRM;
+          openModal, ESTADO_PACIENTE } = window.CRM;
 
   let terapeutasCache = [];
   let chipTerapeutaId = null;

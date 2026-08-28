@@ -229,7 +229,7 @@ router.get('/agenda', requireSession, async (req, res) => {
     const qs = user.rol === 'terapeuta' ? 'WHERE terapeuta_id = ?' : 'WHERE 1';
     const params = user.rol === 'terapeuta' ? [user.id] : [];
     const [pacientes] = await db.execute(`SELECT id, nombre, apellido FROM pacientes ${qs} ORDER BY nombre`, params);
-    render(res, 'agenda', { user, terapeutas, pacientes, scripts: `<script src="${req.app.locals.BASE}/agenda.js"></script>` });
+    render(res, 'agenda', { user, terapeutas, pacientes, scripts: `<script src="${req.app.locals.BASE}/citas_modal.js"></script><script src="${req.app.locals.BASE}/agenda.js"></script>` });
   } catch (err) { res.status(500).send(err.message); }
 });
 
