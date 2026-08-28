@@ -51,36 +51,45 @@ Abre estas URLs (deben responder **JSON** o **texto**, nunca "Cannot GET"):
 
 ### Deploy con git (Terminal SSH)
 
-**Comando recomendado (pull + limpiar workers + reinicio):**
+**Comando recomendado (site + crm + openwa — pull + npm + limpiar workers + reinicio):**
+
+```bash
+cd ~/public_html && bash deploy.sh --restart
+```
+
+Equivalente:
 
 ```bash
 cd ~/public_html && bash site/deploy.sh --restart
 ```
 
-Solo actualizar código y limpiar workers (sin reiniciar la app):
+Solo actualizar código y limpiar workers (sin reiniciar):
 
 ```bash
-cd ~/public_html && bash site/deploy.sh
+cd ~/public_html && bash deploy.sh
 ```
 
-Solo limpiar workers huérfanos:
+Solo limpiar workers huérfanos (site, crm, openwa):
 
 ```bash
 bash site/scripts/cpanel-clean-workers.sh -f
 ```
 
-Solo reiniciar (stop → limpiar → start):
+Solo reiniciar las tres apps:
 
 ```bash
-bash site/scripts/cpanel-restart-app.sh
+bash site/scripts/cpanel-restart-apps.sh
 ```
 
-Si `cloudlinux-selector` no existe en tu servidor, tras `deploy.sh` usa cPanel manualmente: **STOP →** `bash site/scripts/cpanel-clean-workers.sh -f` **→ START**.
+Reiniciar una sola app:
 
 ```bash
-cd ~/public_html          # raíz del repo (carpeta con media/ y site/)
-bash site/deploy.sh --restart
+bash site/scripts/cpanel-restart-apps.sh site
+bash site/scripts/cpanel-restart-apps.sh crm
+bash site/scripts/cpanel-restart-apps.sh openwa
 ```
+
+Si `cloudlinux-selector` no existe en tu servidor: **STOP** cada app → `bash site/scripts/cpanel-clean-workers.sh -f` → **START**.
 
 **Video La Tribu (`media/tribu-hero.mp4`):** el repo usa Git LFS. cPanel **no trae `git lfs`**. Tras `git pull`, ejecuta:
 
