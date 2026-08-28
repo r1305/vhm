@@ -229,52 +229,6 @@
     .tribu-panel.active { display: block; }
     .camino-intro { max-width: 1160px; margin: 0 auto; padding: 28px 22px 0; }
     .camino-intro .intro, .camino-intro .pact { text-align: center; }
-    .camino-hero-video {
-      max-width: 860px; margin: 0 auto 28px;
-    }
-    .camino-hero-video-inner {
-      position: relative; width: 100%; padding-bottom: 56.25%; height: 0;
-      border-radius: 18px; overflow: hidden;
-      border: 1px solid var(--line);
-      box-shadow: 0 16px 48px rgba(0,0,0,.38);
-      background: #0a0812;
-    }
-    .camino-hero-video-el {
-      position: absolute; inset: 0; width: 100%; height: 100%; border: 0;
-      background: #000;
-    }
-    video.camino-hero-video-el { object-fit: contain; }
-    .camino-hero-video-play {
-      position: absolute; inset: 0; z-index: 2;
-      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
-      border: 0; cursor: pointer; padding: 24px;
-      background: linear-gradient(145deg, rgba(28,16,42,.94) 0%, rgba(12,10,20,.88) 55%, rgba(80,30,60,.75) 100%);
-      color: #fff; font-family: inherit; text-align: center;
-      transition: opacity .2s ease;
-    }
-    .camino-hero-video-play.has-poster {
-      background-image: linear-gradient(rgba(7,7,13,.35), rgba(7,7,13,.55)), var(--hero-poster);
-      background-size: cover; background-position: center;
-    }
-    .camino-hero-video-play:hover { opacity: .96; }
-    .camino-hero-video-play[hidden] { display: none !important; }
-    .camino-hero-video-play-icon {
-      width: 76px; height: 76px; border-radius: 50%; flex: none;
-      display: flex; align-items: center; justify-content: center;
-      background: var(--grad-warm); font-size: 1.75rem; padding-left: 5px;
-      box-shadow: 0 10px 36px rgba(236,72,153,.42);
-    }
-    .camino-hero-video-play-label {
-      font-family: 'Fraunces', serif; font-size: 1.15rem; font-weight: 600; margin-top: 6px;
-    }
-    .camino-hero-video-play-hint { font-size: .82rem; color: rgba(255,255,255,.72); }
-    .camino-hero-video-error {
-      position: absolute; inset: 0; align-items: center; justify-content: center;
-      padding: 24px; text-align: center; color: rgba(255,255,255,.82); font-size: .95rem; line-height: 1.5;
-    }
-    .camino-hero-video-error:not([hidden]) {
-      display: flex;
-    }
 
     /* CALENDARIO */
     .cal-wrap { max-width: 960px; margin: 0 auto; padding: 32px 22px 50px; }
@@ -362,8 +316,6 @@
       .section { padding: 32px 16px; }
       .camino-intro { padding: 20px 16px 0; }
       .camino-intro .intro, .camino-intro .pact { font-size: .92rem; line-height: 1.65; }
-      .camino-hero-video { margin-bottom: 20px; border-radius: 14px; }
-      .camino-hero-video-inner { border-radius: 14px; }
       .grid { grid-template-columns: 1fr; gap: 18px; }
       .cat-accordion { margin-bottom: 14px; border-radius: 14px; }
       .cat-accordion-trigger { font-size: 1.12rem; padding: 14px 16px; gap: 10px; align-items: flex-start; }
@@ -914,19 +866,6 @@
 
 <div id="tabCamino" class="tribu-panel active">
   <div class="camino-intro">
-    <div id="caminoHeroVideoWrap" class="camino-hero-video" hidden>
-      <div class="camino-hero-video-inner">
-        <video id="caminoHeroVideo" class="camino-hero-video-el" controls playsinline preload="none" controlsList="nodownload noplaybackrate"></video>
-        <button type="button" id="caminoHeroVideoPlay" class="camino-hero-video-play" aria-label="Reproducir video de bienvenida">
-          <span class="camino-hero-video-play-icon" aria-hidden="true">▶</span>
-          <span class="camino-hero-video-play-label">Video de bienvenida</span>
-          <span class="camino-hero-video-play-hint">Pulsa para reproducir</span>
-        </button>
-        <div id="caminoHeroVideoError" class="camino-hero-video-error" hidden>
-          <p>No pudimos cargar el video. Comprueba que exista <code>/media/tribu-hero.mp4</code> en el servidor y pulsa reproducir de nuevo.</p>
-        </div>
-      </div>
-    </div>
     <p class="intro" id="heroIntro">Cada masterclass y entrenamiento que encontrarás aquí, nació de historias reales. Estás entrando a un espacio diseñado para devolverte claridad, fuerza y dirección cuando más lo necesitas.</p>
     <p class="pact" id="heroPacto">Cada recurso tiene un propósito: ayudarte a entender, soltar, ordenar, sanar y avanzar. Lo importante no es la velocidad, sino tu constancia.</p>
   </div>
@@ -3017,98 +2956,8 @@ verificarSesion().then(cargar);
     const cfg = await res.json();
     if (cfg.intro) document.getElementById('heroIntro').textContent = cfg.intro;
     if (cfg.pacto) document.getElementById('heroPacto').textContent = cfg.pacto;
-    if (cfg.hero_video_src || (cfg.hero_video_sources && cfg.hero_video_sources.length) || cfg.hero_video_url || cfg.hero_video_embed) {
-      mostrarHeroVideo(cfg);
-    }
   } catch {}
 })();
-
-function heroDriveFileId(cfg) {
-  if (cfg.hero_video_file_id) return cfg.hero_video_file_id;
-  const raw = cfg.hero_video_url || cfg.hero_video_embed || '';
-  const m = String(raw).match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
-  return m ? m[1] : null;
-}
-
-function heroVideoStreamSources(cfg) {
-  const base = window.__APP_BASE__ || '';
-  const abs = (src) => {
-    if (/^https?:\/\//i.test(src)) return src;
-    if (src.startsWith('/')) return base + src;
-    return `${base}/${src}`;
-  };
-  const raw = Array.isArray(cfg.hero_video_sources) && cfg.hero_video_sources.length
-    ? cfg.hero_video_sources.slice()
-    : (cfg.hero_video_src ? [cfg.hero_video_src] : []);
-  if (raw.length) return raw.map(abs);
-  if (cfg.hero_video_type === 'drive' || heroDriveFileId(cfg)) {
-    return [abs('/api/videos/landing/hero-stream')];
-  }
-  const url = (cfg.hero_video_url || '').trim();
-  if (url) return [abs(url.startsWith('/') ? url : `/${url}`)];
-  return [];
-}
-
-function mostrarHeroVideo(cfg) {
-  const wrap = document.getElementById('caminoHeroVideoWrap');
-  const video = document.getElementById('caminoHeroVideo');
-  const errEl = document.getElementById('caminoHeroVideoError');
-  const playBtn = document.getElementById('caminoHeroVideoPlay');
-  if (!wrap || !video) return;
-
-  const sources = heroVideoStreamSources(cfg);
-  if (!sources.length) return;
-
-  wrap.hidden = false;
-  video.hidden = false;
-  if (errEl) errEl.hidden = true;
-  if (playBtn) {
-    playBtn.hidden = false;
-    playBtn.classList.remove('has-poster');
-    playBtn.style.removeProperty('--hero-poster');
-  }
-
-  const isDrive = cfg.hero_video_type === 'drive' || (!cfg.hero_video_type && heroDriveFileId(cfg));
-  const fileId = heroDriveFileId(cfg);
-  if (isDrive && fileId) {
-    video.poster = `https://drive.google.com/thumbnail?id=${encodeURIComponent(fileId)}&sz=w1280`;
-  } else {
-    video.removeAttribute('poster');
-    const base = window.__APP_BASE__ || '';
-    const posterUrl = `${base}/media/tribu-hero-poster.jpg`;
-    const img = new Image();
-    img.onload = () => {
-      video.poster = posterUrl;
-      if (playBtn) {
-        playBtn.classList.add('has-poster');
-        playBtn.style.setProperty('--hero-poster', `url("${posterUrl}")`);
-      }
-    };
-    img.src = posterUrl;
-  }
-
-  const showError = () => {
-    if (playBtn) playBtn.hidden = true;
-    if (errEl) {
-      errEl.innerHTML = '<p>No pudimos cargar el video. Comprueba que exista <code>/media/tribu-hero.mp4</code> en el servidor. Prueba abrir <a href="' + escapeHtml(sources[0]) + '" target="_blank" rel="noopener noreferrer" style="color:var(--gold)">el enlace directo</a>.</p>';
-      errEl.hidden = false;
-    }
-  };
-
-  video.onerror = null;
-  if (isDrive) video.onerror = () => showError();
-
-  if (playBtn) {
-    playBtn.onclick = () => {
-      video.play().catch(() => {});
-    };
-  }
-  video.onplaying = () => { if (playBtn) playBtn.hidden = true; };
-  video.onended = () => { if (playBtn) playBtn.hidden = false; };
-
-  const baseSrc = sources[0];
-  video.src = baseSrc + (baseSrc.includes('?') ? '&' : '?') + 'v=5';
-}
 
 // Botón flotante de WhatsApp (igual que el landing principal)
 (async function() {
