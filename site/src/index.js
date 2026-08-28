@@ -27,7 +27,8 @@ try {
   app.use(compression({
     threshold: 1024,
     filter: (req, res) => {
-      if (String(req.path || '').includes('/landing/hero-stream')) return false;
+      const p = String(req.path || '');
+      if (p.includes('/landing/hero-stream') || p.startsWith('/media/')) return false;
       return compression.filter(req, res);
     },
   }));
@@ -38,9 +39,12 @@ app.use(cors(corsOrigin ? { origin: corsOrigin.split(',').map((o) => o.trim()) }
 app.use(express.json({ limit: '1mb' }));
 app.use(require('cookie-parser')());
 
-// Security headers
+// Security headers (omit CSP en /media/* para no bloquear reproducción directa del MP4)
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
+  if (String(req.path || '').startsWith('/media/')) {
+    return next();
+  }
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('X-XSS-Protection', '1; mode=block');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
@@ -266,8 +270,24 @@ app.use(express.static(path.join(__dirname, '../public'), {
 }));
 
 const REPO_MEDIA_DIR = path.join(__dirname, '../../media');
+const HERO_VIDEO_FILE = path.join(REPO_MEDIA_DIR, 'tribu-hero.mp4');
+
+app.get('/media/tribu-hero.mp4', (req, res) => {
+  if (!fs.existsSync(HERO_VIDEO_FILE)) {
+    return res.status(404).type('text/plain').send('Video no encontrado');
+  }
+  const stat = fs.statSync(HERO_VIDEO_FILE);
+  if (stat.size < 1000000) {
+    return res.status(503).type('text/plain').send('Video aún no disponible en el servidor');
+  }
+  res.setHeader('Accept-Ranges', 'bytes');
+  res.setHeader('Cache-Control', 'public, max-age=3600, must-revalidate');
+  res.type('video/mp4');
+  res.sendFile(HERO_VIDEO_FILE);
+});
+
 if (fs.existsSync(REPO_MEDIA_DIR)) {
-  app.use('/media', express.static(REPO_MEDIA_DIR, { maxAge: '7d', index: false }));
+  app.use('/media', express.static(REPO_MEDIA_DIR, { maxAge: '1h', index: false, fallthrough: true }));
 }
 
 app.get('/health', (req, res) => {
