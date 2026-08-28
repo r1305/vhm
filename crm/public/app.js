@@ -112,8 +112,11 @@
   /* ── Modal ───────────────────────────────────────── */
   let _modalSave = null;
 
-  function openModal(title, html, onSave, { large = false } = {}) {
-    document.getElementById('modalSave').style.display = '';
+  function openModal(title, html, onSave, { large = false, saveLabel = 'Guardar', saveClass = 'btn btn-primary' } = {}) {
+    const btnSave = document.getElementById('modalSave');
+    btnSave.style.display = onSave ? '' : 'none';
+    btnSave.className = saveClass;
+    btnSave.textContent = saveLabel;
     document.getElementById('modalTitle').textContent  = title;
     document.getElementById('modalBody').innerHTML     = html;
     const modal = document.getElementById('modal');
@@ -149,7 +152,8 @@
       toast(err.message, 'danger');
     } finally {
       btnSave.disabled = btnCancel.disabled = btnClose.disabled = false;
-      btnSave.innerHTML = 'Guardar';
+      btnSave.className = 'btn btn-primary';
+      btnSave.textContent = 'Guardar';
       inputs.forEach(el => el.disabled = false);
     }
   });
