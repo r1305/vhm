@@ -56,6 +56,10 @@ cd ~/ruta/al/repo    # carpeta PADRE de site/ (donde está .git)
 bash site/deploy.sh
 ```
 
+**Video La Tribu (`media/tribu-hero.mp4`):** el repo usa **Git LFS**. Tras `git pull` normal, el MP4 en disco puede pesar solo ~135 bytes (puntero LFS) y el video no reproduce. `deploy.sh` ejecuta `git lfs pull` si LFS está instalado. Si no tienes Git LFS en cPanel, sube `media/tribu-hero.mp4` (~1.3 GB) por **FTP / Administrador de archivos** a la carpeta `media/` del repo.
+
+Verifica: `https://vhm.com.pe/site/api/deploy-info` debe mostrar `"tribuHeroMedia":{"ok":true,"sizeBytes":1357577878}` (no `git_lfs_pointer`).
+
 Luego **Restart** en cPanel.
 
 Ver guía completa: `site/DEPLOY.md`
