@@ -5,7 +5,7 @@
   'use strict';
 
   const { api, toast, esc, fmtDate, badge, fullName,
-          openModal, ESTADO_PACIENTE } = window.CRM;
+          openModal, closeModal, ESTADO_PACIENTE } = window.CRM;
 
   let terapeutasCache = [];
   let chipTerapeutaId = null;
@@ -68,6 +68,15 @@
               ${badge(p.estado, ESTADO_PACIENTE)}
               ${p.fuente ? `<span class="pac-fuente">${esc(p.fuente)}</span>` : ''}
             </div>
+            ${window.__USER_ROL__ !== 'terapeuta' ? `
+            <div class="pac-card-actions">
+              ${p.tribu_user_id
+                ? `<span class="pac-tribu-ok"><i class="fas fa-circle-check"></i> Usuario Tribu</span>`
+                : p.email
+                  ? `<button type="button" class="btn btn-outline btn-sm btn-tribu-create" data-tribu-create="${p.id}"><i class="fas fa-video"></i> Crear usuario Tribu</button>`
+                  : `<span class="pac-tribu-muted" title="Requiere email"><i class="fas fa-envelope"></i> Sin email para Tribu</span>`
+              }
+            </div>` : ''}
           </div>`;
         }).join('')
         : '<div class="list-empty" style="grid-column:1/-1">Sin pacientes</div>';
@@ -78,7 +87,43 @@
       document.querySelectorAll('[data-ver]').forEach(btn =>
         btn.addEventListener('click', () => showPacienteDetalle(data.find(p => p.id == btn.dataset.ver)))
       );
+      document.querySelectorAll('[data-tribu-create]').forEach(btn =>
+        btn.addEventListener('click', () => crearUsuarioTribu(data.find(p => String(p.id) === btn.dataset.tribuCreate)))
+      );
     } catch (err) { toast(err.message, 'danger'); }
+  }
+
+  async function crearUsuarioTribu(p) {
+    if (!p?.id || p.tribu_user_id) return;
+    if (!p.email) { toast('El paciente necesita email', 'danger'); return; }
+    openModal('Crear usuario Tribu', `
+      <p style="font-size:14px;margin-bottom:12px">Se creará acceso a <strong>La Tribu</strong> para:</p>
+      <ul style="font-size:13px;color:var(--text-muted);margin:0 0 16px 18px;line-height:1.6">
+        <li><strong>${esc(fullName(p))}</strong></li>
+        <li>${esc(p.email)}</li>
+        <li>Contraseña temporal (deberá cambiarla al ingresar)</li>
+        <li>Suscripción activa S/ 89.90 · 1 año</li>
+      </ul>
+      <p style="font-size:12px;color:var(--text-muted)">El usuario deberá cambiar la contraseña al ingresar por primera vez.</p>
+    `, async () => {
+      const r = await api(`/pacientes/${p.id}/tribu-usuario`, { method: 'POST' });
+      closeModal();
+      setTimeout(() => {
+        openModal('Usuario Tribu creado', `
+          <div style="font-size:14px;line-height:1.6">
+            <p><strong>${esc(fullName(p))}</strong> ya puede ingresar a La Tribu.</p>
+            <div style="margin:14px 0;padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm)">
+              <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">Correo</div>
+              <div style="font-weight:600">${esc(r.email)}</div>
+              <div style="font-size:12px;color:var(--text-muted);margin:10px 0 4px">Contraseña temporal</div>
+              <div style="font-family:monospace;font-size:18px;font-weight:700;letter-spacing:.08em;color:var(--primary)">${esc(r.tempPassword)}</div>
+            </div>
+            <p style="font-size:12px;color:var(--text-muted)">Comparte estos datos de forma segura. La contraseña debe cambiarse en el primer acceso.</p>
+          </div>`, null);
+        document.getElementById('modalSave').style.display = 'none';
+        loadPacientes();
+      }, 80);
+    }, { saveLabel: 'Confirmar' });
   }
 
   /* ── Formulario ─────────────────────────────────────── */

@@ -14,6 +14,10 @@
 .pac-card-meta span { display: flex; align-items: center; gap: 6px; word-break: break-word; }
 .pac-card-footer { display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--border); padding-top: 10px; margin-top: 2px; flex-wrap: wrap; }
 .pac-fuente { font-size: 11px; color: var(--text-light); text-transform: capitalize; }
+.pac-card-actions { margin-top: 4px; }
+.pac-card-actions .btn { width: 100%; justify-content: center; min-height: 36px; }
+.pac-tribu-ok { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--success); }
+.pac-tribu-muted { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-muted); }
 
 @media (max-width: 768px) {
   .pac-grid { grid-template-columns: 1fr; gap: 12px; }
