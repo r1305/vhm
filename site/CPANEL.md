@@ -51,9 +51,35 @@ Abre estas URLs (deben responder **JSON** o **texto**, nunca "Cannot GET"):
 
 ### Deploy con git (Terminal SSH)
 
+**Comando recomendado (pull + limpiar workers + reinicio):**
+
 ```bash
-cd ~/ruta/al/repo    # carpeta PADRE de site/ (donde está .git)
-bash site/deploy.sh
+cd ~/public_html && bash site/deploy.sh --restart
+```
+
+Solo actualizar código y limpiar workers (sin reiniciar la app):
+
+```bash
+cd ~/public_html && bash site/deploy.sh
+```
+
+Solo limpiar workers huérfanos:
+
+```bash
+bash site/scripts/cpanel-clean-workers.sh -f
+```
+
+Solo reiniciar (stop → limpiar → start):
+
+```bash
+bash site/scripts/cpanel-restart-app.sh
+```
+
+Si `cloudlinux-selector` no existe en tu servidor, tras `deploy.sh` usa cPanel manualmente: **STOP →** `bash site/scripts/cpanel-clean-workers.sh -f` **→ START**.
+
+```bash
+cd ~/public_html          # raíz del repo (carpeta con media/ y site/)
+bash site/deploy.sh --restart
 ```
 
 **Video La Tribu (`media/tribu-hero.mp4`):** el repo usa Git LFS. cPanel **no trae `git lfs`**. Tras `git pull`, ejecuta:

@@ -16,22 +16,35 @@ vhm/                  ← RAÍZ git (aquí está .git)
 
 ### 1. Terminal SSH en cPanel
 
+**Un solo comando (pull + npm + limpiar workers + reinicio):**
+
 ```bash
-cd ~/ruta/al/repo          # carpeta que CONTIENE site/
-bash site/deploy.sh
+cd ~/public_html && bash site/deploy.sh --restart
+```
+
+(Ajusta `~/public_html` si tu repo está en otra ruta; debe ser la carpeta **padre** de `site/`.)
+
+Solo pull + limpieza, sin reiniciar la app:
+
+```bash
+cd ~/public_html && bash site/deploy.sh
 ```
 
 O manualmente:
 
 ```bash
-cd ~/ruta/al/repo
+cd ~/public_html
 git fetch origin main
 git reset --hard origin/main
 cd site
 npm install --omit=dev
+bash scripts/cpanel-clean-workers.sh -f
+bash scripts/cpanel-restart-app.sh
 ```
 
-### 2. cPanel → Setup Node.js App → **Restart**
+### 2. cPanel → Setup Node.js App (solo si no usaste `--restart`)
+
+Si no tienes `cloudlinux-selector` en SSH: **STOP** → `bash site/scripts/cpanel-clean-workers.sh -f` → **START** una vez.
 
 ### 3. Verificar (debe responder JSON, no "Cannot GET")
 
@@ -73,12 +86,22 @@ Si ves el uso de procesos subir (ej. 90/100):
    DB_POOL_MAX=3
    ```
 4. **Stop** la app en cPanel, luego **Start** una sola vez (no Restart en bucle).
-5. Si quedan workers viejos (`lsnode`), mátalos antes de Start:
+5. Limpieza automática (recomendado en cada deploy):
+
    ```bash
-   pkill -f "lsnode:/home/TU_USUARIO/public_html/site/"
-   ps aux | grep lsnode | grep -v grep   # debe quedar vacío
+   bash site/scripts/cpanel-clean-workers.sh -f
    ```
-6. En cPanel → **Process Manager** / terminal: mata procesos `npm` huérfanos de builds viejos:
+
+   O incluida en `bash site/deploy.sh --restart`.
+
+6. Si quedan workers viejos manualmente:
+
+   ```bash
+   bash site/scripts/cpanel-clean-workers.sh -f -v
+   ps aux | grep lsnode | grep -v grep   # debe quedar vacío o solo los activos
+   ```
+
+7. En cPanel → **Process Manager** / terminal: mata procesos `npm` huérfanos de builds viejos:
    ```bash
    pkill -f "npm run build" 2>/dev/null
    pkill -f "vite build" 2>/dev/null
