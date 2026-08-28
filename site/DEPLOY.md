@@ -19,7 +19,7 @@ vhm/                  ← RAÍZ git (aquí está .git)
 **Un solo comando (site + crm + openwa — pull + npm + limpiar workers + reinicio):**
 
 ```bash
-cd ~/public_html && bash deploy.sh --restart
+cd ~/public_html && bash site/deploy.sh --restart
 ```
 
 (Ajusta `~/public_html` si tu repo está en otra ruta; debe ser la carpeta **padre** de `site/`, `crm/` y `openwa/`.)
@@ -27,7 +27,7 @@ cd ~/public_html && bash deploy.sh --restart
 Solo pull + limpieza, sin reiniciar:
 
 ```bash
-cd ~/public_html && bash deploy.sh
+cd ~/public_html && bash site/deploy.sh
 ```
 
 O manualmente:
