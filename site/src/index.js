@@ -24,7 +24,13 @@ app.set('trust proxy', 1);
 
 try {
   const compression = require('compression');
-  app.use(compression({ threshold: 1024 }));
+  app.use(compression({
+    threshold: 1024,
+    filter: (req, res) => {
+      if (String(req.path || '').includes('/landing/hero-stream')) return false;
+      return compression.filter(req, res);
+    },
+  }));
 } catch (_) { /* optional */ }
 
 const corsOrigin = process.env.CORS_ORIGIN;
@@ -39,7 +45,7 @@ app.use((req, res, next) => {
   res.setHeader('X-XSS-Protection', '1; mode=block');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://connect.facebook.net https://checkout.culqi.com https://js.culqi.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; media-src 'self' https://drive.google.com https://*.googleusercontent.com blob:; connect-src 'self' https://connect.facebook.net https://graph.facebook.com https://api.culqi.com https://checkout.culqi.com https://checkoutview.culqi.com https://js.culqi.com; frame-src https://www.loom.com https://checkout.culqi.com https://checkoutview.culqi.com https://js.culqi.com https://drive.google.com https://docs.google.com https://accounts.google.com; frame-ancestors 'none'");
+  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://connect.facebook.net https://checkout.culqi.com https://js.culqi.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; media-src 'self' https://drive.google.com https://drive.usercontent.google.com https://*.googleusercontent.com blob:; connect-src 'self' https://connect.facebook.net https://graph.facebook.com https://api.culqi.com https://checkout.culqi.com https://checkoutview.culqi.com https://js.culqi.com; frame-src https://www.loom.com https://checkout.culqi.com https://checkoutview.culqi.com https://js.culqi.com; frame-ancestors 'none'");
   if (process.env.NODE_ENV === 'production') {
     res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   }
@@ -258,6 +264,11 @@ app.use(express.static(path.join(__dirname, '../public'), {
   maxAge: '1d',
   index: false,
 }));
+
+const REPO_MEDIA_DIR = path.join(__dirname, '../../media');
+if (fs.existsSync(REPO_MEDIA_DIR)) {
+  app.use('/media', express.static(REPO_MEDIA_DIR, { maxAge: '7d', index: false }));
+}
 
 app.get('/health', (req, res) => {
   res.json({ ok: true, service: 'vhm-site', admin: 'html', version: 'html-admin-v3' });
