@@ -34,22 +34,6 @@ echo "==> Repo: $ROOT"
 git fetch origin main
 git reset --hard origin/main
 
-if git lfs version >/dev/null 2>&1; then
-  echo "==> Git LFS: descargando media/*.mp4"
-  git lfs install
-  git lfs pull origin main
-else
-  if [ -f site/scripts/fetch-hero-media.js ]; then
-    echo "==> Git LFS no disponible; descarga con Node..."
-    node site/scripts/fetch-hero-media.js || true
-  fi
-fi
-
-HERO="$ROOT/media/tribu-hero.mp4"
-if [ -f "$HERO" ] && [ "$(wc -c < "$HERO")" -lt 1000000 ]; then
-  echo "==> ADVERTENCIA: $HERO parece puntero Git LFS, no el MP4 real."
-fi
-
 activate_nodevenv() {
   local app="$1"
   local venv="${VHM_NODE_VENV:-$HOME/nodevenv/public_html/$app/22/bin/activate}"
