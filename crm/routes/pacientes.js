@@ -5,6 +5,7 @@ const { auth, authAdmin, ownerFilter } = require('../lib/auth');
 const router = Router();
 const t = (v, max = 255) => v == null ? null : String(v).trim().slice(0, max) || null;
 const id = (v) => { const n = parseInt(v, 10); return isFinite(n) && n > 0 ? n : null; };
+const tribuProvision = require('../lib/tribuProvision');
 
 router.get('/conteo-por-terapeuta', auth, async (req, res) => {
   try {
@@ -34,8 +35,40 @@ router.get('/', auth, async (req, res) => {
     sql += of.sql; params.push(...of.params);
     sql += ' ORDER BY p.updated_at DESC LIMIT 200';
     const [rows] = await pool.execute(sql, params);
+    try {
+      await tribuProvision.attachTribuFlagsToPacientes(rows);
+    } catch {
+      rows.forEach(p => { p.tribu_user_id = null; });
+    }
     res.json(rows);
   } catch { res.status(500).json({ error: 'Error al listar pacientes' }); }
+});
+
+router.post('/tribu/rebuild-suscripciones', authAdmin, async (req, res) => {
+  try {
+    const result = await tribuProvision.rebuildAllTribuSubscriptions();
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    res.status(500).json({ error: err.message || 'Error al reconstruir suscripciones' });
+  }
+});
+
+router.post('/:pid/tribu-usuario', authAdmin, async (req, res) => {
+  const pid = id(req.params.pid);
+  if (!pid) return res.status(400).json({ error: 'ID inválido' });
+  try {
+    const [[p]] = await pool.execute('SELECT * FROM pacientes WHERE id = ?', [pid]);
+    if (!p) return res.status(404).json({ error: 'Paciente no encontrado' });
+    if (p.email) {
+      const existing = await tribuProvision.findTribuUserByEmail(p.email);
+      if (existing) return res.status(409).json({ error: 'Este paciente ya tiene usuario Tribu' });
+    }
+    const result = await tribuProvision.createTribuUserFromPaciente(p);
+    res.status(201).json({ ok: true, ...result });
+  } catch (err) {
+    const code = err.message?.includes('Ya existe') ? 409 : 500;
+    res.status(code).json({ error: err.message || 'Error al crear usuario Tribu' });
+  }
 });
 
 router.post('/', authAdmin, async (req, res) => {
