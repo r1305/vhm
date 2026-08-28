@@ -21,6 +21,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SITE_DIR="${VHM_SITE_DIR:-$(cd "$SCRIPT_DIR/.." && pwd)}"
 REPO_ROOT="$(cd "$SITE_DIR/.." && pwd)"
 CRM_DIR="${VHM_CRM_DIR:-$REPO_ROOT/crm}"
+OPENWA_DIR="${VHM_CRM_DIR:-$REPO_ROOT/openwa}"
 LSUSER="${VHM_LSUSER:-${USER:-}}"
 
 DRY_RUN=0
@@ -28,6 +29,7 @@ VERBOSE=0
 FORCE=0
 CLEAN_SITE=1
 CLEAN_CRM=1
+CLEAN_OPENWA=1
 
 usage() {
   sed -n '2,14p' "$0"
@@ -38,8 +40,9 @@ while [ $# -gt 0 ]; do
     -d|--dry-run) DRY_RUN=1 ;;
     -v|--verbose) VERBOSE=1 ;;
     -f|--force) FORCE=1 ;;
-    --site-only) CLEAN_CRM=0 ;;
-    --crm-only) CLEAN_SITE=0 ;;
+    --site-only) CLEAN_SITE=0 ;;
+    --crm-only) CLEAN_CRM=0 ;;
+    --openwa-only) CLEAN_OPENWA=0 ;;
     -h|--help) usage; exit 0 ;;
     *) echo "Opción desconocida: $1" >&2; usage; exit 1 ;;
   esac
@@ -142,7 +145,7 @@ kill_orphan_builds() {
 
 echo "==> Usuario: ${LSUSER:-?}"
 echo "==> Site:   $SITE_DIR"
-[ -d "$CRM_DIR" ] && echo "==> CRM:    $CRM_DIR"
+[ -d "$CRM_DIR" ] && echo "==> CRM:    $CRM_DIR" && echo "==> OPENWA:    $OPENWA_DIR"
 
 status=0
 
@@ -152,6 +155,10 @@ fi
 
 if [ "$CLEAN_CRM" -eq 1 ] && [ -d "$CRM_DIR" ]; then
   kill_pattern "crm" "$CRM_DIR" || status=1
+fi
+
+if [ "$CLEAN_OPENWA" -eq 1 ] && [ -d "$OPENWA_DIR" ]; then
+  kill_pattern "crm" "$OPENWA_DIR" || status=1
 fi
 
 kill_orphan_builds
