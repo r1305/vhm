@@ -279,14 +279,17 @@ function tribuHeroMediaStatus() {
   if (!fs.existsSync(heroPath)) {
     return { ok: false, reason: 'missing' };
   }
-  const size = fs.statSync(heroPath).size;
-  if (size < 1000000) {
-    const head = fs.readFileSync(heroPath, { encoding: 'utf8', flag: 'r' }).slice(0, 40);
-    if (head.startsWith('version https://git-lfs.github.com/spec/v1')) {
-      return { ok: false, reason: 'git_lfs_pointer', size };
-    }
+  const sizeBytes = fs.statSync(heroPath).size;
+  const minOkBytes = 1000000;
+  if (sizeBytes < minOkBytes) {
+    let reason = 'too_small';
+    try {
+      const peek = fs.readFileSync(heroPath, 'utf8').slice(0, 64);
+      if (peek.includes('git-lfs.github.com/spec/v1')) reason = 'git_lfs_pointer';
+    } catch (_) { /* ignore */ }
+    return { ok: false, reason, sizeBytes, hint: 'Ejecuta git lfs pull en el repo o sube media/tribu-hero.mp4 (~1.3 GB) por FTP.' };
   }
-  return { ok: true, sizeBytes: size };
+  return { ok: true, sizeBytes };
 }
 
 app.get('/api/deploy-info', (req, res) => {
