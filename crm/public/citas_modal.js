@@ -91,13 +91,16 @@
   function bindPacienteSearch(preselected = null) {
     const searchInput = document.getElementById('f_paciente_search');
     const hiddenId = document.getElementById('f_paciente_id');
-    const dropdown = document.getElementById('f_paciente_dropdown');
-    if (!searchInput || !hiddenId || !dropdown) return;
+    if (!searchInput || !hiddenId) return;
 
     if (preselected) {
       hiddenId.value = preselected.id;
       searchInput.value = fullName(preselected);
+      return;
     }
+
+    const dropdown = document.getElementById('f_paciente_dropdown');
+    if (!dropdown) return;
 
     function renderDropdown(q) {
       const matches = pacientesCache().filter(p =>
@@ -245,10 +248,13 @@
     openModal('Nueva cita', `
       <div class="form-group" style="position:relative">
         <label class="form-label">Paciente *</label>
-        <input class="form-control" id="f_paciente_search" autocomplete="off" placeholder="Buscar paciente…"
-          ${pacienteLocked ? 'readonly style="background:var(--bg-muted,#f5f5f5)"' : ''}>
-        <input type="hidden" id="f_paciente_id">
-        ${pacienteLocked ? '' : '<div id="f_paciente_dropdown" class="autocomplete-dropdown" style="display:none"></div>'}
+        <input class="form-control${pacienteLocked ? ' form-control-locked' : ''}" id="f_paciente_search" autocomplete="off"
+          placeholder="Buscar paciente…"
+          ${pacienteLocked ? `readonly value="${esc(fullName(preselected))}"` : ''}>
+        <input type="hidden" id="f_paciente_id" value="${pacienteLocked ? preselected.id : ''}">
+        ${pacienteLocked
+          ? '<p class="form-hint"><i class="fas fa-lock"></i> Paciente seleccionado en la agenda</p>'
+          : '<div id="f_paciente_dropdown" class="autocomplete-dropdown" style="display:none"></div>'}
       </div>
       <div class="form-row">
         ${!esTerapeuta ? `<div class="form-group">
