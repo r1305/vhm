@@ -1,19 +1,19 @@
 #!/bin/bash
-# Limpia workers lsnode huérfanos de site/ (y crm/ si existe) en cPanel/Passenger.
+# Limpia workers lsnode huérfanos de site/, crm/ y openwa/ en cPanel/Passenger.
 # Uso: bash site/scripts/cpanel-clean-workers.sh [opciones]
 #
 # Opciones:
-#   -d, --dry-run   Solo muestra qué procesos se matarían
-#   -v, --verbose   Muestra detalle de cada proceso
-#   -f, --force     Usa SIGKILL (-9) si SIGTERM no bastó
-#   --site-only     Solo limpia la app site
-#   --crm-only      Solo limpia la app crm
-#   -h, --help      Ayuda
+#   -d, --dry-run     Solo muestra qué procesos se matarían
+#   -v, --verbose     Muestra detalle de cada proceso
+#   -f, --force       Usa SIGKILL (-9) si SIGTERM no bastó
+#   --site-only       Solo limpia site
+#   --crm-only        Solo limpia crm
+#   --openwa-only     Solo limpia openwa
+#   -h, --help        Ayuda
 #
 # Variables opcionales:
-#   VHM_SITE_DIR       Ruta absoluta a site/ (default: detectada desde este script)
-#   VHM_CRM_DIR        Ruta absoluta a crm/ (default: hermana de site/)
-#   VHM_LSUSER         Usuario cPanel (default: $USER)
+#   VHM_SITE_DIR, VHM_CRM_DIR, VHM_OPENWA_DIR   Rutas absolutas
+#   VHM_LSUSER                                  Usuario cPanel (default: $USER)
 
 set -e
 
@@ -21,7 +21,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SITE_DIR="${VHM_SITE_DIR:-$(cd "$SCRIPT_DIR/.." && pwd)}"
 REPO_ROOT="$(cd "$SITE_DIR/.." && pwd)"
 CRM_DIR="${VHM_CRM_DIR:-$REPO_ROOT/crm}"
-OPENWA_DIR="${VHM_CRM_DIR:-$REPO_ROOT/openwa}"
+OPENWA_DIR="${VHM_OPENWA_DIR:-$REPO_ROOT/openwa}"
 LSUSER="${VHM_LSUSER:-${USER:-}}"
 
 DRY_RUN=0
@@ -32,7 +32,7 @@ CLEAN_CRM=1
 CLEAN_OPENWA=1
 
 usage() {
-  sed -n '2,14p' "$0"
+  sed -n '2,16p' "$0"
 }
 
 while [ $# -gt 0 ]; do
@@ -40,9 +40,9 @@ while [ $# -gt 0 ]; do
     -d|--dry-run) DRY_RUN=1 ;;
     -v|--verbose) VERBOSE=1 ;;
     -f|--force) FORCE=1 ;;
-    --site-only) CLEAN_SITE=0 ;;
-    --crm-only) CLEAN_CRM=0 ;;
-    --openwa-only) CLEAN_OPENWA=0 ;;
+    --site-only) CLEAN_CRM=0; CLEAN_OPENWA=0 ;;
+    --crm-only) CLEAN_SITE=0; CLEAN_OPENWA=0 ;;
+    --openwa-only) CLEAN_SITE=0; CLEAN_CRM=0 ;;
     -h|--help) usage; exit 0 ;;
     *) echo "Opción desconocida: $1" >&2; usage; exit 1 ;;
   esac
@@ -145,7 +145,8 @@ kill_orphan_builds() {
 
 echo "==> Usuario: ${LSUSER:-?}"
 echo "==> Site:   $SITE_DIR"
-[ -d "$CRM_DIR" ] && echo "==> CRM:    $CRM_DIR" && echo "==> OPENWA:    $OPENWA_DIR"
+[ -d "$CRM_DIR" ] && echo "==> CRM:    $CRM_DIR"
+[ -d "$OPENWA_DIR" ] && echo "==> OpenWA: $OPENWA_DIR"
 
 status=0
 
@@ -158,7 +159,7 @@ if [ "$CLEAN_CRM" -eq 1 ] && [ -d "$CRM_DIR" ]; then
 fi
 
 if [ "$CLEAN_OPENWA" -eq 1 ] && [ -d "$OPENWA_DIR" ]; then
-  kill_pattern "crm" "$OPENWA_DIR" || status=1
+  kill_pattern "openwa" "$OPENWA_DIR" || status=1
 fi
 
 kill_orphan_builds

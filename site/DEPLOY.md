@@ -16,18 +16,18 @@ vhm/                  ← RAÍZ git (aquí está .git)
 
 ### 1. Terminal SSH en cPanel
 
-**Un solo comando (pull + npm + limpiar workers + reinicio):**
+**Un solo comando (site + crm + openwa — pull + npm + limpiar workers + reinicio):**
 
 ```bash
-cd ~/public_html && bash site/deploy.sh --restart
+cd ~/public_html && bash deploy.sh --restart
 ```
 
-(Ajusta `~/public_html` si tu repo está en otra ruta; debe ser la carpeta **padre** de `site/`.)
+(Ajusta `~/public_html` si tu repo está en otra ruta; debe ser la carpeta **padre** de `site/`, `crm/` y `openwa/`.)
 
-Solo pull + limpieza, sin reiniciar la app:
+Solo pull + limpieza, sin reiniciar:
 
 ```bash
-cd ~/public_html && bash site/deploy.sh
+cd ~/public_html && bash deploy.sh
 ```
 
 O manualmente:
@@ -39,7 +39,7 @@ git reset --hard origin/main
 cd site
 npm install --omit=dev
 bash scripts/cpanel-clean-workers.sh -f
-bash scripts/cpanel-restart-app.sh
+bash scripts/cpanel-restart-apps.sh
 ```
 
 ### 2. cPanel → Setup Node.js App (solo si no usaste `--restart`)
