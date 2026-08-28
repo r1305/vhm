@@ -1,6 +1,7 @@
 const express = require('express');
 const router  = express.Router();
 const db      = require('../lib/db');
+const { getHomePath } = require('../lib/crmNav');
 
 const TITLES = {
   dashboard:       'Dashboard',
@@ -44,12 +45,12 @@ function requireSession(req, res, next) {
 function requireAdmin(req, res, next) {
   const rol = req.session?.user?.rol;
   if (rol === 'superadmin' || rol === 'recepcion') return next();
-  res.redirect(`${req.app.locals.BASE}/dashboard`);
+  res.redirect(`${req.app.locals.BASE}/${getHomePath(req.session?.user)}`);
 }
 
 function requireSuperAdmin(req, res, next) {
   if (req.session?.user?.rol === 'superadmin') return next();
-  res.redirect(`${req.app.locals.BASE}/dashboard`);
+  res.redirect(`${req.app.locals.BASE}/${getHomePath(req.session?.user)}`);
 }
 
 // ── Helper render con layout ─────────────────────────────────────
@@ -59,7 +60,17 @@ async function render(res, view, data = {}) {
   const isAdmin = ['superadmin', 'recepcion'].includes(user?.rol);
   const [rows]  = await db.execute('SELECT item FROM menu_permisos WHERE rol = ?', [user?.rol || 'terapeuta']);
   const menuPermisos = new Set(rows.map(r => r.item));
-  const locals  = { BASE, title: TITLES[view] || view, view, user, isAdmin, menuPermisos, scripts: '', ...data, partialView: view };
+  const scripts = data.scripts
+    ? data.scripts.replace(/(\.js)(["'])/g, `$1?v=${res.app.locals.assetVersion}$2`)
+    : '';
+  const locals  = {
+    ...data,
+    BASE, title: TITLES[view] || view, view, user, isAdmin, menuPermisos,
+    scripts, assetVersion: res.app.locals.assetVersion, partialView: view,
+  };
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
   res.render('layout', locals);
 }
 
@@ -77,8 +88,11 @@ router.get('/agendar/:username', async (req, res) => {
 
 // ── LOGIN ────────────────────────────────────────────────────────
 router.get('/login', (req, res) => {
-  if (req.session?.user) return res.redirect(`${req.app.locals.BASE}/dashboard`);
-  res.render('login', { BASE: req.app.locals.BASE, error: null });
+  if (req.session?.user) return res.redirect(`${req.app.locals.BASE}/${getHomePath(req.session.user)}`);
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  res.render('login', { BASE: req.app.locals.BASE, error: null, assetVersion: req.app.locals.assetVersion });
 });
 
 router.post('/login', async (req, res) => {
@@ -94,8 +108,7 @@ router.post('/login', async (req, res) => {
     const ok = await bcrypt.compare(password, user.password);
     if (!ok) throw new Error('Contraseña incorrecta');
     req.session.user = { id: user.id, nombre: user.nombre, apellido: user.apellido, username: user.username, rol: user.rol };
-    const dest = user.rol === 'terapeuta' ? 'agenda' : 'dashboard';
-    res.redirect(`${BASE}/${dest}`);
+    res.redirect(`${BASE}/${getHomePath(req.session.user)}`);
   } catch (err) {
     res.render('login', { BASE, error: err.message });
   }
@@ -111,7 +124,12 @@ router.get('/mi-reporte', requireSession, (req, res) => {
 });
 
 // ── DASHBOARD ────────────────────────────────────────────────────
-router.get('/dashboard', requireSession, requireAdmin, async (req, res) => {
+router.get('/dashboard', requireSession, (req, res, next) => {
+  if (req.session.user.rol === 'terapeuta') {
+    return res.redirect(`${req.app.locals.BASE}/agenda`);
+  }
+  next();
+}, requireAdmin, async (req, res) => {
   const user = req.session.user;
   try {
     const [[{ pacientes_activos }]] = await db.execute("SELECT COUNT(*) AS pacientes_activos FROM pacientes WHERE estado = 'activo'");

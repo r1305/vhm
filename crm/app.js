@@ -6,14 +6,17 @@ const cors    = require('cors');
 const session = require('express-session');
 
 const { ensureSchema } = require('./schema');
+const { getHomePath } = require('./lib/crmNav');
 
 const app  = express();
 const BASE = (process.env.APP_MOUNT_PATH || '/crm').replace(/\/$/, '');
+const ASSET_VERSION = process.env.CRM_ASSET_VERSION || '20250828a';
 
 app.set('trust proxy', 1);
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
-app.locals.BASE = (process.env.APP_MOUNT_PATH || '/crm').replace(/\/$/, '');
+app.locals.BASE = BASE;
+app.locals.assetVersion = ASSET_VERSION;
 
 try { app.use(require('compression')({ threshold: 1024 })); } catch (_) {}
 
@@ -158,10 +161,10 @@ router.post('/api/whatsapp/test', require('./lib/auth').authAdmin, async (req, r
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.get('/', (req, res) => res.redirect(`${BASE}/dashboard`));
+router.get('/', (req, res) => res.redirect(`${BASE}/${getHomePath(req.session?.user)}`));
 router.get('*', (req, res) => {
   if (req.path.startsWith('/api')) return res.status(404).json({ error: 'Ruta no encontrada' });
-  res.redirect(`${BASE}/dashboard`);
+  res.redirect(`${BASE}/${getHomePath(req.session?.user)}`);
 });
 
 app.use(BASE, router);
