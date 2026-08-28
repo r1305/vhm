@@ -116,6 +116,21 @@ body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color
 /* ── Forms ─────────────────── */
 .form-label { font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 5px; display: block; }
 .form-control, .form-select { width: 100%; padding: 8px 10px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; color: var(--text); background: var(--surface); transition: var(--transition); }
+.form-control-locked,
+.form-control.form-control-locked[readonly] {
+  background: var(--bg);
+  color: var(--text);
+  border-color: var(--border);
+  cursor: default;
+  opacity: 1;
+}
+.form-hint { font-size: 11px; color: var(--text-muted); margin-top: 4px; display: flex; align-items: center; gap: 5px; }
+[data-theme="dark"] .form-control-locked,
+[data-theme="dark"] .form-control.form-control-locked[readonly] {
+  background: #13111f;
+  color: #e9e5ff;
+  border-color: #3d3a52;
+}
 .form-control:focus, .form-select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(124,58,237,.1); }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .form-group { margin-bottom: 14px; }
