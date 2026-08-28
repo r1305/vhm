@@ -274,12 +274,28 @@ app.get('/health', (req, res) => {
   res.json({ ok: true, service: 'vhm-site', admin: 'html', version: 'html-admin-v3' });
 });
 
+function tribuHeroMediaStatus() {
+  const heroPath = path.join(__dirname, '../../media/tribu-hero.mp4');
+  if (!fs.existsSync(heroPath)) {
+    return { ok: false, reason: 'missing' };
+  }
+  const size = fs.statSync(heroPath).size;
+  if (size < 1000000) {
+    const head = fs.readFileSync(heroPath, { encoding: 'utf8', flag: 'r' }).slice(0, 40);
+    if (head.startsWith('version https://git-lfs.github.com/spec/v1')) {
+      return { ok: false, reason: 'git_lfs_pointer', size };
+    }
+  }
+  return { ok: true, sizeBytes: size };
+}
+
 app.get('/api/deploy-info', (req, res) => {
   const versionFile = path.join(__dirname, '../public/DEPLOY_VERSION.txt');
   let version = null;
   if (fs.existsSync(versionFile)) {
     version = fs.readFileSync(versionFile, 'utf8').trim();
   }
+  const heroMedia = tribuHeroMediaStatus();
   res.json({
     ok: true,
     version,
@@ -290,6 +306,7 @@ app.get('/api/deploy-info', (req, res) => {
     dbPoolMax: process.env.DB_POOL_MAX || '3',
     adminDir: fs.existsSync(ADMIN_DIR),
     adminJs: fs.existsSync(path.join(ADMIN_DIR, 'js', 'api.js')),
+    tribuHeroMedia: heroMedia,
   });
 });
 
