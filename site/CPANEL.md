@@ -51,13 +51,7 @@ Abre estas URLs (deben responder **JSON** o **texto**, nunca "Cannot GET"):
 
 ### Deploy con git (Terminal SSH)
 
-**Comando recomendado (site + crm + openwa — pull + npm + limpiar workers + reinicio):**
-
-```bash
-cd ~/public_html && bash deploy.sh --restart
-```
-
-Equivalente:
+**Comando único (site + crm + openwa — pull + npm + limpiar workers + reinicio):**
 
 ```bash
 cd ~/public_html && bash site/deploy.sh --restart
@@ -66,7 +60,7 @@ cd ~/public_html && bash site/deploy.sh --restart
 Solo actualizar código y limpiar workers (sin reiniciar):
 
 ```bash
-cd ~/public_html && bash deploy.sh
+cd ~/public_html && bash site/deploy.sh
 ```
 
 Solo limpiar workers huérfanos (site, crm, openwa):
