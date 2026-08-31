@@ -7,29 +7,30 @@
 .disp-row {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   padding: 10px 14px;
   border: 1.5px solid var(--border);
   border-radius: 10px;
-  background: var(--card-bg);
+  background: var(--surface);
   transition: border-color .15s, background .15s;
 }
 
 .disp-row.disp-activo {
   border-color: var(--primary);
-  background: var(--primary-light, #f0f4ff);
+  background: var(--primary-light);
 }
 
 .disp-check {
   display: flex;
   align-items: center;
   gap: 8px;
-  min-width: 130px;
+  min-width: 110px;
+  flex-shrink: 0;
 }
 
 .disp-check input[type="checkbox"] {
-  width: 17px;
-  height: 17px;
+  width: 18px;
+  height: 18px;
   accent-color: var(--primary);
   cursor: pointer;
   flex-shrink: 0;
@@ -44,20 +45,80 @@
 .disp-horas {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex: 1;
 }
 
 .disp-horas span {
   font-size: 12px;
   color: var(--text-muted);
+  flex-shrink: 0;
 }
 
 .disp-horas .form-control {
-  width: 120px;
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  font-size: 13px;
 }
 
 .disp-horas-disabled {
   opacity: .35;
   pointer-events: none;
+}
+
+/* Link de agendamiento */
+.disp-link-box {
+  margin-top: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.disp-link-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.disp-link-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.disp-link-row code {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  word-break: break-all;
+  color: var(--text);
+}
+
+@media (max-width: 480px) {
+  .disp-row {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .disp-check {
+    min-width: 100%;
+  }
+
+  .disp-horas {
+    width: 100%;
+  }
+
+  .disp-link-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .disp-link-row .btn {
+    width: 100%;
+    justify-content: center;
+  }
 }
