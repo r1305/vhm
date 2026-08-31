@@ -159,7 +159,10 @@
           _deferredPrompt.prompt();
           const { outcome } = await _deferredPrompt.userChoice;
           _deferredPrompt = null;
-          if (outcome === 'accepted') btn.style.display = 'none';
+          if (outcome === 'accepted') {
+            btn.style.display = 'none';
+            fetch('<%= BASE %>/api/pwa/install', { method: 'POST', credentials: 'same-origin' }).catch(() => {});
+          }
         } else {
           // iOS Safari: no soporta beforeinstallprompt, mostrar instrucciones
           const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);

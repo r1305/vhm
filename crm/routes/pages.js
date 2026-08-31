@@ -85,6 +85,18 @@ router.get('/sw.js', (req, res) => {
   res.send(sw);
 });
 
+// ── PWA INSTALL TRACKING ──────────────────────────────────
+router.post('/api/pwa/install', async (req, res) => {
+  if (!req.session?.user) return res.status(401).json({ ok: false });
+  try {
+    await db.execute(
+      'INSERT INTO pwa_installs (user_id, user_agent) VALUES (?, ?)',
+      [req.session.user.id, (req.headers['user-agent'] || '').slice(0, 500)]
+    );
+    res.json({ ok: true });
+  } catch { res.json({ ok: false }); }
+});
+
 // ── AGENDAR (público, sin auth) ────────────────────────────────
 router.get('/agendar/:username', async (req, res) => {
   try {

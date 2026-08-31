@@ -427,6 +427,16 @@ async function ensureSchema() {
         await conn.execute('INSERT IGNORE INTO menu_permisos (rol, item) VALUES (?,?)', [rol, item]);
     }
 
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS pwa_installs (
+        id           INT AUTO_INCREMENT PRIMARY KEY,
+        user_id      INT NOT NULL,
+        user_agent   VARCHAR(500) DEFAULT NULL,
+        installed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES terapeutas(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
     console.log('[crm] Schema OK');
   } finally {
     conn.release();
