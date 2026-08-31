@@ -262,11 +262,6 @@ router.get('/pacientes', requireSession, async (req, res) => {
   } catch (err) { res.status(500).send(err.message); }
 });
 
-// ── LEADS ────────────────────────────────────────────────────────
-router.get('/leads', requireSession, requireAdmin, async (req, res) => {
-  render(res, 'leads', { user: req.session.user, scripts: `<script src="${req.app.locals.BASE}/leads.js"></script>` });
-});
-
 // ── HISTORIAL ────────────────────────────────────────────────────
 router.get('/historial', requireSession, async (req, res) => {
   const user = req.session.user;
@@ -278,21 +273,10 @@ router.get('/historial', requireSession, async (req, res) => {
   } catch (err) { res.status(500).send(err.message); }
 });
 
-// ── CONSENTIMIENTOS ──────────────────────────────────────────────
-router.get('/consentimientos', requireSession, requireAdmin, async (req, res) => {
-  const [pacientes] = await db.execute('SELECT id, nombre, apellido FROM pacientes ORDER BY nombre');
-  render(res, 'consentimientos', { user: req.session.user, pacientes, scripts: `<script src="${req.app.locals.BASE}/consent.js"></script>` });
-});
-
 // ── PAGOS ────────────────────────────────────────────────────────
 router.get('/pagos', requireSession, requireAdmin, async (req, res) => {
   const [pacientes] = await db.execute('SELECT id, nombre, apellido FROM pacientes ORDER BY nombre');
   render(res, 'pagos', { user: req.session.user, pacientes, scripts: `<script src="${req.app.locals.BASE}/payment.js"></script>` });
-});
-
-// ── ESPERA ───────────────────────────────────────────────────────
-router.get('/espera', requireSession, requireAdmin, async (req, res) => {
-  render(res, 'espera', { user: req.session.user, scripts: `<script src="${req.app.locals.BASE}/queue.js"></script>` });
 });
 
 // ── DISPONIBILIDAD ──────────────────────────────────────────────
@@ -320,16 +304,6 @@ router.get('/reportes', requireSession, requireAdmin, async (req, res) => {
 // ── ANALÍTICA ────────────────────────────────────────────────────
 router.get('/analitica', requireSession, requireAdmin, async (req, res) => {
   render(res, 'analitica', { user: req.session.user, scripts: `<script src="${req.app.locals.BASE}/web_analytics.js"></script>` });
-});
-
-// ── MARKETING ────────────────────────────────────────────────────
-router.get('/marketing', requireSession, requireAdmin, async (req, res) => {
-  render(res, 'marketing', { user: req.session.user, scripts: `<script src="${req.app.locals.BASE}/marketing.js"></script>` });
-});
-
-// ── ASIGNACIÓN ───────────────────────────────────────────────────
-router.get('/asignacion', requireSession, requireAdmin, async (req, res) => {
-  render(res, 'asignacion', { user: req.session.user, scripts: `<script src="${req.app.locals.BASE}/auto_assignment.js"></script>` });
 });
 
 // ── INTEGRACIONES ────────────────────────────────────────────────
