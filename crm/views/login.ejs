@@ -6,6 +6,10 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
+  <link rel="manifest" href="<%= BASE %>/manifest.json">
+  <meta name="theme-color" content="#7c3aed">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="VHM CRM">
   <title>VHM CRM — Ingresar</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <link rel="stylesheet" href="<%= BASE %>/app.css?v=<%= assetVersion %>">
@@ -42,4 +46,9 @@
   </div>
 </div>
 </body>
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('<%= BASE %>/sw.js').catch(() => {});
+  }
+</script>
 </html>
