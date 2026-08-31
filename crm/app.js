@@ -223,6 +223,38 @@ async function scheduleCron() {
 ensureSchema()
   .then(() => loadConfigFromDB())
   .then(async () => {
+    // Generar íconos PWA si no existen o son inválidos
+    try {
+      const fs = require('fs');
+      const zlib = require('zlib');
+      const iconDir = path.join(__dirname, 'public', 'icons');
+      if (!fs.existsSync(iconDir)) fs.mkdirSync(iconDir, { recursive: true });
+      function crc32(buf) {
+        let c = 0xFFFFFFFF;
+        const t = [];
+        for (let i = 0; i < 256; i++) { let v = i; for (let j = 0; j < 8; j++) v = (v&1)?0xEDB88320^(v>>>1):v>>>1; t[i]=v; }
+        for (let i = 0; i < buf.length; i++) c = t[(c^buf[i])&0xFF]^(c>>>8);
+        return (c^0xFFFFFFFF)>>>0;
+      }
+      function pngChunk(type, data) {
+        const t=Buffer.from(type,'ascii'), len=Buffer.alloc(4), crc=Buffer.alloc(4);
+        len.writeUInt32BE(data.length); crc.writeUInt32BE(crc32(Buffer.concat([t,data])));
+        return Buffer.concat([len,t,data,crc]);
+      }
+      function makePNG(size) {
+        const ihdr=Buffer.alloc(13); ihdr.writeUInt32BE(size,0); ihdr.writeUInt32BE(size,4); ihdr[8]=8; ihdr[9]=2;
+        const row=Buffer.alloc(1+size*3); row[0]=0;
+        for(let x=0;x<size;x++){row[1+x*3]=124;row[2+x*3]=58;row[3+x*3]=237;}
+        const raw=Buffer.concat(Array(size).fill(row));
+        return Buffer.concat([Buffer.from([137,80,78,71,13,10,26,10]),pngChunk('IHDR',ihdr),pngChunk('IDAT',zlib.deflateSync(raw)),pngChunk('IEND',Buffer.alloc(0))]);
+      }
+      for (const size of [192, 512]) {
+        const fp = path.join(iconDir, `icon-${size}.png`);
+        const buf = fs.existsSync(fp) ? fs.readFileSync(fp) : Buffer.alloc(0);
+        const valid = buf.length > 100 && buf.slice(0,4).toString('hex') === '89504e47';
+        if (!valid) { fs.writeFileSync(fp, makePNG(size)); console.log(`[pwa] icon-${size}.png generado`); }
+      }
+    } catch (err) { console.warn('[pwa] No se pudieron generar íconos:', err.message); }
     await scheduleCron();
   })
   .then(() => {
