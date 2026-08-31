@@ -1,45 +1,60 @@
-// Genera íconos PWA usando solo módulos nativos de Node
-// Ejecutar: node generate-icons.js
+// Genera íconos PNG válidos sin dependencias externas
 const fs = require('fs');
 const path = require('path');
+const zlib = require('zlib');
 
-function makePNG(size) {
-  // PNG mínimo válido con fondo morado y letra H blanca usando raw PNG chunks
-  // Usamos una imagen SVG embebida como data URL y la convertimos con sharp si está disponible,
-  // o generamos un PNG sólido de color como fallback.
-  try {
-    const { createCanvas } = require('canvas');
-    const canvas = createCanvas(size, size);
-    const ctx = canvas.getContext('2d');
-
-    // Fondo
-    ctx.fillStyle = '#7c3aed';
-    ctx.beginPath();
-    ctx.roundRect(0, 0, size, size, size * 0.2);
-    ctx.fill();
-
-    // Ícono de corazón con pulso
-    ctx.fillStyle = '#ffffff';
-    ctx.font = `bold ${size * 0.45}px sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('V', size / 2, size / 2);
-
-    return canvas.toBuffer('image/png');
-  } catch {
-    // Fallback: PNG 1x1 morado si no hay canvas
-    return Buffer.from(
-      '89504e470d0a1a0a0000000d49484452000000010000000108020000009001' +
-      '2e00000000c4944415478016360f8cfc00000000200016b0017e0000000049454e44ae426082', 'hex'
-    );
+function crc32(buf) {
+  let c = 0xFFFFFFFF;
+  const table = [];
+  for (let i = 0; i < 256; i++) {
+    let v = i;
+    for (let j = 0; j < 8; j++) v = (v & 1) ? 0xEDB88320 ^ (v >>> 1) : v >>> 1;
+    table[i] = v;
   }
+  for (let i = 0; i < buf.length; i++) c = table[(c ^ buf[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+
+function chunk(type, data) {
+  const t = Buffer.from(type, 'ascii');
+  const len = Buffer.alloc(4); len.writeUInt32BE(data.length);
+  const crcBuf = Buffer.concat([t, data]);
+  const crc = Buffer.alloc(4); crc.writeUInt32BE(crc32(crcBuf));
+  return Buffer.concat([len, t, data, crc]);
+}
+
+function makePNG(size, r, g, b) {
+  // IHDR
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(size, 0); ihdr.writeUInt32BE(size, 4);
+  ihdr[8] = 8; ihdr[9] = 2; // 8-bit RGB
+
+  // Raw image data: each row = filter byte (0) + RGB pixels
+  const row = Buffer.alloc(1 + size * 3);
+  row[0] = 0;
+  for (let x = 0; x < size; x++) {
+    row[1 + x * 3] = r;
+    row[2 + x * 3] = g;
+    row[3 + x * 3] = b;
+  }
+  const raw = Buffer.concat(Array(size).fill(row));
+  const compressed = zlib.deflateSync(raw);
+
+  const sig = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+  return Buffer.concat([
+    sig,
+    chunk('IHDR', ihdr),
+    chunk('IDAT', compressed),
+    chunk('IEND', Buffer.alloc(0)),
+  ]);
 }
 
 const outDir = path.join(__dirname, 'public', 'icons');
 if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
 
+// Color primario VHM: #7c3aed = rgb(124, 58, 237)
 [192, 512].forEach(size => {
-  const buf = makePNG(size);
+  const buf = makePNG(size, 124, 58, 237);
   fs.writeFileSync(path.join(outDir, `icon-${size}.png`), buf);
-  console.log(`icon-${size}.png generado`);
+  console.log(`icon-${size}.png generado (${buf.length} bytes)`);
 });
