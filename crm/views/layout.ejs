@@ -107,6 +107,7 @@
       <button class="btn-icon sidebar-toggle" id="sidebarToggle" type="button" aria-label="Abrir menú"><i class="fas fa-bars"></i></button>
       <h1 class="page-title"><%= title %></h1>
       <button class="theme-btn" id="themeBtn" title="Cambiar tema"><i class="fas fa-moon"></i></button>
+      <button class="theme-btn" id="btnInstallPwa" title="Instalar app" style="display:none"><i class="fas fa-download"></i></button>
     </header>
 
     <main class="crm-content crm-view-<%= view %>" id="crmContent">
@@ -137,6 +138,40 @@
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('<%= BASE %>/sw.js').catch(() => {});
   }
+  (function () {
+    let _deferredPrompt = null;
+    const btn = document.getElementById('btnInstallPwa');
+
+    window.addEventListener('beforeinstallprompt', e => {
+      e.preventDefault();
+      _deferredPrompt = e;
+      if (btn) btn.style.display = 'flex';
+    });
+
+    window.addEventListener('appinstalled', () => {
+      _deferredPrompt = null;
+      if (btn) btn.style.display = 'none';
+    });
+
+    if (btn) {
+      btn.addEventListener('click', async () => {
+        if (_deferredPrompt) {
+          _deferredPrompt.prompt();
+          const { outcome } = await _deferredPrompt.userChoice;
+          _deferredPrompt = null;
+          if (outcome === 'accepted') btn.style.display = 'none';
+        } else {
+          // iOS Safari: no soporta beforeinstallprompt, mostrar instrucciones
+          const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+          if (isIos) {
+            alert('En Safari: toca el botón Compartir \u{1F4E4} y luego "Agregar a pantalla de inicio".');
+          } else {
+            alert('Para instalar: abre el menú de Chrome (\u22EE) y selecciona "Agregar a pantalla de inicio".');
+          }
+        }
+      });
+    }
+  })();
 </script>
 <%- scripts %>
 </body>
