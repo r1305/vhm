@@ -1,40 +1,52 @@
-const CACHE = 'vhm-crm-v1';
-const SHELL = [
-  '/crm/app.css',
-  '/crm/app.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css',
-  'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/webfonts/fa-solid-900.woff2',
-  'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/webfonts/fa-regular-400.woff2',
-];
+// Cambia este valor con cada deploy para forzar actualización del SW
+const CACHE = 'vhm-crm-v__ASSET_VERSION__';
+
+const CDN_CACHE = 'vhm-cdn-v1';
+const CDN_HOSTS = ['cdnjs.cloudflare.com', 'fonts.googleapis.com', 'fonts.gstatic.com'];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  e.waitUntil(self.skipWaiting());
 });
 
 self.addEventListener('activate', e => {
   e.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
-    ).then(() => self.clients.claim())
+    caches.keys()
+      .then(keys => Promise.all(
+        keys.filter(k => k !== CACHE && k !== CDN_CACHE).map(k => caches.delete(k))
+      ))
+      .then(() => self.clients.claim())
   );
 });
 
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
 
-  // Nunca interceptar llamadas a la API ni navegación de páginas
-  if (url.pathname.includes('/api/') || e.request.mode === 'navigate') return;
+  // Nunca interceptar navegación ni API
+  if (e.request.mode === 'navigate' || url.pathname.includes('/api/')) return;
 
-  // Solo cachear assets estáticos (css, js, fonts, imágenes)
-  if (/\.(css|js|woff2?|ttf|png|jpg|svg|ico)(\?.*)?$/.test(url.pathname)) {
+  // CDN externo → cache-first (raramente cambia)
+  if (CDN_HOSTS.includes(url.hostname)) {
     e.respondWith(
-      caches.match(e.request).then(cached => cached || fetch(e.request).then(res => {
-        if (res.ok) {
-          const clone = res.clone();
-          caches.open(CACHE).then(c => c.put(e.request, clone));
-        }
-        return res;
-      }))
+      caches.match(e.request).then(cached => {
+        if (cached) return cached;
+        return fetch(e.request).then(res => {
+          if (res.ok) caches.open(CDN_CACHE).then(c => c.put(e.request, res.clone()));
+          return res;
+        });
+      })
+    );
+    return;
+  }
+
+  // Assets propios del CRM → network-first (siempre trae lo nuevo)
+  if (/\.(css|js|png|jpg|svg|ico|woff2?)(\?.*)?$/.test(url.pathname)) {
+    e.respondWith(
+      fetch(e.request)
+        .then(res => {
+          if (res.ok) caches.open(CACHE).then(c => c.put(e.request, res.clone()));
+          return res;
+        })
+        .catch(() => caches.match(e.request))
     );
   }
 });

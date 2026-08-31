@@ -74,6 +74,17 @@ async function render(res, view, data = {}) {
   res.render('layout', locals);
 }
 
+// ── SERVICE WORKER (con version inyectada) ──────────────────────
+router.get('/sw.js', (req, res) => {
+  const fs = require('fs');
+  const swPath = require('path').join(__dirname, '../public/sw.js');
+  let sw = fs.readFileSync(swPath, 'utf8');
+  sw = sw.replace('__ASSET_VERSION__', res.app.locals.assetVersion);
+  res.setHeader('Content-Type', 'application/javascript');
+  res.setHeader('Cache-Control', 'no-store');
+  res.send(sw);
+});
+
 // ── AGENDAR (público, sin auth) ────────────────────────────────
 router.get('/agendar/:username', async (req, res) => {
   try {
