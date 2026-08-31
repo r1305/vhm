@@ -93,36 +93,6 @@
 
       sparkLine(document.getElementById('grafCitasDia'), d.citasPorDia||[], { dateKey:'fecha', valueKey:'total', color:'#7c3aed' });
 
-      const grafLeads = document.getElementById('grafLeadsFuente');
-      if ((d.leadsPorFuente||[]).length) {
-        grafLeads.innerHTML = d.leadsPorFuente.map((f, i) => {
-          const pctConv = f.total > 0 ? Math.round((f.convertidos/f.total)*100) : 0;
-          const pctBar  = Math.max(4, (f.total / Math.max(...d.leadsPorFuente.map(x=>x.total),1)) * 100);
-          return `<div style="margin-bottom:10px">
-            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
-              <span style="font-weight:600">${esc(f.fuente)}</span>
-              <span style="color:var(--text-muted)">${f.total} leads · <span style="color:var(--success)">${f.convertidos} convertidos (${pctConv}%)</span></span>
-            </div>
-            <div style="height:10px;background:var(--bg);border-radius:4px;overflow:hidden">
-              <div style="width:${pctBar}%;height:100%;background:${COLORS[i%COLORS.length]};border-radius:4px"></div>
-            </div>
-          </div>`;
-        }).join('');
-      } else { grafLeads.innerHTML = '<div class="list-empty">Sin leads en este período</div>'; }
-
-      sparkLine(document.getElementById('grafIngresosDia'), d.ingresosPorDia||[], { dateKey:'dia', valueKey:'total', color:'#16a34a', fmt: v => fmtMoney(v) });
-
-      const grafMetodo = document.getElementById('grafMetodoPago');
-      if ((d.ingresosPorMetodo||[]).length) {
-        donutChart(grafMetodo, d.ingresosPorMetodo, { labelKey:'metodo', valueKey:'cantidad' });
-        grafMetodo.innerHTML += `<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px">` +
-          d.ingresosPorMetodo.map((m,i) =>
-            `<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0">
-              <span style="color:${COLORS[i%COLORS.length]};font-weight:600">${esc(m.metodo)}</span>
-              <span>${fmtMoney(m.total)}</span>
-            </div>`).join('') + `</div>`;
-      } else { grafMetodo.innerHTML = '<div class="list-empty">Sin pagos</div>'; }
-
       barChart(document.getElementById('grafTerapeuta'),
         (d.citasPorTerapeuta||[]).map(t => ({ ...t, nombre_corto: t.nombre+(t.apellido?' '+t.apellido[0]+'.':'') })),
         { labelKey:'nombre_corto', valueKey:'total', color:'#7c3aed' });
