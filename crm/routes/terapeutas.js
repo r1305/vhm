@@ -9,9 +9,14 @@ const t = (v, max = 255) => v == null ? null : String(v).trim().slice(0, max) ||
 
 router.get('/', auth, async (req, res) => {
   try {
-    const [rows] = await pool.execute(
-      'SELECT id, nombre, apellido, username, email, telefono, rol, especialidad, activo FROM terapeutas ORDER BY nombre'
-    );
+    const [rows] = await pool.execute(`
+      SELECT t.id, t.nombre, t.apellido, t.username, t.email, t.telefono, t.rol, t.especialidad, t.activo,
+             MAX(p.installed_at) AS pwa_installed_at
+      FROM terapeutas t
+      LEFT JOIN pwa_installs p ON p.user_id = t.id
+      GROUP BY t.id
+      ORDER BY t.nombre
+    `);
     res.json(rows);
   } catch { res.status(500).json({ error: 'Error' }); }
 });
