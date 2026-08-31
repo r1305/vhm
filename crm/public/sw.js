@@ -1,12 +1,8 @@
-// Cambia este valor con cada deploy para forzar actualización del SW
 const CACHE = 'vhm-crm-v__ASSET_VERSION__';
-
 const CDN_CACHE = 'vhm-cdn-v1';
 const CDN_HOSTS = ['cdnjs.cloudflare.com', 'fonts.googleapis.com', 'fonts.gstatic.com'];
 
-self.addEventListener('install', e => {
-  e.waitUntil(self.skipWaiting());
-});
+self.addEventListener('install', e => e.waitUntil(self.skipWaiting()));
 
 self.addEventListener('activate', e => {
   e.waitUntil(
@@ -18,19 +14,23 @@ self.addEventListener('activate', e => {
   );
 });
 
+function cacheClone(cacheName, req, res) {
+  const copy = res.clone();
+  caches.open(cacheName).then(c => c.put(req, copy));
+}
+
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
 
-  // Nunca interceptar navegación ni API
   if (e.request.mode === 'navigate' || url.pathname.includes('/api/')) return;
 
-  // CDN externo → cache-first (raramente cambia)
+  // CDN → cache-first
   if (CDN_HOSTS.includes(url.hostname)) {
     e.respondWith(
       caches.match(e.request).then(cached => {
         if (cached) return cached;
         return fetch(e.request).then(res => {
-          if (res.ok) caches.open(CDN_CACHE).then(c => c.put(e.request, res.clone()));
+          if (res.ok) cacheClone(CDN_CACHE, e.request, res);
           return res;
         });
       })
@@ -38,18 +38,13 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // Assets propios del CRM → network-first (siempre trae lo nuevo)
+  // Assets propios → network-first
   if (/\.(css|js|png|jpg|svg|ico|woff2?)(\?.*)?$/.test(url.pathname)) {
     e.respondWith(
-      fetch(e.request)
-        .then(res => {
-          if (res.ok) {
-            const clone = res.clone();
-            caches.open(CACHE).then(c => c.put(e.request, clone));
-          }
-          return res;
-        })
-        .catch(() => caches.match(e.request))
+      fetch(e.request).then(res => {
+        if (res.ok) cacheClone(CACHE, e.request, res);
+        return res;
+      }).catch(() => caches.match(e.request))
     );
   }
 });
