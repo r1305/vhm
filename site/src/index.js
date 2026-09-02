@@ -36,7 +36,8 @@ try {
 
 const corsOrigin = process.env.CORS_ORIGIN;
 app.use(cors(corsOrigin ? { origin: corsOrigin.split(',').map((o) => o.trim()) } : {}));
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(require('cookie-parser')());
 
 // Security headers (omit CSP en /media/* para no bloquear reproducción directa del MP4)
