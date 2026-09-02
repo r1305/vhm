@@ -2,7 +2,7 @@
 
 Documento de referencia: qué hay en cada app (Site, CRM, OpenWA), quién la usa y cómo se conectan.
 
-**Última actualización:** 2026-09-01  
+**Última actualización:** 2026-09-02  
 **Repositorio:** [r1305/vhm](https://github.com/r1305/vhm)
 
 ---
@@ -32,6 +32,8 @@ Documento de referencia: qué hay en cada app (Site, CRM, OpenWA), quién la usa
 - Pixel Meta + botón WhatsApp flotante
 - Redes sociales configurables desde admin
 - Video de bienvenida La Tribu en la home
+- Hero portada configurable (imagen de fondo con fade-in)
+- Logo hero circular y redimensionado para no tapar contenido
 
 ### La Tribu (`/site/latribu`)
 
@@ -51,7 +53,7 @@ Documento de referencia: qué hay en cada app (Site, CRM, OpenWA), quién la usa
 - La Tribu — videos y categorías
 - Usuarios Tribu + contraseñas temporales
 - Administradores del sitio
-- Config: SMTP, pixel, Culqi, WhatsApp, redes sociales
+- Config: SMTP, pixel, Culqi, WhatsApp, redes sociales, portada hero (imagen de fondo)
 
 ---
 
@@ -173,6 +175,7 @@ Resumen de alto nivel — no lista de commits.
 | **Jun 2026** | Montaje `/site`, roles admin, seguridad | Panel CRM base, integraciones Meta | Repo unificado site + crm |
 | **Jul 2026** | Redes sociales, políticas Meta, analítica | Reportes KPIs, widget captación | — |
 | **Ago 2026** | La Tribu + Culqi, admin HTML, video hero | Calendario, disponibilidad, PWA, agenda avanzada | OpenWA + deploy unificado |
+| **Sep 2026** | Hero portada configurable (upload imagen), logo circular en landing | Agenda histórica dos paneles, limpieza menú, CSRF fix upload | — |
 
 ---
 
