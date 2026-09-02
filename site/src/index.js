@@ -405,6 +405,7 @@ app.use('/api/config-email', configEmailRoutes);
 app.use('/api/config-pixel', configPixelRoutes);
 app.use('/api/config-whatsapp', configWhatsappRoutes);
 app.use('/api/config-redes', require('./configRedesRoutes'));
+app.use('/api/hero-image', require('./heroImageRoutes'));
 app.use('/api/testimonios', testimoniosRoutes);
 app.use('/api/videos', videosRoutes);
 app.use('/api/clara', claraRoutes);
