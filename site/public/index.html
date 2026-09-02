@@ -39,7 +39,7 @@
       background: linear-gradient(to bottom, rgba(0,0,0,.55) 0%, rgba(0,0,0,.45) 60%, rgba(0,0,0,.7) 100%);
     }
     .hero > *:not(.hero-bg):not(.hero-overlay) { position: relative; z-index: 1; }
-    .hero img { width: 220px; margin-bottom: 20px; }
+    .hero img { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; margin-bottom: 20px; }
     .hero .tagline { font-size: 1.2rem; opacity: .85; max-width: 600px; margin-bottom: 30px; line-height: 1.7; color: #d0d0d0; }
     .hero .cta { display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, #f5f0eb, #c8e6f0); color: #000; border-radius: 30px; font-weight: 600; font-size: 1rem; transition: transform .2s; }
     .hero .cta:hover { transform: scale(1.05); }
@@ -140,7 +140,7 @@
 
     /* TABLET */
     @media (max-width: 768px) {
-      .hero img { width: 160px; }
+      .hero img { width: 100px; height: 100px; }
       .hero .tagline { font-size: 1rem; }
       section h2 { font-size: 1.6rem; }
       nav { padding: 12px 16px; }
@@ -250,7 +250,7 @@
 
     @media (max-width: 480px) {
       .hero { padding: 100px 16px 40px; }
-      .hero img { width: 140px; }
+      .hero img { width: 90px; height: 90px; }
       .hero .tagline { font-size: .9rem; }
       .hero .cta { padding: 12px 24px; font-size: .9rem; }
       section { padding: 40px 16px; }
