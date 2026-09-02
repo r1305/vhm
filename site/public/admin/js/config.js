@@ -610,10 +610,9 @@
     try {
       const form = new FormData();
       form.append('imagen', file);
-      const csrf = document.cookie.match(/csrf_token=([^;]+)/);
       const res = await fetch((window.__APP_BASE__ || '') + '/api/hero-image', {
         method: 'POST',
-        headers: { ...(csrf ? { 'x-csrf-token': decodeURIComponent(csrf[1]) } : {}), ...AdminApi.authHeaders() },
+        headers: AdminApi.formHeaders(),
         body: form,
         credentials: 'include',
       });
@@ -633,10 +632,9 @@
     if (!confirm('¿Eliminar la imagen de portada?')) return;
     const msg = document.getElementById('portada-msg');
     try {
-      const csrf = document.cookie.match(/csrf_token=([^;]+)/);
       const res = await fetch((window.__APP_BASE__ || '') + '/api/hero-image', {
         method: 'DELETE',
-        headers: { ...(csrf ? { 'x-csrf-token': decodeURIComponent(csrf[1]) } : {}), ...AdminApi.authHeaders() },
+        headers: AdminApi.formHeaders(),
         credentials: 'include',
       });
       if (res.ok) {
