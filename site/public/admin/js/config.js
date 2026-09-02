@@ -587,6 +587,66 @@
     }
   }
 
+  /* ── PORTADA ── */
+  async function cargarPortada() {
+    try {
+      const res = await AdminApi.apiFetch('/hero-image', { headers: AdminApi.authHeaders() });
+      const d = await res.json();
+      const preview = document.getElementById('portada-preview');
+      if (d.url) {
+        preview.innerHTML = `<img src="${d.url}" style="width:100%;max-height:300px;object-fit:cover;display:block">`;
+      } else {
+        preview.innerHTML = '<span style="color:#555;font-size:.85rem">Sin imagen cargada</span>';
+      }
+    } catch { toast('Error al cargar portada', 'error'); }
+  }
+
+  document.getElementById('btn-subir-portada')?.addEventListener('click', async () => {
+    const file = document.getElementById('portada-file').files[0];
+    const msg = document.getElementById('portada-msg');
+    if (!file) { AdminUtils.mostrarMsg(msg, 'Selecciona una imagen primero', false); return; }
+    const btn = document.getElementById('btn-subir-portada');
+    btn.disabled = true; btn.textContent = 'Subiendo...';
+    try {
+      const form = new FormData();
+      form.append('imagen', file);
+      const csrf = document.cookie.match(/csrf_token=([^;]+)/);
+      const res = await fetch((window.__APP_BASE__ || '') + '/api/hero-image', {
+        method: 'POST',
+        headers: { ...(csrf ? { 'x-csrf-token': decodeURIComponent(csrf[1]) } : {}), ...AdminApi.authHeaders() },
+        body: form,
+        credentials: 'include',
+      });
+      const d = await res.json();
+      if (res.ok) {
+        AdminUtils.mostrarMsg(msg, 'Imagen subida correctamente', true);
+        tabsLoaded['portada'] = false;
+        cargarPortada();
+      } else {
+        AdminUtils.mostrarMsg(msg, d.error || 'Error al subir', false);
+      }
+    } catch { AdminUtils.mostrarMsg(msg, 'Error de conexión', false); }
+    finally { btn.disabled = false; btn.textContent = '📤 Subir imagen'; }
+  });
+
+  document.getElementById('btn-eliminar-portada')?.addEventListener('click', async () => {
+    if (!confirm('¿Eliminar la imagen de portada?')) return;
+    const msg = document.getElementById('portada-msg');
+    try {
+      const csrf = document.cookie.match(/csrf_token=([^;]+)/);
+      const res = await fetch((window.__APP_BASE__ || '') + '/api/hero-image', {
+        method: 'DELETE',
+        headers: { ...(csrf ? { 'x-csrf-token': decodeURIComponent(csrf[1]) } : {}), ...AdminApi.authHeaders() },
+        credentials: 'include',
+      });
+      if (res.ok) {
+        AdminUtils.mostrarMsg(msg, 'Imagen eliminada', true);
+        tabsLoaded['portada'] = false;
+        cargarPortada();
+      }
+    } catch { AdminUtils.mostrarMsg(msg, 'Error al eliminar', false); }
+  });
+
   /* ── lazy tab loader ── */
   window.onAdminTabChange = function (tab) {
     if (tabsLoaded[tab]) return;
@@ -598,6 +658,7 @@
     else if (tab === 'facebook') cargarFacebook();
     else if (tab === 'suscripciones') cargarSuscripciones();
     else if (tab === 'culqi') cargarCulqi();
+    else if (tab === 'portada') cargarPortada();
   };
 
   function bindEvents() {

@@ -64,6 +64,7 @@
       <button type="button" data-tab="facebook">🔗 Facebook</button>
       <button type="button" data-tab="suscripciones">💳 Suscripciones</button>
       <button type="button" data-tab="culqi">💳 Culqi</button>
+      <button type="button" data-tab="portada">🖼️ Portada</button>
     </div>
 
     <!-- EMAIL -->
@@ -311,6 +312,28 @@
             <p>6. Programa un cron HTTP diario a <code>/api/tribu-pagos/cron-renovaciones?token=...</code> para renovaciones con tarjeta guardada.</p>
             <p>7. Tarjeta de prueba: <code>4111 1111 1111 1111</code>, CVV <code>123</code>, vencimiento futuro.</p>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PORTADA -->
+    <div data-panel="portada" style="display:none">
+      <div class="config-grid">
+        <div class="config-section">
+          <h3>🖼️ Imagen de Portada</h3>
+          <p style="font-size:.85rem;color:var(--text-muted);margin-bottom:20px">Esta imagen aparece de fondo detrás del logo en la página principal. Tamaño recomendado: 1920×1080px. Máximo 8MB (JPG, PNG o WebP).</p>
+          <div id="portada-preview" style="margin-bottom:16px;border-radius:10px;overflow:hidden;background:#111;min-height:160px;display:flex;align-items:center;justify-content:center">
+            <span style="color:#555;font-size:.85rem">Sin imagen cargada</span>
+          </div>
+          <div class="form-group">
+            <label for="portada-file">Seleccionar imagen</label>
+            <input type="file" id="portada-file" accept="image/jpeg,image/png,image/webp" style="display:block;margin-top:6px">
+          </div>
+          <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
+            <button type="button" class="btn btn-primary" id="btn-subir-portada">📤 Subir imagen</button>
+            <button type="button" class="btn btn-outline" id="btn-eliminar-portada" style="color:#dc2626;border-color:#dc2626">🗑️ Eliminar portada</button>
+          </div>
+          <div class="msg-box" id="portada-msg"></div>
         </div>
       </div>
     </div>

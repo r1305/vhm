@@ -20,7 +20,25 @@
       align-items: center;
       text-align: center;
       padding: 80px 20px 40px;
+      position: relative;
+      overflow: hidden;
     }
+    .hero-bg {
+      position: absolute;
+      inset: 0;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      opacity: 0;
+      transition: opacity .6s ease;
+    }
+    .hero-bg.loaded { opacity: 1; }
+    .hero-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to bottom, rgba(0,0,0,.55) 0%, rgba(0,0,0,.45) 60%, rgba(0,0,0,.7) 100%);
+    }
+    .hero > *:not(.hero-bg):not(.hero-overlay) { position: relative; z-index: 1; }
     .hero img { width: 220px; margin-bottom: 20px; }
     .hero .tagline { font-size: 1.2rem; opacity: .85; max-width: 600px; margin-bottom: 30px; line-height: 1.7; color: #d0d0d0; }
     .hero .cta { display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, #f5f0eb, #c8e6f0); color: #000; border-radius: 30px; font-weight: 600; font-size: 1rem; transition: transform .2s; }
@@ -297,6 +315,8 @@
 </nav>
 
 <div class="hero">
+  <div class="hero-bg" id="heroBg"></div>
+  <div class="hero-overlay"></div>
   <img src="logo_vhm.jpeg" alt="VHM">
   <p class="tagline">Tu camino hacia el bienestar emocional comienza aquí. Te acompañamos en el proceso de sanar, crecer y redescubrirte después de una ruptura amorosa.</p>
   <div style="display:flex;gap:14px;flex-wrap:wrap;justify-content:center">
@@ -642,6 +662,24 @@ function mostrarLandingHeroVideo(cfg) {
 </script>
 
 <script src="clara-chat.js"></script>
+<script>
+// Cargar imagen de portada del hero
+(async function() {
+  try {
+    const res = await fetch((window.__APP_BASE__ || '') + '/api/hero-image');
+    const data = await res.json();
+    if (data.url) {
+      const bg = document.getElementById('heroBg');
+      if (bg) {
+        bg.style.backgroundImage = `url('${data.url}')`;
+        const img = new Image();
+        img.onload = () => bg.classList.add('loaded');
+        img.src = data.url;
+      }
+    }
+  } catch (_) {}
+})();
+</script>
 <script src="vhm-tracker.js"></script>
 <script src="vhm-crm-widget.js"></script>
 
