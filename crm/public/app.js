@@ -134,7 +134,7 @@
   document.getElementById('modalClose').addEventListener('click', closeModal);
   document.getElementById('modalCancel').addEventListener('click', closeModal);
   document.getElementById('modalOverlay').addEventListener('click', e => {
-    if (e.target === e.currentTarget) closeModal();
+    // No cerrar al hacer click fuera del modal
   });
   document.getElementById('modalSave').addEventListener('click', async () => {
     if (!_modalSave) return;
