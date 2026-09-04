@@ -2,7 +2,7 @@
 
 Documento de referencia: qué hay en cada app (Site, CRM, OpenWA), quién la usa y cómo se conectan.
 
-**Última actualización:** 2026-09-02  
+**Última actualización:** 2026-09-03  
 **Repositorio:** [r1305/vhm](https://github.com/r1305/vhm)
 
 ---
@@ -72,7 +72,7 @@ Documento de referencia: qué hay en cada app (Site, CRM, OpenWA), quién la usa
 | Pagos | Registro y seguimiento |
 | Terapeutas | Perfiles, teléfono, permisos |
 | Calendario | Vistas mes / semana / día + bloqueos |
-| Mi disponibilidad | Horarios por terapeuta |
+| Mi disponibilidad | Horarios por terapeuta con rangos múltiples por día (ej. 9-12 y 4-7) |
 | Agendamiento público | `/crm/agendar/:username` |
 | Mi reporte | Vista terapeuta (mobile) |
 
@@ -175,7 +175,7 @@ Resumen de alto nivel — no lista de commits.
 | **Jun 2026** | Montaje `/site`, roles admin, seguridad | Panel CRM base, integraciones Meta | Repo unificado site + crm |
 | **Jul 2026** | Redes sociales, políticas Meta, analítica | Reportes KPIs, widget captación | — |
 | **Ago 2026** | La Tribu + Culqi, admin HTML, video hero | Calendario, disponibilidad, PWA, agenda avanzada | OpenWA + deploy unificado |
-| **Sep 2026** | Hero portada configurable (upload imagen), logo circular en landing | Agenda histórica dos paneles, limpieza menú, CSRF fix upload | — |
+| **Sep 2026** | Hero portada configurable (upload imagen), logo circular en landing | Agenda histórica dos paneles, limpieza menú, CSRF fix upload, disponibilidad con rangos múltiples por día | — |
 
 ---
 
