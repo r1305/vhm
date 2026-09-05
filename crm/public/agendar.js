@@ -180,8 +180,9 @@
     const apellido = document.getElementById('ag_apellido').value.trim();
     const telefono = document.getElementById('ag_telefono').value.trim();
     const email    = document.getElementById('ag_email').value.trim();
-    const motivo   = document.getElementById('ag_motivo').value.trim();
-    const errEl    = document.getElementById('agErrorMsg');
+    const motivo    = document.getElementById('ag_motivo').value.trim();
+    const modalidad  = document.querySelector('input[name="ag_modalidad"]:checked')?.value || 'presencial';
+    const errEl      = document.getElementById('agErrorMsg');
 
     if (!nombre) { mostrarError('El nombre es obligatorio'); return; }
     if (!telefono) { mostrarError('El teléfono es obligatorio'); return; }
@@ -202,7 +203,7 @@
     try {
       await api(`/api/publico/${USERNAME}/agendar`, {
         method: 'POST',
-        body: { nombre, apellido, email, telefono: telNorm, motivo, fecha: fechaSel, hora_inicio: horaSel },
+        body: { nombre, apellido, email, telefono: telNorm, motivo, modalidad, fecha: fechaSel, hora_inicio: horaSel },
       });
 
       const [y,m,d] = fechaSel.split('-').map(Number);
@@ -246,6 +247,7 @@
     document.getElementById('ag_telefono').value = '';
     document.getElementById('ag_email').value = '';
     document.getElementById('ag_motivo').value = '';
+    document.querySelector('input[name="ag_modalidad"][value="presencial"]').checked = true;
     goStep(1);
     loadMes();
   });
