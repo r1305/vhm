@@ -160,8 +160,21 @@ router.put('/:cid', auth, async (req, res) => {
     if (notas != null) updates.notas = t(notas, 2000);
     if (!Object.keys(updates).length) return res.status(400).json({ error: 'Sin cambios' });
     const sets = Object.keys(updates).map(k => `${k}=?`).join(', ');
-    await pool.execute(`UPDATE citas SET ${sets} WHERE id=?`, [...Object.values(updates), cid]);
-    res.json({ ok: true });
+    // Generar Meet link si cambia a videollamada y no tiene uno
+    const nuevaModalidad = updates.modalidad || cita.modalidad;
+    if (nuevaModalidad === 'videollamada' && !cita.meet_link && await isConnected().catch(() => false)) {
+      const fechaFinal     = updates.fecha      || String(cita.fecha).slice(0,10);
+      const horaInicioFinal = updates.hora_inicio || String(cita.hora_inicio).slice(0,5);
+      const horaFinFinal    = updates.hora_fin    || String(cita.hora_fin).slice(0,5);
+      const [[pac]] = await pool.execute('SELECT nombre, apellido FROM pacientes WHERE id=?', [cita.paciente_id]);
+      updates.meet_link = await createMeetLink({
+        titulo: `Sesión VHM${pac ? ' — ' + pac.nombre + ' ' + pac.apellido : ''}`,
+        fecha: fechaFinal, horaInicio: horaInicioFinal, horaFin: horaFinFinal,
+      }).catch(e => { console.error('[meet]', e.message); return null; });
+    }
+    const setsAll = Object.keys(updates).map(k => `${k}=?`).join(', ');
+    await pool.execute(`UPDATE citas SET ${setsAll} WHERE id=?`, [...Object.values(updates), cid]);
+    res.json({ ok: true, meet_link: updates.meet_link || cita.meet_link || null });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
