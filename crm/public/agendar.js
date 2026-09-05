@@ -185,16 +185,24 @@
 
     if (!nombre) { mostrarError('El nombre es obligatorio'); return; }
     if (!telefono) { mostrarError('El teléfono es obligatorio'); return; }
+    // Validar formato con código de país: solo dígitos, mínimo 10 dígitos
+    const telLimpio = telefono.replace(/[\s\-().+]/g, '');
+    if (!/^\d{10,15}$/.test(telLimpio)) {
+      mostrarError('Ingresa el teléfono con código de país sin espacios ni símbolos. Ej: 51999999999 para Perú');
+      return;
+    }
 
     errEl.style.display = 'none';
     const btn = document.getElementById('agConfirmar');
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Confirmando…';
+    // Normalizar teléfono: quitar espacios/guiones/+ y dejar solo dígitos
+    const telNorm = telefono.replace(/[\s\-().+]/g, '');
 
     try {
       await api(`/api/publico/${USERNAME}/agendar`, {
         method: 'POST',
-        body: { nombre, apellido, email, telefono, motivo, fecha: fechaSel, hora_inicio: horaSel },
+        body: { nombre, apellido, email, telefono: telNorm, motivo, fecha: fechaSel, hora_inicio: horaSel },
       });
 
       const [y,m,d] = fechaSel.split('-').map(Number);

@@ -125,6 +125,8 @@ body {
 .ag-form { display: flex; flex-direction: column; gap: 12px; }
 .ag-field { display: flex; flex-direction: column; gap: 4px; }
 .ag-field label { font-size: 12px; font-weight: 600; color: #555; }
+.ag-field-hint { font-weight: 400; color: #6366f1; font-size: 11px; margin-left: 4px; }
+.ag-field-note { font-size: 11px; color: #999; margin-top: 3px; }
 .ag-field input, .ag-field textarea {
   border: 1.5px solid #e2e8f0; border-radius: 8px;
   padding: 9px 12px; font-size: 14px; outline: none;
