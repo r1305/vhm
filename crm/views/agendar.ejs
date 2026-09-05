@@ -59,6 +59,19 @@
           </div>
           <div class="ag-field"><label>Email</label><input id="ag_email" type="email" placeholder="correo@ejemplo.com"></div>
           <div class="ag-field"><label>Motivo de consulta</label><textarea id="ag_motivo" rows="3" placeholder="Cuéntanos brevemente…"></textarea></div>
+          <div class="ag-field">
+            <label>Modalidad *</label>
+            <div class="ag-modalidad">
+              <label class="ag-modalidad-opt">
+                <input type="radio" name="ag_modalidad" value="presencial" checked>
+                <span><i class="fas fa-building"></i> Presencial</span>
+              </label>
+              <label class="ag-modalidad-opt">
+                <input type="radio" name="ag_modalidad" value="videollamada">
+                <span><i class="fas fa-video"></i> Videollamada</span>
+              </label>
+            </div>
+          </div>
           <div id="agErrorMsg" class="ag-error-msg" style="display:none"></div>
           <button class="ag-btn-confirmar" id="agConfirmar">Confirmar cita</button>
         </div>

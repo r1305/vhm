@@ -134,8 +134,9 @@ router.post('/:username/agendar', async (req, res) => {
     );
     if (!ter) return res.status(404).json({ error: 'Terapeuta no encontrado' });
 
-    const { nombre, apellido, email, telefono, fecha, hora_inicio, motivo } = req.body || {};
+    const { nombre, apellido, email, telefono, fecha, hora_inicio, motivo, modalidad } = req.body || {};
     if (!nombre || !fecha || !hora_inicio) return res.status(400).json({ error: 'nombre, fecha y hora_inicio requeridos' });
+    const modalidadVal = ['presencial','videollamada','telefono'].includes(modalidad) ? modalidad : 'presencial';
 
     // Verificar que el slot sigue libre
     const [[ocupado]] = await pool.execute(
@@ -194,10 +195,12 @@ router.post('/:username/agendar', async (req, res) => {
       pacienteId = r.insertId;
     }
 
+    const tipoCita = paciente ? 'seguimiento' : 'primera_vez';
+
     const [rc] = await pool.execute(
       `INSERT INTO citas (paciente_id, terapeuta_id, fecha, hora_inicio, hora_fin, modalidad, tipo, estado)
-       VALUES (?, ?, ?, ?, ?, 'presencial', 'primera_vez', 'pendiente')`,
-      [pacienteId, ter.id, fecha, hora_inicio + ':00', hora_fin + ':00']
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'pendiente')`,
+      [pacienteId, ter.id, fecha, hora_inicio + ':00', hora_fin + ':00', modalidadVal, tipoCita]
     );
 
     res.status(201).json({ ok: true, cita_id: rc.insertId });

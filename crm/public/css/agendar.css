@@ -160,7 +160,44 @@ body {
 .ag-loading { text-align: center; padding: 30px; color: #6366f1; font-size: 22px; }
 .ag-error   { text-align: center; padding: 20px; color: #ef4444; font-size: 13px; }
 
-.ag-error-msg {
+.ag-modalidad {
+  display: flex;
+  gap: 10px;
+}
+
+.ag-modalidad-opt {
+  flex: 1;
+  cursor: pointer;
+}
+
+.ag-modalidad-opt input { display: none; }
+
+.ag-modalidad-opt span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 10px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #555;
+  transition: all .15s;
+  background: #fff;
+}
+
+.ag-modalidad-opt input:checked + span {
+  border-color: #6366f1;
+  background: #eef2ff;
+  color: #6366f1;
+}
+
+.ag-modalidad-opt:hover span {
+  border-color: #a5b4fc;
+}
+
+
   background: #fef2f2;
   border: 1px solid #fca5a5;
   color: #b91c1c;
