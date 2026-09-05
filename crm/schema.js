@@ -175,6 +175,8 @@ async function ensureSchema() {
 
     // Agregar sesiones_disponibles a pacientes si no existe
     try { await conn.execute('ALTER TABLE pacientes ADD COLUMN sesiones_disponibles INT NOT NULL DEFAULT 0'); } catch (_) {}
+    // meet_link en citas
+    try { await conn.execute('ALTER TABLE citas ADD COLUMN meet_link VARCHAR(500) DEFAULT NULL'); } catch (_) {}
 
     // Agregar telefono a terapeutas si no existe
     try { await conn.execute('ALTER TABLE terapeutas ADD COLUMN telefono VARCHAR(30) DEFAULT NULL'); } catch (_) {}

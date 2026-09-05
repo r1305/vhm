@@ -338,7 +338,9 @@ router.get('/integraciones', requireSession, requireAdmin, async (req, res) => {
       .catch(() => [[{ enabled: 0, hora: 18, minuto: 0, dias: '1,2,3,4,5,6' }]]);
     const cronDias = String(cron?.dias || '').split(',').map(d => d.trim());
     const origin   = `${req.protocol}://${req.get('host')}`;
-    render(res, 'integraciones', { user: req.session.user, cfg, cron: cron || {}, cronDias, origin, scripts: `<script src="${req.app.locals.BASE}/integraciones.js"></script>` });
+    const { isConnected } = require('../lib/googleMeet');
+    const googleConnected = await isConnected().catch(() => false);
+    render(res, 'integraciones', { user: req.session.user, cfg, cron: cron || {}, cronDias, origin, googleConnected, scripts: `<script src="${req.app.locals.BASE}/integraciones.js"></script>` });
   } catch (err) { res.status(500).send(err.message); }
 });
 

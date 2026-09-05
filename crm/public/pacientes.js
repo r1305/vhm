@@ -9,6 +9,22 @@
 
   let terapeutasCache = [];
   let chipTerapeutaId = null;
+  let filtroSinTel    = false;
+  let filtroSinEmail  = false;
+
+  /* ── Chips calidad de datos ─────────────────────────── */
+  function bindFiltroChips() {
+    document.getElementById('chipSinTel').addEventListener('click', function () {
+      filtroSinTel = !filtroSinTel;
+      this.classList.toggle('active', filtroSinTel);
+      loadPacientes();
+    });
+    document.getElementById('chipSinEmail').addEventListener('click', function () {
+      filtroSinEmail = !filtroSinEmail;
+      this.classList.toggle('active', filtroSinEmail);
+      loadPacientes();
+    });
+  }
 
   /* ── Chips ──────────────────────────────────────────── */
   function bindChips() {
@@ -32,6 +48,8 @@
       if (q)              qs.set('q', q);
       if (estado)         qs.set('estado', estado);
       if (chipTerapeutaId) qs.set('terapeuta_id', chipTerapeutaId);
+      if (filtroSinTel)   qs.set('sin_telefono', '1');
+      if (filtroSinEmail) qs.set('sin_email', '1');
       const data = await api(`/pacientes?${qs}`);
       window.CRM.pacientesCache = data;
 
@@ -161,7 +179,11 @@
       </div>
       <div class="form-row">
         <div class="form-group"><label class="form-label">Email</label><input type="email" class="form-control" id="f_email" value="${esc(p?.email||'')}"></div>
-        <div class="form-group"><label class="form-label">Teléfono</label><input class="form-control" id="f_telefono" value="${esc(p?.telefono||'')}"></div>
+        <div class="form-group">
+          <label class="form-label">Teléfono <span style="font-size:11px;color:var(--text-muted);font-weight:400">con código de país</span></label>
+          <input class="form-control" id="f_telefono" value="${esc(p?.telefono||'')}" placeholder="51999999999" inputmode="numeric">
+          <span style="font-size:11px;color:var(--text-muted);margin-top:3px;display:block">Ej: 51999999999 (Perú) · 15551234567 (EE.UU.) · 34612345678 (España)</span>
+        </div>
       </div>
       <div class="form-row">
         <div class="form-group"><label class="form-label">Fecha de nacimiento</label><input type="date" class="form-control" id="f_nacimiento" value="${p?.fecha_nacimiento?String(p.fecha_nacimiento).slice(0,10):''}"></div>
@@ -213,6 +235,10 @@
         motivo_consulta:  document.getElementById('f_motivo').value,
       };
       if (!body.nombre || !body.apellido) throw new Error('Nombre y apellido requeridos');
+      if (body.telefono) {
+        body.telefono = body.telefono.replace(/[\s+()\-]/g, '');
+        if (!/^\d{10,15}$/.test(body.telefono)) throw new Error('Teléfono inválido — ingresa solo dígitos con código de país (10-15 dígitos). Ej: 51999999999');
+      }
       let pid = p?.id;
       if (p) { await api(`/pacientes/${p.id}`, { method: 'PUT', body }); }
       else   { const r = await api('/pacientes', { method: 'POST', body }); pid = r.id; }
@@ -269,6 +295,7 @@
   document.getElementById('btnNuevoPaciente')?.addEventListener('click', () => showPacienteForm());
 
   /* ── Init ───────────────────────────────────────────── */
+  bindFiltroChips();
   bindChips();
   loadPacientes();
 

@@ -2,6 +2,7 @@ const { Router } = require('express');
 const pool = require('../lib/db');
 const { auth, ownerFilter } = require('../lib/auth');
 const { sendRecordatorioCita } = require('../lib/mailer');
+const { createMeetLink, isConnected } = require('../lib/googleMeet');
 
 const router = Router();
 const t = (v, max = 255) => v == null ? null : String(v).trim().slice(0, max) || null;
@@ -63,16 +64,24 @@ router.post('/', auth, async (req, res) => {
   hora_inicio = hora_inicio || '17:00';
   hora_fin    = hora_fin    || '18:00';
   try {
+    let meet_link = null;
+    if (modalidad === 'videollamada' && await isConnected().catch(() => false)) {
+      const [[pac]] = await pool.execute('SELECT nombre, apellido FROM pacientes WHERE id=?', [pid(paciente_id)]);
+      meet_link = await createMeetLink({
+        titulo: `Sesión VHM${pac ? ' — ' + pac.nombre + ' ' + pac.apellido : ''}`,
+        fecha, horaInicio: hora_inicio, horaFin: hora_fin,
+      }).catch(e => { console.error('[meet]', e.message); return null; });
+    }
     const [r] = await pool.execute(
-      `INSERT INTO citas (paciente_id,terapeuta_id,fecha,hora_inicio,hora_fin,modalidad,tipo,estado,notas)
-       VALUES (?,?,?,?,?,?,?,?,?)`,
-      [pid(paciente_id), pid(terapeuta_id), fecha, hora_inicio, hora_fin, modalidad, tipo, estado, t(notas,2000)]
+      `INSERT INTO citas (paciente_id,terapeuta_id,fecha,hora_inicio,hora_fin,modalidad,tipo,estado,notas,meet_link)
+       VALUES (?,?,?,?,?,?,?,?,?,?)`,
+      [pid(paciente_id), pid(terapeuta_id), fecha, hora_inicio, hora_fin, modalidad, tipo, estado, t(notas,2000), meet_link]
     );
     await pool.execute(
       `UPDATE pacientes SET estado='confirmado' WHERE id=? AND estado='prospecto'`,
       [pid(paciente_id)]
     );
-    res.status(201).json({ id: r.insertId });
+    res.status(201).json({ id: r.insertId, meet_link });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
