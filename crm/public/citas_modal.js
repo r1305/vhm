@@ -214,8 +214,9 @@
       closeModal();
       setTimeout(() => {
         openModal('Confirmar cambios', diffTableHtml(diff), async () => {
-          await api(`/citas/${cita.id}`, { method: 'PUT', body: updated });
-          toast('Cita actualizada');
+          const r = await api(`/citas/${cita.id}`, { method: 'PUT', body: updated });
+          if (r.meet_link) cita.meet_link = r.meet_link;
+          toast(r.meet_link && !cita.meet_link ? 'Cita actualizada — link de Meet generado ✅' : 'Cita actualizada');
           if (onSuccess) await onSuccess();
         }, { saveLabel: 'Confirmar cambios' });
       }, 80);
