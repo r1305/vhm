@@ -425,8 +425,30 @@
 
   /* ── Detalle cita ── */
   function showDetalle(c) {
-    const { showEditarCita, showConfirmEliminarCita } = window.CRM_CITAS;
-    showEditarCita(c, loadCitas);
+    const { showEditarCita } = window.CRM_CITAS;
+    const estado = ESTADO_CITA[c.estado] || { label: c.estado, css: 'badge-gray' };
+    const TIPO_LABEL = { primera_vez: 'Primera consulta', seguimiento: 'Tratamiento', evaluacion: 'Seguimiento', urgencia: 'Urgencia' };
+    const MODAL_LABEL = { presencial: 'Presencial', videollamada: 'Videollamada', telefono: 'Teléfono' };
+    openModal('Detalle de cita', `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px">
+        <div><span style="color:var(--text-muted)">Paciente</span><br><strong>${esc((c.paciente_nombre||'')+' '+(c.paciente_apellido||''))}</strong></div>
+        <div><span style="color:var(--text-muted)">Terapeuta</span><br><strong>${esc(c.terapeuta_nombre||'—')}</strong></div>
+        <div><span style="color:var(--text-muted)">Fecha</span><br><strong>${String(c.fecha).slice(0,10)}</strong></div>
+        <div><span style="color:var(--text-muted)">Hora</span><br><strong>${String(c.hora_inicio||'').slice(0,5)} – ${String(c.hora_fin||'').slice(0,5)}</strong></div>
+        <div><span style="color:var(--text-muted)">Modalidad</span><br><strong>${MODAL_LABEL[c.modalidad]||c.modalidad||'—'}</strong></div>
+        <div><span style="color:var(--text-muted)">Tipo</span><br><strong>${TIPO_LABEL[c.tipo]||c.tipo||'—'}</strong></div>
+        <div style="grid-column:1/-1"><span style="color:var(--text-muted)">Estado</span><br><span class="badge ${estado.css}">${estado.label}</span></div>
+      </div>
+      ${c.notas ? `<div style="margin-top:12px"><span style="color:var(--text-muted);font-size:12px">Observaciones</span><p style="margin-top:4px;font-size:13px">${esc(c.notas)}</p></div>` : ''}
+      ${c.meet_link ? `<div style="margin-top:14px"><a href="${esc(c.meet_link)}" target="_blank" rel="noopener" class="btn btn-outline btn-sm" style="color:#1a73e8;border-color:#1a73e8"><i class="fas fa-video"></i> Unirse a Google Meet</a></div>` : ''}
+      <div style="margin-top:16px">
+        <button class="btn btn-primary btn-sm" id="btnEditarCita"><i class="fas fa-pen"></i> Editar cita</button>
+      </div>`, null);
+    document.getElementById('modalSave').style.display = 'none';
+    document.getElementById('btnEditarCita').addEventListener('click', () => {
+      window.CRM.closeModal();
+      setTimeout(() => showEditarCita(c, loadCitas), 80);
+    });
   }
 
   /* ── Cambiar vista ── */
