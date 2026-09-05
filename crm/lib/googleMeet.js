@@ -50,7 +50,6 @@ async function createMeetLink({ titulo, fecha, horaInicio, horaFin }) {
   const auth = await getAuthedClient();
   const calendar = google.calendar({ version: 'v3', auth });
 
-  // Construir datetimes en America/Lima
   const start = `${fecha}T${horaInicio}:00`;
   const end   = `${fecha}T${horaFin}:00`;
 
@@ -67,7 +66,14 @@ async function createMeetLink({ titulo, fecha, horaInicio, horaFin }) {
     },
   });
 
-  return data.hangoutLink || data.conferenceData?.entryPoints?.[0]?.uri || null;
+  const link = data.hangoutLink || data.conferenceData?.entryPoints?.[0]?.uri || null;
+
+  // Borrar el evento inmediatamente — el link de Meet sigue funcionando
+  if (data.id) {
+    calendar.events.delete({ calendarId: 'primary', eventId: data.id }).catch(() => {});
+  }
+
+  return link;
 }
 
 async function isConnected() {
