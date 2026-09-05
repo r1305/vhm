@@ -5,8 +5,22 @@ const router = Router();
 const t   = (v, max=255) => v == null ? null : String(v).trim().slice(0,max) || null;
 const pid = v => { const n = parseInt(v,10); return isFinite(n) && n > 0 ? n : null; };
 
+const TZ = 'America/Lima';
+
+// Fecha y hora actuales en America/Lima
+function ahoraLima() {
+  // Devuelve { fechaStr: 'YYYY-MM-DD', minutos: N } en Lima
+  const now = new Date();
+  const limaStr = now.toLocaleString('en-CA', { timeZone: TZ, hour12: false,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit' });
+  // en-CA da 'YYYY-MM-DD, HH:MM'
+  const [fechaPart, horaPart] = limaStr.split(', ');
+  const [hh, mm] = horaPart.split(':').map(Number);
+  return { fechaStr: fechaPart.trim(), minutos: hh * 60 + mm };
+}
+
 // GET /api/publico/:username/slots?mes=2025-08
-// Devuelve por cada día del mes: slots libres de 1h dentro del horario del terapeuta
 router.get('/:username/slots', async (req, res) => {
   try {
     const [[ter]] = await pool.execute(
@@ -16,30 +30,31 @@ router.get('/:username/slots', async (req, res) => {
     if (!ter) return res.status(404).json({ error: 'Terapeuta no encontrado' });
 
     const mesParam = t(req.query.mes, 7); // YYYY-MM
-    const hoy = new Date();
-    hoy.setHours(0,0,0,0);
-    const anio = mesParam ? parseInt(mesParam.split('-')[0]) : hoy.getFullYear();
-    const mes  = mesParam ? parseInt(mesParam.split('-')[1]) - 1 : hoy.getMonth();
+    const { fechaStr: hoyLima, minutos: minAhora } = ahoraLima();
+
+    const anio = mesParam ? parseInt(mesParam.split('-')[0]) : parseInt(hoyLima.slice(0,4));
+    const mes  = mesParam ? parseInt(mesParam.split('-')[1]) - 1 : parseInt(hoyLima.slice(5,7)) - 1;
 
     const desde = new Date(anio, mes, 1);
     const hasta = new Date(anio, mes + 1, 0);
     const desdeStr = isoDate(desde);
     const hastaStr = isoDate(hasta);
 
-    // Horario de trabajo del terapeuta (por dia_semana)
+    // Horario de trabajo del terapeuta — puede haber múltiples rangos por día
     const [disponibilidad] = await pool.execute(
-      'SELECT dia_semana, hora_inicio, hora_fin FROM disponibilidad WHERE terapeuta_id=? AND activo=1',
+      'SELECT dia_semana, hora_inicio, hora_fin FROM disponibilidad WHERE terapeuta_id=? AND activo=1 ORDER BY dia_semana, hora_inicio',
       [ter.id]
     );
-    // Mapa dia_semana(0=dom..6=sab) -> {inicio, fin} en minutos
+    // Mapa dia_semana -> [{ini, fin}] en minutos
     const horario = {};
     disponibilidad.forEach(d => {
-      horario[d.dia_semana] = { ini: toMin(d.hora_inicio), fin: toMin(d.hora_fin) };
+      if (!horario[d.dia_semana]) horario[d.dia_semana] = [];
+      horario[d.dia_semana].push({ ini: toMin(d.hora_inicio), fin: toMin(d.hora_fin) });
     });
 
     // Citas existentes en el rango
     const [citas] = await pool.execute(
-      `SELECT DATE_FORMAT(fecha,'%Y-%m-%d') AS fecha, hora_inicio, hora_fin
+      `SELECT DATE_FORMAT(fecha,'%Y-%m-%d') AS fecha, hora_inicio
        FROM citas WHERE terapeuta_id=? AND fecha BETWEEN ? AND ? AND estado NOT IN ('cancelada')`,
       [ter.id, desdeStr, hastaStr]
     );
@@ -50,17 +65,15 @@ router.get('/:username/slots', async (req, res) => {
       [ter.id, hastaStr, desdeStr]
     );
 
-    // Construir mapa de slots ocupados por fecha
-    const ocupados = {}; // fecha -> Set de minutos de inicio ocupados
+    const ocupados = {};
     citas.forEach(c => {
       const f = String(c.fecha).slice(0,10);
       if (!ocupados[f]) ocupados[f] = new Set();
       ocupados[f].add(toMin(c.hora_inicio));
     });
 
-    // Expandir bloqueos a fechas individuales
-    const bloqueadoTotal = {}; // fecha -> bool (todo el dia)
-    const bloqueadoParcial = {}; // fecha -> [{ini,fin}]
+    const bloqueadoTotal = {};
+    const bloqueadoParcial = {};
     bloqueos.forEach(b => {
       let d = new Date(String(b.fecha_inicio).slice(0,10) + 'T12:00:00');
       const fin = new Date(String(b.fecha_fin).slice(0,10) + 'T12:00:00');
@@ -69,9 +82,8 @@ router.get('/:username/slots', async (req, res) => {
       const esTodoDia = bIni === 0 && bFin >= 23*60+59;
       while (d <= fin) {
         const f = isoDate(d);
-        if (esTodoDia) {
-          bloqueadoTotal[f] = true;
-        } else {
+        if (esTodoDia) { bloqueadoTotal[f] = true; }
+        else {
           if (!bloqueadoParcial[f]) bloqueadoParcial[f] = [];
           bloqueadoParcial[f].push({ ini: bIni, fin: bFin });
         }
@@ -81,26 +93,27 @@ router.get('/:username/slots', async (req, res) => {
 
     // Generar slots por día
     const dias = [];
-    let cur = new Date(desde);
-    while (cur <= hasta) {
+    let cur = new Date(anio, mes, 1);
+    while (isoDate(cur) <= hastaStr) {
       const f = isoDate(cur);
-      const diaSemana = cur.getDay(); // 0=dom
-      const esHoyOAntes = cur < hoy;
-      const h = horario[diaSemana];
+      const diaSemana = cur.getDay();
+      const esPasado  = f < hoyLima;
+      const esHoy     = f === hoyLima;
+      const rangos    = horario[diaSemana];
 
-      if (!h || esHoyOAntes || bloqueadoTotal[f]) {
+      if (!rangos || esPasado || bloqueadoTotal[f]) {
         dias.push({ fecha: f, slots: [] });
         cur.setDate(cur.getDate()+1);
         continue;
       }
 
       const slots = [];
-      for (let m = h.ini; m + 60 <= h.fin; m += 60) {
-        // Verificar si el slot está ocupado por cita
-        const citaOcupa = ocupados[f]?.has(m);
-        // Verificar si el slot está bloqueado parcialmente
-        const bloqOcupa = (bloqueadoParcial[f] || []).some(b => m < b.fin && m + 60 > b.ini);
-        if (!citaOcupa && !bloqOcupa) {
+      for (const rango of rangos) {
+        for (let m = rango.ini; m + 60 <= rango.fin; m += 60) {
+          // Hoy: descartar slots cuya hora de inicio ya pasó en Lima
+          if (esHoy && m <= minAhora) continue;
+          if (ocupados[f]?.has(m)) continue;
+          if ((bloqueadoParcial[f] || []).some(b => m < b.fin && m + 60 > b.ini)) continue;
           slots.push(minToHora(m));
         }
       }
@@ -108,7 +121,7 @@ router.get('/:username/slots', async (req, res) => {
       cur.setDate(cur.getDate()+1);
     }
 
-    res.json({ terapeuta: ter, dias });
+    res.json({ terapeuta: ter, dias, tz: TZ });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

@@ -96,16 +96,22 @@ body {
   margin-bottom: 14px;
 }
 #agSlots {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;
 }
 .ag-slot {
   border: 1.5px solid #e2e8f0; border-radius: 10px;
-  background: #fff; padding: 10px 6px; font-size: 13px;
+  background: #fff; padding: 10px 8px; font-size: 13px;
   font-weight: 500; cursor: pointer; transition: all .15s;
-  color: #333;
+  color: #333; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  text-align: center;
 }
 .ag-slot:hover { border-color: #6366f1; color: #6366f1; background: #f0f4ff; }
 .ag-slot-sel  { border-color: #6366f1; background: #6366f1; color: #fff; }
+.ag-slot-sel .ag-slot-local { color: rgba(255,255,255,.8); }
+.ag-slot-lima { font-size: 13px; font-weight: 600; }
+.ag-slot-lima small { font-weight: 400; opacity: .6; font-size: 10px; }
+.ag-slot-local { font-size: 11px; color: #888; }
+.ag-slot-local small { font-size: 10px; opacity: .8; }
 
 /* ── Resumen ── */
 .ag-resumen {
