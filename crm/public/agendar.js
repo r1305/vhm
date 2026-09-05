@@ -7,6 +7,40 @@
   const MESES    = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
                     'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
   const DIAS     = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  const TZ_TER   = 'America/Lima'; // timezone del terapeuta (confirmado por API)
+
+  // Timezone del visitante
+  const TZ_VIS = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const mismoTz = TZ_VIS === TZ_TER;
+
+  // Convierte 'YYYY-MM-DD' + 'HH:MM' (en TZ_TER) a hora local del visitante
+  function slotEnLocal(fechaStr, horaStr) {
+    // Construir fecha como si fuera Lima y convertir al local del visitante
+    const dt = new Date(`${fechaStr}T${horaStr}:00`);
+    // Ajustar: el string sin Z es interpretado como local del servidor (Node),
+    // necesitamos forzar Lima. Usamos Intl para obtener el offset Lima en ese instante.
+    const limaOffset = getOffsetMin(TZ_TER, dt);
+    const localOffset = -dt.getTimezoneOffset(); // minutos
+    const diff = localOffset - limaOffset;
+    const adjusted = new Date(dt.getTime() - diff * 60000);
+    return adjusted;
+  }
+
+  function getOffsetMin(tz, date) {
+    // Obtiene el offset UTC en minutos para una timezone en una fecha dada
+    const utc = date.getTime();
+    const tzDate = new Date(date.toLocaleString('en-US', { timeZone: tz }));
+    return Math.round((utc - tzDate.getTime()) / 60000);
+  }
+
+  function formatHoraLocal(fechaStr, horaStr) {
+    const dt = slotEnLocal(fechaStr, horaStr);
+    return dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+  }
+
+  function formatHoraLima(horaStr) {
+    return horaStr; // ya está en Lima
+  }
 
   const hoy = new Date(); hoy.setHours(0,0,0,0);
   let cursor = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
@@ -99,7 +133,16 @@
     document.getElementById('agSlots').innerHTML = dia.slots.map(h => {
       const [hh] = h.split(':').map(Number);
       const hfin = `${String(hh+1).padStart(2,'0')}:${h.slice(3)}`;
-      return `<button class="ag-slot" data-hora="${h}">${h} – ${hfin}</button>`;
+      const limaLabel = `${h} – ${hfin}`;
+      const localLabel = mismoTz ? '' : (() => {
+        const hLocal    = formatHoraLocal(f, h);
+        const hfinLocal = formatHoraLocal(f, hfin);
+        return `<span class="ag-slot-local">${hLocal} – ${hfinLocal} <small>tu hora</small></span>`;
+      })();
+      return `<button class="ag-slot" data-hora="${h}">
+        <span class="ag-slot-lima">${limaLabel} <small>Lima</small></span>
+        ${localLabel}
+      </button>`;
     }).join('');
 
     document.querySelectorAll('.ag-slot').forEach(btn => {
@@ -117,10 +160,16 @@
     const [y,m,d] = fechaSel.split('-').map(Number);
     const [hh] = h.split(':').map(Number);
     const hfin = `${String(hh+1).padStart(2,'0')}:${h.slice(3)}`;
+    const limaLabel = `${h} – ${hfin} <small style="opacity:.7">(Lima)</small>`;
+    const localExtra = mismoTz ? '' : (() => {
+      const hL = formatHoraLocal(fechaSel, h);
+      const hfL = formatHoraLocal(fechaSel, hfin);
+      return ` &nbsp;·&nbsp; ${hL} – ${hfL} <small style="opacity:.7">(tu hora)</small>`;
+    })();
     document.getElementById('agResumen').innerHTML =
       `<i class="fas fa-calendar-check"></i>
        <strong>${DIAS[new Date(y,m-1,d).getDay()]} ${d} de ${MESES[m-1]}</strong>
-       &nbsp;·&nbsp; ${h} – ${hfin}`;
+       &nbsp;·&nbsp; ${limaLabel}${localExtra}`;
 
     goStep(3);
   }
