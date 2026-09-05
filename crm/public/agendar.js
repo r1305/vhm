@@ -76,6 +76,7 @@
       if (data.encontrado) {
         nombreEl.value      = data.nombre;
         apellidoEl.value    = data.apellido;
+        if (data.email) document.getElementById('ag_email').value = data.email;
         nombreEl.readOnly   = true;
         apellidoEl.readOnly = true;
         nombreEl.classList.add('ag-field-readonly');

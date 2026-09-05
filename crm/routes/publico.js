@@ -31,20 +31,20 @@ router.get('/:username/buscar-paciente', async (req, res) => {
     let paciente = null;
     if (email) {
       const [[row]] = await pool.execute(
-        'SELECT nombre, apellido FROM pacientes WHERE email=? LIMIT 1',
+        'SELECT nombre, apellido, email FROM pacientes WHERE email=? LIMIT 1',
         [t(email, 150)]
       );
       paciente = row || null;
     }
     if (!paciente && telefono) {
       const [[row]] = await pool.execute(
-        'SELECT nombre, apellido FROM pacientes WHERE telefono=? LIMIT 1',
+        'SELECT nombre, apellido, email FROM pacientes WHERE telefono=? LIMIT 1',
         [t(telefono, 30)]
       );
       paciente = row || null;
     }
 
-    if (paciente) return res.json({ encontrado: true, nombre: paciente.nombre, apellido: paciente.apellido || '' });
+    if (paciente) return res.json({ encontrado: true, nombre: paciente.nombre, apellido: paciente.apellido || '', email: paciente.email || '' });
     res.json({ encontrado: false });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
