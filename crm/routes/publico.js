@@ -152,14 +152,22 @@ router.post('/:username/agendar', async (req, res) => {
     let paciente = null;
     if (email) {
       const [[row]] = await pool.execute(
-        'SELECT id, nombre, sesiones_disponibles FROM pacientes WHERE email=? LIMIT 1',
+        `SELECT p.id, p.nombre,
+           COALESCE((SELECT SUM(ps.sesiones) FROM paciente_sesiones ps WHERE ps.paciente_id = p.id), 0)
+           - COALESCE((SELECT COUNT(*) FROM citas c WHERE c.paciente_id = p.id AND c.estado NOT IN ('cancelada','no_show')), 0)
+           AS sesiones_disponibles
+         FROM pacientes p WHERE p.email=? LIMIT 1`,
         [t(email, 150)]
       );
       paciente = row || null;
     }
     if (!paciente && telefono) {
       const [[row]] = await pool.execute(
-        'SELECT id, nombre, sesiones_disponibles FROM pacientes WHERE telefono=? LIMIT 1',
+        `SELECT p.id, p.nombre,
+           COALESCE((SELECT SUM(ps.sesiones) FROM paciente_sesiones ps WHERE ps.paciente_id = p.id), 0)
+           - COALESCE((SELECT COUNT(*) FROM citas c WHERE c.paciente_id = p.id AND c.estado NOT IN ('cancelada','no_show')), 0)
+           AS sesiones_disponibles
+         FROM pacientes p WHERE p.telefono=? LIMIT 1`,
         [t(telefono, 30)]
       );
       paciente = row || null;
@@ -168,18 +176,13 @@ router.post('/:username/agendar', async (req, res) => {
     let pacienteId;
 
     if (paciente) {
-      // Paciente existente — verificar saldo
+      // Paciente existente — verificar saldo real (sesiones compradas - citas activas)
       if (paciente.sesiones_disponibles <= 0) {
         return res.status(403).json({
           error: 'No tienes sesiones disponibles para agendar. Contacta a tu terapeuta para adquirir más sesiones.',
           codigo: 'SIN_SESIONES',
         });
       }
-      // Descontar 1 sesión
-      await pool.execute(
-        'UPDATE pacientes SET sesiones_disponibles = sesiones_disponibles - 1 WHERE id=?',
-        [paciente.id]
-      );
       pacienteId = paciente.id;
     } else {
       // Paciente nuevo — crear como prospecto asignado al terapeuta de la URL
