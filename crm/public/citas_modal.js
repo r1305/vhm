@@ -162,6 +162,7 @@
       .map(([v, l]) => `<option value="${v}" ${original.modalidad === v ? 'selected' : ''}>${l}</option>`).join('');
 
     openModal('Editar cita', `
+      ${cita.meet_link ? `<div style="margin-bottom:14px"><a href="${esc(cita.meet_link)}" target="_blank" rel="noopener" class="btn btn-outline btn-sm" style="color:#1a73e8;border-color:#1a73e8"><i class="fas fa-video"></i> Unirse a Google Meet</a></div>` : ''}
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Fecha *</label>

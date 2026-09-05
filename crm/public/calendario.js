@@ -436,6 +436,7 @@
         <div><span style="color:var(--text-muted)">Estado</span><br><span class="badge ${estado.css}">${estado.label}</span></div>
       </div>
       ${c.notas ? `<div style="margin-top:12px"><span style="color:var(--text-muted);font-size:12px">Observaciones</span><p style="margin-top:4px;font-size:13px">${esc(c.notas)}</p></div>` : ''}
+      ${c.meet_link ? `<div style="margin-top:14px"><a href="${esc(c.meet_link)}" target="_blank" rel="noopener" class="btn btn-outline btn-sm" style="color:#1a73e8;border-color:#1a73e8"><i class="fas fa-video"></i> Unirse a Google Meet</a></div>` : ''}
     `, null);
     document.getElementById('modalSave').style.display = 'none';
   }
