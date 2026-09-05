@@ -14,6 +14,27 @@ function togglePwd(id, btn) {
 
   const { api, toast } = window.CRM;
 
+  // Toast si viene de callback OAuth
+  const qs = new URLSearchParams(location.search);
+  if (qs.get('google') === 'ok')    { toast('Google Meet conectado ✅'); history.replaceState(null,'',location.pathname); }
+  if (qs.get('google') === 'error') { toast('Error al conectar Google', 'danger'); history.replaceState(null,'',location.pathname); }
+
+  // Google Meet
+  document.getElementById('btnGoogleConnect')?.addEventListener('click', async () => {
+    const { url } = await api('/integraciones/google/auth-url');
+    location.href = url;
+  });
+  document.getElementById('btnGoogleDisconnect')?.addEventListener('click', async () => {
+    if (!confirm('¿Desconectar Google Meet?')) return;
+    await api('/integraciones/google', { method: 'DELETE' });
+    toast('Google desconectado');
+    const badge = document.getElementById('google-status');
+    if (badge) { badge.textContent = 'Sin conectar'; badge.className = 'badge badge-yellow'; }
+    document.getElementById('btnGoogleDisconnect')?.remove();
+    const btn = document.getElementById('btnGoogleConnect');
+    if (btn) btn.textContent = 'Conectar cuenta Google';
+  });
+
   function updateBadges(cfg) {
     const metaOk   = cfg.meta_verify_token && cfg.meta_access_token;
     const tiktokOk = cfg.tiktok_app_secret && cfg.tiktok_verify_token;

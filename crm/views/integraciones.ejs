@@ -1,5 +1,15 @@
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
   <div class="card">
+    <div class="card-header"><span><i class="fab fa-google" style="color:#4285F4"></i> Google Meet</span><span class="badge <%= googleConnected ? 'badge-green' : 'badge-yellow' %>" id="google-status"><%= googleConnected ? 'Conectado' : 'Sin conectar' %></span></div>
+    <div class="card-body">
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px">Al conectar, cada cita de modalidad <strong>Videollamada</strong> generará automáticamente un link de Google Meet.</p>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary btn-sm" id="btnGoogleConnect"><i class="fab fa-google"></i> <%= googleConnected ? 'Reconectar' : 'Conectar cuenta Google' %></button>
+        <% if (googleConnected) { %><button class="btn btn-outline btn-sm" id="btnGoogleDisconnect"><i class="fas fa-unlink"></i> Desconectar</button><% } %>
+      </div>
+    </div>
+  </div>
+  <div class="card">
     <div class="card-header"><span><i class="fa-brands fa-instagram" style="color:#E1306C"></i> Instagram / Meta Lead Ads</span><span class="badge badge-green" id="meta-status"><%= cfg.meta_verify_token ? 'Configurado' : 'Sin configurar' %></span></div>
     <div class="card-body">
       <div class="form-group"><label class="form-label">Verify Token</label><input class="form-control" id="meta-verify-token" value="<%= cfg.meta_verify_token || '' %>" placeholder="token_secreto_meta"></div>

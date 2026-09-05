@@ -1,5 +1,6 @@
 const { Router } = require('express');
 const pool = require('../lib/db');
+const { createMeetLink, isConnected } = require('../lib/googleMeet');
 const router = Router();
 
 const t   = (v, max=255) => v == null ? null : String(v).trim().slice(0,max) || null;
@@ -225,13 +226,22 @@ router.post('/:username/agendar', async (req, res) => {
 
     const tipoCita = paciente ? 'seguimiento' : 'primera_vez';
 
+    // Generar Meet link si es videollamada
+    let meet_link = null;
+    if (modalidadVal === 'videollamada' && await isConnected().catch(() => false)) {
+      meet_link = await createMeetLink({
+        titulo: `Sesión VHM — ${t(nombre,120)}`,
+        fecha, horaInicio: hora_inicio, horaFin: hora_fin,
+      }).catch(e => { console.error('[meet]', e.message); return null; });
+    }
+
     const [rc] = await pool.execute(
-      `INSERT INTO citas (paciente_id, terapeuta_id, fecha, hora_inicio, hora_fin, modalidad, tipo, estado)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 'pendiente')`,
-      [pacienteId, ter.id, fecha, hora_inicio + ':00', hora_fin + ':00', modalidadVal, tipoCita]
+      `INSERT INTO citas (paciente_id, terapeuta_id, fecha, hora_inicio, hora_fin, modalidad, tipo, estado, meet_link)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'pendiente', ?)`,
+      [pacienteId, ter.id, fecha, hora_inicio + ':00', hora_fin + ':00', modalidadVal, tipoCita, meet_link]
     );
 
-    res.status(201).json({ ok: true, cita_id: rc.insertId });
+    res.status(201).json({ ok: true, cita_id: rc.insertId, meet_link });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

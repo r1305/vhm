@@ -23,6 +23,8 @@ router.get('/', auth, async (req, res) => {
     const q = t(req.query.q, 80);
     const estado = t(req.query.estado, 20);
     const tid = id(req.query.terapeuta_id);
+    const sinTel   = req.query.sin_telefono === '1';
+    const sinEmail = req.query.sin_email    === '1';
     const of = ownerFilter(req, 'p');
     let sql = `SELECT p.*, t.nombre AS terapeuta_nombre,
                COALESCE((SELECT SUM(ps.sesiones) FROM paciente_sesiones ps WHERE ps.paciente_id = p.id), 0) AS sesiones_total,
@@ -32,6 +34,8 @@ router.get('/', auth, async (req, res) => {
     if (q) { sql += ' AND (p.nombre LIKE ? OR p.apellido LIKE ? OR p.email LIKE ? OR p.telefono LIKE ?)'; const l=`%${q}%`; params.push(l,l,l,l); }
     if (estado) { sql += ' AND p.estado = ?'; params.push(estado); }
     if (tid)    { sql += ' AND p.terapeuta_id = ?'; params.push(tid); }
+    if (sinTel)   sql += ' AND (p.telefono IS NULL OR p.telefono = "")';
+    if (sinEmail) sql += ' AND (p.email IS NULL OR p.email = "")';
     sql += of.sql; params.push(...of.params);
     sql += ' ORDER BY p.updated_at DESC LIMIT 200';
     const [rows] = await pool.execute(sql, params);

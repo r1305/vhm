@@ -101,7 +101,8 @@ router.use('/api/leads',      leadsRouter);
 router.use('/api/pagos',      require('./routes/pagos'));
 router.use('/api/reportes',   require('./routes/reportes'));
 router.use('/api/marketing',  require('./routes/marketing'));
-router.use('/api/config',     require('./routes/config'));
+router.use('/api/config',        require('./routes/config'));
+router.use('/api/integraciones', require('./routes/integraciones'));
 router.use('/api/track',      require('./routes/tracker'));
 
 // Cron config
