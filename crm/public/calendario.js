@@ -425,20 +425,8 @@
 
   /* ── Detalle cita ── */
   function showDetalle(c) {
-    const estado = (ESTADO_CITA[c.estado] || { label: c.estado, css: 'badge-gray' });
-    openModal('Detalle de cita', `
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px">
-        <div><span style="color:var(--text-muted)">Paciente</span><br><strong>${esc((c.paciente_nombre||'')+' '+(c.paciente_apellido||''))}</strong></div>
-        <div><span style="color:var(--text-muted)">Terapeuta</span><br><strong>${esc(c.terapeuta_nombre||'—')}</strong></div>
-        <div><span style="color:var(--text-muted)">Fecha</span><br><strong>${String(c.fecha).slice(0,10)}</strong></div>
-        <div><span style="color:var(--text-muted)">Modalidad</span><br><strong>${esc(c.modalidad||'—')}</strong></div>
-        <div><span style="color:var(--text-muted)">Tipo</span><br><strong>${esc(c.tipo||'—')}</strong></div>
-        <div><span style="color:var(--text-muted)">Estado</span><br><span class="badge ${estado.css}">${estado.label}</span></div>
-      </div>
-      ${c.notas ? `<div style="margin-top:12px"><span style="color:var(--text-muted);font-size:12px">Observaciones</span><p style="margin-top:4px;font-size:13px">${esc(c.notas)}</p></div>` : ''}
-      ${c.meet_link ? `<div style="margin-top:14px"><a href="${esc(c.meet_link)}" target="_blank" rel="noopener" class="btn btn-outline btn-sm" style="color:#1a73e8;border-color:#1a73e8"><i class="fas fa-video"></i> Unirse a Google Meet</a></div>` : ''}
-    `, null);
-    document.getElementById('modalSave').style.display = 'none';
+    const { showEditarCita, showConfirmEliminarCita } = window.CRM_CITAS;
+    showEditarCita(c, loadCitas);
   }
 
   /* ── Cambiar vista ── */
@@ -467,6 +455,7 @@
 
   /* ── Init: cargar terapeutas para el modal de bloqueo ── */
   api('/terapeutas').then(ts => { terapeutasCache = ts; }).catch(() => {});
+  api('/pacientes').then(ps => { window.CRM.pacientesCache = ps; }).catch(() => {});
   loadCitas();
 
 })();

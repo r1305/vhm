@@ -258,7 +258,7 @@ router.get('/calendario', requireSession, async (req, res) => {
   const user = req.session.user;
   try {
     const [terapeutas] = await db.execute('SELECT id, nombre, apellido FROM terapeutas WHERE activo=1 ORDER BY nombre');
-    render(res, 'calendario', { user, terapeutas, scripts: `<script src="${req.app.locals.BASE}/calendario.js"></script>` });
+    render(res, 'calendario', { user, terapeutas, scripts: `<script src="${req.app.locals.BASE}/citas_modal.js"></script><script src="${req.app.locals.BASE}/calendario.js"></script>` });
   } catch (err) { res.status(500).send(err.message); }
 });
 
