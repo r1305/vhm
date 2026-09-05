@@ -1,5 +1,5 @@
 #!/bin/bash
-# Deploy completo VHM (site + crm + openwa) en cPanel.
+# Deploy completo VHM (site + crm) en cPanel.
 #
 # Comando único (desde la raíz del repo, carpeta padre de site/):
 #   cd ~/public_html && bash site/deploy.sh --restart
@@ -60,7 +60,7 @@ npm_install_app() {
   (cd "$dir" && npm install --omit=dev)
 }
 
-for app in site crm openwa; do
+for app in site crm; do
   npm_install_app "$app"
 done
 
@@ -71,8 +71,9 @@ if [ -f site/public/DEPLOY_VERSION.txt ]; then
 fi
 
 echo ""
-echo "==> Limpiando workers lsnode (site + crm + openwa)..."
-bash site/scripts/cpanel-clean-workers.sh -f
+echo "==> Limpiando workers lsnode (site + crm)..."
+bash site/scripts/cpanel-clean-workers.sh -f --site-only
+bash site/scripts/cpanel-clean-workers.sh -f --crm-only
 
 if [ "$DO_RESTART" -eq 1 ]; then
   echo ""
