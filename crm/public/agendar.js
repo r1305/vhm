@@ -7,44 +7,33 @@
   const MESES    = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
                     'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
   const DIAS     = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
-  const TZ_TER   = 'America/Lima'; // timezone del terapeuta (confirmado por API)
+  const TZ_TER   = 'America/Lima';
 
-  // Timezone del visitante
-  const TZ_VIS = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const TZ_VIS  = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const mismoTz = TZ_VIS === TZ_TER;
 
-  // Convierte 'YYYY-MM-DD' + 'HH:MM' (en TZ_TER) a hora local del visitante
   function slotEnLocal(fechaStr, horaStr) {
-    // Construir fecha como si fuera Lima y convertir al local del visitante
     const dt = new Date(`${fechaStr}T${horaStr}:00`);
-    // Ajustar: el string sin Z es interpretado como local del servidor (Node),
-    // necesitamos forzar Lima. Usamos Intl para obtener el offset Lima en ese instante.
-    const limaOffset = getOffsetMin(TZ_TER, dt);
-    const localOffset = -dt.getTimezoneOffset(); // minutos
-    const diff = localOffset - limaOffset;
-    const adjusted = new Date(dt.getTime() - diff * 60000);
-    return adjusted;
+    const limaOffset  = getOffsetMin(TZ_TER, dt);
+    const localOffset = -dt.getTimezoneOffset();
+    const diff        = localOffset - limaOffset;
+    return new Date(dt.getTime() - diff * 60000);
   }
 
   function getOffsetMin(tz, date) {
-    // Obtiene el offset UTC en minutos para una timezone en una fecha dada
-    const utc = date.getTime();
+    const utc    = date.getTime();
     const tzDate = new Date(date.toLocaleString('en-US', { timeZone: tz }));
     return Math.round((utc - tzDate.getTime()) / 60000);
   }
 
   function formatHoraLocal(fechaStr, horaStr) {
-    const dt = slotEnLocal(fechaStr, horaStr);
-    return dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-  }
-
-  function formatHoraLima(horaStr) {
-    return horaStr; // ya está en Lima
+    return slotEnLocal(fechaStr, horaStr)
+      .toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
   }
 
   const hoy = new Date(); hoy.setHours(0,0,0,0);
-  let cursor = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
-  let slotsData = []; // dias con slots del mes actual
+  let cursor   = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+  let slotsData = [];
   let fechaSel  = null;
   let horaSel   = null;
 
@@ -63,6 +52,56 @@
     }
     return data;
   }
+
+  // ── Lookup paciente ─────────────────────────────────────────────
+  let lookupTimer = null;
+
+  async function lookupPaciente() {
+    const tel   = document.getElementById('ag_telefono').value.trim().replace(/[\s\-().+]/g, '');
+    const email = document.getElementById('ag_email').value.trim();
+    if (!tel && !email) return;
+
+    const params     = new URLSearchParams();
+    if (email) params.set('email', email);
+    if (tel)   params.set('telefono', tel);
+
+    const statusEl   = document.getElementById('agLookupStatus');
+    const nombreEl   = document.getElementById('ag_nombre');
+    const apellidoEl = document.getElementById('ag_apellido');
+
+    statusEl.innerHTML = '<span class="ag-lookup-buscando"><i class="fas fa-spinner fa-spin"></i> Buscando…</span>';
+
+    try {
+      const data = await api(`/api/publico/${USERNAME}/buscar-paciente?${params}`);
+      if (data.encontrado) {
+        nombreEl.value      = data.nombre;
+        apellidoEl.value    = data.apellido;
+        nombreEl.readOnly   = true;
+        apellidoEl.readOnly = true;
+        nombreEl.classList.add('ag-field-readonly');
+        apellidoEl.classList.add('ag-field-readonly');
+        statusEl.innerHTML  = '<span class="ag-lookup-ok"><i class="fas fa-circle-check"></i> Paciente encontrado</span>';
+      } else {
+        nombreEl.value      = '';
+        apellidoEl.value    = '';
+        nombreEl.readOnly   = false;
+        apellidoEl.readOnly = false;
+        nombreEl.classList.remove('ag-field-readonly');
+        apellidoEl.classList.remove('ag-field-readonly');
+        statusEl.innerHTML  = '<span class="ag-lookup-nuevo"><i class="fas fa-user-plus"></i> Nuevo paciente — completa tus datos</span>';
+      }
+    } catch { statusEl.innerHTML = ''; }
+  }
+
+  function scheduleLookup() {
+    clearTimeout(lookupTimer);
+    lookupTimer = setTimeout(lookupPaciente, 600);
+  }
+
+  document.getElementById('ag_telefono').addEventListener('blur', lookupPaciente);
+  document.getElementById('ag_email').addEventListener('blur', lookupPaciente);
+  document.getElementById('ag_telefono').addEventListener('input', scheduleLookup);
+  document.getElementById('ag_email').addEventListener('input', scheduleLookup);
 
   // ── Cargar slots del mes ────────────────────────────────────────
   async function loadMes() {
@@ -85,7 +124,6 @@
     const ini  = new Date(anio, mes, 1);
     const fin  = new Date(anio, mes+1, 0);
 
-    // Mapa fecha -> slots
     const mapa = {};
     slotsData.forEach(d => { mapa[d.fecha] = d.slots; });
 
@@ -96,7 +134,7 @@
     let dia = new Date(anio, mes, 1 - ini.getDay());
     while (dia <= fin || dia.getDay() !== 0) {
       if (dia.getDay() === 0) html += '<tr>';
-      const f = isoDate(dia);
+      const f     = isoDate(dia);
       const esMes = dia.getMonth() === mes;
       const esHoy = dia.getTime() === hoy.getTime();
       const slots = mapa[f] || [];
@@ -126,14 +164,13 @@
     if (!dia || !dia.slots.length) return;
 
     const [y,m,d] = f.split('-').map(Number);
-    const fecha = new Date(y, m-1, d);
     document.getElementById('agFechaSel').textContent =
-      `${DIAS[fecha.getDay()]} ${d} de ${MESES[m-1]} ${y}`;
+      `${DIAS[new Date(y,m-1,d).getDay()]} ${d} de ${MESES[m-1]} ${y}`;
 
     document.getElementById('agSlots').innerHTML = dia.slots.map(h => {
       const [hh] = h.split(':').map(Number);
       const hfin = `${String(hh+1).padStart(2,'0')}:${h.slice(3)}`;
-      const limaLabel = `${h} – ${hfin}`;
+      const limaLabel  = `${h} – ${hfin}`;
       const localLabel = mismoTz ? '' : (() => {
         const hLocal    = formatHoraLocal(f, h);
         const hfinLocal = formatHoraLocal(f, hfin);
@@ -158,11 +195,11 @@
     document.querySelectorAll('.ag-slot').forEach(b => b.classList.toggle('ag-slot-sel', b.dataset.hora === h));
 
     const [y,m,d] = fechaSel.split('-').map(Number);
-    const [hh] = h.split(':').map(Number);
-    const hfin = `${String(hh+1).padStart(2,'0')}:${h.slice(3)}`;
-    const limaLabel = `${h} – ${hfin} <small style="opacity:.7">(Lima)</small>`;
+    const [hh]    = h.split(':').map(Number);
+    const hfin    = `${String(hh+1).padStart(2,'0')}:${h.slice(3)}`;
+    const limaLabel  = `${h} – ${hfin} <small style="opacity:.7">(Lima)</small>`;
     const localExtra = mismoTz ? '' : (() => {
-      const hL = formatHoraLocal(fechaSel, h);
+      const hL  = formatHoraLocal(fechaSel, h);
       const hfL = formatHoraLocal(fechaSel, hfin);
       return ` &nbsp;·&nbsp; ${hL} – ${hfL} <small style="opacity:.7">(tu hora)</small>`;
     })();
@@ -180,24 +217,23 @@
     const apellido = document.getElementById('ag_apellido').value.trim();
     const telefono = document.getElementById('ag_telefono').value.trim();
     const email    = document.getElementById('ag_email').value.trim();
-    const motivo    = document.getElementById('ag_motivo').value.trim();
-    const modalidad  = document.querySelector('input[name="ag_modalidad"]:checked')?.value || 'presencial';
-    const errEl      = document.getElementById('agErrorMsg');
+    const motivo   = document.getElementById('ag_motivo').value.trim();
+    const modalidad = document.querySelector('input[name="ag_modalidad"]:checked')?.value || 'presencial';
+    const errEl    = document.getElementById('agErrorMsg');
 
-    if (!nombre) { mostrarError('El nombre es obligatorio'); return; }
     if (!telefono) { mostrarError('El teléfono es obligatorio'); return; }
-    // Validar formato con código de país: solo dígitos, mínimo 10 dígitos
     const telLimpio = telefono.replace(/[\s\-().+]/g, '');
     if (!/^\d{10,15}$/.test(telLimpio)) {
       mostrarError('Ingresa el teléfono con código de país sin espacios ni símbolos. Ej: 51999999999 para Perú');
       return;
     }
+    if (!nombre)   { mostrarError('El nombre es obligatorio'); return; }
+    if (!apellido) { mostrarError('El apellido es obligatorio'); return; }
 
     errEl.style.display = 'none';
     const btn = document.getElementById('agConfirmar');
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Confirmando…';
-    // Normalizar teléfono: quitar espacios/guiones/+ y dejar solo dígitos
     const telNorm = telefono.replace(/[\s\-().+]/g, '');
 
     try {
@@ -207,8 +243,8 @@
       });
 
       const [y,m,d] = fechaSel.split('-').map(Number);
-      const [hh] = horaSel.split(':').map(Number);
-      const hfin = `${String(hh+1).padStart(2,'0')}:${horaSel.slice(3)}`;
+      const [hh]    = horaSel.split(':').map(Number);
+      const hfin    = `${String(hh+1).padStart(2,'0')}:${horaSel.slice(3)}`;
       document.getElementById('agExitoDetalle').innerHTML =
         `<strong>${DIAS[new Date(y,m-1,d).getDay()]} ${d} de ${MESES[m-1]} ${y}</strong><br>
          ${horaSel} – ${hfin}<br>
@@ -242,11 +278,16 @@
   document.getElementById('agBackToStep2').addEventListener('click', () => goStep(2));
   document.getElementById('agNuevaCita').addEventListener('click', () => {
     fechaSel = null; horaSel = null;
-    document.getElementById('ag_nombre').value = '';
-    document.getElementById('ag_apellido').value = '';
-    document.getElementById('ag_telefono').value = '';
-    document.getElementById('ag_email').value = '';
-    document.getElementById('ag_motivo').value = '';
+    ['ag_nombre','ag_apellido','ag_telefono','ag_email','ag_motivo'].forEach(id => {
+      document.getElementById(id).value = '';
+    });
+    const nombreEl   = document.getElementById('ag_nombre');
+    const apellidoEl = document.getElementById('ag_apellido');
+    nombreEl.readOnly   = true;
+    apellidoEl.readOnly = true;
+    nombreEl.classList.add('ag-field-readonly');
+    apellidoEl.classList.add('ag-field-readonly');
+    document.getElementById('agLookupStatus').innerHTML = '';
     document.querySelector('input[name="ag_modalidad"][value="presencial"]').checked = true;
     goStep(1);
     loadMes();
@@ -254,7 +295,6 @@
 
   // ── Navegación mes ──────────────────────────────────────────────
   document.getElementById('agPrev').addEventListener('click', () => {
-    // No permitir ir a meses anteriores al actual
     const mesActual = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
     if (cursor <= mesActual) return;
     cursor.setMonth(cursor.getMonth()-1);

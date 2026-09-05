@@ -20,6 +20,34 @@ function ahoraLima() {
   return { fechaStr: fechaPart.trim(), minutos: hh * 60 + mm };
 }
 
+// GET /api/publico/:username/buscar-paciente?email=&telefono=
+// Devuelve nombre/apellido si el paciente existe (sin exponer datos sensibles)
+router.get('/:username/buscar-paciente', async (req, res) => {
+  try {
+    const { email, telefono } = req.query;
+    if (!email && !telefono) return res.json({ encontrado: false });
+
+    let paciente = null;
+    if (email) {
+      const [[row]] = await pool.execute(
+        'SELECT nombre, apellido FROM pacientes WHERE email=? LIMIT 1',
+        [t(email, 150)]
+      );
+      paciente = row || null;
+    }
+    if (!paciente && telefono) {
+      const [[row]] = await pool.execute(
+        'SELECT nombre, apellido FROM pacientes WHERE telefono=? LIMIT 1',
+        [t(telefono, 30)]
+      );
+      paciente = row || null;
+    }
+
+    if (paciente) return res.json({ encontrado: true, nombre: paciente.nombre, apellido: paciente.apellido || '' });
+    res.json({ encontrado: false });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // GET /api/publico/:username/slots?mes=2025-08
 router.get('/:username/slots', async (req, res) => {
   try {
