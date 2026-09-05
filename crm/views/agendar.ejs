@@ -52,7 +52,11 @@
         <div class="ag-form">
           <div class="ag-field"><label>Nombre *</label><input id="ag_nombre" placeholder="Tu nombre"></div>
           <div class="ag-field"><label>Apellido</label><input id="ag_apellido" placeholder="Tu apellido"></div>
-          <div class="ag-field"><label>Teléfono *</label><input id="ag_telefono" type="tel" placeholder="999 999 999"></div>
+          <div class="ag-field">
+            <label>Teléfono * <span class="ag-field-hint">con código de país</span></label>
+            <input id="ag_telefono" type="tel" placeholder="51999999999" inputmode="numeric">
+            <span class="ag-field-note">Ej: 51999999999 (Perú) &nbsp;·&nbsp; 15551234567 (EE.UU.) &nbsp;·&nbsp; 34612345678 (España)</span>
+          </div>
           <div class="ag-field"><label>Email</label><input id="ag_email" type="email" placeholder="correo@ejemplo.com"></div>
           <div class="ag-field"><label>Motivo de consulta</label><textarea id="ag_motivo" rows="3" placeholder="Cuéntanos brevemente…"></textarea></div>
           <div id="agErrorMsg" class="ag-error-msg" style="display:none"></div>
