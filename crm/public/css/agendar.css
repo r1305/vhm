@@ -160,7 +160,25 @@ body {
 .ag-loading { text-align: center; padding: 30px; color: #6366f1; font-size: 22px; }
 .ag-error   { text-align: center; padding: 20px; color: #ef4444; font-size: 13px; }
 
-.ag-modalidad {
+.ag-field-readonly {
+  background: #f8fafc;
+  color: #555;
+  cursor: not-allowed;
+}
+
+.ag-lookup-status {
+  min-height: 20px;
+  font-size: 13px;
+  margin: -4px 0 4px;
+}
+
+.ag-lookup-buscando { color: #6366f1; }
+.ag-lookup-ok       { color: #16a34a; }
+.ag-lookup-nuevo    { color: #d97706; }
+
+.ag-lookup-status i { margin-right: 5px; }
+
+
   display: flex;
   gap: 10px;
 }
