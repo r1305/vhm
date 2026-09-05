@@ -22,7 +22,11 @@
       body: opts.body ? JSON.stringify(opts.body) : undefined,
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
+    if (!res.ok) {
+      const err = new Error(data.error || `Error ${res.status}`);
+      err.codigo = data.codigo || null;
+      throw err;
+    }
     return data;
   }
 
@@ -128,10 +132,12 @@
     const telefono = document.getElementById('ag_telefono').value.trim();
     const email    = document.getElementById('ag_email').value.trim();
     const motivo   = document.getElementById('ag_motivo').value.trim();
+    const errEl    = document.getElementById('agErrorMsg');
 
-    if (!nombre) { alert('El nombre es obligatorio'); return; }
-    if (!telefono) { alert('El teléfono es obligatorio'); return; }
+    if (!nombre) { mostrarError('El nombre es obligatorio'); return; }
+    if (!telefono) { mostrarError('El teléfono es obligatorio'); return; }
 
+    errEl.style.display = 'none';
     const btn = document.getElementById('agConfirmar');
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Confirmando…';
@@ -152,11 +158,19 @@
 
       goStep(4);
     } catch (e) {
-      alert(e.message);
+      mostrarError(e.message, e.codigo === 'SIN_SESIONES');
       btn.disabled = false;
       btn.innerHTML = 'Confirmar cita';
     }
   });
+
+  function mostrarError(msg, esSinSesiones = false) {
+    const el = document.getElementById('agErrorMsg');
+    if (!el) { alert(msg); return; }
+    el.textContent = msg;
+    el.className = 'ag-error-msg' + (esSinSesiones ? ' ag-error-sesiones' : '');
+    el.style.display = 'block';
+  }
 
   // ── Navegación entre steps ──────────────────────────────────────
   function goStep(n) {

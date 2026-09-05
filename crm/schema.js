@@ -173,6 +173,9 @@ async function ensureSchema() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
 
+    // Agregar sesiones_disponibles a pacientes si no existe
+    try { await conn.execute('ALTER TABLE pacientes ADD COLUMN sesiones_disponibles INT NOT NULL DEFAULT 0'); } catch (_) {}
+
     // Agregar telefono a terapeutas si no existe
     try { await conn.execute('ALTER TABLE terapeutas ADD COLUMN telefono VARCHAR(30) DEFAULT NULL'); } catch (_) {}
     // Eliminar columnas legacy si existen

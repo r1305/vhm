@@ -135,28 +135,52 @@ router.post('/:username/agendar', async (req, res) => {
     const [hh, mm] = hora_inicio.split(':').map(Number);
     const hora_fin = `${String(hh+1).padStart(2,'0')}:${String(mm).padStart(2,'0')}`;
 
-    // Crear o encontrar paciente
-    let pacienteId;
+    // Buscar paciente existente por email o teléfono
+    let paciente = null;
     if (email) {
-      const [[existing]] = await pool.execute('SELECT id FROM pacientes WHERE email=? LIMIT 1', [email]);
-      pacienteId = existing?.id;
+      const [[row]] = await pool.execute(
+        'SELECT id, nombre, sesiones_disponibles FROM pacientes WHERE email=? LIMIT 1',
+        [t(email, 150)]
+      );
+      paciente = row || null;
     }
-    if (!pacienteId && telefono) {
-      const [[existing]] = await pool.execute('SELECT id FROM pacientes WHERE telefono=? LIMIT 1', [telefono]);
-      pacienteId = existing?.id;
+    if (!paciente && telefono) {
+      const [[row]] = await pool.execute(
+        'SELECT id, nombre, sesiones_disponibles FROM pacientes WHERE telefono=? LIMIT 1',
+        [t(telefono, 30)]
+      );
+      paciente = row || null;
     }
-    if (!pacienteId) {
+
+    let pacienteId;
+
+    if (paciente) {
+      // Paciente existente — verificar saldo
+      if (paciente.sesiones_disponibles <= 0) {
+        return res.status(403).json({
+          error: 'No tienes sesiones disponibles para agendar. Contacta a tu terapeuta para adquirir más sesiones.',
+          codigo: 'SIN_SESIONES',
+        });
+      }
+      // Descontar 1 sesión
+      await pool.execute(
+        'UPDATE pacientes SET sesiones_disponibles = sesiones_disponibles - 1 WHERE id=?',
+        [paciente.id]
+      );
+      pacienteId = paciente.id;
+    } else {
+      // Paciente nuevo — crear como prospecto asignado al terapeuta de la URL
       const [r] = await pool.execute(
-        `INSERT INTO pacientes (nombre,apellido,email,telefono,fuente,estado,motivo_consulta)
-         VALUES (?,?,?,?,'web','prospecto',?)`,
-        [t(nombre,120), t(apellido,120), t(email,150), t(telefono,30), t(motivo,500)]
+        `INSERT INTO pacientes (nombre, apellido, email, telefono, fuente, estado, motivo_consulta, terapeuta_id)
+         VALUES (?, ?, ?, ?, 'web', 'prospecto', ?, ?)`,
+        [t(nombre,120), t(apellido,120), t(email,150), t(telefono,30), t(motivo,500), ter.id]
       );
       pacienteId = r.insertId;
     }
 
     const [rc] = await pool.execute(
-      `INSERT INTO citas (paciente_id,terapeuta_id,fecha,hora_inicio,hora_fin,modalidad,tipo,estado)
-       VALUES (?,?,?,?,?,'presencial','primera_vez','pendiente')`,
+      `INSERT INTO citas (paciente_id, terapeuta_id, fecha, hora_inicio, hora_fin, modalidad, tipo, estado)
+       VALUES (?, ?, ?, ?, ?, 'presencial', 'primera_vez', 'pendiente')`,
       [pacienteId, ter.id, fecha, hora_inicio + ':00', hora_fin + ':00']
     );
 

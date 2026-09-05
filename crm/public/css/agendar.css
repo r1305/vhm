@@ -151,3 +151,20 @@ body {
 /* ── Loading / error ── */
 .ag-loading { text-align: center; padding: 30px; color: #6366f1; font-size: 22px; }
 .ag-error   { text-align: center; padding: 20px; color: #ef4444; font-size: 13px; }
+
+.ag-error-msg {
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  color: #b91c1c;
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 14px;
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+
+.ag-error-msg.ag-error-sesiones {
+  background: #fffbeb;
+  border-color: #fcd34d;
+  color: #92400e;
+}
