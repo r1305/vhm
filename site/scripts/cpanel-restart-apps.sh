@@ -81,7 +81,12 @@ for root in "${APP_ROOTS[@]}"; do
 done
 
 echo ""
-bash "$SCRIPT_DIR/cpanel-clean-workers.sh" -f
+# Solo limpiar workers de las apps que se van a reiniciar
+CLEAN_FLAGS=()
+for name in "${APP_NAMES[@]}"; do
+  CLEAN_FLAGS+=("--${name}-only")
+done
+bash "$SCRIPT_DIR/cpanel-clean-workers.sh" -f "${CLEAN_FLAGS[@]}"
 
 echo ""
 echo "==> Start..."
