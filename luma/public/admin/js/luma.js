@@ -320,8 +320,8 @@
     const mobile = document.getElementById('admins-mobile');
     if (!tbody) return;
     if (!lista.length) { tbody.innerHTML = '<tr><td colspan="7" class="table-empty"><div class="empty-icon">👤</div><div>Sin administradores</div></td></tr>'; mobile.innerHTML = ''; return; }
-    tbody.innerHTML = lista.map(a => '<tr><td><strong>' + esc(a.nombre) + '</strong></td><td>' + esc(a.email) + '</td><td><span class="badge badge-activo">' + esc(a.rol) + '</span></td><td><span class="badge ' + (a.activo ? 'badge-activo' : 'badge-inactivo') + '">' + (a.activo ? 'Activo' : 'Inactivo') + '</span></td><td>' + (a.protegido ? '🔒 Sí' : '—') + '</td><td style="font-size:.8rem;color:var(--text-muted)">' + fmt(a.fecha_creacion) + '</td><td>' + (!a.protegido || user.protegido ? '<button class="btn btn-outline btn-xs" onclick="window._lumaEditAdmin(' + a.id + ')">✏️</button> <button class="btn btn-danger btn-xs" onclick="window._lumaDelAdmin(' + a.id + ',' + a.protegido + ')">🗑️</button>' : '<span style="font-size:.75rem;color:var(--text-muted)">Protegido</span>') + '</td></tr>').join('');
-    mobile.innerHTML = lista.map(a => '<div class="mc-item"><div class="mc-header"><div class="mc-title">' + esc(a.nombre) + (a.protegido ? ' 🔒' : '') + '</div><span class="badge ' + (a.activo ? 'badge-activo' : 'badge-inactivo') + '">' + (a.activo ? 'Activo' : 'Inactivo') + '</span></div><div class="mc-row">📧 ' + esc(a.email) + '</div><div class="mc-row">🎭 ' + esc(a.rol) + '</div>' + (!a.protegido || user.protegido ? '<div class="mc-actions"><button class="btn btn-outline btn-xs" onclick="window._lumaEditAdmin(' + a.id + ')">✏️ Editar</button><button class="btn btn-danger btn-xs" onclick="window._lumaDelAdmin(' + a.id + ',' + a.protegido + ')">🗑️ Eliminar</button></div>' : '') + '</div>').join('');
+    tbody.innerHTML = lista.map(a => '<tr><td><strong>' + esc(a.nombre) + '</strong></td><td>' + esc(a.usuario) + '</td><td><span class="badge badge-activo">' + esc(a.rol) + '</span></td><td><span class="badge ' + (a.activo ? 'badge-activo' : 'badge-inactivo') + '">' + (a.activo ? 'Activo' : 'Inactivo') + '</span></td><td>' + (a.protegido ? '🔒 Sí' : '—') + '</td><td style="font-size:.8rem;color:var(--text-muted)">' + fmt(a.fecha_creacion) + '</td><td>' + (!a.protegido || user.protegido ? '<button class="btn btn-outline btn-xs" onclick="window._lumaEditAdmin(' + a.id + ')">✏️</button> <button class="btn btn-danger btn-xs" onclick="window._lumaDelAdmin(' + a.id + ',' + a.protegido + ')">🗑️</button>' : '<span style="font-size:.75rem;color:var(--text-muted)">Protegido</span>') + '</td></tr>').join('');
+    mobile.innerHTML = lista.map(a => '<div class="mc-item"><div class="mc-header"><div class="mc-title">' + esc(a.nombre) + (a.protegido ? ' 🔒' : '') + '</div><span class="badge ' + (a.activo ? 'badge-activo' : 'badge-inactivo') + '">' + (a.activo ? 'Activo' : 'Inactivo') + '</span></div><div class="mc-row">👤 ' + esc(a.usuario) + '</div><div class="mc-row">🎭 ' + esc(a.rol) + '</div>' + (!a.protegido || user.protegido ? '<div class="mc-actions"><button class="btn btn-outline btn-xs" onclick="window._lumaEditAdmin(' + a.id + ')">✏️ Editar</button><button class="btn btn-danger btn-xs" onclick="window._lumaDelAdmin(' + a.id + ',' + a.protegido + ')">🗑️ Eliminar</button></div>' : '') + '</div>').join('');
   }
 
   let adminEditId = null;
@@ -332,6 +332,7 @@
     const modal = document.getElementById('modal-admin');
     document.getElementById('modal-admin-title').textContent = a ? '✏️ Editar Administrador' : '🧑💼 Nuevo Administrador';
     document.getElementById('af-nombre').value = a?.nombre || '';
+    document.getElementById('af-usuario').value = a?.usuario || '';
     document.getElementById('af-email').value = a?.email || '';
     document.getElementById('af-password').value = '';
     document.getElementById('af-password').placeholder = a ? 'Dejar vacío para no cambiar' : 'Contraseña *';
@@ -354,7 +355,7 @@
   };
 
   document.getElementById('btn-guardar-admin').addEventListener('click', async () => {
-    const body = { nombre: document.getElementById('af-nombre').value, email: document.getElementById('af-email').value, password: document.getElementById('af-password').value, rol_id: document.getElementById('af-rol_id').value, activo: document.getElementById('af-activo').value };
+    const body = { nombre: document.getElementById('af-nombre').value, usuario: document.getElementById('af-usuario').value, email: document.getElementById('af-email').value, password: document.getElementById('af-password').value, rol_id: document.getElementById('af-rol_id').value, activo: document.getElementById('af-activo').value };
     const url = adminEditId ? '/admin/admins/' + adminEditId : '/admin/admins';
     const method = adminEditId ? 'PUT' : 'POST';
     try {

@@ -56,7 +56,7 @@
     <h2>Luma Admin</h2>
     <p>Gestión de eventos y asistentes</p>
     <div class="error" id="error-msg"></div>
-    <input type="email" id="email" placeholder="Email" autocomplete="username">
+    <input type="text" id="email" placeholder="Usuario" autocomplete="username">
     <input type="password" id="password" placeholder="Contraseña" autocomplete="current-password">
     <button id="btn-login">Iniciar sesión</button>
   </div>
@@ -85,7 +85,7 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'same-origin',
-          body: JSON.stringify({ email, password }),
+          body: JSON.stringify({ usuario: email, password }),
         });
         const data = await res.json();
         if (res.ok) {
