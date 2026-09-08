@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eventos — VHM</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0f0f1a; --card: #1a1a2e; --border: #2a2a42;
+      --text: #e4e4ed; --muted: #7a7a8e; --secondary: #a0a0b4;
+      --primary: #667eea; --gradient: linear-gradient(135deg,#667eea,#764ba2);
+      --success: #10b981; --danger: #ef4444; --warning: #f59e0b;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+    a { color: var(--primary); text-decoration: none; }
+
+    header {
+      background: var(--card); border-bottom: 1px solid var(--border);
+      padding: 16px 24px; display: flex; align-items: center; gap: 12px;
+    }
+    header h1 { font-size: 1.1rem; font-weight: 700; }
+    header p { font-size: .8rem; color: var(--muted); }
+
+    .container { max-width: 900px; margin: 0 auto; padding: 32px 20px; }
+
+    .page-title { font-size: 1.6rem; font-weight: 700; margin-bottom: 6px; }
+    .page-sub { font-size: .9rem; color: var(--muted); margin-bottom: 32px; }
+
+    .events-grid { display: grid; gap: 20px; }
+
+    .event-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+      overflow: hidden; transition: border-color .2s;
+    }
+    .event-card:hover { border-color: var(--primary); }
+
+    .event-img { width: 100%; height: 180px; object-fit: cover; background: #1e1e34; display: block; }
+    .event-img-placeholder {
+      width: 100%; height: 140px; background: linear-gradient(135deg,#1e1e34,#2a1a4e);
+      display: flex; align-items: center; justify-content: center; font-size: 3rem;
+    }
+
+    .event-body { padding: 20px; }
+    .event-name { font-size: 1.1rem; font-weight: 700; margin-bottom: 8px; }
+    .event-meta { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 12px; }
+    .event-meta span { font-size: .8rem; color: var(--secondary); display: flex; align-items: center; gap: 4px; }
+    .event-desc { font-size: .85rem; color: var(--secondary); line-height: 1.6; margin-bottom: 16px; }
+
+    .event-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+    .cupos { font-size: .8rem; color: var(--muted); }
+    .cupos.lleno { color: var(--danger); }
+    .cupos.pocos { color: var(--warning); }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 10px 20px; border: none; border-radius: 10px;
+      font-size: .85rem; font-weight: 600; cursor: pointer;
+      font-family: inherit; transition: all .15s;
+    }
+    .btn-primary { background: var(--gradient); color: #fff; }
+    .btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(102,126,234,.4); }
+    .btn-primary:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+    .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--secondary); }
+    .btn-outline:hover { background: #2a2a42; }
+
+    /* Modal */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; z-index: 1000;
+      background: rgba(0,0,0,.7); backdrop-filter: blur(4px);
+      justify-content: center; align-items: center; padding: 20px;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal {
+      background: var(--card); border: 1px solid var(--border); border-radius: 20px;
+      width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto;
+      animation: modalIn .25s ease;
+    }
+    @keyframes modalIn { from { opacity:0; transform:scale(.95) translateY(10px); } to { opacity:1; transform:scale(1) translateY(0); } }
+    .modal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 24px; border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; background: var(--card); z-index: 1;
+    }
+    .modal-header h3 { font-size: 1rem; font-weight: 600; }
+    .modal-close {
+      width: 32px; height: 32px; border: none; background: #2a2a42;
+      border-radius: 8px; color: var(--muted); font-size: 1.1rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .modal-close:hover { background: #3a3a52; color: var(--text); }
+    .modal-body { padding: 20px 24px; }
+    .modal-footer { padding: 16px 24px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; }
+
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: .82rem; font-weight: 600; color: var(--secondary); margin-bottom: 6px; }
+    .form-group input, .form-group textarea {
+      width: 100%; padding: 11px 14px; border: 2px solid var(--border);
+      border-radius: 10px; font-size: .9rem; background: #16162a; color: var(--text);
+      font-family: inherit; transition: border-color .2s;
+    }
+    .form-group input:focus, .form-group textarea:focus { outline: none; border-color: var(--primary); }
+    .form-group textarea { min-height: 80px; resize: vertical; }
+
+    .event-summary {
+      background: #16162a; border: 1px solid var(--border); border-radius: 12px;
+      padding: 14px 16px; margin-bottom: 20px;
+    }
+    .event-summary .es-name { font-weight: 600; font-size: .95rem; margin-bottom: 6px; }
+    .event-summary .es-meta { font-size: .8rem; color: var(--muted); }
+
+    .msg { padding: 12px 14px; border-radius: 10px; font-size: .85rem; margin-top: 12px; }
+    .msg-success { background: #064e3b; border: 1px solid #10b981; color: #6ee7b7; }
+    .msg-error { background: #450a0a; border: 1px solid #ef4444; color: #fca5a5; }
+
+    .empty { text-align: center; padding: 60px 20px; color: var(--muted); }
+    .empty .empty-icon { font-size: 3rem; margin-bottom: 12px; }
+    .empty p { font-size: .95rem; }
+
+    .badge-lleno { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: .72rem; font-weight: 600; background: #450a0a; color: #fca5a5; }
+
+    @media (max-width: 600px) {
+      .container { padding: 20px 14px; }
+      .modal { border-radius: 16px 16px 0 0; max-height: 85vh; margin-top: auto; }
+      .modal-overlay { align-items: flex-end; padding: 0; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>📅 Eventos VHM</h1>
+      <p>Regístrate en nuestros próximos eventos</p>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="page-title">Próximos eventos</div>
+    <div class="page-sub">Selecciona un evento y regístrate para reservar tu lugar.</div>
+    <div class="events-grid" id="events-grid">
+      <div class="empty"><div class="empty-icon">⏳</div><p>Cargando eventos...</p></div>
+    </div>
+  </div>
+
+  <!-- Modal registro -->
+  <div class="modal-overlay" id="modal-registro">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>✍️ Registrarme</h3>
+        <button class="modal-close" id="btn-close-modal">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="event-summary" id="modal-evento-summary"></div>
+        <div class="form-group">
+          <label>Nombre completo *</label>
+          <input type="text" id="reg-nombre" placeholder="Tu nombre">
+        </div>
+        <div class="form-group">
+          <label>Email *</label>
+          <input type="email" id="reg-email" placeholder="tu@email.com">
+        </div>
+        <div class="form-group">
+          <label>Teléfono <span style="font-weight:400;color:var(--muted)">(opcional)</span></label>
+          <input type="tel" id="reg-telefono" placeholder="+51 999 999 999">
+        </div>
+        <div class="form-group">
+          <label>Notas <span style="font-weight:400;color:var(--muted)">(opcional)</span></label>
+          <textarea id="reg-notas" placeholder="¿Algo que quieras comentarnos?"></textarea>
+        </div>
+        <div id="reg-msg" style="display:none"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" id="btn-cancel-modal">Cancelar</button>
+        <button class="btn btn-primary" id="btn-registrar">✅ Confirmar registro</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const BASE = (window.__APP_BASE__ || '').replace(/\/+$/, '');
+    const API = BASE + '/api/luma';
+    let eventoActivo = null;
+
+    function fmt(fecha) {
+      if (!fecha) return '';
+      const [y, m, d] = fecha.split('T')[0].split('-');
+      const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+      return `${parseInt(d)} de ${meses[parseInt(m)-1]} ${y}`;
+    }
+    function fmtHora(h) {
+      if (!h) return '';
+      return h.slice(0,5);
+    }
+
+    async function cargarEventos() {
+      try {
+        const res = await fetch(API + '/eventos');
+        const eventos = await res.json();
+        const grid = document.getElementById('events-grid');
+        if (!eventos.length) {
+          grid.innerHTML = '<div class="empty"><div class="empty-icon">📭</div><p>No hay eventos próximos por ahora.</p></div>';
+          return;
+        }
+        grid.innerHTML = eventos.map(e => {
+          const lleno = e.capacidad && e.registrados >= e.capacidad;
+          const pocos = e.capacidad && !lleno && (e.capacidad - e.registrados) <= 5;
+          const cuposHtml = e.capacidad
+            ? lleno
+              ? '<span class="badge-lleno">Sin cupos</span>'
+              : `<span class="cupos${pocos ? ' pocos' : ''}">🎟️ ${e.capacidad - e.registrados} cupos disponibles</span>`
+            : '<span class="cupos">🎟️ Cupos libres</span>';
+          return `
+            <div class="event-card">
+              ${e.imagen_url
+                ? `<img class="event-img" src="${e.imagen_url}" alt="${e.nombre}">`
+                : `<div class="event-img-placeholder">📅</div>`}
+              <div class="event-body">
+                <div class="event-name">${e.nombre}</div>
+                <div class="event-meta">
+                  <span>📅 ${fmt(e.fecha)}</span>
+                  <span>🕐 ${fmtHora(e.hora_inicio)}${e.hora_fin ? ' – ' + fmtHora(e.hora_fin) : ''}</span>
+                  <span>📍 ${e.lugar}</span>
+                  ${e.link ? `<span><a href="${e.link}" target="_blank" rel="noopener">🔗 Ver ubicación</a></span>` : ''}
+                </div>
+                ${e.descripcion ? `<div class="event-desc">${e.descripcion}</div>` : ''}
+                <div class="event-footer">
+                  ${cuposHtml}
+                  <button class="btn btn-primary" onclick="abrirRegistro(${e.id})" ${lleno ? 'disabled' : ''}>
+                    ✍️ Registrarme
+                  </button>
+                </div>
+              </div>
+            </div>`;
+        }).join('');
+        window._eventos = eventos;
+      } catch {
+        document.getElementById('events-grid').innerHTML =
+          '<div class="empty"><div class="empty-icon">⚠️</div><p>Error al cargar eventos.</p></div>';
+      }
+    }
+
+    function abrirRegistro(id) {
+      const e = (window._eventos || []).find(x => x.id === id);
+      if (!e) return;
+      eventoActivo = e;
+      document.getElementById('modal-evento-summary').innerHTML =
+        `<div class="es-name">${e.nombre}</div>
+         <div class="es-meta">📅 ${fmt(e.fecha)} &nbsp;·&nbsp; 🕐 ${fmtHora(e.hora_inicio)} &nbsp;·&nbsp; 📍 ${e.lugar}</div>`;
+      ['reg-nombre','reg-email','reg-telefono','reg-notas'].forEach(id => document.getElementById(id).value = '');
+      const msg = document.getElementById('reg-msg');
+      msg.style.display = 'none';
+      document.getElementById('btn-registrar').disabled = false;
+      document.getElementById('modal-registro').classList.add('show');
+    }
+
+    function cerrarModal() {
+      document.getElementById('modal-registro').classList.remove('show');
+      eventoActivo = null;
+    }
+
+    document.getElementById('btn-close-modal').addEventListener('click', cerrarModal);
+    document.getElementById('btn-cancel-modal').addEventListener('click', cerrarModal);
+    document.getElementById('modal-registro').addEventListener('click', e => {
+      if (e.target === e.currentTarget) cerrarModal();
+    });
+
+    document.getElementById('btn-registrar').addEventListener('click', async () => {
+      if (!eventoActivo) return;
+      const nombre = document.getElementById('reg-nombre').value.trim();
+      const email = document.getElementById('reg-email').value.trim();
+      const telefono = document.getElementById('reg-telefono').value.trim();
+      const notas = document.getElementById('reg-notas').value.trim();
+      const msg = document.getElementById('reg-msg');
+      const btn = document.getElementById('btn-registrar');
+
+      if (!nombre || !email) {
+        msg.className = 'msg msg-error';
+        msg.textContent = 'Nombre y email son obligatorios.';
+        msg.style.display = 'block';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Registrando...';
+      try {
+        const res = await fetch(`${API}/eventos/${eventoActivo.id}/registrar`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nombre, email, telefono, notas }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          msg.className = 'msg msg-success';
+          msg.textContent = '🎉 ' + data.message + ' Te esperamos.';
+          msg.style.display = 'block';
+          btn.textContent = '✅ Registrado';
+          cargarEventos();
+        } else {
+          msg.className = 'msg msg-error';
+          msg.textContent = data.error || 'Error al registrar.';
+          msg.style.display = 'block';
+          btn.disabled = false;
+          btn.textContent = '✅ Confirmar registro';
+        }
+      } catch {
+        msg.className = 'msg msg-error';
+        msg.textContent = 'Error de conexión.';
+        msg.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = '✅ Confirmar registro';
+      }
+    });
+
+    cargarEventos();
+  </script>
+</body>
+</html>

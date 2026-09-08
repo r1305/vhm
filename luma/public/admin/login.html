@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Luma Admin — Iniciar sesión</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0f0f1a; --card: #1a1a2e; --border: #2a2a42;
+      --text: #e4e4ed; --muted: #7a7a8e;
+      --primary: #667eea; --gradient: linear-gradient(135deg,#667eea,#764ba2);
+      --danger: #ef4444;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--gradient); min-height: 100vh;
+      display: flex; align-items: center; justify-content: center; padding: 20px;
+    }
+    .box {
+      background: var(--card); border-radius: 24px; padding: 48px 40px 40px;
+      width: 100%; max-width: 400px; text-align: center;
+      box-shadow: 0 20px 60px rgba(0,0,0,.5);
+    }
+    .icon { font-size: 3rem; margin-bottom: 12px; }
+    h2 { font-size: 1.5rem; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+    p { font-size: .85rem; color: var(--muted); margin-bottom: 28px; }
+    input {
+      width: 100%; padding: 14px 16px; margin-bottom: 12px;
+      border: 2px solid var(--border); border-radius: 12px;
+      font-size: .95rem; background: #16162a; color: var(--text);
+      font-family: inherit; transition: border-color .2s;
+    }
+    input:focus { outline: none; border-color: var(--primary); }
+    button {
+      width: 100%; padding: 14px; margin-top: 8px;
+      background: var(--gradient); color: #fff; border: none; border-radius: 12px;
+      font-size: 1rem; font-weight: 600; cursor: pointer; font-family: inherit;
+      transition: transform .15s, box-shadow .2s;
+    }
+    button:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(102,126,234,.4); }
+    button:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+    .error {
+      display: none; color: #fca5a5; font-size: .85rem;
+      background: #450a0a; border: 1px solid var(--danger);
+      border-radius: 10px; padding: 10px 14px; margin-bottom: 12px; text-align: left;
+    }
+    @media(max-width:480px){ .box { padding: 32px 24px 28px; } }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <div class="icon">📅</div>
+    <h2>Luma Admin</h2>
+    <p>Gestión de eventos y asistentes</p>
+    <div class="error" id="error-msg"></div>
+    <input type="email" id="email" placeholder="Email" autocomplete="username">
+    <input type="password" id="password" placeholder="Contraseña" autocomplete="current-password">
+    <button id="btn-login">Iniciar sesión</button>
+  </div>
+  <script>
+    const BASE = (window.__APP_BASE__ || '').replace(/\/+$/, '');
+    const API = BASE + '/api';
+
+    function getCookie(name) {
+      const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+      return m ? decodeURIComponent(m[1]) : null;
+    }
+
+    document.getElementById('btn-login').addEventListener('click', login);
+    document.getElementById('password').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+
+    async function login() {
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const errEl = document.getElementById('error-msg');
+      const btn = document.getElementById('btn-login');
+      errEl.style.display = 'none';
+      if (!email || !password) { errEl.textContent = 'Completa todos los campos.'; errEl.style.display = 'block'; return; }
+      btn.disabled = true; btn.textContent = 'Ingresando...';
+      try {
+        const res = await fetch(API + '/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ email, password }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          localStorage.setItem('luma_token', data.token);
+          localStorage.setItem('luma_user', JSON.stringify(data.user));
+          window.location.href = BASE + '/admin/';
+        } else {
+          errEl.textContent = data.error || 'Error al iniciar sesión.';
+          errEl.style.display = 'block';
+          btn.disabled = false; btn.textContent = 'Iniciar sesión';
+        }
+      } catch {
+        errEl.textContent = 'Error de conexión.';
+        errEl.style.display = 'block';
+        btn.disabled = false; btn.textContent = 'Iniciar sesión';
+      }
+    }
+  </script>
+</body>
+</html>
