@@ -60,7 +60,7 @@ npm_install_app() {
   (cd "$dir" && npm install --omit=dev)
 }
 
-for app in site crm; do
+for app in site crm luma; do
   npm_install_app "$app"
 done
 
@@ -74,6 +74,7 @@ echo ""
 echo "==> Limpiando workers lsnode (site + crm)..."
 bash site/scripts/cpanel-clean-workers.sh -f --site-only
 bash site/scripts/cpanel-clean-workers.sh -f --crm-only
+bash site/scripts/cpanel-clean-workers.sh -f --luma-only
 
 if [ "$DO_RESTART" -eq 1 ]; then
   echo ""
