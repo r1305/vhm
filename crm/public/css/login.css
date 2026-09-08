@@ -6,3 +6,12 @@
 .login-logo { width: 56px; height: 56px; background: var(--primary); border-radius: 14px; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; font-size: 24px; color: #fff; }
 .login-brand h1 { font-size: 1.4rem; font-weight: 700; color: var(--primary); }
 .login-brand p { color: var(--text-muted); font-size: 13px; margin-top: 4px; }
+.pw-wrap { position: relative; }
+.pw-wrap .form-control { padding-right: 44px; }
+.pw-toggle {
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; cursor: pointer; padding: 4px;
+  color: var(--text-muted); font-size: 1rem; line-height: 1;
+  transition: color .2s;
+}
+.pw-toggle:hover { color: var(--text-primary); }
