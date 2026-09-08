@@ -121,7 +121,34 @@
 
     .badge-lleno { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: .72rem; font-weight: 600; background: #450a0a; color: #fca5a5; }
 
-    @media (max-width: 600px) {
+    /* Modal éxito */
+    .modal-success-body {
+      padding: 40px 24px 32px;
+      display: flex; flex-direction: column; align-items: center; text-align: center;
+    }
+    .success-icon {
+      width: 72px; height: 72px; border-radius: 50%;
+      background: linear-gradient(135deg,#064e3b,#065f46);
+      border: 2px solid #10b981;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2rem; margin-bottom: 20px;
+      animation: popIn .4s cubic-bezier(.175,.885,.32,1.275);
+    }
+    @keyframes popIn { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .success-title { font-size: 1.2rem; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+    .success-sub { font-size: .88rem; color: var(--secondary); line-height: 1.6; margin-bottom: 24px; }
+    .success-timer {
+      font-size: .78rem; color: var(--muted); margin-bottom: 16px;
+    }
+    .success-timer span { color: var(--primary); font-weight: 600; }
+    .progress-ring {
+      width: 100%; height: 3px; background: var(--border); border-radius: 2px;
+      margin-bottom: 20px; overflow: hidden;
+    }
+    .progress-ring-fill {
+      height: 100%; background: var(--gradient); border-radius: 2px;
+      width: 100%; transition: width linear;
+    }
       .container { padding: 20px 14px; }
       .modal { border-radius: 16px 16px 0 0; max-height: 85vh; margin-top: auto; }
       .modal-overlay { align-items: flex-end; padding: 0; }
@@ -174,6 +201,24 @@
       <div class="modal-footer">
         <button class="btn btn-outline" id="btn-cancel-modal">Cancelar</button>
         <button class="btn btn-primary" id="btn-registrar">✅ Confirmar registro</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal éxito registro -->
+  <div class="modal-overlay" id="modal-exito">
+    <div class="modal" style="max-width:400px">
+      <div class="modal-header">
+        <h3>Registro confirmado</h3>
+        <button class="modal-close" id="btn-close-exito">✕</button>
+      </div>
+      <div class="modal-success-body">
+        <div class="success-icon">🎉</div>
+        <div class="success-title">¡Te has registrado!</div>
+        <div class="success-sub" id="exito-sub">Tu lugar ha sido reservado. ¡Te esperamos!</div>
+        <div class="progress-ring"><div class="progress-ring-fill" id="exito-progress"></div></div>
+        <div class="success-timer">Cerrando en <span id="exito-countdown">3</span>s</div>
+        <button class="btn btn-primary" id="btn-cerrar-exito" style="width:100%">Cerrar</button>
       </div>
     </div>
   </div>
@@ -292,10 +337,8 @@
         });
         const data = await res.json();
         if (res.ok) {
-          msg.className = 'msg msg-success';
-          msg.textContent = '🎉 ' + data.message + ' Te esperamos.';
-          msg.style.display = 'block';
-          btn.textContent = '✅ Registrado';
+          cerrarModal();
+          mostrarExito(eventoActivo, data.message);
           cargarEventos();
         } else {
           msg.className = 'msg msg-error';
@@ -313,7 +356,37 @@
       }
     });
 
-    cargarEventos();
+  </script>
+</body>
+    function mostrarExito(evento, mensaje) {
+      document.getElementById('exito-sub').textContent = (mensaje || '¡Registro exitoso!') + ' Te esperamos.';
+      const overlay = document.getElementById('modal-exito');
+      overlay.classList.add('show');
+      let secs = 3;
+      const countdown = document.getElementById('exito-countdown');
+      const progress = document.getElementById('exito-progress');
+      countdown.textContent = secs;
+      progress.style.transition = 'none';
+      progress.style.width = '100%';
+      // trigger reflow so transition starts fresh
+      progress.offsetWidth;
+      progress.style.transition = 'width ' + secs + 's linear';
+      progress.style.width = '0%';
+      exitoTimer = setInterval(() => {
+        secs--;
+        countdown.textContent = secs;
+        if (secs <= 0) cerrarExito();
+      }, 1000);
+    }
+    function cerrarExito() {
+      clearInterval(exitoTimer);
+      document.getElementById('modal-exito').classList.remove('show');
+    }
+    document.getElementById('btn-close-exito').addEventListener('click', cerrarExito);
+    document.getElementById('btn-cerrar-exito').addEventListener('click', cerrarExito);
+    document.getElementById('modal-exito').addEventListener('click', e => {
+      if (e.target === e.currentTarget) cerrarExito();
+    });
   </script>
 </body>
 </html>
