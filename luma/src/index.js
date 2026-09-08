@@ -88,13 +88,12 @@ function initOnce() {
 }
 app.use((req, res, next) => { initOnce().then(() => next()).catch(() => next()); });
 
-// Servir HTML con __APP_BASE__ inyectado
+// Servir HTML con __APP_BASE__ inyectado (sin <base href> para evitar doble prefijo)
 function sendHtml(res, filePath) {
   const base = (res.locals.basePath || '').replace(/\/$/, '');
   let html = fs.readFileSync(filePath, 'utf8');
   const inlineBase = `<script>window.__APP_BASE__=${JSON.stringify(base)};</script>`;
   html = html.replace(/(<head[^>]*>)/i, `$1\n  ${inlineBase}`);
-  if (base) html = html.replace(/(<head[^>]*>)/i, `$1\n  <base href="${base}/">`);
   res.set('Cache-Control', 'no-store').type('html').send(html);
 }
 
@@ -104,11 +103,12 @@ app.use('/api', lumaRoutes);
 // Páginas HTML
 app.get('/', (req, res) => sendHtml(res, path.join(__dirname, '../public/index.html')));
 app.get('/admin', (req, res) => {
-  const base = (res.locals.basePath || '').replace(/\/$/, '');
-  res.redirect(base + '/admin/');
+  const mount = (process.env.APP_MOUNT_PATH || '/luma').replace(/\/$/, '');
+  res.redirect(mount + '/admin/');
 });
 app.get('/admin/', (req, res) => sendHtml(res, path.join(__dirname, '../public/admin/index.html')));
 app.get('/admin/login', (req, res) => sendHtml(res, path.join(__dirname, '../public/admin/login.html')));
+app.get('/admin/login/', (req, res) => sendHtml(res, path.join(__dirname, '../public/admin/login.html')));
 
 // Archivos estáticos
 app.use(express.static(path.join(__dirname, '../public'), { maxAge: '1d', index: false }));
