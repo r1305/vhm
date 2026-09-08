@@ -143,10 +143,11 @@ router.get('/admin/eventos', authMiddleware, requireAdmin, async (req, res) => {
       `SELECT e.id, e.nombre, e.descripcion, e.fecha, e.hora_inicio, e.hora_fin,
               e.lugar, e.link, e.capacidad, e.imagen_url, e.activo, e.fecha_creacion,
               a.nombre AS creado_por_nombre,
-              COUNT(r.id) AS registrados,
-              SUM(r.estado='confirmado') AS confirmados,
-              SUM(r.estado='pendiente') AS pendientes,
-              SUM(r.estado='cancelado') AS cancelados
+              SUM(r.estado != 'cancelado') AS registrados,
+              SUM(r.estado = 'confirmado') AS confirmados,
+              SUM(r.estado = 'pendiente') AS pendientes,
+              SUM(r.estado = 'cancelado') AS cancelados,
+              SUM(r.estado != 'cancelado' AND r.asistio = 1) AS asistieron
        FROM luma_eventos e
        LEFT JOIN luma_admins a ON e.creado_por = a.id
        LEFT JOIN luma_registros r ON r.evento_id = e.id
@@ -230,11 +231,24 @@ router.delete('/admin/eventos/:id', authMiddleware, requireAdmin, async (req, re
 router.get('/admin/eventos/:id/registros', authMiddleware, requireAdmin, async (req, res) => {
   try {
     const [rows] = await pool.execute(
-      'SELECT id, nombre, email, telefono, notas, estado, fecha_registro FROM luma_registros WHERE evento_id = ? ORDER BY fecha_registro ASC',
+      `SELECT id, nombre, email, telefono, notas, estado, asistio, fecha_asistencia, fecha_registro
+       FROM luma_registros WHERE evento_id = ? ORDER BY asistio DESC, nombre ASC`,
       [req.params.id]
     );
     res.json(rows);
   } catch { res.status(500).json({ error: 'Error al obtener registros' }); }
+});
+
+router.patch('/admin/registros/:id/asistencia', authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const asistio = req.body?.asistio === true || req.body?.asistio === 1 || req.body?.asistio === '1';
+    const [r] = await pool.execute(
+      'UPDATE luma_registros SET asistio = ?, fecha_asistencia = ? WHERE id = ? AND estado != ?',
+      [asistio ? 1 : 0, asistio ? new Date() : null, req.params.id, 'cancelado']
+    );
+    if (r.affectedRows === 0) return res.status(404).json({ error: 'Registro no encontrado o cancelado' });
+    res.json({ message: asistio ? 'Asistencia registrada' : 'Asistencia removida', asistio: asistio ? 1 : 0 });
+  } catch { res.status(500).json({ error: 'Error al actualizar asistencia' }); }
 });
 
 router.patch('/admin/registros/:id/estado', authMiddleware, requireAdmin, async (req, res) => {
@@ -263,8 +277,9 @@ router.get('/admin/stats', authMiddleware, requireAdmin, async (req, res) => {
     const [[{ total_eventos }]] = await pool.execute('SELECT COUNT(*) AS total_eventos FROM luma_eventos WHERE activo = 1');
     const [[{ total_registros }]] = await pool.execute("SELECT COUNT(*) AS total_registros FROM luma_registros WHERE estado != 'cancelado'");
     const [[{ confirmados }]] = await pool.execute("SELECT COUNT(*) AS confirmados FROM luma_registros WHERE estado = 'confirmado'");
+    const [[{ asistieron }]] = await pool.execute("SELECT COUNT(*) AS asistieron FROM luma_registros WHERE estado != 'cancelado' AND asistio = 1");
     const [[{ proximos }]] = await pool.execute('SELECT COUNT(*) AS proximos FROM luma_eventos WHERE activo = 1 AND fecha >= CURDATE()');
-    res.json({ total_eventos, total_registros, confirmados, proximos });
+    res.json({ total_eventos, total_registros, confirmados, asistieron, proximos });
   } catch { res.status(500).json({ error: 'Error al obtener stats' }); }
 });
 

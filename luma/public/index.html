@@ -149,6 +149,8 @@
       height: 100%; background: var(--gradient); border-radius: 2px;
       width: 100%; transition: width linear;
     }
+
+    @media (max-width: 640px) {
       .container { padding: 20px 14px; }
       .modal { border-radius: 16px 16px 0 0; max-height: 85vh; margin-top: auto; }
       .modal-overlay { align-items: flex-end; padding: 0; }
@@ -390,6 +392,8 @@
     document.getElementById('modal-exito').addEventListener('click', e => {
       if (e.target === e.currentTarget) cerrarExito();
     });
+
+    cargarEventos();
   </script>
 </body>
 </html>

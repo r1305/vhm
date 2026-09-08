@@ -34,6 +34,15 @@
       font-family: inherit; transition: border-color .2s;
     }
     input:focus { outline: none; border-color: var(--primary); }
+    .pw-wrap { position: relative; margin-bottom: 12px; }
+    .pw-wrap input { margin-bottom: 0; padding-right: 48px; }
+    .pw-toggle {
+      position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+      background: none; border: none; cursor: pointer; padding: 4px;
+      color: var(--muted); width: auto; margin: 0; font-size: 1.1rem; line-height: 1;
+      transition: color .2s;
+    }
+    .pw-toggle:hover { color: var(--text); }
     button {
       width: 100%; padding: 14px; margin-top: 8px;
       background: var(--gradient); color: #fff; border: none; border-radius: 12px;
@@ -57,7 +66,10 @@
     <p>Gestión de eventos y asistentes</p>
     <div class="error" id="error-msg"></div>
     <input type="text" id="email" placeholder="Usuario" autocomplete="username">
-    <input type="password" id="password" placeholder="Contraseña" autocomplete="current-password">
+    <div class="pw-wrap">
+      <input type="password" id="password" placeholder="Contraseña" autocomplete="current-password">
+      <button type="button" class="pw-toggle" id="pw-toggle" aria-label="Mostrar contraseña">👁</button>
+    </div>
     <button id="btn-login">Iniciar sesión</button>
   </div>
   <script>
@@ -71,6 +83,12 @@
 
     document.getElementById('btn-login').addEventListener('click', login);
     document.getElementById('password').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+    document.getElementById('pw-toggle').addEventListener('click', function() {
+      const inp = document.getElementById('password');
+      const show = inp.type === 'password';
+      inp.type = show ? 'text' : 'password';
+      this.textContent = show ? '🙈' : '👁';
+    });
 
     async function login() {
       const email = document.getElementById('email').value.trim();
