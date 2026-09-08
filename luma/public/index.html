@@ -224,7 +224,7 @@
   </div>
 
   <script>
-    const BASE = (window.__APP_BASE__ || '').replace(/\/+$/, '');
+    const BASE = (window.__APP_BASE__ || (function(){ var p=window.location.pathname; var m=p.match(/^(\/[^\/]+)/); return (m&&m[1]!=='/') ? m[1] : ''; })()).replace(/\/+$/, '');
     const API = BASE + '/api';
     let eventoActivo = null;
 
