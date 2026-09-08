@@ -273,7 +273,7 @@ router.get('/admin/stats', authMiddleware, requireAdmin, async (req, res) => {
 router.get('/admin/admins', authMiddleware, requireAdmin, async (req, res) => {
   try {
     const [rows] = await pool.execute(
-      `SELECT a.id, a.nombre, a.usuario, a.email, a.protegido, a.activo, a.fecha_creacion,
+      `SELECT a.id, a.nombre, a.usuario, a.protegido, a.activo, a.fecha_creacion,
               r.id AS rol_id, r.nombre AS rol
        FROM luma_admins a
        JOIN luma_roles r ON a.rol_id = r.id
@@ -285,7 +285,7 @@ router.get('/admin/admins', authMiddleware, requireAdmin, async (req, res) => {
 
 router.post('/admin/admins', authMiddleware, requireSuperAdmin, async (req, res) => {
   try {
-    const { nombre, usuario, email, password, rol_id, activo } = req.body || {};
+    const { nombre, usuario, password, rol_id, activo } = req.body || {};
     if (!nombre?.trim()) return res.status(400).json({ error: 'El nombre es obligatorio' });
     if (!usuario?.trim()) return res.status(400).json({ error: 'El usuario es obligatorio' });
     if (!password || password.length < 6) return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
@@ -294,13 +294,14 @@ router.post('/admin/admins', authMiddleware, requireSuperAdmin, async (req, res)
     const bcrypt = require('bcryptjs');
     const hash = await bcrypt.hash(password, 12);
     const [result] = await pool.execute(
-      'INSERT INTO luma_admins (nombre, usuario, email, password_hash, rol_id, activo) VALUES (?, ?, ?, ?, ?, ?)',
-      [nombre.trim(), usuario.trim(), email?.trim() || null, hash, rol_id, activo === false || activo === '0' ? 0 : 1]
+      'INSERT INTO luma_admins (nombre, usuario, password_hash, rol_id, activo) VALUES (?, ?, ?, ?, ?)',
+      [nombre.trim(), usuario.trim(), hash, rol_id, activo === false || activo === '0' ? 0 : 1]
     );
     res.status(201).json({ id: result.insertId, message: 'Administrador creado' });
   } catch (e) {
+    console.error('[POST /admin/admins]', e.code, e.message);
     if (e.code === 'ER_DUP_ENTRY') return res.status(409).json({ error: 'El usuario ya está registrado' });
-    res.status(500).json({ error: 'Error al crear administrador' });
+    res.status(500).json({ error: e.message || 'Error al crear administrador' });
   }
 });
 
@@ -311,7 +312,7 @@ router.put('/admin/admins/:id', authMiddleware, requireSuperAdmin, async (req, r
     if (target[0].protegido && req.user.protegido !== 1)
       return res.status(403).json({ error: 'No puedes modificar al administrador protegido' });
 
-    const { nombre, usuario, email, password, rol_id, activo } = req.body || {};
+    const { nombre, usuario, password, rol_id, activo } = req.body || {};
     if (!nombre?.trim()) return res.status(400).json({ error: 'El nombre es obligatorio' });
     if (!usuario?.trim()) return res.status(400).json({ error: 'El usuario es obligatorio' });
     if (!rol_id) return res.status(400).json({ error: 'El rol es obligatorio' });
@@ -321,13 +322,13 @@ router.put('/admin/admins/:id', authMiddleware, requireSuperAdmin, async (req, r
       if (password.length < 6) return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
       const hash = await bcrypt.hash(password, 12);
       await pool.execute(
-        'UPDATE luma_admins SET nombre=?, usuario=?, email=?, password_hash=?, rol_id=?, activo=? WHERE id=?',
-        [nombre.trim(), usuario.trim(), email?.trim() || null, hash, rol_id, activo === false || activo === '0' ? 0 : 1, req.params.id]
+        'UPDATE luma_admins SET nombre=?, usuario=?, password_hash=?, rol_id=?, activo=? WHERE id=?',
+        [nombre.trim(), usuario.trim(), hash, rol_id, activo === false || activo === '0' ? 0 : 1, req.params.id]
       );
     } else {
       await pool.execute(
-        'UPDATE luma_admins SET nombre=?, usuario=?, email=?, rol_id=?, activo=? WHERE id=?',
-        [nombre.trim(), usuario.trim(), email?.trim() || null, rol_id, activo === false || activo === '0' ? 0 : 1, req.params.id]
+        'UPDATE luma_admins SET nombre=?, usuario=?, rol_id=?, activo=? WHERE id=?',
+        [nombre.trim(), usuario.trim(), rol_id, activo === false || activo === '0' ? 0 : 1, req.params.id]
       );
     }
     res.json({ message: 'Administrador actualizado' });
