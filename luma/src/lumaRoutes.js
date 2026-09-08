@@ -47,28 +47,28 @@ function validarUrl(str) {
 
 router.post('/auth/login', async (req, res) => {
   try {
-    const { email, password } = req.body || {};
-    if (!email || !password) return res.status(400).json({ error: 'Email y contraseña requeridos' });
+    const { usuario, password } = req.body || {};
+    if (!usuario || !password) return res.status(400).json({ error: 'Usuario y contraseña requeridos' });
     const bcrypt = require('bcryptjs');
     const jwt = require('jsonwebtoken');
     const { JWT_SECRET } = require('./auth');
 
     const [rows] = await pool.execute(
-      `SELECT a.id, a.nombre, a.email, a.password_hash, a.protegido, r.nombre AS rol
+      `SELECT a.id, a.nombre, a.usuario, a.password_hash, a.protegido, r.nombre AS rol
        FROM luma_admins a
        JOIN luma_roles r ON a.rol_id = r.id
-       WHERE a.email = ? AND a.activo = 1`,
-      [String(email).trim().toLowerCase()]
+       WHERE a.usuario = ? AND a.activo = 1`,
+      [String(usuario).trim()]
     );
     if (!rows[0]) return res.status(401).json({ error: 'Credenciales inválidas' });
     const ok = await bcrypt.compare(password, rows[0].password_hash);
     if (!ok) return res.status(401).json({ error: 'Credenciales inválidas' });
 
     const token = jwt.sign(
-      { id: rows[0].id, nombre: rows[0].nombre, email: rows[0].email, rol: rows[0].rol, protegido: rows[0].protegido },
+      { id: rows[0].id, nombre: rows[0].nombre, usuario: rows[0].usuario, rol: rows[0].rol, protegido: rows[0].protegido },
       JWT_SECRET, { expiresIn: '12h' }
     );
-    res.json({ token, user: { id: rows[0].id, nombre: rows[0].nombre, email: rows[0].email, rol: rows[0].rol, protegido: rows[0].protegido } });
+    res.json({ token, user: { id: rows[0].id, nombre: rows[0].nombre, usuario: rows[0].usuario, rol: rows[0].rol, protegido: rows[0].protegido } });
   } catch (e) { console.error(e); res.status(500).json({ error: 'Error al iniciar sesión' }); }
 });
 
@@ -273,7 +273,7 @@ router.get('/admin/stats', authMiddleware, requireAdmin, async (req, res) => {
 router.get('/admin/admins', authMiddleware, requireAdmin, async (req, res) => {
   try {
     const [rows] = await pool.execute(
-      `SELECT a.id, a.nombre, a.email, a.protegido, a.activo, a.fecha_creacion,
+      `SELECT a.id, a.nombre, a.usuario, a.email, a.protegido, a.activo, a.fecha_creacion,
               r.id AS rol_id, r.nombre AS rol
        FROM luma_admins a
        JOIN luma_roles r ON a.rol_id = r.id
@@ -285,22 +285,21 @@ router.get('/admin/admins', authMiddleware, requireAdmin, async (req, res) => {
 
 router.post('/admin/admins', authMiddleware, requireSuperAdmin, async (req, res) => {
   try {
-    const { nombre, email, password, rol_id, activo } = req.body || {};
+    const { nombre, usuario, email, password, rol_id, activo } = req.body || {};
     if (!nombre?.trim()) return res.status(400).json({ error: 'El nombre es obligatorio' });
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))
-      return res.status(400).json({ error: 'Email inválido' });
+    if (!usuario?.trim()) return res.status(400).json({ error: 'El usuario es obligatorio' });
     if (!password || password.length < 6) return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
     if (!rol_id) return res.status(400).json({ error: 'El rol es obligatorio' });
 
     const bcrypt = require('bcryptjs');
     const hash = await bcrypt.hash(password, 12);
     const [result] = await pool.execute(
-      'INSERT INTO luma_admins (nombre, email, password_hash, rol_id, activo) VALUES (?, ?, ?, ?, ?)',
-      [nombre.trim(), email.trim().toLowerCase(), hash, rol_id, activo === false || activo === '0' ? 0 : 1]
+      'INSERT INTO luma_admins (nombre, usuario, email, password_hash, rol_id, activo) VALUES (?, ?, ?, ?, ?, ?)',
+      [nombre.trim(), usuario.trim(), email?.trim() || null, hash, rol_id, activo === false || activo === '0' ? 0 : 1]
     );
     res.status(201).json({ id: result.insertId, message: 'Administrador creado' });
   } catch (e) {
-    if (e.code === 'ER_DUP_ENTRY') return res.status(409).json({ error: 'El email ya está registrado' });
+    if (e.code === 'ER_DUP_ENTRY') return res.status(409).json({ error: 'El usuario ya está registrado' });
     res.status(500).json({ error: 'Error al crear administrador' });
   }
 });
@@ -312,10 +311,9 @@ router.put('/admin/admins/:id', authMiddleware, requireSuperAdmin, async (req, r
     if (target[0].protegido && req.user.protegido !== 1)
       return res.status(403).json({ error: 'No puedes modificar al administrador protegido' });
 
-    const { nombre, email, password, rol_id, activo } = req.body || {};
+    const { nombre, usuario, email, password, rol_id, activo } = req.body || {};
     if (!nombre?.trim()) return res.status(400).json({ error: 'El nombre es obligatorio' });
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))
-      return res.status(400).json({ error: 'Email inválido' });
+    if (!usuario?.trim()) return res.status(400).json({ error: 'El usuario es obligatorio' });
     if (!rol_id) return res.status(400).json({ error: 'El rol es obligatorio' });
 
     const bcrypt = require('bcryptjs');
@@ -323,18 +321,18 @@ router.put('/admin/admins/:id', authMiddleware, requireSuperAdmin, async (req, r
       if (password.length < 6) return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
       const hash = await bcrypt.hash(password, 12);
       await pool.execute(
-        'UPDATE luma_admins SET nombre=?, email=?, password_hash=?, rol_id=?, activo=? WHERE id=?',
-        [nombre.trim(), email.trim().toLowerCase(), hash, rol_id, activo === false || activo === '0' ? 0 : 1, req.params.id]
+        'UPDATE luma_admins SET nombre=?, usuario=?, email=?, password_hash=?, rol_id=?, activo=? WHERE id=?',
+        [nombre.trim(), usuario.trim(), email?.trim() || null, hash, rol_id, activo === false || activo === '0' ? 0 : 1, req.params.id]
       );
     } else {
       await pool.execute(
-        'UPDATE luma_admins SET nombre=?, email=?, rol_id=?, activo=? WHERE id=?',
-        [nombre.trim(), email.trim().toLowerCase(), rol_id, activo === false || activo === '0' ? 0 : 1, req.params.id]
+        'UPDATE luma_admins SET nombre=?, usuario=?, email=?, rol_id=?, activo=? WHERE id=?',
+        [nombre.trim(), usuario.trim(), email?.trim() || null, rol_id, activo === false || activo === '0' ? 0 : 1, req.params.id]
       );
     }
     res.json({ message: 'Administrador actualizado' });
   } catch (e) {
-    if (e.code === 'ER_DUP_ENTRY') return res.status(409).json({ error: 'El email ya está registrado' });
+    if (e.code === 'ER_DUP_ENTRY') return res.status(409).json({ error: 'El usuario ya está registrado' });
     res.status(500).json({ error: 'Error al actualizar administrador' });
   }
 });

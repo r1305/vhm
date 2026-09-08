@@ -78,7 +78,8 @@ async function crearEsquema() {
     CREATE TABLE IF NOT EXISTS luma_admins (
       id             INT AUTO_INCREMENT PRIMARY KEY,
       nombre         VARCHAR(120) NOT NULL,
-      email          VARCHAR(150) NOT NULL UNIQUE,
+      usuario        VARCHAR(80) NOT NULL UNIQUE,
+      email          VARCHAR(150) NULL,
       password_hash  VARCHAR(255) NOT NULL,
       rol_id         INT NOT NULL DEFAULT 1,
       protegido      TINYINT(1) NOT NULL DEFAULT 0,
@@ -91,6 +92,8 @@ async function crearEsquema() {
   // Migración: agregar columnas nuevas si no existen
   await pool.query('ALTER TABLE luma_admins ADD COLUMN rol_id INT NOT NULL DEFAULT 1').catch(() => {});
   await pool.query('ALTER TABLE luma_admins ADD COLUMN protegido TINYINT(1) NOT NULL DEFAULT 0').catch(() => {});
+  await pool.query('ALTER TABLE luma_admins ADD COLUMN usuario VARCHAR(80) NULL').catch(() => {});
+  await pool.query('ALTER TABLE luma_admins ADD UNIQUE KEY uq_la_usuario (usuario)').catch(() => {});
   await pool.query('ALTER TABLE luma_admins DROP COLUMN rol').catch(() => {});
 
   // Seed SUPERADMIN protegido (usuario: luma@luma.com, contraseña: $LUMA$2026$)
@@ -99,9 +102,12 @@ async function crearEsquema() {
   if (!existing.length) {
     const hash = await bcrypt.hash('$LUMA$2026$', 12);
     await pool.query(`
-      INSERT INTO luma_admins (nombre, email, password_hash, rol_id, protegido, activo)
-      VALUES ('Luma', 'luma@luma.com', ?, 1, 1, 1)
+      INSERT INTO luma_admins (nombre, usuario, email, password_hash, rol_id, protegido, activo)
+      VALUES ('Luma', 'Luma', 'luma@luma.com', ?, 1, 1, 1)
     `, [hash]);
+  } else {
+    // migrar usuario existente si la columna era null
+    await pool.query("UPDATE luma_admins SET usuario = 'Luma' WHERE protegido = 1 AND (usuario IS NULL OR usuario = '')").catch(() => {});
   }
 
   // ── Accesos (catálogo de vistas) ──────────────────────────────────────────
