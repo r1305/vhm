@@ -73,20 +73,28 @@
 
   // ── NAVEGACIÓN ────────────────────────────────────────────────────────────
   const titles = { dashboard: '📊 Dashboard', eventos: '📋 Eventos', registros: '👥 Registros', administradores: '🧑‍💼 Administradores', roles: '🎭 Roles', accesos: '🔑 Accesos' };
+  const PAGES = Object.keys(titles);
   let currentPage = 'dashboard';
+
+  function pageFromUrl() {
+    const seg = window.location.pathname.replace(/\/+$/, '').split('/').pop();
+    return PAGES.includes(seg) ? seg : 'dashboard';
+  }
 
   document.querySelectorAll('.nav-item[data-page]').forEach(btn => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
       sidebar.classList.remove('open'); overlay.classList.remove('show');
-      navigateTo(btn.dataset.page);
+      navigateTo(btn.dataset.page, true);
     });
   });
 
-  function navigateTo(page) {
+  window.addEventListener('popstate', () => navigateTo(pageFromUrl(), false));
+
+  function navigateTo(page, push) {
     currentPage = page;
     document.getElementById('page-title').textContent = titles[page] || page;
+    document.querySelectorAll('.nav-item[data-page]').forEach(b => b.classList.toggle('active', b.dataset.page === page));
+    if (push) history.pushState({ page }, '', BASE + '/admin/' + page);
     const content = document.getElementById('main-content');
     if (page === 'dashboard') renderDashboard(content);
     else if (page === 'eventos') renderEventosPage(content);
@@ -472,5 +480,5 @@
   }
 
   // ── INIT ──────────────────────────────────────────────────────────────────
-  navigateTo('dashboard');
+  navigateTo(pageFromUrl());
 })();
