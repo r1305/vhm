@@ -341,7 +341,6 @@
     document.getElementById('modal-admin-title').textContent = a ? '✏️ Editar Administrador' : '🧑💼 Nuevo Administrador';
     document.getElementById('af-nombre').value = a?.nombre || '';
     document.getElementById('af-usuario').value = a?.usuario || '';
-    document.getElementById('af-email').value = a?.email || '';
     document.getElementById('af-password').value = '';
     document.getElementById('af-password').placeholder = a ? 'Dejar vacío para no cambiar' : 'Contraseña *';
     document.getElementById('af-activo').value = a ? (a.activo ? '1' : '0') : '1';
@@ -363,7 +362,7 @@
   };
 
   document.getElementById('btn-guardar-admin').addEventListener('click', async () => {
-    const body = { nombre: document.getElementById('af-nombre').value, usuario: document.getElementById('af-usuario').value, email: document.getElementById('af-email').value, password: document.getElementById('af-password').value, rol_id: document.getElementById('af-rol_id').value, activo: document.getElementById('af-activo').value };
+    const body = { nombre: document.getElementById('af-nombre').value, usuario: document.getElementById('af-usuario').value, password: document.getElementById('af-password').value, rol_id: document.getElementById('af-rol_id').value, activo: document.getElementById('af-activo').value };
     const url = adminEditId ? '/admin/admins/' + adminEditId : '/admin/admins';
     const method = adminEditId ? 'PUT' : 'POST';
     try {
