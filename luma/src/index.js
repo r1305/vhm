@@ -102,10 +102,7 @@ app.use('/api', lumaRoutes);
 
 // Páginas HTML
 app.get('/', (req, res) => sendHtml(res, path.join(__dirname, '../public/index.html')));
-app.get('/admin', (req, res) => {
-  const mount = (process.env.APP_MOUNT_PATH || '/luma').replace(/\/$/, '');
-  res.redirect(mount + '/admin/');
-});
+app.get('/admin', (req, res) => sendHtml(res, path.join(__dirname, '../public/admin/index.html')));
 app.get('/admin/', (req, res) => sendHtml(res, path.join(__dirname, '../public/admin/index.html')));
 app.get('/admin/login', (req, res) => sendHtml(res, path.join(__dirname, '../public/admin/login.html')));
 app.get('/admin/login/', (req, res) => sendHtml(res, path.join(__dirname, '../public/admin/login.html')));
