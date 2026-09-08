@@ -1,5 +1,5 @@
 #!/bin/bash
-# Deploy completo VHM (site + crm) en cPanel.
+# Deploy completo VHM (site + crm + luma) en cPanel.
 #
 # Comando único (desde la raíz del repo, carpeta padre de site/):
 #   cd ~/public_html && bash site/deploy.sh --restart
@@ -82,6 +82,6 @@ if [ "$DO_RESTART" -eq 1 ]; then
 else
   echo ""
   echo "==> Código actualizado y workers limpiados."
-  echo "    Para reiniciar site, crm y openwa:"
+  echo "    Para reiniciar site, crm y luma:"
   echo "      bash site/scripts/cpanel-restart-apps.sh"
 fi

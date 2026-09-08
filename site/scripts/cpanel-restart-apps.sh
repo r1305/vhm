@@ -45,7 +45,7 @@ declare -a REQUESTED=()
 if [ $# -gt 0 ]; then
   REQUESTED=("$@")
 else
-  IFS=' ' read -r -a REQUESTED <<< "${VHM_NODE_APPS:-site crm luma openwa}"
+  IFS=' ' read -r -a REQUESTED <<< "${VHM_NODE_APPS:-site crm luma}"
 fi
 
 declare -a APP_DIRS=()
@@ -100,4 +100,3 @@ echo "==> Listo."
 echo "    Site:   https://vhm.com.pe/site/api/deploy-info"
 echo "    CRM:    https://vhm.com.pe/crm/login"
 echo "    Luma:   https://vhm.com.pe/luma/admin"
-echo "    OpenWA: https://vhm.com.pe/openwa"
