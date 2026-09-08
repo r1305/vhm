@@ -102,8 +102,11 @@ app.use('/api', lumaRoutes);
 
 // Páginas HTML
 app.get('/', (req, res) => sendHtml(res, path.join(__dirname, '../public/index.html')));
-app.get('/admin', (req, res) => sendHtml(res, path.join(__dirname, '../public/admin/index.html')));
-app.get('/admin/', (req, res) => sendHtml(res, path.join(__dirname, '../public/admin/index.html')));
+const adminHtml = path.join(__dirname, '../public/admin/index.html');
+const adminPages = ['dashboard','eventos','registros','administradores','roles','accesos'];
+app.get('/admin', (req, res) => sendHtml(res, adminHtml));
+app.get('/admin/', (req, res) => sendHtml(res, adminHtml));
+adminPages.forEach(p => app.get('/admin/' + p, (req, res) => sendHtml(res, adminHtml)));
 app.get('/admin/login', (req, res) => sendHtml(res, path.join(__dirname, '../public/admin/login.html')));
 app.get('/admin/login/', (req, res) => sendHtml(res, path.join(__dirname, '../public/admin/login.html')));
 
