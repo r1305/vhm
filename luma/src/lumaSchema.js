@@ -55,6 +55,8 @@ async function crearEsquema() {
   await pool.query('ALTER TABLE luma_eventos ADD COLUMN capacidad INT NULL').catch(() => {});
   await pool.query('ALTER TABLE luma_eventos ADD COLUMN imagen_url VARCHAR(500) NULL').catch(() => {});
   await pool.query('ALTER TABLE luma_registros ADD COLUMN notas TEXT NULL').catch(() => {});
+  await pool.query('ALTER TABLE luma_registros ADD COLUMN asistio TINYINT(1) NOT NULL DEFAULT 0').catch(() => {});
+  await pool.query('ALTER TABLE luma_registros ADD COLUMN fecha_asistencia TIMESTAMP NULL').catch(() => {});
 
   // ── Roles ─────────────────────────────────────────────────────────────────
   await pool.query(`
