@@ -17,7 +17,10 @@
       <p>Ingresa para gestionar tu sitio VHM</p>
       <div class="error" id="login-error"></div>
       <input type="text" id="login-user" placeholder="Usuario" autocomplete="username">
-      <input type="password" id="login-pass" placeholder="Contraseña" autocomplete="current-password">
+      <div class="pw-wrap">
+        <input type="password" id="login-pass" placeholder="Contraseña" autocomplete="current-password">
+        <button type="button" class="pw-toggle" id="pw-toggle" aria-label="Mostrar contraseña">👁</button>
+      </div>
       <button type="button" id="login-btn"><span id="login-btn-text">Ingresar</span></button>
     </div>
   </div>
@@ -25,5 +28,13 @@
   <script src="js/auth.js"></script>
   <script src="js/toast.js"></script>
   <script src="js/login.js"></script>
+  <script>
+    document.getElementById('pw-toggle').addEventListener('click', function() {
+      const inp = document.getElementById('login-pass');
+      const show = inp.type === 'password';
+      inp.type = show ? 'text' : 'password';
+      this.textContent = show ? '🙈' : '👁';
+    });
+  </script>
 </body>
 </html>

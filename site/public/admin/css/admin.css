@@ -106,6 +106,15 @@ input, textarea, select { font-family: inherit; }
   transition: border-color .2s;
 }
 .login-box input:focus { outline: none; border-color: var(--color-primary); background: var(--bg-card); }
+.login-box .pw-wrap { position: relative; margin-bottom: 12px; }
+.login-box .pw-wrap input { margin-bottom: 0; padding-right: 48px; }
+.login-box .pw-toggle {
+  position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; cursor: pointer; padding: 4px;
+  color: var(--text-muted); font-size: 1.1rem; line-height: 1;
+  transition: color .2s; width: auto;
+}
+.login-box .pw-toggle:hover { color: var(--text-primary); }
 .login-box button {
   width: 100%; padding: 14px; margin-top: 8px;
   background: var(--gradient);
