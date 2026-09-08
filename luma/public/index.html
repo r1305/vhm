@@ -240,8 +240,11 @@
     }
 
     async function cargarEventos() {
+      console.log('[luma] API:', API, '| BASE:', BASE, '| pathname:', window.location.pathname);
       try {
         const res = await fetch(API + '/eventos');
+        console.log('[luma] /eventos status:', res.status, res.url);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
         const eventos = await res.json();
         const grid = document.getElementById('events-grid');
         if (!eventos.length) {
@@ -280,9 +283,10 @@
             </div>`;
         }).join('');
         window._eventos = eventos;
-      } catch {
+      } catch(err) {
+        console.error('[luma] Error cargarEventos:', err);
         document.getElementById('events-grid').innerHTML =
-          '<div class="empty"><div class="empty-icon">⚠️</div><p>Error al cargar eventos.</p></div>';
+          '<div class="empty"><div class="empty-icon">⚠️</div><p>Error al cargar eventos: ' + err.message + '</p></div>';
       }
     }
 
