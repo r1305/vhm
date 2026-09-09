@@ -146,11 +146,72 @@ async function absorbOrphanLidConversations(primaryId) {
 function dedupeMensajes(rows) {
   const seen = new Set();
   return rows.filter((m) => {
-    const key = m.wa_message_id ? `wa:${m.wa_message_id}` : `id:${m.id}`;
+    const ts = m.timestamp_wa || Math.floor(new Date(m.created_at).getTime() / 1000);
+    const key = m.wa_message_id
+      ? `wa:${m.wa_message_id}`
+      : `${m.direccion}:${m.cuerpo}:${ts}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
   });
+}
+
+/** Fusiona conversaciones duplicadas del mismo teléfono (sidebar y webhooks) */
+async function dedupeAllConversaciones() {
+  const [tails] = await pool.execute(
+    `SELECT RIGHT(REPLACE(phone,'+',''), 9) AS tail
+     FROM wa_conversaciones
+     WHERE phone IS NOT NULL AND LENGTH(REPLACE(phone,'+','')) BETWEEN 10 AND 13
+     GROUP BY tail
+     HAVING COUNT(*) > 1`
+  );
+  for (const { tail } of tails) {
+    const [sample] = await pool.execute(
+      `SELECT phone FROM wa_conversaciones
+       WHERE RIGHT(REPLACE(phone,'+',''), 9) = ?
+         AND LENGTH(REPLACE(phone,'+','')) BETWEEN 10 AND 13
+       ORDER BY ultimo_mensaje_at DESC, id DESC
+       LIMIT 1`,
+      [tail]
+    );
+    if (sample[0]?.phone) await mergeConversacionesByPhone(sample[0].phone);
+  }
+
+  const [lidRows] = await pool.execute(
+    `SELECT id, chat_id, lid_chat_id FROM wa_conversaciones
+     WHERE lid_chat_id IS NOT NULL OR chat_id LIKE '%@lid'`
+  );
+  for (const row of lidRows) {
+    const lid = row.lid_chat_id || (String(row.chat_id).includes('@lid') ? row.chat_id : null);
+    if (!lid) continue;
+    const mapped = await resolveLidPhone(lid);
+    if (mapped && isWhatsAppPhone(mapped)) {
+      await mergeConversacionesByPhone(mapped, row.id);
+    }
+  }
+}
+
+async function hasRecentOutgoingCrm({ phone, cuerpo, waMessageId }) {
+  if (waMessageId) {
+    const [byId] = await pool.execute(
+      'SELECT id FROM wa_mensajes WHERE wa_message_id = ? LIMIT 1',
+      [waMessageId]
+    );
+    if (byId.length) return true;
+  }
+  if (!cuerpo || !phone || !isWhatsAppPhone(phone)) return false;
+  const normalized = normalizePhone(phone);
+  const tail = phoneTail(normalized);
+  const [recent] = await pool.execute(
+    `SELECT m.id FROM wa_mensajes m
+     INNER JOIN wa_conversaciones c ON c.id = m.conversacion_id
+     WHERE m.direccion = 'outgoing' AND m.cuerpo = ?
+       AND (c.phone = ? OR RIGHT(REPLACE(c.phone,'+',''), 9) = ?)
+       AND m.created_at > DATE_SUB(NOW(), INTERVAL 2 MINUTE)
+     LIMIT 1`,
+    [cuerpo, normalized, tail]
+  );
+  return recent.length > 0;
 }
 
 async function getRelatedConversacionIds(conv) {
@@ -243,14 +304,14 @@ async function syncMensajesFromOpenwa(conv, conversacionId) {
   }
 
   for (const row of collected.values()) {
-    const isOut = row.direction === 'outgoing';
+    if (row.direction === 'outgoing') continue;
     await insertMensaje({
       conversacionId,
       waMessageId: row.wa_message_id,
-      direccion: isOut ? 'outgoing' : 'incoming',
+      direccion: 'incoming',
       tipo: row.type || 'text',
       cuerpo: row.body || '',
-      origen: isOut ? 'crm' : 'whatsapp',
+      origen: 'whatsapp',
       timestamp: row.timestamp,
       reassignConversacion: false,
     });
@@ -303,7 +364,7 @@ async function mergeConversacionesByPhone(phone, preferId = null) {
   if (!normalizedPhone) return null;
 
   const [rows] = await pool.execute(
-    `SELECT id, chat_id, no_leidos, ultimo_mensaje_at
+    `SELECT id, chat_id, no_leidos, ultimo_mensaje_at, paciente_id
      FROM wa_conversaciones
      WHERE LENGTH(REPLACE(phone,'+','')) BETWEEN 10 AND 13
        AND (phone = ? OR (? <> '' AND RIGHT(REPLACE(phone,'+',''), 9) = ?))
@@ -333,7 +394,8 @@ async function mergeConversacionesByPhone(phone, preferId = null) {
   }
 
   const preferred = preferId && rows.some(r => r.id === preferId) ? preferId : null;
-  const primaryId = preferred || rows[0].id;
+  const withPaciente = rows.find(r => r.paciente_id);
+  const primaryId = preferred || (withPaciente?.id) || rows[0].id;
   const canonicalChatId = normalizeChatId(rows[0].chat_id) || rows[0].chat_id;
   let totalUnread = rows[0].no_leidos || 0;
 
@@ -532,12 +594,19 @@ router.post('/webhook', async (req, res) => {
         return res.json({ ok: true, skipped: true });
       }
 
-      // Salientes del CRM/API ya se guardan en POST /mensajes; solo procesar envíos desde celular
-      if (event === 'message:sent' && data.source !== 'phone') {
-        return res.json({ ok: true, skipped: true });
-      }
-
       const isIncoming = event === 'message:received';
+
+      // Salientes: el CRM ya guarda en POST /mensajes; evitar duplicado por webhook/upsert
+      if (!isIncoming) {
+        const skipSent = await hasRecentOutgoingCrm({
+          phone: contact.phone,
+          cuerpo: data.body || data.text || '',
+          waMessageId: data.messageId || null,
+        });
+        if (skipSent || data.source === 'crm') {
+          return res.json({ ok: true, skipped: true });
+        }
+      }
       const origen = data.source === 'phone' ? 'telefono' : (data.source === 'crm' ? 'crm' : 'whatsapp');
 
       const conversacionId = await upsertConversacion({
@@ -580,6 +649,7 @@ router.post('/webhook', async (req, res) => {
 // ── Listar conversaciones ───────────────────────────────────────
 router.get('/conversaciones', authWhatsApp, async (req, res) => {
   try {
+    await dedupeAllConversaciones();
     const estado = req.query.estado;
     let sql = `
       SELECT c.*,
@@ -624,7 +694,10 @@ router.get('/conversaciones/:id/mensajes', authWhatsApp, async (req, res) => {
        LIMIT 500`,
       relatedIds
     );
-    res.json(dedupeMensajes(rows));
+    res.json({
+      conversacionId,
+      mensajes: dedupeMensajes(rows),
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -722,21 +795,24 @@ router.post('/iniciar', authWhatsApp, async (req, res) => {
     const paciente = await findPacienteByPhone(phone);
     const contactName = paciente ? `${paciente.nombre} ${paciente.apellido}`.trim() : null;
 
+    const rawName = String(req.body?.nombre || '').trim();
     const id = await upsertConversacion({
       chatId,
       phone,
-      contactName,
+      contactName: rawName || contactName,
       body: '',
       timestamp: Math.floor(Date.now() / 1000),
       incrementUnread: false,
     });
 
+    const conversacionId = await mergeConversacionesByPhone(phone, id) || id;
+
     await pool.execute(
       'UPDATE wa_conversaciones SET awaiting_lid_until = DATE_ADD(NOW(), INTERVAL 2 HOUR) WHERE id = ?',
-      [id]
+      [conversacionId]
     );
 
-    const [[conv]] = await pool.execute('SELECT * FROM wa_conversaciones WHERE id = ?', [id]);
+    const [[conv]] = await pool.execute('SELECT * FROM wa_conversaciones WHERE id = ?', [conversacionId]);
     res.status(201).json(conv);
   } catch (err) {
     res.status(500).json({ error: err.message });

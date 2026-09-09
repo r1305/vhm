@@ -67,6 +67,25 @@
     });
   }
 
+  function parseMensajesResponse(data, fallbackId) {
+    if (Array.isArray(data)) return { conversacionId: fallbackId, mensajes: data };
+    return {
+      conversacionId: data?.conversacionId || fallbackId,
+      mensajes: data?.mensajes || [],
+    };
+  }
+
+  async function fetchMensajes(id) {
+    const data = await api(`/whatsapp/conversaciones/${id}/mensajes?sync=1`);
+    const parsed = parseMensajesResponse(data, id);
+    if (parsed.conversacionId && parsed.conversacionId !== selectedId) {
+      selectedId = parsed.conversacionId;
+      const c = conversaciones.find(x => x.id === selectedId);
+      if (c) updateHeader(c);
+    }
+    return parsed.mensajes;
+  }
+
   async function loadConversaciones() {
     const prev = selectedId ? conversaciones.find(c => c.id === selectedId) : null;
     conversaciones = await api('/whatsapp/conversaciones');
@@ -75,13 +94,16 @@
       const still = conversaciones.find(c => c.id === selectedId);
       if (still) {
         if (prev && still.no_leidos > (prev.no_leidos || 0)) {
-          api(`/whatsapp/conversaciones/${selectedId}/mensajes?sync=1`).then(renderMessages).catch(() => {});
+          fetchMensajes(selectedId).then(renderMessages).catch(() => {});
         }
         updateHeader(still);
       } else if (prev?.phone) {
         const tail = String(prev.phone).replace(/\D/g, '').slice(-9);
         const moved = conversaciones.find(c => String(c.phone || '').replace(/\D/g, '').endsWith(tail));
-        if (moved) selectedId = moved.id;
+        if (moved) {
+          selectedId = moved.id;
+          updateHeader(moved);
+        }
       }
     }
   }
@@ -105,7 +127,7 @@
     document.getElementById('waCompose').style.display = 'flex';
     renderList(document.getElementById('waSearch').value.trim());
 
-    const msgs = await api(`/whatsapp/conversaciones/${id}/mensajes?sync=1`);
+    const msgs = await fetchMensajes(id);
     renderMessages(msgs);
     await api(`/whatsapp/conversaciones/${id}/leer`, { method: 'PATCH', body: {} }).catch(() => {});
     c.no_leidos = 0;
@@ -141,19 +163,6 @@
     box.scrollTop = box.scrollHeight;
   }
 
-  function appendOutgoing(text) {
-    const box = document.getElementById('waMessages');
-    const empty = box.querySelector('.wa-empty');
-    if (empty) empty.remove();
-    const el = document.createElement('div');
-    el.className = 'wa-msg out';
-    el.innerHTML = `<div>${esc(text)}</div>
-      <div class="wa-msg-time">${fmtTime(new Date())}</div>
-      <div class="wa-msg-source">Enviado desde CRM</div>`;
-    box.appendChild(el);
-    box.scrollTop = box.scrollHeight;
-  }
-
   async function sendMessage() {
     const input = document.getElementById('waInput');
     const text = input.value.trim();
@@ -164,7 +173,6 @@
     btn.disabled = true;
     input.disabled = true;
     input.value = '';
-    appendOutgoing(text);
 
     try {
       const res = await api(`/whatsapp/conversaciones/${selectedId}/mensajes`, {
@@ -172,12 +180,12 @@
         body: { mensaje: text },
       });
       if (res.conversacionId) selectedId = res.conversacionId;
-      const msgs = await api(`/whatsapp/conversaciones/${selectedId}/mensajes?sync=1`);
+      const msgs = await fetchMensajes(selectedId);
       renderMessages(msgs);
       await loadConversaciones();
     } catch (err) {
       toast(err.message, 'danger');
-      const msgs = await api(`/whatsapp/conversaciones/${selectedId}/mensajes`).catch(() => []);
+      const msgs = await fetchMensajes(selectedId).catch(() => []);
       renderMessages(msgs);
     } finally {
       sending = false;
@@ -234,7 +242,7 @@
   pollTimer = setInterval(() => {
     loadConversaciones().then(() => {
       if (selectedId) {
-        api(`/whatsapp/conversaciones/${selectedId}/mensajes?sync=1`).then(renderMessages).catch(() => {});
+        fetchMensajes(selectedId).then(renderMessages).catch(() => {});
       }
     });
   }, 3000);
