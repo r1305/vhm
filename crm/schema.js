@@ -386,13 +386,34 @@ async function ensureSchema() {
       console.log('[crm] Superadmin creado: CRM / $CRM$2026$');
     }
 
-    // ── Permisos de menú por rol ────────────────────────────────
+    // ── Permisos de menú por rol (plantillas) ───────────────────
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS menu_permisos (
         rol   ENUM('superadmin','recepcion','terapeuta') NOT NULL,
         item  VARCHAR(50) NOT NULL,
         PRIMARY KEY (rol, item)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
+    // ── Permisos de menú por usuario ────────────────────────────
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS usuario_menu_permisos (
+        terapeuta_id INT NOT NULL,
+        item         VARCHAR(50) NOT NULL,
+        PRIMARY KEY (terapeuta_id, item),
+        FOREIGN KEY (terapeuta_id) REFERENCES terapeutas(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
+    // Migrar permisos de rol → usuario (solo usuarios sin permisos propios)
+    await conn.execute(`
+      INSERT IGNORE INTO usuario_menu_permisos (terapeuta_id, item)
+      SELECT t.id, mp.item
+      FROM terapeutas t
+      INNER JOIN menu_permisos mp ON mp.rol = t.rol
+      WHERE NOT EXISTS (
+        SELECT 1 FROM usuario_menu_permisos u WHERE u.terapeuta_id = t.id LIMIT 1
+      )
     `);
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS bloqueos (
