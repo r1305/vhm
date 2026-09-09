@@ -103,6 +103,7 @@ router.use('/api/reportes',   require('./routes/reportes'));
 router.use('/api/marketing',  require('./routes/marketing'));
 router.use('/api/config',        require('./routes/config'));
 router.use('/api/integraciones', require('./routes/integraciones'));
+router.use('/api/whatsapp',      require('./routes/whatsapp'));
 router.use('/api/track',      require('./routes/tracker'));
 
 // Cron config
@@ -188,9 +189,10 @@ async function loadConfigFromDB() {
       sms_gateway_url:   'SMS_GATEWAY_URL',
       sms_gateway_token: 'SMS_GATEWAY_TOKEN',
       sms_gateway_type:  'SMS_GATEWAY_TYPE',
-      openwa_url:     'OPENWA_URL',
-      openwa_api_key: 'OPENWA_API_KEY',
-      openwa_session: 'OPENWA_SESSION',
+      openwa_url:            'OPENWA_URL',
+      openwa_api_key:        'OPENWA_API_KEY',
+      openwa_session:        'OPENWA_SESSION',
+      openwa_webhook_token:  'OPENWA_WEBHOOK_TOKEN',
     };
     for (const r of rows) {
       if (r.valor && map[r.clave]) process.env[map[r.clave]] = r.valor;

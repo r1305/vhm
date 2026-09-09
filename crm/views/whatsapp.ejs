@@ -1,0 +1,41 @@
+<div class="wa-inbox">
+  <aside class="wa-sidebar">
+    <div class="wa-sidebar-header">
+      <div class="wa-sidebar-title">
+        <i class="fab fa-whatsapp"></i>
+        <span>Conversaciones</span>
+      </div>
+      <button class="btn btn-sm btn-primary" id="btnNuevoChat" title="Nuevo chat"><i class="fas fa-plus"></i></button>
+    </div>
+    <div class="wa-search">
+      <i class="fas fa-search"></i>
+      <input type="text" id="waSearch" placeholder="Buscar por nombre o teléfono...">
+    </div>
+    <div class="wa-chat-list" id="waChatList">
+      <div class="wa-empty">Cargando conversaciones...</div>
+    </div>
+  </aside>
+
+  <section class="wa-panel">
+    <header class="wa-panel-header" id="waPanelHeader">
+      <div class="wa-contact">
+        <div class="wa-avatar" id="waAvatar">?</div>
+        <div>
+          <div class="wa-contact-name" id="waContactName">Selecciona una conversación</div>
+          <div class="wa-contact-meta" id="waContactMeta"></div>
+        </div>
+      </div>
+    </header>
+
+    <div class="wa-messages" id="waMessages">
+      <div class="wa-empty">Selecciona un chat para ver los mensajes</div>
+    </div>
+
+    <footer class="wa-compose" id="waCompose" style="display:none">
+      <input type="text" id="waInput" placeholder="Escribe un mensaje..." autocomplete="off">
+      <button class="btn btn-primary" id="waSendBtn"><i class="fas fa-paper-plane"></i></button>
+    </footer>
+  </section>
+</div>
+
+<div class="wa-status-banner" id="waStatusBanner" style="display:none"></div>

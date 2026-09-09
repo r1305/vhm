@@ -17,6 +17,7 @@ const TITLES = {
   analitica:       'Analítica web',
   marketing:       'Email Marketing',
   integraciones:   'Integraciones',
+  whatsapp:        'Central WhatsApp',
   asignacion:      'Asignación automática',
   calendario:      'Calendario',
   disponibilidad:  'Mi disponibilidad',
@@ -327,6 +328,14 @@ router.get('/reportes', requireSession, requireAdmin, async (req, res) => {
 // ── ANALÍTICA ────────────────────────────────────────────────────
 router.get('/analitica', requireSession, requireAdmin, async (req, res) => {
   render(res, 'analitica', { user: req.session.user, scripts: `<script src="${req.app.locals.BASE}/web_analytics.js"></script>` });
+});
+
+// ── CENTRAL WHATSAPP ─────────────────────────────────────────────
+router.get('/whatsapp', requireSession, async (req, res) => {
+  render(res, 'whatsapp', {
+    user: req.session.user,
+    scripts: `<script src="${req.app.locals.BASE}/whatsapp.js"></script>`,
+  });
 });
 
 // ── INTEGRACIONES ────────────────────────────────────────────────

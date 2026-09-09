@@ -38,7 +38,12 @@
       <div class="form-group"><label class="form-label">URL de openwa *</label><input class="form-control" id="openwa-url" value="<%= cfg.openwa_url || '' %>" placeholder="https://vhm.com.pe/openwa"></div>
       <div class="form-group"><label class="form-label">API Key *</label><div class="pwd-wrapper"><input type="password" class="form-control" id="openwa-api-key" value="<%= cfg.openwa_api_key || '' %>" placeholder="owa_..."><button type="button" class="pwd-toggle" onclick="togglePwd('openwa-api-key',this)" tabindex="-1"><i class="fas fa-eye"></i></button></div></div>
       <div class="form-group"><label class="form-label">Session ID *</label><input class="form-control" id="openwa-session" value="<%= cfg.openwa_session || '' %>" placeholder="UUID de la sesión activa"></div>
+      <div class="form-group"><label class="form-label">Token webhook CRM</label><div class="pwd-wrapper"><input type="password" class="form-control" id="openwa-webhook-token" value="<%= cfg.openwa_webhook_token || '' %>" placeholder="token-secreto-compartido"><button type="button" class="pwd-toggle" onclick="togglePwd('openwa-webhook-token',this)" tabindex="-1"><i class="fas fa-eye"></i></button></div></div>
       <div style="display:flex;gap:8px"><button class="btn btn-primary btn-sm" id="btnSaveOpenwa"><i class="fas fa-save"></i> Guardar</button><button class="btn btn-outline btn-sm" id="btnTestOpenwa"><i class="fab fa-whatsapp"></i> Probar</button></div>
+      <hr style="margin:14px 0;border-color:var(--border)">
+      <p style="font-size:12px;color:var(--text-muted)"><strong>Webhook URL (configurar en OpenWA):</strong></p>
+      <code style="font-size:11px;word-break:break-all;background:var(--bg);padding:6px 8px;border-radius:6px;display:block;margin-top:4px"><%= origin %><%= BASE %>/api/whatsapp/webhook</code>
+      <p style="font-size:11px;color:var(--text-muted);margin-top:8px">Usa el mismo token en OpenWA → Webhooks → Authorization Bearer.</p>
     </div>
   </div>
   <div class="card">
