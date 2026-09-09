@@ -31,6 +31,8 @@ router.post('/', authAdmin, async (req, res) => {
       'INSERT INTO terapeutas (nombre, apellido, username, email, telefono, password, rol, especialidad) VALUES (?,?,?,?,?,?,?,?)',
       [t(nombre,120), t(apellido,120), t(username,50), t(email,150), t(telefono,30), hash, rol, t(especialidad,200)]
     );
+    const { seedMenuPermisosFromRol } = require('../lib/menuPermisos');
+    await seedMenuPermisosFromRol(r.insertId, rol);
     res.status(201).json({ id: r.insertId });
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') return res.status(409).json({ error: 'El username ya existe' });

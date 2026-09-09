@@ -1,16 +1,21 @@
-<div style="max-width:700px">
+<div style="max-width:760px">
   <p style="color:var(--text-muted);font-size:13px;margin-bottom:20px">
-    Define qué items del menú lateral son visibles para cada rol. Los cambios aplican en el próximo inicio de sesión o recarga de página.
+    Define qué items del menú lateral ve cada usuario. Los cambios aplican al recargar la página.
   </p>
 
-  <div style="display:flex;gap:8px;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:12px">
-    <button class="btn btn-sm btn-primary"   data-rol="recepcion">Recepción</button>
-    <button class="btn btn-sm btn-outline"   data-rol="terapeuta">Terapeuta</button>
+  <div class="form-group" style="margin-bottom:16px">
+    <label class="form-label">Usuario</label>
+    <select class="form-control" id="permUserSelect" style="max-width:420px">
+      <option value="">Cargando usuarios...</option>
+    </select>
   </div>
+
+  <div id="permUserMeta" style="font-size:12px;color:var(--text-muted);margin-bottom:16px"></div>
 
   <div id="permisosPanel"></div>
 
-  <div style="margin-top:20px">
+  <div style="margin-top:20px;display:flex;gap:8px;flex-wrap:wrap">
     <button class="btn btn-primary" id="btnGuardarPermisos"><i class="fas fa-save"></i> Guardar cambios</button>
+    <button class="btn btn-outline" id="btnCopiarRol"><i class="fas fa-copy"></i> Restaurar plantilla del rol</button>
   </div>
 </div>

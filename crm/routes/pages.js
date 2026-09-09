@@ -59,8 +59,8 @@ async function render(res, view, data = {}) {
   const BASE    = res.app.locals.BASE;
   const user    = data.user;
   const isAdmin = ['superadmin', 'recepcion'].includes(user?.rol);
-  const [rows]  = await db.execute('SELECT item FROM menu_permisos WHERE rol = ?', [user?.rol || 'terapeuta']);
-  const menuPermisos = new Set(rows.map(r => r.item));
+  const { getMenuPermisosForUser } = require('../lib/menuPermisos');
+  const menuPermisos = await getMenuPermisosForUser(user.id, user?.rol || 'terapeuta');
   const scripts = data.scripts
     ? data.scripts.replace(/(\.js)(["'])/g, `$1?v=${res.app.locals.assetVersion}$2`)
     : '';
@@ -359,26 +359,35 @@ router.get('/permisos-menu', requireSession, requireSuperAdmin, async (req, res)
 });
 
 router.get('/api/menu-permisos', requireSession, requireSuperAdmin, async (req, res) => {
-  const [rows] = await db.execute('SELECT rol, item FROM menu_permisos ORDER BY rol, item');
-  const result = {};
-  for (const r of rows) {
-    if (!result[r.rol]) result[r.rol] = [];
-    result[r.rol].push(r.item);
-  }
-  res.json(result);
+  const { listUsersWithPermisos } = require('../lib/menuPermisos');
+  const users = await listUsersWithPermisos();
+  res.json({ users });
 });
 
 router.post('/api/menu-permisos', requireSession, requireSuperAdmin, async (req, res) => {
-  const { rol, items } = req.body;
-  const roles = ['superadmin', 'recepcion', 'terapeuta'];
-  if (!roles.includes(rol)) return res.status(400).json({ error: 'Rol inválido' });
-  // superadmin siempre tiene permisos_menu
-  const safeItems = Array.isArray(items) ? items : [];
-  if (rol === 'superadmin' && !safeItems.includes('permisos_menu')) safeItems.push('permisos_menu');
-  await db.execute('DELETE FROM menu_permisos WHERE rol = ?', [rol]);
-  for (const item of safeItems)
-    await db.execute('INSERT IGNORE INTO menu_permisos (rol, item) VALUES (?,?)', [rol, item]);
-  res.json({ ok: true });
+  const { userId, items } = req.body || {};
+  const id = parseInt(userId, 10);
+  if (!id) return res.status(400).json({ error: 'userId requerido' });
+
+  const [[user]] = await db.execute('SELECT id, rol FROM terapeutas WHERE id = ?', [id]);
+  if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+  const { setMenuPermisosForUser } = require('../lib/menuPermisos');
+  const saved = await setMenuPermisosForUser(id, items, user.rol);
+  res.json({ ok: true, items: saved });
+});
+
+router.post('/api/menu-permisos/desde-rol', requireSession, requireSuperAdmin, async (req, res) => {
+  const { userId } = req.body || {};
+  const id = parseInt(userId, 10);
+  if (!id) return res.status(400).json({ error: 'userId requerido' });
+
+  const [[user]] = await db.execute('SELECT id, rol FROM terapeutas WHERE id = ?', [id]);
+  if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+  const { copyMenuPermisosFromRolTemplate } = require('../lib/menuPermisos');
+  const items = await copyMenuPermisosFromRolTemplate(id, user.rol);
+  res.json({ ok: true, items });
 });
 
 module.exports = router;
