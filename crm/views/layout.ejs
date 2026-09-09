@@ -31,7 +31,7 @@
       <span>VHM CRM</span>
     </div>
     <nav class="sidebar-nav">
-      <% const principalItems = ['dashboard','agenda','calendario','pacientes','mi_reporte','disponibilidad']; %>
+      <% const principalItems = ['dashboard','agenda','calendario','pacientes','whatsapp','mi_reporte','disponibilidad']; %>
       <% if (principalItems.some(i => menuPermisos.has(i))) { %>
       <div class="nav-section">Principal</div>
       <% } %>
@@ -46,6 +46,9 @@
       <% } %>
       <% if (menuPermisos.has('pacientes')) { %>
       <a class="nav-item <%= view === 'pacientes'  ? 'active' : '' %>" href="<%= BASE %>/pacientes"><i class="fas fa-users"></i> Pacientes</a>
+      <% } %>
+      <% if (menuPermisos.has('whatsapp')) { %>
+      <a class="nav-item <%= view === 'whatsapp'   ? 'active' : '' %>" href="<%= BASE %>/whatsapp"><i class="fab fa-whatsapp"></i> WhatsApp</a>
       <% } %>
       <% if (menuPermisos.has('mi_reporte')) { %>
       <a class="nav-item <%= view === 'mi_reporte'     ? 'active' : '' %>" href="<%= BASE %>/mi-reporte"><i class="fas fa-chart-bar"></i> Mi reporte</a>

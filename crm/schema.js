@@ -442,6 +442,53 @@ async function ensureSchema() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
 
+    // ── Central WhatsApp ───────────────────────────────────────────
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS wa_conversaciones (
+        id               INT AUTO_INCREMENT PRIMARY KEY,
+        chat_id          VARCHAR(60) NOT NULL,
+        phone            VARCHAR(30) NOT NULL,
+        contact_name     VARCHAR(200) DEFAULT NULL,
+        paciente_id      INT DEFAULT NULL,
+        asignado_a       INT DEFAULT NULL,
+        ultimo_mensaje   TEXT DEFAULT NULL,
+        ultimo_mensaje_at DATETIME DEFAULT NULL,
+        no_leidos        INT NOT NULL DEFAULT 0,
+        estado           ENUM('abierta','cerrada') NOT NULL DEFAULT 'abierta',
+        created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY uk_wa_chat (chat_id),
+        KEY idx_wa_phone (phone),
+        KEY idx_wa_asignado (asignado_a),
+        KEY idx_wa_ultimo (ultimo_mensaje_at),
+        FOREIGN KEY (paciente_id) REFERENCES pacientes(id) ON DELETE SET NULL,
+        FOREIGN KEY (asignado_a) REFERENCES terapeutas(id) ON DELETE SET NULL
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS wa_mensajes (
+        id               INT AUTO_INCREMENT PRIMARY KEY,
+        conversacion_id  INT NOT NULL,
+        wa_message_id    VARCHAR(120) DEFAULT NULL,
+        direccion        ENUM('incoming','outgoing') NOT NULL,
+        tipo             VARCHAR(20) NOT NULL DEFAULT 'text',
+        cuerpo           TEXT DEFAULT NULL,
+        enviado_por      INT DEFAULT NULL,
+        origen           ENUM('whatsapp','crm','telefono') NOT NULL DEFAULT 'whatsapp',
+        timestamp_wa     INT DEFAULT NULL,
+        created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uk_wa_message_id (wa_message_id),
+        KEY idx_wa_msg_conv (conversacion_id),
+        KEY idx_wa_msg_fecha (created_at),
+        FOREIGN KEY (conversacion_id) REFERENCES wa_conversaciones(id) ON DELETE CASCADE,
+        FOREIGN KEY (enviado_por) REFERENCES terapeutas(id) ON DELETE SET NULL
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
+    for (const rol of ['superadmin', 'recepcion'])
+      await conn.execute('INSERT IGNORE INTO menu_permisos (rol, item) VALUES (?,?)', [rol, 'whatsapp']);
+
     console.log('[crm] Schema OK');
   } finally {
     conn.release();

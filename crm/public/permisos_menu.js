@@ -10,6 +10,7 @@
     { key: 'agenda',          label: 'Agenda',             icon: 'fa-calendar-days' },
     { key: 'calendario',      label: 'Calendario',         icon: 'fa-calendar-week' },
     { key: 'pacientes',       label: 'Pacientes',          icon: 'fa-users' },
+    { key: 'whatsapp',        label: 'Central WhatsApp',   icon: 'fa-whatsapp' },
     { key: 'mi_reporte',      label: 'Mi reporte',         icon: 'fa-chart-bar' },
     { key: 'disponibilidad',  label: 'Disponibilidad',     icon: 'fa-clock' },
     { key: 'historial',       label: 'Historial clínico',  icon: 'fa-file-medical' },

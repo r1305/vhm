@@ -8,7 +8,7 @@ const ALLOWED = new Set([
   'meta_verify_token', 'meta_access_token', 'meta_app_secret',
   'tiktok_app_secret', 'tiktok_verify_token',
   'smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from', 'smtp_secure',
-  'openwa_url', 'openwa_api_key', 'openwa_session',
+  'openwa_url', 'openwa_api_key', 'openwa_session', 'openwa_webhook_token',
   'widget_btn_texto',
 ]);
 
@@ -59,9 +59,10 @@ router.post('/', authAdmin, async (req, res) => {
       if (r.clave === 'smtp_user')       process.env.SMTP_USER       = r.valor || '';
       if (r.clave === 'smtp_pass')       process.env.SMTP_PASS       = r.valor || '';
       if (r.clave === 'smtp_from')       process.env.SMTP_FROM       = r.valor || '';
-      if (r.clave === 'openwa_url')     process.env.OPENWA_URL     = r.valor || '';
-      if (r.clave === 'openwa_api_key') process.env.OPENWA_API_KEY = r.valor || '';
-      if (r.clave === 'openwa_session') process.env.OPENWA_SESSION = r.valor || '';
+      if (r.clave === 'openwa_url')            process.env.OPENWA_URL            = r.valor || '';
+      if (r.clave === 'openwa_api_key')        process.env.OPENWA_API_KEY        = r.valor || '';
+      if (r.clave === 'openwa_session')        process.env.OPENWA_SESSION        = r.valor || '';
+      if (r.clave === 'openwa_webhook_token')  process.env.OPENWA_WEBHOOK_TOKEN  = r.valor || '';
     }
     res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }

@@ -94,9 +94,10 @@ function togglePwd(id, btn) {
     try {
       const url = document.getElementById('openwa-url').value.trim();
       await api('/config', { method:'POST', body: {
-        openwa_url:     url,
-        openwa_api_key: document.getElementById('openwa-api-key').value.trim(),
-        openwa_session: document.getElementById('openwa-session').value.trim(),
+        openwa_url:            url,
+        openwa_api_key:        document.getElementById('openwa-api-key').value.trim(),
+        openwa_session:        document.getElementById('openwa-session').value.trim(),
+        openwa_webhook_token:  document.getElementById('openwa-webhook-token').value.trim(),
       }});
       const el = document.getElementById('openwa-status');
       if (el) { el.textContent = url ? 'Configurado' : 'Sin configurar'; el.className = 'badge '+(url?'badge-green':'badge-yellow'); }
