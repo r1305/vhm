@@ -75,6 +75,29 @@
     .btn-sm { padding: 6px 12px; font-size: .8rem; border-radius: 8px; }
     .btn-xs { padding: 4px 8px; font-size: .72rem; border-radius: 6px; }
 
+    /* SWITCH */
+    .switch-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 12px; }
+    .switch-row strong { display: block; font-size: .85rem; }
+    .switch-row small { display: block; font-size: .75rem; color: var(--text-muted); margin-top: 2px; }
+    .switch { position: relative; width: 46px; height: 26px; flex-shrink: 0; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .switch-slider { position: absolute; inset: 0; background: var(--bg-hover-strong); border-radius: 999px; transition: .2s; cursor: pointer; }
+    .switch-slider::before { content: ''; position: absolute; width: 20px; height: 20px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: .2s; }
+    .switch input:checked + .switch-slider { background: var(--color-primary); }
+    .switch input:checked + .switch-slider::before { transform: translateX(20px); }
+
+    /* ITEMS */
+    .items-section { margin-top: 8px; padding-top: 16px; border-top: 1px solid var(--border-color); }
+    .items-section h4 { font-size: .9rem; margin-bottom: 4px; }
+    .items-section p { font-size: .78rem; color: var(--text-muted); margin-bottom: 12px; }
+    .item-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .item-row input[type="text"] { flex: 1; }
+    .qty-control { display: inline-flex; align-items: center; border: 1px solid var(--border-strong); border-radius: 10px; overflow: hidden; background: var(--bg-input); }
+    .qty-btn { width: 32px; height: 36px; border: none; background: var(--bg-hover); color: var(--text-primary); font-size: 1rem; }
+    .qty-btn:hover { background: var(--bg-hover-strong); }
+    .qty-val { min-width: 28px; text-align: center; font-size: .85rem; font-weight: 600; padding: 0 4px; }
+    .item-meta { font-size: .72rem; color: var(--text-muted); white-space: nowrap; }
+
     /* CARDS */
     .card { background: var(--bg-card); border-radius: 16px; border: 1px solid var(--border-color); overflow: hidden; box-shadow: var(--shadow-card); }
     .card-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--border-color); }
@@ -319,6 +342,25 @@
           <option value="1">🟢 Activo</option>
           <option value="0">🔴 Inactivo</option>
         </select>
+      </div>
+
+      <div class="items-section">
+        <h4>🛒 Cuenta conmigo para...</h4>
+        <p>Agrega ítems que los asistentes pueden comprometerse a llevar o hacer.</p>
+        <div id="ef-items-list"></div>
+        <button type="button" class="btn btn-outline btn-sm" id="btn-add-item">+ Agregar ítem</button>
+        <div class="form-group" style="margin-top:16px;margin-bottom:0">
+          <div class="switch-row">
+            <div>
+              <strong>Obligatorio seleccionar un ítem</strong>
+              <small>Si está activo, nadie puede registrarse sin elegir una opción disponible.</small>
+            </div>
+            <label class="switch" title="Obligatorio">
+              <input type="checkbox" id="ef-compromiso_obligatorio">
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+        </div>
       </div>
     </div>
     <div class="modal-footer">

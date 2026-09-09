@@ -96,6 +96,22 @@
 
     .form-group { margin-bottom: 16px; }
     .form-group label { display: block; font-size: .82rem; font-weight: 600; color: var(--secondary); margin-bottom: 6px; }
+    .compromiso-box {
+      margin-bottom: 16px; padding: 14px; border: 1px solid var(--border);
+      border-radius: 12px; background: rgba(102,126,234,.06);
+    }
+    .compromiso-box h4 { font-size: .9rem; margin-bottom: 4px; }
+    .compromiso-box p { font-size: .78rem; color: var(--muted); margin-bottom: 12px; }
+    .compromiso-list { display: flex; flex-direction: column; gap: 8px; }
+    .compromiso-option {
+      display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+      border: 1px solid var(--border); border-radius: 10px; cursor: pointer;
+      transition: border-color .15s, background .15s;
+    }
+    .compromiso-option:hover { border-color: var(--primary); background: rgba(102,126,234,.08); }
+    .compromiso-option.selected { border-color: var(--primary); background: rgba(102,126,234,.14); }
+    .compromiso-option input { accent-color: var(--primary); }
+
     .form-group input, .form-group textarea {
       width: 100%; padding: 11px 14px; border: 2px solid var(--border);
       border-radius: 10px; font-size: .9rem; background: #16162a; color: var(--text);
@@ -198,6 +214,7 @@
           <label>Notas <span style="font-weight:400;color:var(--muted)">(opcional)</span></label>
           <textarea id="reg-notas" placeholder="¿Algo que quieras comentarnos?"></textarea>
         </div>
+        <div id="reg-compromiso-wrap" style="display:none"></div>
         <div id="reg-msg" style="display:none"></div>
       </div>
       <div class="modal-footer">
@@ -292,14 +309,56 @@
       }
     }
 
-    function abrirRegistro(id) {
-      const e = (window._eventos || []).find(x => x.id === id);
+    let itemSeleccionado = null;
+
+    function renderCompromisoSection(evento) {
+      const wrap = document.getElementById('reg-compromiso-wrap');
+      const items = (evento.items || []).filter(i => Number(i.disponible) > 0);
+      itemSeleccionado = null;
+      if (!items.length) {
+        wrap.style.display = 'none';
+        wrap.innerHTML = '';
+        return;
+      }
+      const obligatorio = !!evento.compromiso_efectivo;
+      wrap.style.display = 'block';
+      wrap.innerHTML = `
+        <div class="compromiso-box">
+          <h4>Cuenta conmigo para...${obligatorio ? ' *' : ''}</h4>
+          <p>${obligatorio ? 'Selecciona en qué puedes ayudar para completar tu registro.' : 'Opcional: elige en qué te gustaría ayudar.'}</p>
+          <div class="compromiso-list" id="compromiso-list">
+            ${items.map(item => `
+              <label class="compromiso-option" data-item-id="${item.id}">
+                <input type="radio" name="compromiso_item" value="${item.id}">
+                <span>${item.etiqueta || item.nombre}</span>
+              </label>
+            `).join('')}
+          </div>
+        </div>`;
+      wrap.querySelectorAll('.compromiso-option').forEach(opt => {
+        opt.addEventListener('click', () => {
+          itemSeleccionado = parseInt(opt.dataset.itemId, 10);
+          wrap.querySelectorAll('.compromiso-option').forEach(o => o.classList.remove('selected'));
+          opt.classList.add('selected');
+          const radio = opt.querySelector('input[type="radio"]');
+          if (radio) radio.checked = true;
+        });
+      });
+    }
+
+    async function abrirRegistro(id) {
+      let e = (window._eventos || []).find(x => x.id === id);
       if (!e) return;
+      try {
+        const res = await fetch(`${API}/eventos/${id}`);
+        if (res.ok) e = await res.json();
+      } catch (_) {}
       eventoActivo = e;
       document.getElementById('modal-evento-summary').innerHTML =
         `<div class="es-name">${e.nombre}</div>
          <div class="es-meta">📅 ${fmt(e.fecha)} &nbsp;·&nbsp; 🕐 ${fmtHora(e.hora_inicio)} &nbsp;·&nbsp; 📍 ${e.lugar}</div>`;
       ['reg-nombre','reg-email','reg-telefono','reg-notas'].forEach(id => document.getElementById(id).value = '');
+      renderCompromisoSection(e);
       const msg = document.getElementById('reg-msg');
       msg.style.display = 'none';
       document.getElementById('btn-registrar').disabled = false;
@@ -333,13 +392,23 @@
         return;
       }
 
+      const itemsDisp = (eventoActivo.items || []).filter(i => Number(i.disponible) > 0);
+      if (eventoActivo.compromiso_efectivo && itemsDisp.length && !itemSeleccionado) {
+        msg.className = 'msg msg-error';
+        msg.textContent = 'Debes seleccionar en qué puedes ayudar.';
+        msg.style.display = 'block';
+        return;
+      }
+
       btn.disabled = true;
       btn.textContent = 'Registrando...';
       try {
+        const payload = { nombre, email, telefono, notas };
+        if (itemSeleccionado) payload.item_id = itemSeleccionado;
         const res = await fetch(`${API}/eventos/${eventoActivo.id}/registrar`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ nombre, email, telefono, notas }),
+          body: JSON.stringify(payload),
         });
         const data = await res.json();
         if (res.ok) {

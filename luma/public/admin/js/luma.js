@@ -344,10 +344,62 @@
 
   // ── MODAL EVENTO ──────────────────────────────────────────────────────────
   let eventoEditId = null;
+  let eventoItemsDraft = [];
 
-  function abrirModalEvento(id) {
+  function renderEventoItemsDraft() {
+    const list = document.getElementById('ef-items-list');
+    if (!list) return;
+    if (!eventoItemsDraft.length) {
+      list.innerHTML = '<p style="font-size:.8rem;color:var(--text-muted);margin-bottom:8px">Sin ítems agregados.</p>';
+      return;
+    }
+    list.innerHTML = eventoItemsDraft.map((item, idx) => {
+      const ocupados = Number(item.ocupados || 0);
+      const minQty = Math.max(1, ocupados);
+      return '<div class="item-row" data-item-idx="' + idx + '">' +
+        '<input type="text" class="item-nombre" placeholder="Ej: Galletas" value="' + esc(item.nombre || '') + '">' +
+        '<div class="qty-control">' +
+          '<button type="button" class="qty-btn item-qty-minus">−</button>' +
+          '<span class="qty-val">' + item.cantidad + '</span>' +
+          '<button type="button" class="qty-btn item-qty-plus">+</button>' +
+        '</div>' +
+        (ocupados ? '<span class="item-meta">' + ocupados + ' tomado(s)</span>' : '') +
+        '<button type="button" class="btn btn-danger btn-xs item-remove">✕</button>' +
+      '</div>';
+    }).join('');
+
+    list.querySelectorAll('.item-row').forEach(row => {
+      const idx = parseInt(row.dataset.itemIdx, 10);
+      row.querySelector('.item-nombre').addEventListener('input', e => { eventoItemsDraft[idx].nombre = e.target.value; });
+      row.querySelector('.item-qty-minus').addEventListener('click', () => {
+        const minQty = Math.max(1, Number(eventoItemsDraft[idx].ocupados || 0));
+        eventoItemsDraft[idx].cantidad = Math.max(minQty, Number(eventoItemsDraft[idx].cantidad || 1) - 1);
+        renderEventoItemsDraft();
+      });
+      row.querySelector('.item-qty-plus').addEventListener('click', () => {
+        eventoItemsDraft[idx].cantidad = Math.max(1, Number(eventoItemsDraft[idx].cantidad || 1) + 1);
+        renderEventoItemsDraft();
+      });
+      row.querySelector('.item-remove').addEventListener('click', () => {
+        if (Number(eventoItemsDraft[idx].ocupados || 0) > 0) {
+          Toast.error('No puedes eliminar un ítem que ya tiene inscritos');
+          return;
+        }
+        eventoItemsDraft.splice(idx, 1);
+        renderEventoItemsDraft();
+      });
+    });
+  }
+
+  async function abrirModalEvento(id) {
     eventoEditId = id || null;
-    const e = id ? eventosData.find(x => x.id === id) : null;
+    let e = id ? eventosData.find(x => x.id === id) : null;
+    if (id) {
+      try {
+        const res = await apiFetch('/admin/eventos/' + id, { headers: authHeaders() });
+        if (res.ok) e = await res.json();
+      } catch (_) {}
+    }
     document.getElementById('modal-evento-title').textContent = e ? '✏️ Editar Evento' : '📅 Nuevo Evento';
     document.getElementById('ef-nombre').value = e?.nombre || '';
     document.getElementById('ef-descripcion').value = e?.descripcion || '';
@@ -359,6 +411,14 @@
     document.getElementById('ef-capacidad').value = e?.capacidad || '';
     document.getElementById('ef-imagen_url').value = e?.imagen_url || '';
     document.getElementById('ef-activo').value = e ? (e.activo ? '1' : '0') : '1';
+    document.getElementById('ef-compromiso_obligatorio').checked = !!(e?.compromiso_obligatorio);
+    eventoItemsDraft = (e?.items || []).map(item => ({
+      id: item.id,
+      nombre: item.nombre,
+      cantidad: Number(item.cantidad) || 1,
+      ocupados: Number(item.ocupados || 0),
+    }));
+    renderEventoItemsDraft();
     document.getElementById('modal-evento').classList.add('show');
   }
 
@@ -378,8 +438,32 @@
     } catch { Toast.error('Error de conexión'); }
   };
 
+  document.getElementById('btn-add-item').addEventListener('click', () => {
+    eventoItemsDraft.push({ nombre: '', cantidad: 1, ocupados: 0 });
+    renderEventoItemsDraft();
+    const list = document.getElementById('ef-items-list');
+    const last = list.querySelector('.item-row:last-child .item-nombre');
+    if (last) last.focus();
+  });
+
   document.getElementById('btn-guardar-evento').addEventListener('click', async () => {
-    const body = { nombre: document.getElementById('ef-nombre').value, descripcion: document.getElementById('ef-descripcion').value, fecha: document.getElementById('ef-fecha').value, hora_inicio: document.getElementById('ef-hora_inicio').value, hora_fin: document.getElementById('ef-hora_fin').value, lugar: document.getElementById('ef-lugar').value, link: document.getElementById('ef-link').value, capacidad: document.getElementById('ef-capacidad').value, imagen_url: document.getElementById('ef-imagen_url').value, activo: document.getElementById('ef-activo').value };
+    const items = eventoItemsDraft
+      .map(item => ({ id: item.id, nombre: String(item.nombre || '').trim(), cantidad: Number(item.cantidad) || 1 }))
+      .filter(item => item.nombre);
+    const body = {
+      nombre: document.getElementById('ef-nombre').value,
+      descripcion: document.getElementById('ef-descripcion').value,
+      fecha: document.getElementById('ef-fecha').value,
+      hora_inicio: document.getElementById('ef-hora_inicio').value,
+      hora_fin: document.getElementById('ef-hora_fin').value,
+      lugar: document.getElementById('ef-lugar').value,
+      link: document.getElementById('ef-link').value,
+      capacidad: document.getElementById('ef-capacidad').value,
+      imagen_url: document.getElementById('ef-imagen_url').value,
+      activo: document.getElementById('ef-activo').value,
+      compromiso_obligatorio: document.getElementById('ef-compromiso_obligatorio').checked,
+      items,
+    };
     const url = eventoEditId ? '/admin/eventos/' + eventoEditId : '/admin/eventos';
     const method = eventoEditId ? 'PUT' : 'POST';
     try {
@@ -439,10 +523,13 @@
       '<div class="stat-card"><div class="stat-label">Cancelados</div><div class="stat-value" style="color:var(--color-danger)">' + cancelados + '</div></div>' +
       '</div>' +
       '<div class="asistencia-bar-wrap" style="margin-bottom:16px"><div class="asistencia-bar-label"><span>Asistencia real vs registrados</span><span><strong style="color:var(--color-success)">' + asistieron + '</strong> / ' + activos.length + '</span></div><div class="progress-bar"><div class="progress-fill success" style="width:' + pctAsist + '%"></div></div></div>' +
-      '<div class="card"><div class="card-body"><div class="table-desktop"><table><thead><tr><th style="width:48px">✓</th><th>#</th><th>Nombre</th><th>Email</th><th>Teléfono</th><th>Estado</th><th>Hora asistencia</th><th>Fecha registro</th><th>Acciones</th></tr></thead><tbody>' +
+      '<div class="card"><div class="card-body"><div class="table-desktop"><table><thead><tr><th style="width:48px">✓</th><th>#</th><th>Nombre</th><th>Email</th><th>Teléfono</th><th>Cuenta conmigo</th><th>Estado</th><th>Hora asistencia</th><th>Fecha registro</th><th>Acciones</th></tr></thead><tbody>' +
       lista.map((r, i) => {
         const cancelado = r.estado === 'cancelado';
-        return '<tr class="' + (r.asistio ? 'asistio' : '') + (cancelado ? ' asistio-cancelado' : '') + '"><td style="text-align:center"><input type="checkbox" class="asist-check-reg" data-id="' + r.id + '" data-evento="' + eventoId + '"' + (r.asistio ? ' checked' : '') + (cancelado ? ' disabled' : '') + '></td><td>' + (i+1) + '</td><td><strong>' + esc(r.nombre) + '</strong></td><td>' + esc(r.email) + '</td><td>' + (r.telefono ? esc(r.telefono) : '<span style="color:var(--text-muted)">—</span>') + '</td><td><select class="estado-select" data-id="' + r.id + '" data-evento="' + eventoId + '" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border-strong);background:var(--bg-input);color:var(--text-primary);font-size:.78rem"><option value="pendiente"' + (r.estado==='pendiente'?' selected':'') + '>⏳ Pendiente</option><option value="confirmado"' + (r.estado==='confirmado'?' selected':'') + '>✅ Confirmado</option><option value="cancelado"' + (r.estado==='cancelado'?' selected':'') + '>❌ Cancelado</option></select></td><td style="font-size:.8rem;color:var(--text-muted)">' + (r.fecha_asistencia ? new Date(r.fecha_asistencia).toLocaleString('es-PE') : '—') + '</td><td style="font-size:.8rem;color:var(--text-muted)">' + new Date(r.fecha_registro).toLocaleString('es-PE') + '</td><td>' + (r.notas ? '<button class="btn btn-outline btn-xs" onclick="window._lumaVerReg(' + r.id + ')">👁️</button> ' : '') + '<button class="btn btn-danger btn-xs" onclick="window._lumaDelReg(' + r.id + ',' + eventoId + ')">🗑️</button></td></tr>';
+        const itemLabel = r.item_nombre
+          ? esc(r.item_nombre)
+          : '<span style="color:var(--text-muted)">—</span>';
+        return '<tr class="' + (r.asistio ? 'asistio' : '') + (cancelado ? ' asistio-cancelado' : '') + '"><td style="text-align:center"><input type="checkbox" class="asist-check-reg" data-id="' + r.id + '" data-evento="' + eventoId + '"' + (r.asistio ? ' checked' : '') + (cancelado ? ' disabled' : '') + '></td><td>' + (i+1) + '</td><td><strong>' + esc(r.nombre) + '</strong></td><td>' + esc(r.email) + '</td><td>' + (r.telefono ? esc(r.telefono) : '<span style="color:var(--text-muted)">—</span>') + '</td><td>' + itemLabel + '</td><td><select class="estado-select" data-id="' + r.id + '" data-evento="' + eventoId + '" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border-strong);background:var(--bg-input);color:var(--text-primary);font-size:.78rem"><option value="pendiente"' + (r.estado==='pendiente'?' selected':'') + '>⏳ Pendiente</option><option value="confirmado"' + (r.estado==='confirmado'?' selected':'') + '>✅ Confirmado</option><option value="cancelado"' + (r.estado==='cancelado'?' selected':'') + '>❌ Cancelado</option></select></td><td style="font-size:.8rem;color:var(--text-muted)">' + (r.fecha_asistencia ? new Date(r.fecha_asistencia).toLocaleString('es-PE') : '—') + '</td><td style="font-size:.8rem;color:var(--text-muted)">' + new Date(r.fecha_registro).toLocaleString('es-PE') + '</td><td>' + (r.notas ? '<button class="btn btn-outline btn-xs" onclick="window._lumaVerReg(' + r.id + ')">👁️</button> ' : '') + '<button class="btn btn-danger btn-xs" onclick="window._lumaDelReg(' + r.id + ',' + eventoId + ')">🗑️</button></td></tr>';
       }).join('') +
       '</tbody></table></div><div class="mobile-cards">' +
       lista.map(r => {
@@ -480,7 +567,8 @@
   window._lumaVerReg = function (id) {
     const r = registrosActuales.find(x => x.id === id);
     if (!r) return;
-    document.getElementById('modal-registro-body').innerHTML = '<div class="detail-grid"><div><div class="detail-label">Nombre</div><div class="detail-value">' + esc(r.nombre) + '</div></div><div><div class="detail-label">Email</div><div class="detail-value">' + esc(r.email) + '</div></div><div><div class="detail-label">Teléfono</div><div class="detail-value">' + (r.telefono || '—') + '</div></div><div><div class="detail-label">Estado</div><div class="detail-value"><span class="estado-badge estado-' + r.estado + '">' + r.estado + '</span></div></div><div><div class="detail-label">Asistió</div><div class="detail-value">' + (r.asistio ? '✅ Sí' : '— No') + '</div></div><div><div class="detail-label">Fecha registro</div><div class="detail-value">' + new Date(r.fecha_registro).toLocaleString('es-PE') + '</div></div></div>' + (r.fecha_asistencia ? '<div class="detail-full"><div class="detail-label">Hora asistencia</div><div class="detail-value">' + new Date(r.fecha_asistencia).toLocaleString('es-PE') + '</div></div>' : '') + (r.notas ? '<div class="detail-full"><div class="detail-label">Notas</div><div class="detail-value" style="margin-top:4px;line-height:1.6">' + esc(r.notas) + '</div></div>' : '');
+    const itemLabel = r.item_nombre ? esc(r.item_nombre) : '—';
+    document.getElementById('modal-registro-body').innerHTML = '<div class="detail-grid"><div><div class="detail-label">Nombre</div><div class="detail-value">' + esc(r.nombre) + '</div></div><div><div class="detail-label">Email</div><div class="detail-value">' + esc(r.email) + '</div></div><div><div class="detail-label">Teléfono</div><div class="detail-value">' + (r.telefono || '—') + '</div></div><div><div class="detail-label">Cuenta conmigo para</div><div class="detail-value">' + itemLabel + '</div></div><div><div class="detail-label">Estado</div><div class="detail-value"><span class="estado-badge estado-' + r.estado + '">' + r.estado + '</span></div></div><div><div class="detail-label">Asistió</div><div class="detail-value">' + (r.asistio ? '✅ Sí' : '— No') + '</div></div><div><div class="detail-label">Fecha registro</div><div class="detail-value">' + new Date(r.fecha_registro).toLocaleString('es-PE') + '</div></div></div>' + (r.fecha_asistencia ? '<div class="detail-full"><div class="detail-label">Hora asistencia</div><div class="detail-value">' + new Date(r.fecha_asistencia).toLocaleString('es-PE') + '</div></div>' : '') + (r.notas ? '<div class="detail-full"><div class="detail-label">Notas</div><div class="detail-value" style="margin-top:4px;line-height:1.6">' + esc(r.notas) + '</div></div>' : '');
     document.getElementById('modal-registro').classList.add('show');
   };
 
@@ -496,8 +584,8 @@
 
   function exportarCSV() {
     if (!registrosActuales.length) return;
-    const headers = ['#','Nombre','Email','Teléfono','Estado','Asistió','Hora asistencia','Fecha registro','Notas'];
-    const rows = registrosActuales.map((r, i) => [i+1, r.nombre, r.email, r.telefono||'', r.estado, r.asistio ? 'Sí' : 'No', r.fecha_asistencia ? new Date(r.fecha_asistencia).toLocaleString('es-PE') : '', new Date(r.fecha_registro).toLocaleString('es-PE'), r.notas||'']);
+    const headers = ['#','Nombre','Email','Teléfono','Cuenta conmigo','Estado','Asistió','Hora asistencia','Fecha registro','Notas'];
+    const rows = registrosActuales.map((r, i) => [i+1, r.nombre, r.email, r.telefono||'', r.item_nombre||'', r.estado, r.asistio ? 'Sí' : 'No', r.fecha_asistencia ? new Date(r.fecha_asistencia).toLocaleString('es-PE') : '', new Date(r.fecha_registro).toLocaleString('es-PE'), r.notas||'']);
     const csv = [headers, ...rows].map(r => r.map(v => '"' + String(v).replace(/"/g,'""') + '"').join(',')).join('\n');
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'registros-' + Date.now() + '.csv'; a.click();

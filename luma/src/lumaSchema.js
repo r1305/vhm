@@ -57,6 +57,31 @@ async function crearEsquema() {
   await pool.query('ALTER TABLE luma_registros ADD COLUMN notas TEXT NULL').catch(() => {});
   await pool.query('ALTER TABLE luma_registros ADD COLUMN asistio TINYINT(1) NOT NULL DEFAULT 0').catch(() => {});
   await pool.query('ALTER TABLE luma_registros ADD COLUMN fecha_asistencia TIMESTAMP NULL').catch(() => {});
+  await pool.query('ALTER TABLE luma_eventos ADD COLUMN compromiso_obligatorio TINYINT(1) NOT NULL DEFAULT 0').catch(() => {});
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS luma_evento_items (
+      id         INT AUTO_INCREMENT PRIMARY KEY,
+      evento_id  INT NOT NULL,
+      nombre     VARCHAR(150) NOT NULL,
+      cantidad   INT NOT NULL DEFAULT 1,
+      orden      INT NOT NULL DEFAULT 0,
+      KEY idx_lei_evento (evento_id),
+      CONSTRAINT fk_lei_evento FOREIGN KEY (evento_id) REFERENCES luma_eventos(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS luma_registro_items (
+      id          INT AUTO_INCREMENT PRIMARY KEY,
+      registro_id INT NOT NULL,
+      item_id     INT NOT NULL,
+      UNIQUE KEY uq_lri_registro (registro_id),
+      KEY idx_lri_item (item_id),
+      CONSTRAINT fk_lri_registro FOREIGN KEY (registro_id) REFERENCES luma_registros(id) ON DELETE CASCADE,
+      CONSTRAINT fk_lri_item FOREIGN KEY (item_id) REFERENCES luma_evento_items(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
 
   // ── Roles ─────────────────────────────────────────────────────────────────
   await pool.query(`
