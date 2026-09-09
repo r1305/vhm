@@ -500,6 +500,7 @@ async function ensureSchema() {
     `);
 
     try { await conn.execute('ALTER TABLE wa_conversaciones ADD COLUMN lid_chat_id VARCHAR(80) DEFAULT NULL'); } catch (_) {}
+    try { await conn.execute('ALTER TABLE wa_conversaciones ADD COLUMN awaiting_lid_until DATETIME DEFAULT NULL'); } catch (_) {}
     try { await conn.execute('ALTER TABLE wa_conversaciones MODIFY phone VARCHAR(30) DEFAULT NULL'); } catch (_) {}
     try { await conn.execute('CREATE INDEX idx_wa_lid ON wa_conversaciones (lid_chat_id)'); } catch (_) {}
 
