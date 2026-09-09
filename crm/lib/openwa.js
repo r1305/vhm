@@ -113,6 +113,32 @@ async function searchMessagesByPhone(phone, sessionId) {
   return openwaFetch(`/api/chats/search/messages?${params}`);
 }
 
+async function getSessionMessages(sessionId, limit = 200) {
+  const sid = sessionId || process.env.OPENWA_SESSION;
+  if (!sid) return [];
+  const params = new URLSearchParams({ limit: String(Math.min(limit, 300)) });
+  return openwaFetch(`/api/sessions/${encodeURIComponent(sid)}/messages?${params}`);
+}
+
+async function resolveLidPhone(lidChatId) {
+  const lid = String(lidChatId || '').trim();
+  if (!lid.includes('@lid')) return null;
+  try {
+    const data = await openwaFetch(`/api/chats/lid/resolve?${new URLSearchParams({ lid })}`);
+    return data?.phone ? normalizePhone(data.phone) : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+async function getSessionMessagesByPhone(phone, sessionId, limit = 300) {
+  const digits = normalizePhone(phone);
+  const sid = sessionId || process.env.OPENWA_SESSION;
+  if (!digits || !sid) return [];
+  const params = new URLSearchParams({ phone: digits, limit: String(Math.min(limit, 300)) });
+  return openwaFetch(`/api/sessions/${encodeURIComponent(sid)}/messages?${params}`);
+}
+
 module.exports = {
   loadOpenwaConfigFromDB,
   isOpenwaConfigured,
@@ -123,4 +149,7 @@ module.exports = {
   getChats,
   getChatMessages,
   searchMessagesByPhone,
+  getSessionMessages,
+  getSessionMessagesByPhone,
+  resolveLidPhone,
 };
