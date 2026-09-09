@@ -2,6 +2,7 @@ const { Router } = require('express');
 const pool = require('./db');
 const { authMiddleware } = require('./auth');
 const { ensureLumaSchema } = require('./lumaSchema');
+const { uploadEventoImagen, buildPublicUploadUrl } = require('./eventUpload');
 
 const router = Router();
 
@@ -41,6 +42,12 @@ function parseHora(str) {
 function validarUrl(str) {
   try { const u = new URL(str); return u.protocol === 'http:' || u.protocol === 'https:'; }
   catch { return false; }
+}
+function validarImagenUrl(str) {
+  if (!str) return true;
+  const s = String(str).trim();
+  if (s.startsWith('/') && s.includes('/uploads/')) return true;
+  return validarUrl(s);
 }
 
 function etiquetaItem(item) {
@@ -349,7 +356,7 @@ router.post('/admin/eventos', authMiddleware, requireAdmin, async (req, res) => 
     if (!hora_inicio) return res.status(400).json({ error: 'Hora de inicio inválida' });
     if (!lugar)  return res.status(400).json({ error: 'El lugar es obligatorio' });
     if (link && !validarUrl(link)) return res.status(400).json({ error: 'Link inválido' });
-    if (imagen_url && !validarUrl(imagen_url)) return res.status(400).json({ error: 'URL de imagen inválida' });
+    if (imagen_url && !validarImagenUrl(imagen_url)) return res.status(400).json({ error: 'Imagen inválida' });
 
     const [result] = await pool.execute(
       `INSERT INTO luma_eventos (nombre, descripcion, fecha, hora_inicio, hora_fin, lugar, link, capacidad, imagen_url, activo, compromiso_obligatorio, creado_por)
@@ -383,7 +390,7 @@ router.put('/admin/eventos/:id', authMiddleware, requireAdmin, async (req, res) 
     if (!hora_inicio) return res.status(400).json({ error: 'Hora de inicio inválida' });
     if (!lugar)  return res.status(400).json({ error: 'El lugar es obligatorio' });
     if (link && !validarUrl(link)) return res.status(400).json({ error: 'Link inválido' });
-    if (imagen_url && !validarUrl(imagen_url)) return res.status(400).json({ error: 'URL de imagen inválida' });
+    if (imagen_url && !validarImagenUrl(imagen_url)) return res.status(400).json({ error: 'Imagen inválida' });
 
     const [result] = await pool.execute(
       `UPDATE luma_eventos SET nombre=?, descripcion=?, fecha=?, hora_inicio=?, hora_fin=?,
@@ -397,6 +404,19 @@ router.put('/admin/eventos/:id', authMiddleware, requireAdmin, async (req, res) 
   } catch (e) {
     res.status(500).json({ error: e.message || 'Error al actualizar evento' });
   }
+});
+
+router.post('/admin/upload/imagen-evento', authMiddleware, requireAdmin, (req, res) => {
+  uploadEventoImagen.single('imagen')(req, res, (err) => {
+    if (err) {
+      const msg = err.message || 'Error al subir imagen';
+      return res.status(400).json({ error: msg });
+    }
+    if (!req.file) return res.status(400).json({ error: 'No se recibió imagen' });
+    const base = (res.locals.basePath || process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
+    const url = buildPublicUploadUrl(base, req.file.filename);
+    res.json({ ok: true, url });
+  });
 });
 
 router.delete('/admin/eventos/:id', authMiddleware, requireAdmin, async (req, res) => {

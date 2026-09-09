@@ -86,17 +86,69 @@
     .switch input:checked + .switch-slider { background: var(--color-primary); }
     .switch input:checked + .switch-slider::before { transform: translateX(20px); }
 
-    /* ITEMS */
-    .items-section { margin-top: 8px; padding-top: 16px; border-top: 1px solid var(--border-color); }
-    .items-section h4 { font-size: .9rem; margin-bottom: 4px; }
-    .items-section p { font-size: .78rem; color: var(--text-muted); margin-bottom: 12px; }
-    .item-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-    .item-row input[type="text"] { flex: 1; }
-    .qty-control { display: inline-flex; align-items: center; border: 1px solid var(--border-strong); border-radius: 10px; overflow: hidden; background: var(--bg-input); }
-    .qty-btn { width: 32px; height: 36px; border: none; background: var(--bg-hover); color: var(--text-primary); font-size: 1rem; }
-    .qty-btn:hover { background: var(--bg-hover-strong); }
-    .qty-val { min-width: 28px; text-align: center; font-size: .85rem; font-weight: 600; padding: 0 4px; }
-    .item-meta { font-size: .72rem; color: var(--text-muted); white-space: nowrap; }
+    /* MODAL EVENTO COMPACTO */
+    #modal-evento .modal { max-width: 640px; display: flex; flex-direction: column; overflow: hidden; max-height: 92vh; }
+    #modal-evento .modal-body { overflow-y: auto; flex: 1; min-height: 0; padding: 16px 20px; }
+    #modal-evento .form-group { margin-bottom: 10px; }
+    .evento-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
+    .evento-form-grid .span-2 { grid-column: span 2; }
+
+    /* IMAGEN UPLOAD */
+    .img-upload {
+      border: 2px dashed var(--border-strong); border-radius: 12px; padding: 12px;
+      display: flex; align-items: center; gap: 12px; cursor: pointer; transition: border-color .15s, background .15s;
+      background: var(--bg-input);
+    }
+    .img-upload:hover, .img-upload.dragover { border-color: var(--color-primary); background: rgba(102,126,234,.06); }
+    .img-upload-preview {
+      width: 64px; height: 64px; border-radius: 10px; object-fit: cover; background: var(--bg-hover);
+      flex-shrink: 0; display: none;
+    }
+    .img-upload-preview.show { display: block; }
+    .img-upload-placeholder {
+      width: 64px; height: 64px; border-radius: 10px; background: var(--bg-hover);
+      display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0;
+    }
+    .img-upload-text strong { display: block; font-size: .82rem; }
+    .img-upload-text span { font-size: .72rem; color: var(--text-muted); }
+    .img-upload-actions { margin-left: auto; display: flex; gap: 6px; flex-shrink: 0; }
+
+    /* ITEMS CHIPS */
+    .items-section { margin-top: 4px; padding-top: 12px; border-top: 1px solid var(--border-color); }
+    .items-section h4 { font-size: .85rem; margin-bottom: 2px; }
+    .items-section p { font-size: .72rem; color: var(--text-muted); margin-bottom: 10px; }
+    .item-chips { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .item-chip {
+      display: inline-flex; align-items: center; gap: 6px; padding: 6px 8px 6px 12px;
+      background: var(--bg-input); border: 1px solid var(--border-strong); border-radius: 999px;
+      font-size: .8rem; max-width: 100%;
+    }
+    .item-chip input.chip-name {
+      border: none; background: transparent; color: var(--text-primary);
+      font-size: .8rem; font-weight: 500; width: 88px; padding: 0; outline: none;
+    }
+    .chip-qty {
+      display: inline-flex; align-items: center; gap: 2px; padding: 2px 4px;
+      background: var(--bg-hover); border-radius: 999px; font-size: .72rem;
+    }
+    .chip-qty button {
+      width: 20px; height: 20px; border: none; border-radius: 50%;
+      background: transparent; color: var(--text-secondary); font-size: .85rem; line-height: 1;
+    }
+    .chip-qty button:hover { background: var(--bg-hover-strong); color: var(--text-primary); }
+    .chip-qty span { min-width: 14px; text-align: center; font-weight: 700; }
+    .chip-remove {
+      width: 22px; height: 22px; border: none; border-radius: 50%;
+      background: transparent; color: var(--text-muted); font-size: .9rem;
+    }
+    .chip-remove:hover { background: #3a1111; color: var(--color-danger); }
+    .chip-meta { font-size: .65rem; color: var(--text-muted); padding-left: 2px; }
+    .chip-add {
+      display: inline-flex; align-items: center; gap: 4px; padding: 7px 12px;
+      border: 1px dashed var(--border-strong); border-radius: 999px;
+      background: transparent; color: var(--text-secondary); font-size: .78rem; font-weight: 600;
+    }
+    .chip-add:hover { border-color: var(--color-primary); color: var(--color-primary); }
 
     /* CARDS */
     .card { background: var(--bg-card); border-radius: 16px; border: 1px solid var(--border-color); overflow: hidden; box-shadow: var(--shadow-card); }
@@ -325,30 +377,43 @@
       <button class="modal-close" data-modal-close="modal-evento">✕</button>
     </div>
     <div class="modal-body">
-      <div class="form-group"><label>Nombre *</label><input type="text" id="ef-nombre" placeholder="Nombre del evento"></div>
-      <div class="form-group"><label>Descripción <span class="optional">(opcional)</span></label><textarea id="ef-descripcion" rows="3" placeholder="Descripción breve..."></textarea></div>
-      <div class="form-group"><label>Fecha *</label><input type="date" id="ef-fecha"></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="evento-form-grid">
+        <div class="form-group span-2"><label>Nombre *</label><input type="text" id="ef-nombre" placeholder="Nombre del evento"></div>
+        <div class="form-group span-2"><label>Descripción <span class="optional">(opcional)</span></label><textarea id="ef-descripcion" rows="2" placeholder="Descripción breve..."></textarea></div>
+        <div class="form-group"><label>Fecha *</label><input type="date" id="ef-fecha"></div>
+        <div class="form-group"><label>Capacidad <span class="optional">(opc.)</span></label><input type="number" id="ef-capacidad" placeholder="50" min="1"></div>
         <div class="form-group"><label>Hora inicio *</label><input type="time" id="ef-hora_inicio"></div>
-        <div class="form-group"><label>Hora fin <span class="optional">(opcional)</span></label><input type="time" id="ef-hora_fin"></div>
-      </div>
-      <div class="form-group"><label>Lugar *</label><input type="text" id="ef-lugar" placeholder="Centro VHM, Sala principal"></div>
-      <div class="form-group"><label>Link <span class="optional">(opcional)</span></label><input type="url" id="ef-link" placeholder="https://maps.google.com/..."></div>
-      <div class="form-group"><label>Capacidad máxima <span class="optional">(opcional)</span></label><input type="number" id="ef-capacidad" placeholder="Ej: 50" min="1"></div>
-      <div class="form-group"><label>URL imagen <span class="optional">(opcional)</span></label><input type="url" id="ef-imagen_url" placeholder="https://..."></div>
-      <div class="form-group">
-        <label>Estado</label>
-        <select id="ef-activo">
-          <option value="1">🟢 Activo</option>
-          <option value="0">🔴 Inactivo</option>
-        </select>
+        <div class="form-group"><label>Hora fin <span class="optional">(opc.)</span></label><input type="time" id="ef-hora_fin"></div>
+        <div class="form-group span-2"><label>Lugar *</label><input type="text" id="ef-lugar" placeholder="Centro VHM, Sala principal"></div>
+        <div class="form-group"><label>Link <span class="optional">(opc.)</span></label><input type="url" id="ef-link" placeholder="https://maps..."></div>
+        <div class="form-group">
+          <label>Estado</label>
+          <select id="ef-activo">
+            <option value="1">🟢 Activo</option>
+            <option value="0">🔴 Inactivo</option>
+          </select>
+        </div>
+        <div class="form-group span-2">
+          <label>Imagen <span class="optional">(opcional)</span></label>
+          <input type="file" id="ef-imagen-file" accept="image/jpeg,image/png,image/webp" hidden>
+          <div class="img-upload" id="ef-imagen-drop">
+            <img class="img-upload-preview" id="ef-imagen-preview" alt="">
+            <div class="img-upload-placeholder" id="ef-imagen-placeholder">🖼️</div>
+            <div class="img-upload-text">
+              <strong>Subir imagen</strong>
+              <span>JPG, PNG o WebP · máx. 5 MB</span>
+            </div>
+            <div class="img-upload-actions">
+              <button type="button" class="btn btn-outline btn-xs" id="btn-imagen-quitar" style="display:none">Quitar</button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="items-section">
-        <h4>🛒 Cuenta conmigo para...</h4>
-        <p>Agrega ítems que los asistentes pueden comprometerse a llevar o hacer.</p>
-        <div id="ef-items-list"></div>
-        <button type="button" class="btn btn-outline btn-sm" id="btn-add-item">+ Agregar ítem</button>
+        <h4>Cuenta conmigo para...</h4>
+        <p>Ítems que los asistentes pueden comprometerse a llevar.</p>
+        <div class="item-chips" id="ef-items-list"></div>
         <div class="form-group" style="margin-top:16px;margin-bottom:0">
           <div class="switch-row">
             <div>
