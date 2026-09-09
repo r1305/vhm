@@ -43,6 +43,124 @@ function validarUrl(str) {
   catch { return false; }
 }
 
+function etiquetaItem(item) {
+  const disp = Number(item.disponible ?? item.cantidad);
+  if (Number(item.cantidad) > 1) return `${item.nombre} x${disp}`;
+  return item.nombre;
+}
+
+async function getEventoItems(eventoId) {
+  const [rows] = await pool.execute(
+    `SELECT i.id, i.nombre, i.cantidad, i.orden,
+            i.cantidad - COALESCE((
+              SELECT COUNT(*) FROM luma_registro_items ri
+              INNER JOIN luma_registros r ON r.id = ri.registro_id
+              WHERE ri.item_id = i.id AND r.estado != 'cancelado'
+            ), 0) AS disponible,
+            COALESCE((
+              SELECT COUNT(*) FROM luma_registro_items ri
+              INNER JOIN luma_registros r ON r.id = ri.registro_id
+              WHERE ri.item_id = i.id AND r.estado != 'cancelado'
+            ), 0) AS ocupados
+     FROM luma_evento_items i
+     WHERE i.evento_id = ?
+     ORDER BY i.orden ASC, i.id ASC`,
+    [eventoId]
+  );
+  return rows.map((r) => ({ ...r, etiqueta: etiquetaItem(r) }));
+}
+
+async function attachItemsToEventos(eventos) {
+  if (!eventos.length) return eventos;
+  const ids = eventos.map((e) => e.id);
+  const placeholders = ids.map(() => '?').join(',');
+  const [rows] = await pool.execute(
+    `SELECT i.id, i.evento_id, i.nombre, i.cantidad, i.orden,
+            i.cantidad - COALESCE((
+              SELECT COUNT(*) FROM luma_registro_items ri
+              INNER JOIN luma_registros r ON r.id = ri.registro_id
+              WHERE ri.item_id = i.id AND r.estado != 'cancelado'
+            ), 0) AS disponible
+     FROM luma_evento_items i
+     WHERE i.evento_id IN (${placeholders})
+     ORDER BY i.orden ASC, i.id ASC`,
+    ids
+  );
+  const byEvento = {};
+  for (const row of rows) {
+    if (!byEvento[row.evento_id]) byEvento[row.evento_id] = [];
+    byEvento[row.evento_id].push({ ...row, etiqueta: etiquetaItem(row) });
+  }
+  return eventos.map((e) => ({
+    ...e,
+    items: byEvento[e.id] || [],
+    compromiso_efectivo: resolveCompromisoEfectivo(e, byEvento[e.id] || []),
+  }));
+}
+
+function resolveCompromisoEfectivo(evento, items) {
+  const obligatorio = evento.compromiso_obligatorio === 1 || evento.compromiso_obligatorio === true;
+  if (!obligatorio) return false;
+  const disponibles = (items || []).filter((i) => Number(i.disponible) > 0);
+  return disponibles.length > 0;
+}
+
+async function maybeDisableCompromisoObligatorio(eventoId) {
+  const items = await getEventoItems(eventoId);
+  const hayDisponibles = items.some((i) => Number(i.disponible) > 0);
+  if (!hayDisponibles) {
+    await pool.execute(
+      'UPDATE luma_eventos SET compromiso_obligatorio = 0 WHERE id = ? AND compromiso_obligatorio = 1',
+      [eventoId]
+    );
+  }
+}
+
+async function saveEventoItems(eventoId, rawItems) {
+  const items = Array.isArray(rawItems) ? rawItems : [];
+  const existentes = await getEventoItems(eventoId);
+  const keepIds = new Set();
+
+  for (let i = 0; i < items.length; i++) {
+    const nombre = String(items[i]?.nombre || '').trim();
+    const cantidad = Math.max(1, parseInt(items[i]?.cantidad, 10) || 1);
+    const id = items[i]?.id ? parseInt(items[i].id, 10) : null;
+    if (!nombre) continue;
+
+    if (id) {
+      const prev = existentes.find((x) => x.id === id);
+      if (!prev) continue;
+      const ocupados = Number(prev.ocupados || 0);
+      if (cantidad < ocupados) {
+        throw new Error(`"${nombre}" ya tiene ${ocupados} persona(s) inscrita(s); no puedes bajar la cantidad.`);
+      }
+      await pool.execute(
+        'UPDATE luma_evento_items SET nombre = ?, cantidad = ?, orden = ? WHERE id = ? AND evento_id = ?',
+        [nombre, cantidad, i, id, eventoId]
+      );
+      keepIds.add(id);
+    } else {
+      const [result] = await pool.execute(
+        'INSERT INTO luma_evento_items (evento_id, nombre, cantidad, orden) VALUES (?, ?, ?, ?)',
+        [eventoId, nombre, cantidad, i]
+      );
+      keepIds.add(result.insertId);
+    }
+  }
+
+  for (const prev of existentes) {
+    if (keepIds.has(prev.id)) continue;
+    if (Number(prev.ocupados) > 0) {
+      throw new Error(`No puedes eliminar "${prev.nombre}" porque ya tiene inscritos.`);
+    }
+    await pool.execute('DELETE FROM luma_evento_items WHERE id = ? AND evento_id = ?', [prev.id, eventoId]);
+  }
+}
+
+function parseCompromisoObligatorio(value) {
+  return (value === true || value === 1 || value === '1') ? 1 : 0;
+}
+
 // ── AUTH ──────────────────────────────────────────────────────────────────────
 
 router.post('/auth/login', async (req, res) => {
@@ -78,14 +196,15 @@ router.get('/eventos', async (req, res) => {
   try {
     const [rows] = await pool.execute(
       `SELECT e.id, e.nombre, e.descripcion, e.fecha, e.hora_inicio, e.hora_fin,
-              e.lugar, e.link, e.capacidad, e.imagen_url,
+              e.lugar, e.link, e.capacidad, e.imagen_url, e.compromiso_obligatorio,
               COUNT(r.id) AS registrados
        FROM luma_eventos e
        LEFT JOIN luma_registros r ON r.evento_id = e.id AND r.estado != 'cancelado'
        WHERE e.activo = 1
        GROUP BY e.id ORDER BY e.fecha ASC, e.hora_inicio ASC`
     );
-    res.json(rows);
+    const eventos = await attachItemsToEventos(rows);
+    res.json(eventos);
   } catch { res.status(500).json({ error: 'Error al obtener eventos' }); }
 });
 
@@ -99,40 +218,77 @@ router.get('/eventos/:id', async (req, res) => {
       [req.params.id]
     );
     if (!rows[0]) return res.status(404).json({ error: 'Evento no encontrado' });
-    res.json(rows[0]);
+    const [evento] = await attachItemsToEventos([rows[0]]);
+    res.json(evento);
   } catch { res.status(500).json({ error: 'Error al obtener evento' }); }
 });
 
 router.post('/eventos/:id/registrar', async (req, res) => {
+  const conn = await pool.getConnection();
   try {
-    const { nombre, email, telefono, notas } = req.body || {};
+    const { nombre, email, telefono, notas, item_id } = req.body || {};
     if (!nombre?.trim()) return res.status(400).json({ error: 'El nombre es obligatorio' });
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))
       return res.status(400).json({ error: 'Email inválido' });
 
-    const [ev] = await pool.execute('SELECT id, capacidad FROM luma_eventos WHERE id = ? AND activo = 1', [req.params.id]);
+    const [ev] = await conn.execute(
+      'SELECT id, capacidad, compromiso_obligatorio FROM luma_eventos WHERE id = ? AND activo = 1',
+      [req.params.id]
+    );
     if (!ev[0]) return res.status(404).json({ error: 'Evento no encontrado' });
 
-    const [dup] = await pool.execute(
+    const [dup] = await conn.execute(
       "SELECT id FROM luma_registros WHERE evento_id = ? AND email = ? AND estado != 'cancelado'",
       [req.params.id, email.trim().toLowerCase()]
     );
     if (dup[0]) return res.status(409).json({ error: 'Ya estás registrado en este evento' });
 
     if (ev[0].capacidad) {
-      const [[{ n }]] = await pool.execute(
+      const [[{ n }]] = await conn.execute(
         "SELECT COUNT(*) AS n FROM luma_registros WHERE evento_id = ? AND estado != 'cancelado'", [req.params.id]
       );
       if (n >= ev[0].capacidad) return res.status(409).json({ error: 'Sin cupos disponibles' });
     }
 
-    const [result] = await pool.execute(
+    const items = await getEventoItems(req.params.id);
+    const disponibles = items.filter((i) => Number(i.disponible) > 0);
+    let obligatorio = ev[0].compromiso_obligatorio === 1;
+    if (obligatorio && !disponibles.length) {
+      obligatorio = false;
+      await conn.execute('UPDATE luma_eventos SET compromiso_obligatorio = 0 WHERE id = ?', [req.params.id]);
+    }
+
+    const itemId = item_id ? parseInt(item_id, 10) : null;
+    if (obligatorio && !itemId) {
+      return res.status(400).json({ error: 'Debes seleccionar en qué puedes ayudar' });
+    }
+    if (itemId) {
+      const item = disponibles.find((i) => i.id === itemId);
+      if (!item) return res.status(409).json({ error: 'Ese ítem ya no está disponible' });
+    }
+
+    await conn.beginTransaction();
+    const [result] = await conn.execute(
       'INSERT INTO luma_registros (evento_id, nombre, email, telefono, notas, estado) VALUES (?, ?, ?, ?, ?, ?)',
       [req.params.id, nombre.trim(), email.trim().toLowerCase(),
        telefono?.trim() || null, notas?.trim() || null, 'pendiente']
     );
+    if (itemId) {
+      await conn.execute(
+        'INSERT INTO luma_registro_items (registro_id, item_id) VALUES (?, ?)',
+        [result.insertId, itemId]
+      );
+    }
+    await conn.commit();
+
+    await maybeDisableCompromisoObligatorio(req.params.id);
     res.status(201).json({ id: result.insertId, message: '¡Registro exitoso!' });
-  } catch { res.status(500).json({ error: 'Error al registrar' }); }
+  } catch (err) {
+    try { await conn.rollback(); } catch (_) {}
+    res.status(500).json({ error: 'Error al registrar' });
+  } finally {
+    conn.release();
+  }
 });
 
 // ── ADMIN — EVENTOS ───────────────────────────────────────────────────────────
@@ -141,8 +297,8 @@ router.get('/admin/eventos', authMiddleware, requireAdmin, async (req, res) => {
   try {
     const [rows] = await pool.execute(
       `SELECT e.id, e.nombre, e.descripcion, e.fecha, e.hora_inicio, e.hora_fin,
-              e.lugar, e.link, e.capacidad, e.imagen_url, e.activo, e.fecha_creacion,
-              a.nombre AS creado_por_nombre,
+              e.lugar, e.link, e.capacidad, e.imagen_url, e.activo, e.compromiso_obligatorio,
+              e.fecha_creacion, a.nombre AS creado_por_nombre,
               SUM(r.estado != 'cancelado') AS registrados,
               SUM(r.estado = 'confirmado') AS confirmados,
               SUM(r.estado = 'pendiente') AS pendientes,
@@ -153,8 +309,24 @@ router.get('/admin/eventos', authMiddleware, requireAdmin, async (req, res) => {
        LEFT JOIN luma_registros r ON r.evento_id = e.id
        GROUP BY e.id ORDER BY e.fecha DESC, e.hora_inicio ASC`
     );
-    res.json(rows);
+    const eventos = await attachItemsToEventos(rows);
+    res.json(eventos);
   } catch { res.status(500).json({ error: 'Error al obtener eventos' }); }
+});
+
+router.get('/admin/eventos/:id', authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const [rows] = await pool.execute(
+      `SELECT e.*, a.nombre AS creado_por_nombre
+       FROM luma_eventos e
+       LEFT JOIN luma_admins a ON e.creado_por = a.id
+       WHERE e.id = ?`,
+      [req.params.id]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'Evento no encontrado' });
+    const items = await getEventoItems(req.params.id);
+    res.json({ ...rows[0], items });
+  } catch { res.status(500).json({ error: 'Error al obtener evento' }); }
 });
 
 router.post('/admin/eventos', authMiddleware, requireAdmin, async (req, res) => {
@@ -170,6 +342,7 @@ router.post('/admin/eventos', authMiddleware, requireAdmin, async (req, res) => 
     const descripcion = b.descripcion ? String(b.descripcion).trim() : null;
     const imagen_url = b.imagen_url ? String(b.imagen_url).trim() : null;
     const activo = (b.activo === false || b.activo === '0' || b.activo === 0) ? 0 : 1;
+    const compromiso_obligatorio = parseCompromisoObligatorio(b.compromiso_obligatorio);
 
     if (!nombre) return res.status(400).json({ error: 'El nombre es obligatorio' });
     if (!fecha)  return res.status(400).json({ error: 'Fecha inválida (AAAA-MM-DD)' });
@@ -179,12 +352,15 @@ router.post('/admin/eventos', authMiddleware, requireAdmin, async (req, res) => 
     if (imagen_url && !validarUrl(imagen_url)) return res.status(400).json({ error: 'URL de imagen inválida' });
 
     const [result] = await pool.execute(
-      `INSERT INTO luma_eventos (nombre, descripcion, fecha, hora_inicio, hora_fin, lugar, link, capacidad, imagen_url, activo, creado_por)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [nombre, descripcion, fecha, hora_inicio, hora_fin, lugar, link, capacidad, imagen_url, activo, req.user.id]
+      `INSERT INTO luma_eventos (nombre, descripcion, fecha, hora_inicio, hora_fin, lugar, link, capacidad, imagen_url, activo, compromiso_obligatorio, creado_por)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [nombre, descripcion, fecha, hora_inicio, hora_fin, lugar, link, capacidad, imagen_url, activo, compromiso_obligatorio, req.user.id]
     );
+    await saveEventoItems(result.insertId, b.items);
     res.status(201).json({ id: result.insertId, message: 'Evento creado' });
-  } catch { res.status(500).json({ error: 'Error al crear evento' }); }
+  } catch (e) {
+    res.status(500).json({ error: e.message || 'Error al crear evento' });
+  }
 });
 
 router.put('/admin/eventos/:id', authMiddleware, requireAdmin, async (req, res) => {
@@ -200,6 +376,7 @@ router.put('/admin/eventos/:id', authMiddleware, requireAdmin, async (req, res) 
     const descripcion = b.descripcion ? String(b.descripcion).trim() : null;
     const imagen_url = b.imagen_url ? String(b.imagen_url).trim() : null;
     const activo = (b.activo === false || b.activo === '0' || b.activo === 0) ? 0 : 1;
+    const compromiso_obligatorio = parseCompromisoObligatorio(b.compromiso_obligatorio);
 
     if (!nombre) return res.status(400).json({ error: 'El nombre es obligatorio' });
     if (!fecha)  return res.status(400).json({ error: 'Fecha inválida' });
@@ -210,12 +387,16 @@ router.put('/admin/eventos/:id', authMiddleware, requireAdmin, async (req, res) 
 
     const [result] = await pool.execute(
       `UPDATE luma_eventos SET nombre=?, descripcion=?, fecha=?, hora_inicio=?, hora_fin=?,
-       lugar=?, link=?, capacidad=?, imagen_url=?, activo=? WHERE id=?`,
-      [nombre, descripcion, fecha, hora_inicio, hora_fin, lugar, link, capacidad, imagen_url, activo, req.params.id]
+       lugar=?, link=?, capacidad=?, imagen_url=?, activo=?, compromiso_obligatorio=? WHERE id=?`,
+      [nombre, descripcion, fecha, hora_inicio, hora_fin, lugar, link, capacidad, imagen_url, activo, compromiso_obligatorio, req.params.id]
     );
     if (result.affectedRows === 0) return res.status(404).json({ error: 'Evento no encontrado' });
+    await saveEventoItems(req.params.id, b.items);
+    await maybeDisableCompromisoObligatorio(req.params.id);
     res.json({ message: 'Evento actualizado' });
-  } catch { res.status(500).json({ error: 'Error al actualizar evento' }); }
+  } catch (e) {
+    res.status(500).json({ error: e.message || 'Error al actualizar evento' });
+  }
 });
 
 router.delete('/admin/eventos/:id', authMiddleware, requireAdmin, async (req, res) => {
@@ -231,8 +412,13 @@ router.delete('/admin/eventos/:id', authMiddleware, requireAdmin, async (req, re
 router.get('/admin/eventos/:id/registros', authMiddleware, requireAdmin, async (req, res) => {
   try {
     const [rows] = await pool.execute(
-      `SELECT id, nombre, email, telefono, notas, estado, asistio, fecha_asistencia, fecha_registro
-       FROM luma_registros WHERE evento_id = ? ORDER BY asistio DESC, nombre ASC`,
+      `SELECT r.id, r.nombre, r.email, r.telefono, r.notas, r.estado, r.asistio,
+              r.fecha_asistencia, r.fecha_registro, i.nombre AS item_nombre, i.cantidad AS item_cantidad
+       FROM luma_registros r
+       LEFT JOIN luma_registro_items ri ON ri.registro_id = r.id
+       LEFT JOIN luma_evento_items i ON i.id = ri.item_id
+       WHERE r.evento_id = ?
+       ORDER BY r.asistio DESC, r.nombre ASC`,
       [req.params.id]
     );
     res.json(rows);
