@@ -68,11 +68,21 @@
   }
 
   async function loadConversaciones() {
+    const prev = selectedId ? conversaciones.find(c => c.id === selectedId) : null;
     conversaciones = await api('/whatsapp/conversaciones');
     renderList(document.getElementById('waSearch').value.trim());
     if (selectedId) {
       const still = conversaciones.find(c => c.id === selectedId);
-      if (still) updateHeader(still);
+      if (still) {
+        if (prev && still.no_leidos > (prev.no_leidos || 0)) {
+          api(`/whatsapp/conversaciones/${selectedId}/mensajes?sync=1`).then(renderMessages).catch(() => {});
+        }
+        updateHeader(still);
+      } else if (prev?.phone) {
+        const tail = String(prev.phone).replace(/\D/g, '').slice(-9);
+        const moved = conversaciones.find(c => String(c.phone || '').replace(/\D/g, '').endsWith(tail));
+        if (moved) selectedId = moved.id;
+      }
     }
   }
 
@@ -95,7 +105,7 @@
     document.getElementById('waCompose').style.display = 'flex';
     renderList(document.getElementById('waSearch').value.trim());
 
-    const msgs = await api(`/whatsapp/conversaciones/${id}/mensajes`);
+    const msgs = await api(`/whatsapp/conversaciones/${id}/mensajes?sync=1`);
     renderMessages(msgs);
     await api(`/whatsapp/conversaciones/${id}/leer`, { method: 'PATCH', body: {} }).catch(() => {});
     c.no_leidos = 0;
@@ -224,10 +234,10 @@
   pollTimer = setInterval(() => {
     loadConversaciones().then(() => {
       if (selectedId) {
-        api(`/whatsapp/conversaciones/${selectedId}/mensajes`).then(renderMessages).catch(() => {});
+        api(`/whatsapp/conversaciones/${selectedId}/mensajes?sync=1`).then(renderMessages).catch(() => {});
       }
     });
-  }, 5000);
+  }, 3000);
 
   window.addEventListener('beforeunload', () => clearInterval(pollTimer));
 })();

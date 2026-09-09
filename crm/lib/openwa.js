@@ -104,6 +104,15 @@ async function getChatMessages(chatId, sessionId) {
   return openwaFetch(`/api/chats/${encodeURIComponent(chatId)}/messages${qs}`);
 }
 
+async function searchMessagesByPhone(phone, sessionId) {
+  const digits = normalizePhone(phone);
+  if (!digits) return [];
+  const sid = sessionId || process.env.OPENWA_SESSION;
+  const params = new URLSearchParams({ phone: digits, limit: '200' });
+  if (sid) params.set('sessionId', sid);
+  return openwaFetch(`/api/chats/search/messages?${params}`);
+}
+
 module.exports = {
   loadOpenwaConfigFromDB,
   isOpenwaConfigured,
@@ -113,4 +122,5 @@ module.exports = {
   sendWhatsApp,
   getChats,
   getChatMessages,
+  searchMessagesByPhone,
 };
