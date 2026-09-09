@@ -1,6 +1,7 @@
 const { Router } = require('express');
 const pool = require('../lib/db');
 const { auth } = require('../lib/auth');
+const { isStaffAdmin } = require('../lib/roles');
 const {
   loadOpenwaConfigFromDB,
   isOpenwaConfigured,
@@ -12,7 +13,7 @@ const {
 const router = Router();
 
 function canAccessWhatsApp(user) {
-  return ['superadmin', 'recepcion', 'terapeuta'].includes(user?.rol);
+  return isStaffAdmin(user?.rol) || user?.rol === 'terapeuta';
 }
 
 function authWhatsApp(req, res, next) {

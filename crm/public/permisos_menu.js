@@ -17,7 +17,7 @@
     { key: 'pagos',           label: 'Pagos',              icon: 'fa-credit-card' },
     { key: 'analitica',       label: 'Analítica web',      icon: 'fa-chart-line' },
     { key: 'integraciones',   label: 'Integraciones',      icon: 'fa-plug' },
-    { key: 'terapeutas',      label: 'Terapeutas',         icon: 'fa-user-md' },
+    { key: 'terapeutas',      label: 'Usuarios',           icon: 'fa-user-md' },
     { key: 'reportes',        label: 'Reportes',           icon: 'fa-chart-bar' },
     { key: 'permisos_menu',   label: 'Permisos de menú',   icon: 'fa-shield-halved' },
   ];

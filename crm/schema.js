@@ -12,7 +12,7 @@ async function ensureSchema() {
         username    VARCHAR(50)  NOT NULL UNIQUE,
         email       VARCHAR(150) DEFAULT NULL,
         password    VARCHAR(255) NOT NULL,
-        rol         ENUM('superadmin','terapeuta','recepcion') NOT NULL DEFAULT 'terapeuta',
+        rol         ENUM('superadmin','admin','recepcion','terapeuta') NOT NULL DEFAULT 'terapeuta',
         especialidad VARCHAR(200) DEFAULT NULL,
         bio         TEXT DEFAULT NULL,
         activo      TINYINT(1) NOT NULL DEFAULT 1,
@@ -389,7 +389,7 @@ async function ensureSchema() {
     // ── Permisos de menú por rol (plantillas) ───────────────────
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS menu_permisos (
-        rol   ENUM('superadmin','recepcion','terapeuta') NOT NULL,
+        rol   ENUM('superadmin','admin','recepcion','terapeuta') NOT NULL,
         item  VARCHAR(50) NOT NULL,
         PRIMARY KEY (rol, item)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
@@ -435,10 +435,22 @@ async function ensureSchema() {
     try { await conn.execute("ALTER TABLE bloqueos ADD COLUMN hora_inicio TIME NOT NULL DEFAULT '00:00:00'"); } catch (_) {}
     try { await conn.execute("ALTER TABLE bloqueos ADD COLUMN hora_fin TIME NOT NULL DEFAULT '23:59:00'"); } catch (_) {}
 
+    // Ampliar ENUM de rol si la tabla ya existía sin 'admin'
+    try {
+      await conn.execute(
+        "ALTER TABLE terapeutas MODIFY rol ENUM('superadmin','admin','recepcion','terapeuta') NOT NULL DEFAULT 'terapeuta'"
+      );
+    } catch (_) {}
+    try {
+      await conn.execute(
+        "ALTER TABLE menu_permisos MODIFY rol ENUM('superadmin','admin','recepcion','terapeuta') NOT NULL"
+      );
+    } catch (_) {}
+
     // Agregar 'calendario' a roles existentes si no existe
-    for (const rol of ['superadmin', 'recepcion', 'terapeuta'])
+    for (const rol of ['superadmin', 'admin', 'recepcion', 'terapeuta'])
       await conn.execute('INSERT IGNORE INTO menu_permisos (rol, item) VALUES (?,?)', [rol, 'calendario']);
-    for (const rol of ['superadmin', 'recepcion', 'terapeuta'])
+    for (const rol of ['superadmin', 'admin', 'recepcion', 'terapeuta'])
       await conn.execute('INSERT IGNORE INTO menu_permisos (rol, item) VALUES (?,?)', [rol, 'disponibilidad']);
 
     // Defaults: si la tabla está vacía, insertar permisos base
@@ -446,7 +458,7 @@ async function ensureSchema() {
     if (!cnt) {
       const defaults = [
         ...['dashboard','agenda','calendario','disponibilidad','pacientes','leads','historial','consentimientos','pagos','espera','terapeutas','reportes','analitica','marketing','asignacion','integraciones','permisos_menu'].map(i => ['superadmin', i]),
-        ...['dashboard','agenda','calendario','disponibilidad','pacientes','leads','historial','consentimientos','pagos','espera','terapeutas','reportes','analitica','marketing','asignacion','integraciones'].map(i => ['recepcion', i]),
+        ...['dashboard','agenda','calendario','disponibilidad','pacientes','leads','historial','consentimientos','pagos','espera','terapeutas','reportes','analitica','marketing','asignacion','integraciones'].flatMap(i => [['admin', i], ['recepcion', i]]),
         ...['agenda','calendario','disponibilidad','pacientes','historial','mi_reporte'].map(i => ['terapeuta', i]),
       ];
       for (const [rol, item] of defaults)
@@ -507,7 +519,7 @@ async function ensureSchema() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
 
-    for (const rol of ['superadmin', 'recepcion'])
+    for (const rol of ['superadmin', 'admin', 'recepcion'])
       await conn.execute('INSERT IGNORE INTO menu_permisos (rol, item) VALUES (?,?)', [rol, 'whatsapp']);
 
     console.log('[crm] Schema OK');

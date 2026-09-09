@@ -6,12 +6,15 @@ const ALL_MENU_ITEMS = [
   'terapeutas', 'reportes', 'permisos_menu',
 ];
 
+const STAFF_DEFAULTS = [
+  'dashboard', 'agenda', 'calendario', 'disponibilidad', 'pacientes', 'whatsapp',
+  'historial', 'pagos', 'analitica', 'integraciones', 'terapeutas', 'reportes',
+];
+
 const DEFAULTS_BY_ROL = {
   superadmin: ALL_MENU_ITEMS,
-  recepcion: [
-    'dashboard', 'agenda', 'calendario', 'disponibilidad', 'pacientes', 'whatsapp',
-    'historial', 'pagos', 'analitica', 'integraciones', 'terapeutas', 'reportes',
-  ],
+  admin: STAFF_DEFAULTS,
+  recepcion: STAFF_DEFAULTS,
   terapeuta: ['agenda', 'calendario', 'disponibilidad', 'pacientes', 'historial', 'mi_reporte'],
 };
 
@@ -27,15 +30,23 @@ async function getMenuPermisosForUser(userId, rol) {
   );
   if (rows.length) {
     const items = new Set(rows.map(r => r.item));
-    if (rol === 'superadmin') items.add('permisos_menu');
+    if (rol === 'superadmin') {
+      items.add('permisos_menu');
+    } else {
+      items.delete('permisos_menu');
+    }
     return items;
   }
   return new Set(DEFAULTS_BY_ROL[rol] || DEFAULTS_BY_ROL.terapeuta);
 }
 
 async function setMenuPermisosForUser(userId, items, rol) {
-  const safe = sanitizeItems(items);
-  if (rol === 'superadmin' && !safe.includes('permisos_menu')) safe.push('permisos_menu');
+  let safe = sanitizeItems(items);
+  if (rol === 'superadmin') {
+    if (!safe.includes('permisos_menu')) safe.push('permisos_menu');
+  } else {
+    safe = safe.filter(i => i !== 'permisos_menu');
+  }
 
   await pool.execute('DELETE FROM usuario_menu_permisos WHERE terapeuta_id = ?', [userId]);
   for (const item of safe) {
