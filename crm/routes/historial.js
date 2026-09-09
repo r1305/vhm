@@ -1,13 +1,14 @@
 const { Router } = require('express');
 const pool = require('../lib/db');
 const { auth } = require('../lib/auth');
+const { isStaffAdmin } = require('../lib/roles');
 
 const router = Router();
 const t = (v, max=5000) => v == null ? null : String(v).trim().slice(0, max) || null;
 
 // Solo el terapeuta dueño o superadmin puede leer/escribir
 async function checkAccess(req, res, pacienteId) {
-  if (['superadmin','recepcion'].includes(req.user.rol)) return true;
+  if (isStaffAdmin(req.user.rol)) return true;
   const [[p]] = await pool.execute('SELECT terapeuta_id FROM pacientes WHERE id=?', [pacienteId]);
   if (p?.terapeuta_id !== req.user.id) {
     res.status(403).json({ error: 'Sin acceso al historial de este paciente' });

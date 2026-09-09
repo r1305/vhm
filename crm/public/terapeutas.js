@@ -5,8 +5,42 @@
   'use strict';
 
   const { api, toast, esc, fullName, openModal } = window.CRM;
+  const USER_ROL = window.__USER_ROL__ || 'terapeuta';
+  const IS_SUPERADMIN = USER_ROL === 'superadmin';
+
+  const ROLE_LABELS = {
+    superadmin: 'Superadmin',
+    admin: 'Administrador',
+    recepcion: 'Recepción',
+    terapeuta: 'Terapeuta',
+  };
+
+  const ASSIGNABLE_ROLES = {
+    superadmin: ['superadmin', 'admin', 'recepcion', 'terapeuta'],
+    admin: ['terapeuta'],
+    recepcion: ['terapeuta'],
+  };
+
+  function assignableRoles() {
+    return ASSIGNABLE_ROLES[USER_ROL] || [];
+  }
+
+  function roleOptionsHtml(selected) {
+    const roles = assignableRoles();
+    if (!roles.length) return '';
+    return roles.map(r =>
+      `<option value="${r}" ${selected === r ? 'selected' : ''}>${ROLE_LABELS[r] || r}</option>`
+    ).join('');
+  }
 
   const DIAS_SEMANA = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+
+  const btnNuevo = document.getElementById('btnNuevoTerapeuta');
+  if (btnNuevo) {
+    btnNuevo.innerHTML = IS_SUPERADMIN
+      ? '<i class="fas fa-plus"></i> Nuevo usuario'
+      : '<i class="fas fa-plus"></i> Nuevo terapeuta';
+  }
 
   async function loadTerapeutas() {
     try {
@@ -24,7 +58,7 @@
             <div class="ter-card-name">${esc(fullName(t))}</div>
             <div class="ter-card-meta">
               <span><i class="fas fa-user" style="width:12px"></i> ${esc(t.username||'—')}</span>
-              <span><i class="fas fa-tag" style="width:12px"></i> ${esc(t.rol)}</span>
+              <span><i class="fas fa-tag" style="width:12px"></i> ${esc(ROLE_LABELS[t.rol] || t.rol)}</span>
               ${t.telefono ? `<span><i class="fas fa-mobile-alt" style="width:12px"></i> ${esc(t.telefono)}</span>` : ''}
             </div>
             <div class="ter-card-footer">
@@ -46,7 +80,17 @@
   }
 
   function showTerapeutaForm(t = null) {
-    openModal(t ? 'Editar terapeuta' : 'Nuevo terapeuta', `
+    const canEdit = !t || IS_SUPERADMIN || t.rol === 'terapeuta';
+    if (!canEdit) {
+      toast('No puedes editar usuarios administradores', 'danger');
+      return;
+    }
+
+    const roles = assignableRoles();
+    const showRol = roles.length > 0;
+    const defaultRol = roles[0] || 'terapeuta';
+
+    openModal(t ? 'Editar usuario' : (IS_SUPERADMIN ? 'Nuevo usuario' : 'Nuevo terapeuta'), `
       <div class="form-row">
         <div class="form-group"><label class="form-label">Nombre *</label><input class="form-control" id="f_nombre" value="${esc(t?.nombre||'')}"></div>
         <div class="form-group"><label class="form-label">Apellido *</label><input class="form-control" id="f_apellido" value="${esc(t?.apellido||'')}"></div>
@@ -56,13 +100,9 @@
       <div class="form-group"><label class="form-label">Email</label><input type="email" class="form-control" id="f_email" value="${esc(t?.email||'')}"></div>
       ${t ? `<div class="form-group"><label class="form-label">Nueva contraseña (vacío = no cambiar)</label><input type="password" class="form-control" id="f_password" placeholder="••••••••"></div>` : ''}
       <div class="form-row">
-        <div class="form-group"><label class="form-label">Rol</label>
-          <select class="form-select" id="f_rol">
-            <option value="terapeuta"  ${t?.rol==='terapeuta' ?'selected':''}>Terapeuta</option>
-            <option value="recepcion"  ${t?.rol==='recepcion' ?'selected':''}>Recepción</option>
-            <option value="superadmin" ${t?.rol==='superadmin'?'selected':''}>Superadmin</option>
-          </select>
-        </div>
+        ${showRol ? `<div class="form-group"><label class="form-label">Rol</label>
+          <select class="form-select" id="f_rol">${roleOptionsHtml(t?.rol || defaultRol)}</select>
+        </div>` : '<input type="hidden" id="f_rol" value="terapeuta">'}
         ${t ? `<div class="form-group"><label class="form-label">Estado</label>
           <select class="form-select" id="f_activo">
             <option value="1" ${t.activo?'selected':''}>Activo</option>

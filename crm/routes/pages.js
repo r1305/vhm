@@ -2,6 +2,7 @@ const express = require('express');
 const router  = express.Router();
 const db      = require('../lib/db');
 const { getHomePath } = require('../lib/crmNav');
+const { isStaffAdmin, isSuperAdmin } = require('../lib/roles');
 
 const TITLES = {
   dashboard:       'Dashboard',
@@ -12,7 +13,7 @@ const TITLES = {
   consentimientos: 'Consentimientos',
   pagos:           'Pagos',
   espera:          'Lista de espera',
-  terapeutas:      'Terapeutas',
+  terapeutas:      'Usuarios',
   reportes:        'Reportes',
   analitica:       'Analítica web',
   marketing:       'Email Marketing',
@@ -44,13 +45,12 @@ function requireSession(req, res, next) {
 
 // ── Middleware: solo admin ───────────────────────────────────────
 function requireAdmin(req, res, next) {
-  const rol = req.session?.user?.rol;
-  if (rol === 'superadmin' || rol === 'recepcion') return next();
+  if (isStaffAdmin(req.session?.user?.rol)) return next();
   res.redirect(`${req.app.locals.BASE}/${getHomePath(req.session?.user)}`);
 }
 
 function requireSuperAdmin(req, res, next) {
-  if (req.session?.user?.rol === 'superadmin') return next();
+  if (isSuperAdmin(req.session?.user?.rol)) return next();
   res.redirect(`${req.app.locals.BASE}/${getHomePath(req.session?.user)}`);
 }
 
@@ -58,7 +58,7 @@ function requireSuperAdmin(req, res, next) {
 async function render(res, view, data = {}) {
   const BASE    = res.app.locals.BASE;
   const user    = data.user;
-  const isAdmin = ['superadmin', 'recepcion'].includes(user?.rol);
+  const isAdmin = isStaffAdmin(user?.rol);
   const { getMenuPermisosForUser } = require('../lib/menuPermisos');
   const menuPermisos = await getMenuPermisosForUser(user.id, user?.rol || 'terapeuta');
   const scripts = data.scripts
@@ -307,7 +307,7 @@ router.get('/pagos', requireSession, requireAdmin, async (req, res) => {
 router.get('/disponibilidad', requireSession, async (req, res) => {
   const user = req.session.user;
   try {
-    const isAdmin = ['superadmin','recepcion'].includes(user.rol);
+    const isAdmin = isStaffAdmin(user.rol);
     const [terapeutas] = isAdmin
       ? await db.execute('SELECT id, nombre, apellido, username FROM terapeutas WHERE activo=1 ORDER BY nombre')
       : [[{ id: user.id, nombre: user.nombre, apellido: user.apellido, username: user.username }]];

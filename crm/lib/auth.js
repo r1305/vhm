@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const { isStaffAdmin, isSuperAdmin } = require('./roles');
 
 const SECRET = process.env.JWT_SECRET || (() => {
   console.warn('[crm/auth] ⚠️ JWT_SECRET no configurado — usando fallback inseguro. Define JWT_SECRET en .env');
@@ -10,12 +11,10 @@ function signToken(payload) {
 }
 
 function auth(req, res, next) {
-  // Sesión cookie (MPA)
   if (req.session?.user) {
     req.user = req.session.user;
     return next();
   }
-  // JWT Bearer (API externa)
   const header = req.headers.authorization || '';
   const token = header.startsWith('Bearer ') ? header.slice(7) : null;
   if (!token) return res.status(401).json({ error: 'No autenticado' });
@@ -29,18 +28,26 @@ function auth(req, res, next) {
 
 function authAdmin(req, res, next) {
   auth(req, res, () => {
-    if (!['superadmin', 'recepcion'].includes(req.user.rol)) {
+    if (!isStaffAdmin(req.user.rol)) {
       return res.status(403).json({ error: 'Acceso restringido' });
     }
     next();
   });
 }
 
-// Filtra registros por terapeuta_id salvo superadmin/recepcion
+function authSuperAdmin(req, res, next) {
+  auth(req, res, () => {
+    if (!isSuperAdmin(req.user.rol)) {
+      return res.status(403).json({ error: 'Solo superadmin' });
+    }
+    next();
+  });
+}
+
 function ownerFilter(req, alias = '') {
-  if (['superadmin', 'recepcion'].includes(req.user?.rol)) return { sql: '', params: [] };
+  if (isStaffAdmin(req.user?.rol)) return { sql: '', params: [] };
   const col = alias ? `${alias}.terapeuta_id` : 'terapeuta_id';
   return { sql: ` AND ${col} = ?`, params: [req.user.id] };
 }
 
-module.exports = { signToken, auth, authAdmin, ownerFilter };
+module.exports = { signToken, auth, authAdmin, authSuperAdmin, ownerFilter };
