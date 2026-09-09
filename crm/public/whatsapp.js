@@ -172,7 +172,7 @@
         body: { mensaje: text },
       });
       if (res.conversacionId) selectedId = res.conversacionId;
-      const msgs = await api(`/whatsapp/conversaciones/${selectedId}/mensajes`);
+      const msgs = await api(`/whatsapp/conversaciones/${selectedId}/mensajes?sync=1`);
       renderMessages(msgs);
       await loadConversaciones();
     } catch (err) {
