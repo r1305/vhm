@@ -220,6 +220,7 @@ const ADMIN_PAGES = [
   'tribu-users.html',
   'usuarios.html',
   'config.html',
+  'accesos.html',
   'index.html',
 ];
 
@@ -405,6 +406,7 @@ app.get('/api/redes', async (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/reclamos', reclamosRoutes);
 app.use('/api/usuarios', usuariosRoutes);
+app.use('/api/accesos', require('./accesosRoutes'));
 app.use('/api/config-email', configEmailRoutes);
 app.use('/api/config-pixel', configPixelRoutes);
 app.use('/api/config-whatsapp', configWhatsappRoutes);

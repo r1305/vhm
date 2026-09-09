@@ -16,6 +16,41 @@
     return r === 'SUPER_ADMIN' || r === 'ADMIN';
   }
 
+  function getMenuItems() {
+    if (isSuperAdmin()) return null;
+    const u = state.user;
+    return (u && Array.isArray(u.menuItems)) ? u.menuItems : [];
+  }
+
+  function hasAccess(pageId) {
+    if (!pageId) return true;
+    if (isSuperAdmin()) return true;
+    const items = getMenuItems();
+    return items.includes(pageId);
+  }
+
+  async function ensureMenuItems() {
+    if (!state.token) return [];
+    if (isSuperAdmin()) return [];
+    try {
+      const res = await fetch(AdminApi.API_BASE + '/accesos/mi-menu', {
+        credentials: 'same-origin',
+        headers: AdminApi.authHeaders(),
+      });
+      if (!res.ok) return getMenuItems();
+      const data = await res.json();
+      const items = data.items || [];
+      const u = state.user;
+      if (u) {
+        u.menuItems = items;
+        localStorage.setItem('user', JSON.stringify(u));
+      }
+      return items;
+    } catch (_) {
+      return getMenuItems();
+    }
+  }
+
   function applyTheme(dark) {
     document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
     localStorage.setItem('theme', dark ? 'dark' : 'light');
@@ -68,7 +103,7 @@
   }
 
   global.AdminAuth = {
-    state, isSuperAdmin, isAdmin, login, logout, loadTheme, toggleTheme,
-    requireAuth, requireSuperAdmin,
+    state, isSuperAdmin, isAdmin, getMenuItems, hasAccess, ensureMenuItems,
+    login, logout, loadTheme, toggleTheme, requireAuth, requireSuperAdmin,
   };
 })(window);

@@ -1,5 +1,6 @@
 (function () {
-  AdminLayout.init({ page: 'config', title: '⚙️ Configuración', requireSuperAdmin: true });
+  AdminLayout.init({ page: 'config', title: '⚙️ Configuración', requireSuperAdmin: true }).then(function (ok) {
+  if (!ok) return;
 
   const tabsLoaded = {};
   let susPlanes = [];
@@ -711,4 +712,5 @@
   AdminUtils.bindModalClose(document.getElementById('page-main'));
   bindEvents();
   window.onAdminTabChange('email');
+  });
 })();

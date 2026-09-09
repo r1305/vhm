@@ -1,5 +1,6 @@
 (function () {
-  AdminLayout.init({ page: 'testimonios', title: '⭐ Testimonios' });
+  AdminLayout.init({ page: 'testimonios', title: '⭐ Testimonios' }).then(function (ok) {
+  if (!ok) return;
 
   var testimonios = [];
   var seccionVisible = false;
@@ -249,4 +250,5 @@
       toast('Error de conexión', 'error');
     }
   }
+  });
 })();

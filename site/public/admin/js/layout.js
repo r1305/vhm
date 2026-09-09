@@ -1,47 +1,69 @@
 (function (global) {
-  const NAV = [
-    { id: 'reclamos', href: 'reclamos.html', icon: '📋', label: 'Reclamos', roles: 'all' },
-    { id: 'testimonios', href: 'testimonios.html', icon: '⭐', label: 'Testimonios', roles: 'admin' },
-    { id: 'videos', href: 'videos.html', icon: '🎬', label: 'La Tribu', roles: 'all' },
-    { id: 'tribu-users', href: 'tribu-users.html', icon: '🫂', label: 'Usuarios Tribu', roles: 'all' },
-    { id: 'usuarios', href: 'usuarios.html', icon: '👥', label: 'Administradores', roles: 'all' },
-    { id: 'config', href: 'config.html', icon: '⚙️', label: 'Ajustes', roles: 'admin', superOnlyRoute: true },
-  ];
+  const NAV_META = {
+    reclamos: { href: 'reclamos.html', icon: '📋', label: 'Reclamos', section: 'principal' },
+    testimonios: { href: 'testimonios.html', icon: '⭐', label: 'Testimonios', section: 'principal' },
+    videos: { href: 'videos.html', icon: '🎬', label: 'La Tribu', section: 'principal' },
+    'tribu-users': { href: 'tribu-users.html', icon: '🫂', label: 'Usuarios Tribu', section: 'principal' },
+    usuarios: { href: 'usuarios.html', icon: '👥', label: 'Administradores', section: 'config' },
+    config: { href: 'config.html', icon: '⚙️', label: 'Ajustes', section: 'config' },
+    accesos: { href: 'accesos.html', icon: '🔐', label: 'Accesos', section: 'config' },
+  };
+
+  const NAV_ORDER = ['reclamos', 'testimonios', 'videos', 'tribu-users', 'usuarios', 'config', 'accesos'];
 
   function logoSrc() {
     return AdminApi.asset('logo_vhm.jpeg');
   }
 
-  function canSee(item) {
-    if (item.id === 'config' && !AdminAuth.isSuperAdmin()) return false;
-    if (item.roles === 'admin') return AdminAuth.isAdmin();
-    return true;
+  function canSee(itemId) {
+    return AdminAuth.hasAccess(itemId);
   }
 
-  function init(options) {
+  function firstAllowedHref() {
+    for (let i = 0; i < NAV_ORDER.length; i++) {
+      const id = NAV_ORDER[i];
+      if (canSee(id) && NAV_META[id]) return NAV_META[id].href;
+    }
+    return 'reclamos.html';
+  }
+
+  async function init(options) {
     options = options || {};
     AdminAuth.loadTheme();
 
-    if (options.public) return;
+    if (options.public) return true;
 
-    if (options.requireSuperAdmin) {
-      if (!AdminAuth.requireSuperAdmin()) return;
-    } else if (!AdminAuth.requireAuth()) {
-      return;
+    if (!AdminAuth.requireAuth()) return false;
+
+    await AdminAuth.ensureMenuItems();
+
+    if (options.requireSuperAdmin && !AdminAuth.isSuperAdmin()) {
+      global.location.href = firstAllowedHref();
+      return false;
+    }
+
+    const page = options.page || '';
+    if (page && !AdminAuth.hasAccess(page)) {
+      global.location.href = firstAllowedHref();
+      return false;
     }
 
     const user = AdminAuth.state.user || {};
     const initial = (user.nombre || user.username || 'A').charAt(0).toUpperCase();
     const rolLabel = user.rol === 'SUPER_ADMIN' ? 'Super Admin' : 'Administrador';
-    const page = options.page || '';
     const title = options.title || 'Panel';
 
-    const navPrincipal = NAV.filter(function (n) { return n.id !== 'usuarios' && n.id !== 'config'; });
-    const navConfig = NAV.filter(function (n) { return n.id === 'usuarios' || n.id === 'config'; });
+    const navPrincipal = NAV_ORDER.filter(function (id) {
+      return NAV_META[id] && NAV_META[id].section === 'principal';
+    });
+    const navConfig = NAV_ORDER.filter(function (id) {
+      return NAV_META[id] && NAV_META[id].section === 'config';
+    });
 
     function navHtml(items) {
-      return items.filter(canSee).map(function (item) {
-        const active = item.id === page ? ' active' : '';
+      return items.filter(canSee).map(function (id) {
+        const item = NAV_META[id];
+        const active = id === page ? ' active' : '';
         return '<button type="button" class="nav-item' + active + '" data-href="' + item.href + '">' +
           '<span class="nav-icon">' + item.icon + '</span> ' + AdminApi.escapeHtml(item.label) + '</button>';
       }).join('');
@@ -49,7 +71,7 @@
 
     const root = document.getElementById('admin-root');
     const main = document.getElementById('page-main');
-    if (!root || !main) return;
+    if (!root || !main) return false;
 
     root.innerHTML =
       '<div class="sidebar-overlay" id="sidebar-overlay"></div>' +
@@ -104,7 +126,9 @@
       sidebar.classList.remove('open');
       overlay.classList.remove('show');
     });
+
+    return true;
   }
 
-  global.AdminLayout = { init, logoSrc };
+  global.AdminLayout = { init, logoSrc, firstAllowedHref, NAV_META };
 })(window);

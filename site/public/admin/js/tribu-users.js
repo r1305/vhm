@@ -1,5 +1,6 @@
 (function () {
-  AdminLayout.init({ page: 'tribu-users', title: '🫂 Usuarios Tribu' });
+  AdminLayout.init({ page: 'tribu-users', title: '🫂 Usuarios Tribu' }).then(function (ok) {
+  if (!ok) return;
 
   const bodyEl = document.getElementById('tribu-body');
   const inpBusqueda = document.getElementById('inp-busqueda');
@@ -244,4 +245,5 @@
       toast('No se pudo copiar', 'error');
     });
   }
+  });
 })();

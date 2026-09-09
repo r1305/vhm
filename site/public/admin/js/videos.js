@@ -840,10 +840,12 @@
   }
 
   /* ── boot ── */
-  AdminLayout.init({ page: 'videos', title: '🎬 La Tribu' });
-  AdminUtils.bindTabs('.sub-tabs');
-  AdminUtils.bindModalClose();
-  initMesSelect();
-  bindEvents();
-  window.onAdminTabChange('videos');
+  AdminLayout.init({ page: 'videos', title: '🎬 La Tribu' }).then(function (ok) {
+    if (!ok) return;
+    AdminUtils.bindTabs('.sub-tabs');
+    AdminUtils.bindModalClose();
+    initMesSelect();
+    bindEvents();
+    window.onAdminTabChange('videos');
+  });
 })();

@@ -1,5 +1,6 @@
 (function () {
-  AdminLayout.init({ page: 'usuarios', title: '👥 Administradores' });
+  AdminLayout.init({ page: 'usuarios', title: '👥 Administradores' }).then(function (ok) {
+  if (!ok) return;
 
   const bodyEl = document.getElementById('usuarios-body');
   const btnNuevo = document.getElementById('btn-nuevo');
@@ -213,4 +214,5 @@
     if (action === 'editar') editar(id);
     else if (action === 'eliminar') eliminar(id);
   }
+  });
 })();

@@ -1,4 +1,5 @@
 const pool = require('./db');
+const { ensureAccesosSchema, backfillAccesos } = require('./lib/siteAccesos');
 
 // Textos por defecto del hero de "Camino Interior" (los que ya estaban en el HTML).
 const LANDING_INTRO_DEFAULT = 'Cada masterclass que encontrarás aquí nació de historias reales. No estás entrando a ver "contenido": estás entrando a un espacio pensado para devolverte claridad, fuerza y dirección cuando más lo necesitas.';
@@ -65,6 +66,8 @@ async function crearEsquema() {
   }
 
   await renumerarOrdenSiHaceFalta();
+  await ensureAccesosSchema();
+  await backfillAccesos();
 
   // Configuración del landing de "Camino Interior" (fila única id = 1).
   await pool.query(`
