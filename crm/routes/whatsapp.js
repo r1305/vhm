@@ -12,7 +12,30 @@ const {
   getSessionMessagesByPhone,
   getChatMessages,
   resolveLidPhone,
+  markChatRead,
 } = require('../lib/openwa');
+
+function resolveChatJidForConv(conv) {
+  return conv.lid_chat_id
+    || (conv.chat_id?.includes('@lid') ? conv.chat_id : null)
+    || (isWhatsAppPhone(conv.phone) ? (normalizeChatId(conv.chat_id) || toChatId(conv.phone)) : null)
+    || conv.chat_id
+    || toChatId(conv.phone);
+}
+
+function mapAckStatus(status) {
+  const n = typeof status === 'number' ? status : Number(status);
+  if (Number.isFinite(n)) {
+    if (n >= 4) return 'read';
+    if (n === 3) return 'delivered';
+    if (n === 2) return 'sent';
+    return 'pending';
+  }
+  const s = String(status || '').toLowerCase();
+  if (s.includes('read') || s.includes('played')) return 'read';
+  if (s.includes('deliver')) return 'delivered';
+  return 'sent';
+}
 
 const router = Router();
 
@@ -544,12 +567,13 @@ async function insertMensaje({
   }
 
   const storeWaId = waMessageId && isLikelyWaMessageId(waMessageId) ? waMessageId : null;
+  const ackStatus = direccion === 'outgoing' ? 'sent' : null;
 
   try {
     const [r] = await pool.execute(
       `INSERT INTO wa_mensajes
-        (conversacion_id, wa_message_id, direccion, tipo, cuerpo, enviado_por, origen, timestamp_wa)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        (conversacion_id, wa_message_id, direccion, tipo, cuerpo, enviado_por, origen, timestamp_wa, ack_status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         conversacionId,
         storeWaId,
@@ -559,6 +583,7 @@ async function insertMensaje({
         enviadoPor || null,
         origen || 'whatsapp',
         timestamp || null,
+        ackStatus,
       ]
     );
     return r.insertId;
@@ -592,6 +617,18 @@ router.post('/webhook', async (req, res) => {
 
     const { event, data } = req.body || {};
     if (!event || !data) return res.json({ ok: true, skipped: true });
+
+    if (event === 'message:ack') {
+      const ack = mapAckStatus(data.status ?? data.ack);
+      if (data.messageId) {
+        await pool.execute(
+          `UPDATE wa_mensajes SET ack_status = ?
+           WHERE wa_message_id = ? AND direccion = 'outgoing'`,
+          [ack, data.messageId]
+        );
+      }
+      return res.json({ ok: true });
+    }
 
     if (event === 'message:received' || event === 'message:sent') {
       const contact = resolveWebhookContact(data);
@@ -712,8 +749,39 @@ router.get('/conversaciones/:id/mensajes', authWhatsApp, async (req, res) => {
 // ── Marcar conversación como leída ──────────────────────────────
 router.patch('/conversaciones/:id/leer', authWhatsApp, async (req, res) => {
   try {
-    await pool.execute('UPDATE wa_conversaciones SET no_leidos = 0 WHERE id = ?', [req.params.id]);
-    res.json({ ok: true });
+    const [[conv]] = await pool.execute('SELECT * FROM wa_conversaciones WHERE id = ?', [req.params.id]);
+    if (!conv) return res.status(404).json({ error: 'Conversación no encontrada' });
+
+    const conversacionId = await mergeConversacionesByPhone(conv.phone, conv.id) || conv.id;
+    const [[fresh]] = await pool.execute('SELECT * FROM wa_conversaciones WHERE id = ?', [conversacionId]);
+
+    if (isOpenwaConfigured()) {
+      const chatJid = resolveChatJidForConv(fresh || conv);
+      const [incoming] = await pool.execute(
+        `SELECT wa_message_id FROM wa_mensajes
+         WHERE conversacion_id = ? AND direccion = 'incoming'
+           AND wa_leido = 0 AND wa_message_id IS NOT NULL
+         ORDER BY id ASC LIMIT 40`,
+        [conversacionId]
+      );
+      if (chatJid && incoming.length) {
+        try {
+          await markChatRead({
+            chatId: chatJid,
+            messageIds: incoming.map(r => r.wa_message_id),
+          });
+        } catch (err) {
+          console.error('[whatsapp/leer]', err.message);
+        }
+      }
+      await pool.execute(
+        'UPDATE wa_mensajes SET wa_leido = 1 WHERE conversacion_id = ? AND direccion = ?',
+        [conversacionId, 'incoming']
+      );
+    }
+
+    await pool.execute('UPDATE wa_conversaciones SET no_leidos = 0 WHERE id = ?', [conversacionId]);
+    res.json({ ok: true, conversacionId });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

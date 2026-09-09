@@ -94,7 +94,10 @@
       const still = conversaciones.find(c => c.id === selectedId);
       if (still) {
         if (prev && still.no_leidos > (prev.no_leidos || 0)) {
-          fetchMensajes(selectedId).then(renderMessages).catch(() => {});
+          fetchMensajes(selectedId).then(msgs => {
+            renderMessages(msgs);
+            api(`/whatsapp/conversaciones/${selectedId}/leer`, { method: 'PATCH', body: {} }).catch(() => {});
+          }).catch(() => {});
         }
         updateHeader(still);
       } else if (prev?.phone) {
@@ -140,6 +143,14 @@
     return '';
   }
 
+  function ackHtml(m) {
+    if (m.direccion !== 'outgoing') return '';
+    const s = m.ack_status || 'sent';
+    if (s === 'read') return '<span class="wa-msg-ack read" title="Leído">✓✓</span>';
+    if (s === 'delivered') return '<span class="wa-msg-ack" title="Entregado">✓✓</span>';
+    return '<span class="wa-msg-ack" title="Enviado">✓</span>';
+  }
+
   function renderMessages(msgs) {
     const box = document.getElementById('waMessages');
     if (!msgs.length) {
@@ -156,7 +167,10 @@
       const sender = m.enviado_nombre ? ` · ${m.enviado_nombre}` : '';
       return `<div class="wa-msg ${cls}">
         <div>${esc(m.cuerpo || '')}</div>
-        <div class="wa-msg-time">${fmtTime(ts)}${esc(sender)}</div>
+        <div class="wa-msg-meta">
+          <span class="wa-msg-time">${fmtTime(ts)}${esc(sender)}</span>
+          ${ackHtml(m)}
+        </div>
         ${source ? `<div class="wa-msg-source">${esc(source)}</div>` : ''}
       </div>`;
     }).join('');
