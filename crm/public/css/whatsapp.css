@@ -1,10 +1,22 @@
-.crm-view-whatsapp .crm-content { padding: 0; height: calc(100vh - 56px); overflow: hidden; }
+.crm-content.crm-view-whatsapp {
+  padding: 0;
+  flex: 1;
+  min-height: 0;
+  height: calc(100vh - 56px);
+  max-height: calc(100vh - 56px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
 
 .wa-inbox {
   display: grid;
   grid-template-columns: 320px 1fr;
+  flex: 1;
+  min-height: 0;
   height: 100%;
   background: var(--bg);
+  overflow: hidden;
 }
 
 .wa-sidebar {
@@ -104,6 +116,9 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
   background: var(--bg);
 }
 
@@ -118,13 +133,21 @@
 .wa-contact-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
 
 .wa-messages {
-  flex: 1;
+  flex: 1 1 auto;
   overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
   padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 8px;
   min-height: 0;
+  max-height: 100%;
+  scroll-behavior: smooth;
+}
+
+.wa-panel-header {
+  flex-shrink: 0;
 }
 
 .wa-msg {
@@ -170,6 +193,7 @@
 
 .wa-compose {
   display: flex;
+  flex-shrink: 0;
   gap: 8px;
   padding: 12px 16px;
   border-top: 1px solid var(--border);
