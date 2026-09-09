@@ -143,15 +143,28 @@ async function absorbOrphanLidConversations(primaryId) {
   return primaryId;
 }
 
+function isLikelyWaMessageId(id) {
+  const s = String(id || '').trim();
+  if (!s) return false;
+  if (/^\d{1,8}$/.test(s)) return false;
+  return s.length >= 8;
+}
+
 function dedupeMensajes(rows) {
-  const seen = new Set();
+  const seenWa = new Set();
+  const seenContent = new Set();
   return rows.filter((m) => {
+    if (m.wa_message_id && isLikelyWaMessageId(m.wa_message_id)) {
+      const k = `wa:${m.wa_message_id}`;
+      if (seenWa.has(k)) return false;
+      seenWa.add(k);
+      return true;
+    }
     const ts = m.timestamp_wa || Math.floor(new Date(m.created_at).getTime() / 1000);
-    const key = m.wa_message_id
-      ? `wa:${m.wa_message_id}`
-      : `${m.direccion}:${m.cuerpo}:${ts}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
+    const bucket = Math.floor(ts / 3);
+    const ck = `${m.direccion}:${m.cuerpo}:${bucket}`;
+    if (seenContent.has(ck)) return false;
+    seenContent.add(ck);
     return true;
   });
 }
@@ -215,27 +228,7 @@ async function hasRecentOutgoingCrm({ phone, cuerpo, waMessageId }) {
 }
 
 async function getRelatedConversacionIds(conv) {
-  const ids = new Set([conv.id]);
-  const phone = isWhatsAppPhone(conv.phone) ? normalizePhone(conv.phone) : '';
-  const tail = phone ? phoneTail(phone) : '';
-
-  if (tail) {
-    const [rows] = await pool.execute(
-      `SELECT id FROM wa_conversaciones
-       WHERE LENGTH(REPLACE(phone,'+','')) BETWEEN 10 AND 13
-         AND RIGHT(REPLACE(phone,'+',''), 9) = ?`,
-      [tail]
-    );
-    rows.forEach(r => ids.add(r.id));
-  }
-  if (conv.lid_chat_id) {
-    const [rows] = await pool.execute(
-      'SELECT id FROM wa_conversaciones WHERE lid_chat_id = ? OR chat_id = ?',
-      [conv.lid_chat_id, conv.lid_chat_id]
-    );
-    rows.forEach(r => ids.add(r.id));
-  }
-  return [...ids];
+  return [conv.id];
 }
 
 function normalizeOpenwaRow(m) {
@@ -246,8 +239,9 @@ function normalizeOpenwaRow(m) {
     ts = Number.isFinite(parsed) ? parsed : null;
   }
   const direction = m.direction || (m.fromMe ? 'outgoing' : 'incoming');
+  const rawId = m.wa_message_id || m.messageId || null;
   return {
-    wa_message_id: m.wa_message_id || m.messageId || m.id || null,
+    wa_message_id: rawId || (isLikelyWaMessageId(m.id) ? m.id : null),
     chat_id: m.chat_id || null,
     body: m.body || m.text || '',
     type: m.type || 'text',
@@ -289,8 +283,6 @@ async function syncMensajesFromOpenwa(conv, conversacionId) {
 
   const sources = [
     () => searchMessagesByPhone(conv.phone, sessionId).catch(() => []),
-    () => getSessionMessagesByPhone(conv.phone, sessionId, 300).catch(() => []),
-    () => conv.chat_id ? getChatMessages(conv.chat_id, sessionId).catch(() => []) : Promise.resolve([]),
     () => conv.lid_chat_id ? getChatMessages(conv.lid_chat_id, sessionId).catch(() => []) : Promise.resolve([]),
   ];
 
@@ -527,7 +519,19 @@ async function insertMensaje({
     if (recent.length) return recent[0].id;
   }
 
-  if (waMessageId) {
+  if (!waMessageId && direccion === 'incoming' && cuerpo) {
+    const ts = timestamp || Math.floor(Date.now() / 1000);
+    const [recentIn] = await pool.execute(
+      `SELECT id FROM wa_mensajes
+       WHERE conversacion_id = ? AND direccion = 'incoming' AND cuerpo = ?
+         AND ABS(COALESCE(timestamp_wa, UNIX_TIMESTAMP(created_at)) - ?) <= 5
+       ORDER BY id DESC LIMIT 1`,
+      [conversacionId, cuerpo, ts]
+    );
+    if (recentIn.length) return recentIn[0].id;
+  }
+
+  if (waMessageId && isLikelyWaMessageId(waMessageId)) {
     const [dup] = await pool.execute(
       'SELECT id, conversacion_id, cuerpo FROM wa_mensajes WHERE wa_message_id = ? LIMIT 1',
       [waMessageId]
@@ -539,6 +543,8 @@ async function insertMensaje({
     }
   }
 
+  const storeWaId = waMessageId && isLikelyWaMessageId(waMessageId) ? waMessageId : null;
+
   try {
     const [r] = await pool.execute(
       `INSERT INTO wa_mensajes
@@ -546,7 +552,7 @@ async function insertMensaje({
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         conversacionId,
-        waMessageId || null,
+        storeWaId,
         direccion,
         tipo || 'text',
         cuerpo || '',
