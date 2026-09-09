@@ -51,7 +51,7 @@ function toChatId(phoneOrJid) {
   if (raw.includes('@lid')) return raw;
   if (raw.includes('@')) return raw;
   const digits = normalizePhone(raw);
-  return digits ? `${digits}@c.us` : null;
+  return digits ? `${digits}@s.whatsapp.net` : null;
 }
 
 async function openwaFetch(path, options = {}) {
