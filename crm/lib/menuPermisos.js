@@ -1,15 +1,23 @@
 const pool = require('./db');
 
+/** Módulos ocultos temporalmente (no aparecen en menú ni permisos) */
+const HIDDEN_MENU_ITEMS = ['pagos'];
+
 const ALL_MENU_ITEMS = [
   'dashboard', 'agenda', 'calendario', 'pacientes', 'whatsapp', 'mi_reporte',
-  'disponibilidad', 'historial', 'pagos', 'analitica', 'integraciones',
+  'disponibilidad', 'historial', 'analitica', 'integraciones',
   'terapeutas', 'reportes', 'permisos_menu',
 ];
 
 const STAFF_DEFAULTS = [
   'dashboard', 'agenda', 'calendario', 'disponibilidad', 'pacientes', 'whatsapp',
-  'historial', 'pagos', 'analitica', 'integraciones', 'terapeutas', 'reportes',
+  'historial', 'analitica', 'integraciones', 'terapeutas', 'reportes',
 ];
+
+function stripHiddenItems(items) {
+  for (const hidden of HIDDEN_MENU_ITEMS) items.delete(hidden);
+  return items;
+}
 
 const DEFAULTS_BY_ROL = {
   superadmin: ALL_MENU_ITEMS,
@@ -35,13 +43,13 @@ async function getMenuPermisosForUser(userId, rol) {
     } else {
       items.delete('permisos_menu');
     }
-    return items;
+    return stripHiddenItems(items);
   }
-  return new Set(DEFAULTS_BY_ROL[rol] || DEFAULTS_BY_ROL.terapeuta);
+  return stripHiddenItems(new Set(DEFAULTS_BY_ROL[rol] || DEFAULTS_BY_ROL.terapeuta));
 }
 
 async function setMenuPermisosForUser(userId, items, rol) {
-  let safe = sanitizeItems(items);
+  let safe = sanitizeItems(items).filter(i => !HIDDEN_MENU_ITEMS.includes(i));
   if (rol === 'superadmin') {
     if (!safe.includes('permisos_menu')) safe.push('permisos_menu');
   } else {
@@ -109,6 +117,7 @@ async function listUsersWithPermisos() {
 
 module.exports = {
   ALL_MENU_ITEMS,
+  HIDDEN_MENU_ITEMS,
   DEFAULTS_BY_ROL,
   getMenuPermisosForUser,
   setMenuPermisosForUser,

@@ -4,7 +4,7 @@
 (function () {
   'use strict';
 
-  const { api, toast, esc, fmtMoney } = window.CRM;
+  const { api, toast, esc } = window.CRM;
 
   const COLORS = ['#7c3aed','#4f46e5','#0891b2','#16a34a','#d97706','#dc2626','#db2777','#6366f1','#0ea5e9','#84cc16'];
 
@@ -84,7 +84,6 @@
       const k = d.kpis || {};
 
       document.getElementById('reporteKpis').innerHTML = `
-        <div class="kpi-card accent"><div class="kpi-label">Ingresos</div><div class="kpi-value" style="font-size:1.3rem">${fmtMoney(k.ingresos)}</div><div class="kpi-sub">S/ ${k.ingreso_promedio_cita||0} / cita</div></div>
         <div class="kpi-card success"><div class="kpi-label">Citas realizadas</div><div class="kpi-value">${k.citas_realizadas||0}</div><div class="kpi-sub">de ${k.citas_periodo||0} programadas</div></div>
         <div class="kpi-card" style="border-left:3px solid var(--primary)"><div class="kpi-label">Tasa asistencia</div><div class="kpi-value">${k.tasa_asistencia!=null?k.tasa_asistencia+'%':'—'}</div><div class="kpi-sub">${k.no_shows||0} no-shows</div></div>
         <div class="kpi-card warning"><div class="kpi-label">Leads captados</div><div class="kpi-value">${k.leads_periodo||0}</div><div class="kpi-sub">${k.leads_convertidos||0} convertidos (${k.tasa_conversion_leads!=null?k.tasa_conversion_leads+'%':'—'})</div></div>

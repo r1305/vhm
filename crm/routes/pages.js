@@ -11,7 +11,6 @@ const TITLES = {
   leads:           'Leads',
   historial:       'Historial clínico',
   consentimientos: 'Consentimientos',
-  pagos:           'Pagos',
   espera:          'Lista de espera',
   terapeutas:      'Usuarios',
   reportes:        'Reportes',
@@ -157,8 +156,6 @@ router.get('/dashboard', requireSession, (req, res, next) => {
   const user = req.session.user;
   try {
     const [[{ pacientes_activos }]] = await db.execute("SELECT COUNT(*) AS pacientes_activos FROM pacientes WHERE estado = 'activo'");
-    const [[{ ingresos_mes }]]      = await db.execute("SELECT COALESCE(SUM(monto),0) AS ingresos_mes FROM pagos WHERE estado='completado' AND DATE_FORMAT(created_at,'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')");
-    const [[{ ingresos_mes_ant }]]  = await db.execute("SELECT COALESCE(SUM(monto),0) AS ingresos_mes_ant FROM pagos WHERE estado='completado' AND DATE_FORMAT(created_at,'%Y-%m') = DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 1 MONTH),'%Y-%m')");
     const [[{ retenidos }]]         = await db.execute('SELECT COUNT(*) AS retenidos FROM (SELECT paciente_id FROM paciente_sesiones GROUP BY paciente_id HAVING COUNT(*) >= 2) x');
     const [[{ altas_mes }]]         = await db.execute("SELECT COUNT(*) AS altas_mes FROM pacientes WHERE estado='alta' AND DATE_FORMAT(updated_at,'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')");
     const [[{ sin_paquete }]]       = await db.execute("SELECT COUNT(*) AS sin_paquete FROM pacientes p WHERE p.estado='activo' AND NOT EXISTS (SELECT 1 FROM paciente_sesiones ps WHERE ps.paciente_id = p.id)");
@@ -171,8 +168,6 @@ router.get('/dashboard', requireSession, (req, res, next) => {
     const tasaRetencion   = pacientes_activos > 0 ? Math.round((retenidos / pacientes_activos) * 100) : 0;
     const tasaConversion  = leads_mes > 0 ? Math.round((convertidos_mes / leads_mes) * 100) : 0;
     const tasaNoShow      = citas_mes > 0 ? Math.round((no_show_mes / citas_mes) * 100) : 0;
-    const varMes          = ingresos_mes_ant > 0 ? ((ingresos_mes - ingresos_mes_ant) / ingresos_mes_ant * 100).toFixed(1) : null;
-
     // Próximos a agotar sesiones (≤2 restantes)
     const [proximosAgotar] = await db.execute(`
       SELECT p.id, p.nombre, p.apellido, p.telefono, t.nombre AS terapeuta_nombre,
@@ -236,7 +231,6 @@ router.get('/dashboard', requireSession, (req, res, next) => {
 
     const kpis = [
       { label: 'Pacientes activos',   value: pacientes_activos, css: 'accent' },
-      { label: 'Ingresos del mes',    value: `S/ ${parseFloat(ingresos_mes).toFixed(2)}`, sub: varMes !== null ? `${varMes > 0 ? '+' : ''}${varMes}% vs mes anterior` : null, css: '' },
       { label: 'Tasa de retención',   value: `${tasaRetencion}%`, sub: `${retenidos} con 2+ paquetes`, css: tasaRetencion >= 50 ? 'success' : 'warning' },
       { label: 'Conversión leads',    value: `${tasaConversion}%`, sub: `${convertidos_mes} de ${leads_mes} este mes`, css: tasaConversion >= 30 ? 'success' : 'warning' },
       { label: 'No-show del mes',     value: `${tasaNoShow}%`, sub: `${no_show_mes} de ${citas_mes} citas`, css: tasaNoShow > 15 ? 'warning' : 'success' },
@@ -295,12 +289,6 @@ router.get('/historial', requireSession, async (req, res) => {
       user.rol === 'terapeuta' ? [user.id] : []);
     render(res, 'historial', { user, pacientes, scripts: `<script src="${req.app.locals.BASE}/history.js"></script>` });
   } catch (err) { res.status(500).send(err.message); }
-});
-
-// ── PAGOS ────────────────────────────────────────────────────────
-router.get('/pagos', requireSession, requireAdmin, async (req, res) => {
-  const [pacientes] = await db.execute('SELECT id, nombre, apellido FROM pacientes ORDER BY nombre');
-  render(res, 'pagos', { user: req.session.user, pacientes, scripts: `<script src="${req.app.locals.BASE}/payment.js"></script>` });
 });
 
 // ── DISPONIBILIDAD ──────────────────────────────────────────────
