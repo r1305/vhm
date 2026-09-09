@@ -135,11 +135,14 @@
     input.disabled = true;
 
     try {
-      await api(`/whatsapp/conversaciones/${selectedId}/mensajes`, {
+      const res = await api(`/whatsapp/conversaciones/${selectedId}/mensajes`, {
         method: 'POST',
         body: { mensaje: text },
       });
       input.value = '';
+      if (res.conversacionId && res.conversacionId !== selectedId) {
+        selectedId = res.conversacionId;
+      }
       const msgs = await api(`/whatsapp/conversaciones/${selectedId}/mensajes`);
       renderMessages(msgs);
       await loadConversaciones();

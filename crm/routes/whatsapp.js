@@ -46,31 +46,92 @@ async function findPacienteByPhone(phone) {
   return rows[0] || null;
 }
 
+/** Fusiona conversaciones duplicadas del mismo teléfono (ej. @c.us vs @s.whatsapp.net) */
+async function mergeConversacionesByPhone(phone) {
+  const normalizedPhone = normalizePhone(phone);
+  if (!normalizedPhone) return null;
+
+  const [rows] = await pool.execute(
+    `SELECT id, chat_id, no_leidos, ultimo_mensaje_at
+     FROM wa_conversaciones
+     WHERE phone = ? OR phone LIKE ?
+     ORDER BY ultimo_mensaje_at DESC, updated_at DESC, id DESC`,
+    [normalizedPhone, `%${normalizedPhone.slice(-9)}`]
+  );
+  if (!rows.length) return null;
+  if (rows.length === 1) return rows[0].id;
+
+  const primaryId = rows[0].id;
+  const canonicalChatId = normalizeChatId(rows[0].chat_id) || rows[0].chat_id;
+  let totalUnread = rows[0].no_leidos || 0;
+
+  for (let i = 1; i < rows.length; i++) {
+    const dup = rows[i];
+    totalUnread += dup.no_leidos || 0;
+    await pool.execute(
+      'UPDATE wa_mensajes SET conversacion_id = ? WHERE conversacion_id = ?',
+      [primaryId, dup.id]
+    );
+    await pool.execute('DELETE FROM wa_conversaciones WHERE id = ?', [dup.id]);
+  }
+
+  const [[conflict]] = await pool.execute(
+    'SELECT id FROM wa_conversaciones WHERE chat_id = ? AND id != ? LIMIT 1',
+    [canonicalChatId, primaryId]
+  );
+  if (!conflict) {
+    await pool.execute(
+      'UPDATE wa_conversaciones SET chat_id = ?, phone = ?, no_leidos = ? WHERE id = ?',
+      [canonicalChatId, normalizedPhone, totalUnread, primaryId]
+    );
+  } else {
+    await pool.execute(
+      'UPDATE wa_conversaciones SET phone = ?, no_leidos = ? WHERE id = ?',
+      [normalizedPhone, totalUnread, primaryId]
+    );
+  }
+  return primaryId;
+}
+
 async function upsertConversacion({ chatId, phone, contactName, body, timestamp, incrementUnread }) {
   const normalizedChatId = normalizeChatId(chatId) || chatId;
   const normalizedPhone = normalizePhone(phone || normalizedChatId?.split('@')[0]);
   const paciente = await findPacienteByPhone(normalizedPhone);
   const ts = timestamp ? new Date(timestamp * 1000) : new Date();
 
-  const [existing] = await pool.execute(
-    'SELECT id, no_leidos FROM wa_conversaciones WHERE chat_id = ? OR phone = ? LIMIT 1',
-    [normalizedChatId, normalizedPhone]
-  );
+  let existingId = await mergeConversacionesByPhone(normalizedPhone);
+  let existingRow = null;
+  if (existingId) {
+    const [[row]] = await pool.execute(
+      'SELECT id, no_leidos FROM wa_conversaciones WHERE id = ? LIMIT 1',
+      [existingId]
+    );
+    existingRow = row;
+  } else {
+    const [existing] = await pool.execute(
+      'SELECT id, no_leidos FROM wa_conversaciones WHERE chat_id = ? LIMIT 1',
+      [normalizedChatId]
+    );
+    existingRow = existing[0] || null;
+    existingId = existingRow?.id || null;
+  }
 
-  if (existing.length) {
-    const noLeidos = incrementUnread ? existing[0].no_leidos + 1 : existing[0].no_leidos;
+  if (existingRow) {
+    const noLeidos = incrementUnread ? existingRow.no_leidos + 1 : existingRow.no_leidos;
     await pool.execute(
       `UPDATE wa_conversaciones
-       SET contact_name = COALESCE(?, contact_name),
+       SET chat_id = ?,
+           phone = ?,
+           contact_name = COALESCE(?, contact_name),
            paciente_id = COALESCE(paciente_id, ?),
            ultimo_mensaje = ?,
            ultimo_mensaje_at = ?,
            no_leidos = ?,
            updated_at = NOW()
        WHERE id = ?`,
-      [contactName || null, paciente?.id || null, body || '', ts, noLeidos, existing[0].id]
+      [normalizedChatId, normalizedPhone, contactName || null, paciente?.id || null, body || '', ts, noLeidos, existingRow.id]
     );
-    return existing[0].id;
+    return existingRow.id;
   }
 
   const [r] = await pool.execute(
@@ -91,13 +152,26 @@ async function insertMensaje({
   enviadoPor,
   origen,
   timestamp,
+  reassignConversacion = false,
 }) {
   if (waMessageId) {
     const [dup] = await pool.execute(
-      'SELECT id FROM wa_mensajes WHERE wa_message_id = ? LIMIT 1',
+      'SELECT id, conversacion_id FROM wa_mensajes WHERE wa_message_id = ? LIMIT 1',
       [waMessageId]
     );
-    if (dup.length) return dup[0].id;
+    if (dup.length) {
+      const row = dup[0];
+      if (reassignConversacion && row.conversacion_id !== conversacionId) {
+        await pool.execute(
+          `UPDATE wa_mensajes
+           SET conversacion_id = ?, enviado_por = COALESCE(?, enviado_por),
+               origen = ?, cuerpo = ?, direccion = ?
+           WHERE id = ?`,
+          [conversacionId, enviadoPor || null, origen || 'whatsapp', cuerpo || '', direccion, row.id]
+        );
+      }
+      return row.id;
+    }
   }
 
   try {
@@ -120,10 +194,22 @@ async function insertMensaje({
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY' && waMessageId) {
       const [dup] = await pool.execute(
-        'SELECT id FROM wa_mensajes WHERE wa_message_id = ? LIMIT 1',
+        'SELECT id, conversacion_id FROM wa_mensajes WHERE wa_message_id = ? LIMIT 1',
         [waMessageId]
       );
-      if (dup.length) return dup[0].id;
+      if (dup.length) {
+        const row = dup[0];
+        if (reassignConversacion && row.conversacion_id !== conversacionId) {
+          await pool.execute(
+            `UPDATE wa_mensajes
+             SET conversacion_id = ?, enviado_por = COALESCE(?, enviado_por),
+                 origen = ?, cuerpo = ?, direccion = ?
+             WHERE id = ?`,
+            [conversacionId, enviadoPor || null, origen || 'whatsapp', cuerpo || '', direccion, row.id]
+          );
+        }
+        return row.id;
+      }
     }
     throw err;
   }
@@ -244,6 +330,8 @@ router.post('/conversaciones/:id/mensajes', authWhatsApp, async (req, res) => {
     const [[conv]] = await pool.execute('SELECT * FROM wa_conversaciones WHERE id = ?', [req.params.id]);
     if (!conv) return res.status(404).json({ error: 'Conversación no encontrada' });
 
+    const conversacionId = await mergeConversacionesByPhone(conv.phone) || conv.id;
+
     const result = await sendWhatsApp({ to: conv.phone, message: text });
     const ts = Math.floor(Date.now() / 1000);
 
@@ -251,11 +339,11 @@ router.post('/conversaciones/:id/mensajes', authWhatsApp, async (req, res) => {
       `UPDATE wa_conversaciones
        SET ultimo_mensaje = ?, ultimo_mensaje_at = NOW(), no_leidos = 0, updated_at = NOW()
        WHERE id = ?`,
-      [text, conv.id]
+      [text, conversacionId]
     );
 
     const msgId = await insertMensaje({
-      conversacionId: conv.id,
+      conversacionId,
       waMessageId: result.messageId || null,
       direccion: 'outgoing',
       tipo: 'text',
@@ -263,9 +351,10 @@ router.post('/conversaciones/:id/mensajes', authWhatsApp, async (req, res) => {
       enviadoPor: req.user.id,
       origen: 'crm',
       timestamp: ts,
+      reassignConversacion: true,
     });
 
-    res.status(201).json({ ok: true, id: msgId, messageId: result.messageId });
+    res.status(201).json({ ok: true, id: msgId, conversacionId, messageId: result.messageId });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
