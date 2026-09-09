@@ -499,6 +499,10 @@ async function ensureSchema() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
 
+    try { await conn.execute('ALTER TABLE wa_conversaciones ADD COLUMN lid_chat_id VARCHAR(80) DEFAULT NULL'); } catch (_) {}
+    try { await conn.execute('ALTER TABLE wa_conversaciones MODIFY phone VARCHAR(30) DEFAULT NULL'); } catch (_) {}
+    try { await conn.execute('CREATE INDEX idx_wa_lid ON wa_conversaciones (lid_chat_id)'); } catch (_) {}
+
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS wa_mensajes (
         id               INT AUTO_INCREMENT PRIMARY KEY,
@@ -533,8 +537,8 @@ async function ensureSchema() {
     const seenTails = new Map();
     for (const row of allConvs) {
       const digits = String(row.phone || '').replace(/\D/g, '');
-      const tail = digits.length >= 9 ? digits.slice(-9) : digits;
-      if (!tail) continue;
+      if (digits.length < 10 || digits.length > 13) continue;
+      const tail = digits.slice(-9);
       const primaryId = seenTails.get(tail);
       if (!primaryId) {
         seenTails.set(tail, row.id);
@@ -545,6 +549,43 @@ async function ensureSchema() {
         [primaryId, row.id]
       );
       await conn.execute('DELETE FROM wa_conversaciones WHERE id = ?', [row.id]);
+    }
+
+    // Fusionar chats @lid (ID interno WA) con el teléfono real del mismo contacto
+    const [lidConvs] = await conn.execute(
+      `SELECT id, phone, chat_id, contact_name, paciente_id, ultimo_mensaje_at, lid_chat_id
+       FROM wa_conversaciones
+       WHERE chat_id LIKE '%@lid'
+          OR lid_chat_id IS NOT NULL
+          OR LENGTH(REPLACE(phone,'+','')) > 13`
+    );
+    for (const lidRow of lidConvs) {
+      const lidId = lidRow.lid_chat_id || (String(lidRow.chat_id).includes('@lid') ? lidRow.chat_id : null);
+      const [match] = await conn.execute(
+        `SELECT id FROM wa_conversaciones
+         WHERE id != ?
+           AND LENGTH(REPLACE(phone,'+','')) BETWEEN 10 AND 13
+           AND (
+             paciente_id IS NOT NULL AND paciente_id = ?
+             OR (contact_name IS NOT NULL AND contact_name <> '' AND contact_name = ?)
+             OR ABS(TIMESTAMPDIFF(HOUR, ultimo_mensaje_at, ?)) <= 72
+           )
+         ORDER BY ultimo_mensaje_at DESC, id DESC LIMIT 1`,
+        [lidRow.id, lidRow.paciente_id, lidRow.contact_name, lidRow.ultimo_mensaje_at]
+      );
+      if (!match.length) continue;
+      const primaryId = match[0].id;
+      await conn.execute(
+        'UPDATE wa_mensajes SET conversacion_id = ? WHERE conversacion_id = ?',
+        [primaryId, lidRow.id]
+      );
+      if (lidId) {
+        await conn.execute(
+          'UPDATE wa_conversaciones SET lid_chat_id = COALESCE(lid_chat_id, ?) WHERE id = ?',
+          [lidId, primaryId]
+        );
+      }
+      await conn.execute('DELETE FROM wa_conversaciones WHERE id = ?', [lidRow.id]);
     }
 
     console.log('[crm] Schema OK');
