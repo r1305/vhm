@@ -19,9 +19,16 @@
       : dt.toLocaleDateString('es-PE', { day: '2-digit', month: 'short' });
   }
 
+  function isRealPhone(p) {
+    const d = String(p || '').replace(/\D/g, '');
+    return d.length >= 10 && d.length <= 13;
+  }
+
   function displayName(c) {
     if (c.paciente_nombre) return `${c.paciente_nombre} ${c.paciente_apellido || ''}`.trim();
-    return c.contact_name || c.phone || 'Desconocido';
+    if (c.contact_name) return c.contact_name;
+    if (isRealPhone(c.phone)) return c.phone;
+    return 'Contacto WhatsApp';
   }
 
   function renderList(filter = '') {
@@ -74,7 +81,7 @@
     document.getElementById('waAvatar').textContent = name.charAt(0).toUpperCase();
     document.getElementById('waContactName').textContent = name;
     const meta = [];
-    if (c.phone) meta.push(c.phone);
+    if (isRealPhone(c.phone)) meta.push(c.phone);
     if (c.paciente_nombre) meta.push('Paciente vinculado');
     document.getElementById('waContactMeta').textContent = meta.join(' · ');
   }

@@ -89,7 +89,7 @@ async function sendWhatsApp({ to, message }) {
     method: 'POST',
     body: JSON.stringify({ sessionId, chatId, message }),
   });
-  return { ok: true, messageId: data.messageId, chatId };
+  return { ok: true, messageId: data.messageId, chatId: data.chatId || chatId };
 }
 
 async function getChats(sessionId) {

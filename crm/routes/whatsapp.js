@@ -31,6 +31,81 @@ function phoneTail(phone) {
   return digits.length >= 9 ? digits.slice(-9) : digits;
 }
 
+/** Teléfono real (10-13 dígitos). Los @lid de WhatsApp tienen 14+ dígitos. */
+function isWhatsAppPhone(digits) {
+  const d = normalizePhone(digits);
+  return d.length >= 10 && d.length <= 13;
+}
+
+function isLidPhone(digits) {
+  const d = normalizePhone(digits);
+  return d.length > 13;
+}
+
+function resolveWebhookContact(data) {
+  const rawChatId = String(data.chatId || '');
+  const lidChatId = data.lidChatId || (rawChatId.includes('@lid') ? rawChatId : null);
+  const phoneChatId = data.phoneChatId || null;
+
+  let phone = '';
+  let chatId = null;
+
+  if (phoneChatId) {
+    phone = normalizePhone(phoneChatId.split('@')[0]);
+    chatId = normalizeChatId(phoneChatId);
+  } else if (rawChatId && !rawChatId.includes('@lid')) {
+    phone = normalizePhone(rawChatId.split('@')[0]);
+    chatId = normalizeChatId(rawChatId);
+  }
+
+  if (phone && !isWhatsAppPhone(phone)) phone = '';
+  if (!chatId && lidChatId) chatId = lidChatId;
+
+  return { phone, chatId, lidChatId };
+}
+
+async function findConversacionId({ chatId, phone, lidChatId, preferId = null }) {
+  const normalizedPhone = phone && isWhatsAppPhone(phone) ? normalizePhone(phone) : '';
+  const tail = normalizedPhone ? phoneTail(normalizedPhone) : '';
+
+  if (normalizedPhone) {
+    const merged = await mergeConversacionesByPhone(normalizedPhone, preferId);
+    if (merged) return merged;
+  }
+
+  if (lidChatId) {
+    const [byLid] = await pool.execute(
+      'SELECT id FROM wa_conversaciones WHERE lid_chat_id = ? OR chat_id = ? LIMIT 1',
+      [lidChatId, lidChatId]
+    );
+    if (byLid.length) return byLid[0].id;
+  }
+
+  const normalizedChatId = chatId && !String(chatId).includes('@lid')
+    ? normalizeChatId(chatId)
+    : chatId;
+  if (normalizedChatId) {
+    const [byChat] = await pool.execute(
+      'SELECT id FROM wa_conversaciones WHERE chat_id = ? LIMIT 1',
+      [normalizedChatId]
+    );
+    if (byChat.length) return byChat[0].id;
+  }
+
+  if (tail) {
+    const [byTail] = await pool.execute(
+      `SELECT id FROM wa_conversaciones
+       WHERE LENGTH(REPLACE(phone,'+','')) BETWEEN 10 AND 13
+         AND RIGHT(REPLACE(phone,'+',''), 9) = ?
+       ORDER BY ultimo_mensaje_at DESC, id DESC LIMIT 1`,
+      [tail]
+    );
+    if (byTail.length) return byTail[0].id;
+  }
+
+  return null;
+}
+
 function authWhatsApp(req, res, next) {
   auth(req, res, () => {
     if (!canAccessWhatsApp(req.user)) {
@@ -64,8 +139,8 @@ async function mergeConversacionesByPhone(phone, preferId = null) {
   const [rows] = await pool.execute(
     `SELECT id, chat_id, no_leidos, ultimo_mensaje_at
      FROM wa_conversaciones
-     WHERE phone = ?
-        OR (? <> '' AND RIGHT(REPLACE(phone,'+',''), 9) = ?)
+     WHERE LENGTH(REPLACE(phone,'+','')) BETWEEN 10 AND 13
+       AND (phone = ? OR (? <> '' AND RIGHT(REPLACE(phone,'+',''), 9) = ?))
      ORDER BY ultimo_mensaje_at DESC, updated_at DESC, id DESC`,
     [normalizedPhone, tail, tail]
   );
@@ -124,35 +199,34 @@ async function mergeConversacionesByPhone(phone, preferId = null) {
   return primaryId;
 }
 
-async function upsertConversacion({ chatId, phone, contactName, body, timestamp, incrementUnread }) {
-  const normalizedChatId = normalizeChatId(chatId) || chatId;
-  const normalizedPhone = normalizePhone(phone || normalizedChatId?.split('@')[0]);
-  const paciente = await findPacienteByPhone(normalizedPhone);
+async function upsertConversacion({ chatId, phone, lidChatId, contactName, body, timestamp, incrementUnread }) {
+  const rawPhone = phone || (chatId && !String(chatId).includes('@lid') ? chatId.split('@')[0] : '');
+  const normalizedPhone = isWhatsAppPhone(rawPhone) ? normalizePhone(rawPhone) : '';
+  const normalizedChatId = chatId?.includes('@lid')
+    ? null
+    : (normalizeChatId(chatId) || chatId);
+  const paciente = normalizedPhone ? await findPacienteByPhone(normalizedPhone) : null;
   const ts = timestamp ? new Date(timestamp * 1000) : new Date();
 
-  let existingId = await mergeConversacionesByPhone(normalizedPhone);
-  let existingRow = null;
+  const existingId = await findConversacionId({
+    chatId: normalizedChatId || chatId,
+    phone: normalizedPhone,
+    lidChatId,
+  });
+
   if (existingId) {
-    const [[row]] = await pool.execute(
-      'SELECT id, no_leidos FROM wa_conversaciones WHERE id = ? LIMIT 1',
+    const [[existingRow]] = await pool.execute(
+      'SELECT id, no_leidos, phone, chat_id FROM wa_conversaciones WHERE id = ? LIMIT 1',
       [existingId]
     );
-    existingRow = row;
-  } else {
-    const [existing] = await pool.execute(
-      'SELECT id, no_leidos FROM wa_conversaciones WHERE chat_id = ? LIMIT 1',
-      [normalizedChatId]
-    );
-    existingRow = existing[0] || null;
-    existingId = existingRow?.id || null;
-  }
-
-  if (existingRow) {
     const noLeidos = incrementUnread ? existingRow.no_leidos + 1 : existingRow.no_leidos;
+    const storePhone = normalizedPhone || (isWhatsAppPhone(existingRow.phone) ? existingRow.phone : null);
+    const storeChatId = normalizedChatId || existingRow.chat_id;
     await pool.execute(
       `UPDATE wa_conversaciones
-       SET chat_id = ?,
-           phone = ?,
+       SET chat_id = COALESCE(?, chat_id),
+           phone = COALESCE(?, phone),
+           lid_chat_id = COALESCE(?, lid_chat_id),
            contact_name = COALESCE(?, contact_name),
            paciente_id = COALESCE(paciente_id, ?),
            ultimo_mensaje = ?,
@@ -160,16 +234,26 @@ async function upsertConversacion({ chatId, phone, contactName, body, timestamp,
            no_leidos = ?,
            updated_at = NOW()
        WHERE id = ?`,
-      [normalizedChatId, normalizedPhone, contactName || null, paciente?.id || null, body || '', ts, noLeidos, existingRow.id]
+      [
+        storeChatId, storePhone, lidChatId || null,
+        contactName || null, paciente?.id || null,
+        body || '', ts, noLeidos, existingRow.id,
+      ]
     );
     return existingRow.id;
   }
 
+  const insertChatId = normalizedChatId || lidChatId || toChatId(normalizedPhone);
+  const insertPhone = normalizedPhone || null;
   const [r] = await pool.execute(
     `INSERT INTO wa_conversaciones
-      (chat_id, phone, contact_name, paciente_id, ultimo_mensaje, ultimo_mensaje_at, no_leidos)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [normalizedChatId, normalizedPhone, contactName || null, paciente?.id || null, body || '', ts, incrementUnread ? 1 : 0]
+      (chat_id, phone, lid_chat_id, contact_name, paciente_id, ultimo_mensaje, ultimo_mensaje_at, no_leidos)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      insertChatId, insertPhone, lidChatId || null,
+      contactName || null, paciente?.id || null,
+      body || '', ts, incrementUnread ? 1 : 0,
+    ]
   );
   return r.insertId;
 }
@@ -272,21 +356,23 @@ router.post('/webhook', async (req, res) => {
     if (!event || !data) return res.json({ ok: true, skipped: true });
 
     if (event === 'message:received' || event === 'message:sent') {
-      const chatId = normalizeChatId(data.chatId);
-      if (!chatId || chatId.includes('@g.us')) return res.json({ ok: true, skipped: true });
+      const contact = resolveWebhookContact(data);
+      if (!contact.chatId || contact.chatId.includes('@g.us')) {
+        return res.json({ ok: true, skipped: true });
+      }
 
       // Salientes del CRM/API ya se guardan en POST /mensajes; solo procesar envíos desde celular
       if (event === 'message:sent' && data.source !== 'phone') {
         return res.json({ ok: true, skipped: true });
       }
 
-      const phone = normalizePhone(chatId.split('@')[0]);
       const isIncoming = event === 'message:received';
       const origen = data.source === 'phone' ? 'telefono' : (data.source === 'crm' ? 'crm' : 'whatsapp');
 
       const conversacionId = await upsertConversacion({
-        chatId,
-        phone,
+        chatId: contact.chatId,
+        phone: contact.phone,
+        lidChatId: contact.lidChatId,
         contactName: data.fromName || null,
         body: data.body || data.text || '',
         timestamp: data.timestamp,
@@ -373,18 +459,28 @@ router.post('/conversaciones/:id/mensajes', authWhatsApp, async (req, res) => {
     if (!conv) return res.status(404).json({ error: 'Conversación no encontrada' });
 
     const conversacionId = await mergeConversacionesByPhone(conv.phone, conv.id) || conv.id;
-    const destino = conv.chat_id || toChatId(conv.phone);
+    const destino = isWhatsAppPhone(conv.phone)
+      ? (conv.chat_id?.includes('@lid') ? toChatId(conv.phone) : (conv.chat_id || toChatId(conv.phone)))
+      : (conv.lid_chat_id || conv.chat_id || toChatId(conv.phone));
 
     const result = await sendWhatsApp({ to: destino, message: text });
     const ts = Math.floor(Date.now() / 1000);
-    const resolvedChatId = normalizeChatId(result.chatId || destino) || destino;
-    const resolvedPhone = normalizePhone(conv.phone || resolvedChatId.split('@')[0]);
+    const resolvedChatId = result.chatId?.includes('@lid')
+      ? null
+      : (normalizeChatId(result.chatId || destino) || destino);
+    const resolvedLid = result.chatId?.includes('@lid') ? result.chatId : conv.lid_chat_id;
+    const resolvedPhone = isWhatsAppPhone(conv.phone)
+      ? normalizePhone(conv.phone)
+      : normalizePhone(destino.split('@')[0]);
 
     await pool.execute(
       `UPDATE wa_conversaciones
-       SET chat_id = ?, phone = ?, ultimo_mensaje = ?, ultimo_mensaje_at = NOW(), no_leidos = 0, updated_at = NOW()
+       SET chat_id = COALESCE(?, chat_id),
+           phone = COALESCE(?, phone),
+           lid_chat_id = COALESCE(?, lid_chat_id),
+           ultimo_mensaje = ?, ultimo_mensaje_at = NOW(), no_leidos = 0, updated_at = NOW()
        WHERE id = ?`,
-      [resolvedChatId, resolvedPhone, text, conversacionId]
+      [resolvedChatId, isWhatsAppPhone(resolvedPhone) ? resolvedPhone : null, resolvedLid, text, conversacionId]
     );
 
     const msgId = await insertMensaje({
@@ -425,8 +521,8 @@ router.get('/status', authWhatsApp, async (req, res) => {
 router.post('/iniciar', authWhatsApp, async (req, res) => {
   try {
     const phone = normalizePhone(req.body?.telefono);
-    if (!phone || phone.length < 10 || phone.length > 15) {
-      return res.status(400).json({ error: 'Teléfono inválido. Usa código de país, ej: 51999999999' });
+    if (!phone || !isWhatsAppPhone(phone)) {
+      return res.status(400).json({ error: 'Teléfono inválido. Usa código de país, ej: 51999999999 o 980858922' });
     }
     const chatId = toChatId(phone);
     const paciente = await findPacienteByPhone(phone);
