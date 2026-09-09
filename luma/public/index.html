@@ -75,9 +75,17 @@
     .modal-overlay.show { display: flex; }
     .modal {
       background: var(--card); border: 1px solid var(--border); border-radius: 20px;
-      width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto;
+      width: 100%; max-width: 480px;
       animation: modalIn .25s ease;
     }
+    #modal-registro .modal {
+      max-width: 440px; overflow: hidden;
+      display: flex; flex-direction: column;
+      box-shadow: 0 24px 64px rgba(0,0,0,.45);
+    }
+    #modal-registro .modal-body { overflow: visible; padding: 16px 20px 12px; }
+    #modal-registro .modal-header { padding: 16px 20px; }
+    #modal-registro .modal-footer { padding: 12px 20px 16px; }
     @keyframes modalIn { from { opacity:0; transform:scale(.95) translateY(10px); } to { opacity:1; transform:scale(1) translateY(0); } }
     .modal-header {
       display: flex; align-items: center; justify-content: space-between;
@@ -94,23 +102,41 @@
     .modal-body { padding: 20px 24px; }
     .modal-footer { padding: 16px 24px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; }
 
-    .form-group { margin-bottom: 16px; }
-    .form-group label { display: block; font-size: .82rem; font-weight: 600; color: var(--secondary); margin-bottom: 6px; }
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; font-size: .78rem; font-weight: 600; color: var(--secondary); margin-bottom: 5px; }
+    .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .compromiso-box {
-      margin-bottom: 16px; padding: 14px; border: 1px solid var(--border);
-      border-radius: 12px; background: rgba(102,126,234,.06);
+      margin-bottom: 4px; padding: 12px 0 0;
+      border-top: 1px solid var(--border);
     }
-    .compromiso-box h4 { font-size: .9rem; margin-bottom: 4px; }
-    .compromiso-box p { font-size: .78rem; color: var(--muted); margin-bottom: 12px; }
-    .compromiso-list { display: flex; flex-direction: column; gap: 8px; }
-    .compromiso-option {
-      display: flex; align-items: center; gap: 10px; padding: 10px 12px;
-      border: 1px solid var(--border); border-radius: 10px; cursor: pointer;
-      transition: border-color .15s, background .15s;
+    .compromiso-box h4 {
+      font-size: .82rem; font-weight: 600; margin-bottom: 2px;
+      background: var(--gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
     }
-    .compromiso-option:hover { border-color: var(--primary); background: rgba(102,126,234,.08); }
-    .compromiso-option.selected { border-color: var(--primary); background: rgba(102,126,234,.14); }
-    .compromiso-option input { accent-color: var(--primary); }
+    .compromiso-box p { font-size: .72rem; color: var(--muted); margin-bottom: 10px; }
+    .compromiso-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .compromiso-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 14px; border-radius: 999px; cursor: pointer;
+      border: 1px solid var(--border); background: #16162a; color: var(--secondary);
+      font-size: .8rem; font-weight: 500; transition: all .18s ease;
+      user-select: none;
+    }
+    .compromiso-chip:hover {
+      border-color: rgba(102,126,234,.55); color: var(--text);
+      box-shadow: 0 0 0 3px rgba(102,126,234,.12);
+    }
+    .compromiso-chip.selected {
+      border-color: transparent; color: #fff;
+      background: var(--gradient);
+      box-shadow: 0 4px 14px rgba(102,126,234,.35);
+    }
+    .compromiso-chip .chip-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--muted); flex-shrink: 0; transition: background .18s;
+    }
+    .compromiso-chip.selected .chip-dot { background: #fff; }
 
     .form-group input, .form-group textarea {
       width: 100%; padding: 11px 14px; border: 2px solid var(--border);
@@ -122,10 +148,10 @@
 
     .event-summary {
       background: #16162a; border: 1px solid var(--border); border-radius: 12px;
-      padding: 14px 16px; margin-bottom: 20px;
+      padding: 10px 12px; margin-bottom: 12px;
     }
-    .event-summary .es-name { font-weight: 600; font-size: .95rem; margin-bottom: 6px; }
-    .event-summary .es-meta { font-size: .8rem; color: var(--muted); }
+    .event-summary .es-name { font-weight: 600; font-size: .88rem; margin-bottom: 4px; }
+    .event-summary .es-meta { font-size: .72rem; color: var(--muted); line-height: 1.4; }
 
     .msg { padding: 12px 14px; border-radius: 10px; font-size: .85rem; margin-top: 12px; }
     .msg-success { background: #064e3b; border: 1px solid #10b981; color: #6ee7b7; }
@@ -168,8 +194,9 @@
 
     @media (max-width: 640px) {
       .container { padding: 20px 14px; }
-      .modal { border-radius: 16px 16px 0 0; max-height: 85vh; margin-top: auto; }
-      .modal-overlay { align-items: flex-end; padding: 0; }
+      #modal-registro.modal-overlay { align-items: flex-end; padding: 0; }
+      #modal-registro .modal { border-radius: 16px 16px 0 0; margin-top: auto; }
+      .form-row-2 { grid-template-columns: 1fr; gap: 0; }
     }
   </style>
 </head>
@@ -198,21 +225,19 @@
       </div>
       <div class="modal-body">
         <div class="event-summary" id="modal-evento-summary"></div>
-        <div class="form-group">
-          <label>Nombre completo *</label>
-          <input type="text" id="reg-nombre" placeholder="Tu nombre">
-        </div>
-        <div class="form-group">
-          <label>Email *</label>
-          <input type="email" id="reg-email" placeholder="tu@email.com">
+        <div class="form-row-2">
+          <div class="form-group">
+            <label>Nombre *</label>
+            <input type="text" id="reg-nombre" placeholder="Tu nombre">
+          </div>
+          <div class="form-group">
+            <label>Email *</label>
+            <input type="email" id="reg-email" placeholder="tu@email.com">
+          </div>
         </div>
         <div class="form-group">
           <label>Teléfono <span style="font-weight:400;color:var(--muted)">(opcional)</span></label>
           <input type="tel" id="reg-telefono" placeholder="+51 999 999 999">
-        </div>
-        <div class="form-group">
-          <label>Notas <span style="font-weight:400;color:var(--muted)">(opcional)</span></label>
-          <textarea id="reg-notas" placeholder="¿Algo que quieras comentarnos?"></textarea>
         </div>
         <div id="reg-compromiso-wrap" style="display:none"></div>
         <div id="reg-msg" style="display:none"></div>
@@ -257,6 +282,12 @@
       if (!h) return '';
       return h.slice(0,5);
     }
+    function mediaUrl(url) {
+      if (!url) return '';
+      if (/^https?:\/\//i.test(url)) return url;
+      if (url.startsWith('/')) return url;
+      return BASE + '/' + url;
+    }
 
     async function cargarEventos() {
       console.log('[luma] API:', API, '| BASE:', BASE, '| pathname:', window.location.pathname);
@@ -281,7 +312,7 @@
           return `
             <div class="event-card">
               ${e.imagen_url
-                ? `<img class="event-img" src="${e.imagen_url}" alt="${e.nombre}">`
+                ? `<img class="event-img" src="${mediaUrl(e.imagen_url)}" alt="${e.nombre}">`
                 : `<div class="event-img-placeholder">📅</div>`}
               <div class="event-body">
                 <div class="event-name">${e.nombre}</div>
@@ -325,23 +356,27 @@
       wrap.innerHTML = `
         <div class="compromiso-box">
           <h4>Cuenta conmigo para...${obligatorio ? ' *' : ''}</h4>
-          <p>${obligatorio ? 'Selecciona en qué puedes ayudar para completar tu registro.' : 'Opcional: elige en qué te gustaría ayudar.'}</p>
-          <div class="compromiso-list" id="compromiso-list">
+          <p>${obligatorio ? 'Elige en qué puedes ayudar.' : 'Opcional — elige si quieres colaborar.'}</p>
+          <div class="compromiso-chips" id="compromiso-list">
             ${items.map(item => `
-              <label class="compromiso-option" data-item-id="${item.id}">
-                <input type="radio" name="compromiso_item" value="${item.id}">
+              <button type="button" class="compromiso-chip" data-item-id="${item.id}">
+                <span class="chip-dot"></span>
                 <span>${item.etiqueta || item.nombre}</span>
-              </label>
+              </button>
             `).join('')}
           </div>
         </div>`;
-      wrap.querySelectorAll('.compromiso-option').forEach(opt => {
-        opt.addEventListener('click', () => {
-          itemSeleccionado = parseInt(opt.dataset.itemId, 10);
-          wrap.querySelectorAll('.compromiso-option').forEach(o => o.classList.remove('selected'));
-          opt.classList.add('selected');
-          const radio = opt.querySelector('input[type="radio"]');
-          if (radio) radio.checked = true;
+      wrap.querySelectorAll('.compromiso-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+          const id = parseInt(chip.dataset.itemId, 10);
+          if (itemSeleccionado === id) {
+            itemSeleccionado = null;
+            chip.classList.remove('selected');
+            return;
+          }
+          itemSeleccionado = id;
+          wrap.querySelectorAll('.compromiso-chip').forEach(c => c.classList.remove('selected'));
+          chip.classList.add('selected');
         });
       });
     }
@@ -357,7 +392,7 @@
       document.getElementById('modal-evento-summary').innerHTML =
         `<div class="es-name">${e.nombre}</div>
          <div class="es-meta">📅 ${fmt(e.fecha)} &nbsp;·&nbsp; 🕐 ${fmtHora(e.hora_inicio)} &nbsp;·&nbsp; 📍 ${e.lugar}</div>`;
-      ['reg-nombre','reg-email','reg-telefono','reg-notas'].forEach(id => document.getElementById(id).value = '');
+      ['reg-nombre','reg-email','reg-telefono'].forEach(id => document.getElementById(id).value = '');
       renderCompromisoSection(e);
       const msg = document.getElementById('reg-msg');
       msg.style.display = 'none';
@@ -381,7 +416,6 @@
       const nombre = document.getElementById('reg-nombre').value.trim();
       const email = document.getElementById('reg-email').value.trim();
       const telefono = document.getElementById('reg-telefono').value.trim();
-      const notas = document.getElementById('reg-notas').value.trim();
       const msg = document.getElementById('reg-msg');
       const btn = document.getElementById('btn-registrar');
 
@@ -403,7 +437,7 @@
       btn.disabled = true;
       btn.textContent = 'Registrando...';
       try {
-        const payload = { nombre, email, telefono, notas };
+        const payload = { nombre, email, telefono };
         if (itemSeleccionado) payload.item_id = itemSeleccionado;
         const res = await fetch(`${API}/eventos/${eventoActivo.id}/registrar`, {
           method: 'POST',

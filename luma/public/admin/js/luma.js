@@ -21,6 +21,15 @@
   function authHeaders() {
     return { 'Content-Type': 'application/json', Authorization: 'Bearer ' + getToken(), 'X-CSRF-Token': getCookie('csrf_token') || '' };
   }
+  function uploadHeaders() {
+    return { Authorization: 'Bearer ' + getToken(), 'X-CSRF-Token': getCookie('csrf_token') || '' };
+  }
+  function mediaUrl(url) {
+    if (!url) return '';
+    if (/^https?:\/\//i.test(url)) return url;
+    if (url.startsWith('/')) return url;
+    return (BASE ? BASE + '/' : '/') + url.replace(/^\/+/, '');
+  }
   async function apiFetch(url, opts) {
     const res = await fetch(API + url, { credentials: 'same-origin', ...(opts || {}) });
     if (res.status === 401) { logout(); throw new Error('Sesión expirada'); }
@@ -345,42 +354,72 @@
   // ── MODAL EVENTO ──────────────────────────────────────────────────────────
   let eventoEditId = null;
   let eventoItemsDraft = [];
+  let eventoImagenUrl = '';
+
+  function setEventoImagenPreview(url) {
+    eventoImagenUrl = url || '';
+    const preview = document.getElementById('ef-imagen-preview');
+    const placeholder = document.getElementById('ef-imagen-placeholder');
+    const quitar = document.getElementById('btn-imagen-quitar');
+    if (!preview) return;
+    if (eventoImagenUrl) {
+      preview.src = mediaUrl(eventoImagenUrl);
+      preview.classList.add('show');
+      placeholder.style.display = 'none';
+      if (quitar) quitar.style.display = '';
+    } else {
+      preview.removeAttribute('src');
+      preview.classList.remove('show');
+      placeholder.style.display = '';
+      if (quitar) quitar.style.display = 'none';
+    }
+  }
+
+  async function subirImagenEvento(file) {
+    const fd = new FormData();
+    fd.append('imagen', file);
+    const res = await apiFetch('/admin/upload/imagen-evento', {
+      method: 'POST',
+      headers: uploadHeaders(),
+      body: fd,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Error al subir imagen');
+    setEventoImagenPreview(data.url);
+    Toast.success('Imagen subida');
+  }
 
   function renderEventoItemsDraft() {
     const list = document.getElementById('ef-items-list');
     if (!list) return;
-    if (!eventoItemsDraft.length) {
-      list.innerHTML = '<p style="font-size:.8rem;color:var(--text-muted);margin-bottom:8px">Sin ítems agregados.</p>';
-      return;
-    }
-    list.innerHTML = eventoItemsDraft.map((item, idx) => {
+    const chips = eventoItemsDraft.map((item, idx) => {
       const ocupados = Number(item.ocupados || 0);
-      const minQty = Math.max(1, ocupados);
-      return '<div class="item-row" data-item-idx="' + idx + '">' +
-        '<input type="text" class="item-nombre" placeholder="Ej: Galletas" value="' + esc(item.nombre || '') + '">' +
-        '<div class="qty-control">' +
-          '<button type="button" class="qty-btn item-qty-minus">−</button>' +
-          '<span class="qty-val">' + item.cantidad + '</span>' +
-          '<button type="button" class="qty-btn item-qty-plus">+</button>' +
-        '</div>' +
-        (ocupados ? '<span class="item-meta">' + ocupados + ' tomado(s)</span>' : '') +
-        '<button type="button" class="btn btn-danger btn-xs item-remove">✕</button>' +
+      return '<div class="item-chip" data-item-idx="' + idx + '">' +
+        '<input type="text" class="chip-name" placeholder="Ítem" value="' + esc(item.nombre || '') + '">' +
+        '<span class="chip-qty">' +
+          '<button type="button" class="chip-minus">−</button>' +
+          '<span>' + item.cantidad + '</span>' +
+          '<button type="button" class="chip-plus">+</button>' +
+        '</span>' +
+        (ocupados ? '<span class="chip-meta">' + ocupados + '✓</span>' : '') +
+        '<button type="button" class="chip-remove" title="Quitar">×</button>' +
       '</div>';
     }).join('');
+    list.innerHTML = chips + '<button type="button" class="chip-add" id="btn-add-item-chip">+ Ítem</button>';
 
-    list.querySelectorAll('.item-row').forEach(row => {
-      const idx = parseInt(row.dataset.itemIdx, 10);
-      row.querySelector('.item-nombre').addEventListener('input', e => { eventoItemsDraft[idx].nombre = e.target.value; });
-      row.querySelector('.item-qty-minus').addEventListener('click', () => {
+    list.querySelectorAll('.item-chip').forEach(chip => {
+      const idx = parseInt(chip.dataset.itemIdx, 10);
+      chip.querySelector('.chip-name').addEventListener('input', e => { eventoItemsDraft[idx].nombre = e.target.value; });
+      chip.querySelector('.chip-minus').addEventListener('click', () => {
         const minQty = Math.max(1, Number(eventoItemsDraft[idx].ocupados || 0));
         eventoItemsDraft[idx].cantidad = Math.max(minQty, Number(eventoItemsDraft[idx].cantidad || 1) - 1);
         renderEventoItemsDraft();
       });
-      row.querySelector('.item-qty-plus').addEventListener('click', () => {
+      chip.querySelector('.chip-plus').addEventListener('click', () => {
         eventoItemsDraft[idx].cantidad = Math.max(1, Number(eventoItemsDraft[idx].cantidad || 1) + 1);
         renderEventoItemsDraft();
       });
-      row.querySelector('.item-remove').addEventListener('click', () => {
+      chip.querySelector('.chip-remove').addEventListener('click', () => {
         if (Number(eventoItemsDraft[idx].ocupados || 0) > 0) {
           Toast.error('No puedes eliminar un ítem que ya tiene inscritos');
           return;
@@ -389,6 +428,15 @@
         renderEventoItemsDraft();
       });
     });
+    const addBtn = document.getElementById('btn-add-item-chip');
+    if (addBtn) {
+      addBtn.addEventListener('click', () => {
+        eventoItemsDraft.push({ nombre: '', cantidad: 1, ocupados: 0 });
+        renderEventoItemsDraft();
+        const inputs = list.querySelectorAll('.chip-name');
+        if (inputs.length) inputs[inputs.length - 1].focus();
+      });
+    }
   }
 
   async function abrirModalEvento(id) {
@@ -409,7 +457,7 @@
     document.getElementById('ef-lugar').value = e?.lugar || '';
     document.getElementById('ef-link').value = e?.link || '';
     document.getElementById('ef-capacidad').value = e?.capacidad || '';
-    document.getElementById('ef-imagen_url').value = e?.imagen_url || '';
+    setEventoImagenPreview(e?.imagen_url || '');
     document.getElementById('ef-activo').value = e ? (e.activo ? '1' : '0') : '1';
     document.getElementById('ef-compromiso_obligatorio').checked = !!(e?.compromiso_obligatorio);
     eventoItemsDraft = (e?.items || []).map(item => ({
@@ -438,13 +486,46 @@
     } catch { Toast.error('Error de conexión'); }
   };
 
-  document.getElementById('btn-add-item').addEventListener('click', () => {
-    eventoItemsDraft.push({ nombre: '', cantidad: 1, ocupados: 0 });
-    renderEventoItemsDraft();
-    const list = document.getElementById('ef-items-list');
-    const last = list.querySelector('.item-row:last-child .item-nombre');
-    if (last) last.focus();
-  });
+  (function initImagenUpload() {
+    const fileInput = document.getElementById('ef-imagen-file');
+    const drop = document.getElementById('ef-imagen-drop');
+    const quitar = document.getElementById('btn-imagen-quitar');
+    if (!fileInput || !drop) return;
+
+    drop.addEventListener('click', (ev) => {
+      if (ev.target.closest('#btn-imagen-quitar')) return;
+      fileInput.click();
+    });
+    fileInput.addEventListener('change', async () => {
+      const file = fileInput.files?.[0];
+      fileInput.value = '';
+      if (!file) return;
+      try {
+        await subirImagenEvento(file);
+      } catch (err) {
+        Toast.error(err.message || 'Error al subir imagen');
+      }
+    });
+    drop.addEventListener('dragover', (ev) => { ev.preventDefault(); drop.classList.add('dragover'); });
+    drop.addEventListener('dragleave', () => drop.classList.remove('dragover'));
+    drop.addEventListener('drop', async (ev) => {
+      ev.preventDefault();
+      drop.classList.remove('dragover');
+      const file = ev.dataTransfer?.files?.[0];
+      if (!file) return;
+      try {
+        await subirImagenEvento(file);
+      } catch (err) {
+        Toast.error(err.message || 'Error al subir imagen');
+      }
+    });
+    if (quitar) {
+      quitar.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        setEventoImagenPreview('');
+      });
+    }
+  })();
 
   document.getElementById('btn-guardar-evento').addEventListener('click', async () => {
     const items = eventoItemsDraft
@@ -459,7 +540,7 @@
       lugar: document.getElementById('ef-lugar').value,
       link: document.getElementById('ef-link').value,
       capacidad: document.getElementById('ef-capacidad').value,
-      imagen_url: document.getElementById('ef-imagen_url').value,
+      imagen_url: eventoImagenUrl || null,
       activo: document.getElementById('ef-activo').value,
       compromiso_obligatorio: document.getElementById('ef-compromiso_obligatorio').checked,
       items,
