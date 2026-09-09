@@ -526,24 +526,25 @@ async function ensureSchema() {
     await conn.execute("DELETE FROM usuario_menu_permisos WHERE item = 'pagos'");
     await conn.execute("DELETE FROM menu_permisos WHERE item = 'pagos'");
 
-    // Fusionar conversaciones WA duplicadas del mismo teléfono
-    const [dupPhones] = await conn.execute(
-      'SELECT phone FROM wa_conversaciones GROUP BY phone HAVING COUNT(*) > 1'
+    // Fusionar conversaciones WA duplicadas del mismo teléfono (últimos 9 dígitos)
+    const [allConvs] = await conn.execute(
+      'SELECT id, phone, ultimo_mensaje_at FROM wa_conversaciones ORDER BY ultimo_mensaje_at DESC, id DESC'
     );
-    for (const { phone } of dupPhones) {
-      const [rows] = await conn.execute(
-        `SELECT id FROM wa_conversaciones WHERE phone = ? ORDER BY ultimo_mensaje_at DESC, id DESC`,
-        [phone]
-      );
-      if (rows.length < 2) continue;
-      const primaryId = rows[0].id;
-      for (let i = 1; i < rows.length; i++) {
-        await conn.execute(
-          'UPDATE wa_mensajes SET conversacion_id = ? WHERE conversacion_id = ?',
-          [primaryId, rows[i].id]
-        );
-        await conn.execute('DELETE FROM wa_conversaciones WHERE id = ?', [rows[i].id]);
+    const seenTails = new Map();
+    for (const row of allConvs) {
+      const digits = String(row.phone || '').replace(/\D/g, '');
+      const tail = digits.length >= 9 ? digits.slice(-9) : digits;
+      if (!tail) continue;
+      const primaryId = seenTails.get(tail);
+      if (!primaryId) {
+        seenTails.set(tail, row.id);
+        continue;
       }
+      await conn.execute(
+        'UPDATE wa_mensajes SET conversacion_id = ? WHERE conversacion_id = ?',
+        [primaryId, row.id]
+      );
+      await conn.execute('DELETE FROM wa_conversaciones WHERE id = ?', [row.id]);
     }
 
     console.log('[crm] Schema OK');

@@ -124,6 +124,19 @@
     box.scrollTop = box.scrollHeight;
   }
 
+  function appendOutgoing(text) {
+    const box = document.getElementById('waMessages');
+    const empty = box.querySelector('.wa-empty');
+    if (empty) empty.remove();
+    const el = document.createElement('div');
+    el.className = 'wa-msg out';
+    el.innerHTML = `<div>${esc(text)}</div>
+      <div class="wa-msg-time">${fmtTime(new Date())}</div>
+      <div class="wa-msg-source">Enviado desde CRM</div>`;
+    box.appendChild(el);
+    box.scrollTop = box.scrollHeight;
+  }
+
   async function sendMessage() {
     const input = document.getElementById('waInput');
     const text = input.value.trim();
@@ -133,21 +146,22 @@
     const btn = document.getElementById('waSendBtn');
     btn.disabled = true;
     input.disabled = true;
+    input.value = '';
+    appendOutgoing(text);
 
     try {
       const res = await api(`/whatsapp/conversaciones/${selectedId}/mensajes`, {
         method: 'POST',
         body: { mensaje: text },
       });
-      input.value = '';
-      if (res.conversacionId && res.conversacionId !== selectedId) {
-        selectedId = res.conversacionId;
-      }
+      if (res.conversacionId) selectedId = res.conversacionId;
       const msgs = await api(`/whatsapp/conversaciones/${selectedId}/mensajes`);
       renderMessages(msgs);
       await loadConversaciones();
     } catch (err) {
       toast(err.message, 'danger');
+      const msgs = await api(`/whatsapp/conversaciones/${selectedId}/mensajes`).catch(() => []);
+      renderMessages(msgs);
     } finally {
       sending = false;
       btn.disabled = false;
@@ -160,7 +174,8 @@
     openModal('Nuevo chat', `
       <div class="form-group">
         <label class="form-label">Teléfono (con código de país)</label>
-        <input class="form-control" id="waNuevoTel" placeholder="51999999999">
+        <input class="form-control" id="waNuevoTel" placeholder="51999999999 o 999999999" inputmode="tel">
+        <span style="font-size:11px;color:var(--text-muted);margin-top:4px;display:block">Perú: 9 dígitos (999…) o con código 51. Ej: 51999999999</span>
       </div>
     `, async () => {
       const tel = document.getElementById('waNuevoTel').value.trim();
@@ -197,9 +212,7 @@
   document.getElementById('waSearch').addEventListener('input', e => renderList(e.target.value.trim()));
   document.getElementById('btnNuevoChat').addEventListener('click', nuevoChat);
 
-  loadConversaciones().then(() => {
-    if (conversaciones.length) selectChat(conversaciones[0].id);
-  });
+  loadConversaciones();
   checkStatus();
   pollTimer = setInterval(() => {
     loadConversaciones().then(() => {
