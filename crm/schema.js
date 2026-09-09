@@ -457,8 +457,8 @@ async function ensureSchema() {
     const [[{cnt}]] = await conn.execute('SELECT COUNT(*) AS cnt FROM menu_permisos');
     if (!cnt) {
       const defaults = [
-        ...['dashboard','agenda','calendario','disponibilidad','pacientes','leads','historial','consentimientos','pagos','espera','terapeutas','reportes','analitica','marketing','asignacion','integraciones','permisos_menu'].map(i => ['superadmin', i]),
-        ...['dashboard','agenda','calendario','disponibilidad','pacientes','leads','historial','consentimientos','pagos','espera','terapeutas','reportes','analitica','marketing','asignacion','integraciones'].flatMap(i => [['admin', i], ['recepcion', i]]),
+        ...['dashboard','agenda','calendario','disponibilidad','pacientes','leads','historial','consentimientos','espera','terapeutas','reportes','analitica','marketing','asignacion','integraciones','permisos_menu'].map(i => ['superadmin', i]),
+        ...['dashboard','agenda','calendario','disponibilidad','pacientes','leads','historial','consentimientos','espera','terapeutas','reportes','analitica','marketing','asignacion','integraciones'].flatMap(i => [['admin', i], ['recepcion', i]]),
         ...['agenda','calendario','disponibilidad','pacientes','historial','mi_reporte'].map(i => ['terapeuta', i]),
       ];
       for (const [rol, item] of defaults)
@@ -521,6 +521,10 @@ async function ensureSchema() {
 
     for (const rol of ['superadmin', 'admin', 'recepcion'])
       await conn.execute('INSERT IGNORE INTO menu_permisos (rol, item) VALUES (?,?)', [rol, 'whatsapp']);
+
+    // Ocultar módulo de pagos (sin dinero en CRM por ahora)
+    await conn.execute("DELETE FROM usuario_menu_permisos WHERE item = 'pagos'");
+    await conn.execute("DELETE FROM menu_permisos WHERE item = 'pagos'");
 
     console.log('[crm] Schema OK');
   } finally {

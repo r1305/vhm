@@ -120,7 +120,7 @@
         <li><strong>${esc(fullName(p))}</strong></li>
         <li>${esc(p.email)}</li>
         <li>Contraseña temporal (deberá cambiarla al ingresar)</li>
-        <li>Suscripción activa S/ 89.90 · 1 año</li>
+        <li>Suscripción activa · 1 año</li>
       </ul>
       <p style="font-size:12px;color:var(--text-muted)">El usuario deberá cambiar la contraseña al ingresar por primera vez.</p>
     `, async () => {

@@ -14,7 +14,6 @@
     { key: 'mi_reporte',      label: 'Mi reporte',         icon: 'fa-chart-bar' },
     { key: 'disponibilidad',  label: 'Disponibilidad',     icon: 'fa-clock' },
     { key: 'historial',       label: 'Historial clínico',  icon: 'fa-file-medical' },
-    { key: 'pagos',           label: 'Pagos',              icon: 'fa-credit-card' },
     { key: 'analitica',       label: 'Analítica web',      icon: 'fa-chart-line' },
     { key: 'integraciones',   label: 'Integraciones',      icon: 'fa-plug' },
     { key: 'terapeutas',      label: 'Usuarios',           icon: 'fa-user-md' },
