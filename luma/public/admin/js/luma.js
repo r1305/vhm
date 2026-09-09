@@ -256,6 +256,11 @@
     }
   }
 
+  function itemRegistroHtml(r) {
+    if (!r.item_nombre) return '<span style="color:var(--text-muted)">—</span>';
+    return '<span class="item-reg-badge" title="Ítem comprometido">' + esc(r.item_nombre) + '</span>';
+  }
+
   function renderDetalleRegistros(eventoId, lista) {
     lista = lista || [];
     const activos = lista.filter(r => r.estado !== 'cancelado');
@@ -277,6 +282,7 @@
         '<td><strong>' + esc(r.nombre) + '</strong></td>' +
         '<td>' + esc(r.email) + '</td>' +
         '<td>' + (r.telefono ? esc(r.telefono) : '<span style="color:var(--text-muted)">—</span>') + '</td>' +
+        '<td>' + itemRegistroHtml(r) + '</td>' +
         '<td><span class="estado-badge estado-' + r.estado + '">' + r.estado + '</span></td>' +
         '<td style="font-size:.8rem;color:var(--text-muted)">' + (r.fecha_asistencia ? new Date(r.fecha_asistencia).toLocaleString('es-PE') : '—') + '</td>' +
       '</tr>';
@@ -284,12 +290,12 @@
 
     return '<div class="evento-detail-header"><h4>👥 Lista de registros — marca asistencia el día del evento</h4></div>' +
       barHtml +
-      '<div class="card-body" style="padding:0"><div class="table-desktop"><table><thead><tr><th style="width:48px">✓</th><th>Nombre</th><th>Email</th><th>Teléfono</th><th>Estado</th><th>Hora asistencia</th></tr></thead><tbody>' +
+      '<div class="card-body" style="padding:0"><div class="table-desktop"><table><thead><tr><th style="width:48px">✓</th><th>Nombre</th><th>Email</th><th>Teléfono</th><th>Cuenta conmigo</th><th>Estado</th><th>Hora asistencia</th></tr></thead><tbody>' +
       rows + '</tbody></table></div>' +
       '<div class="mobile-cards" style="display:block;padding:12px">' +
       lista.map(r => {
         const cancelado = r.estado === 'cancelado';
-        return '<div class="mc-item"' + (r.asistio ? ' style="border-color:#10b981"' : '') + '><div class="mc-header"><label style="display:flex;align-items:center;gap:10px;cursor:' + (cancelado ? 'default' : 'pointer') + '"><input type="checkbox" class="asist-check" data-reg-id="' + r.id + '" data-evento-id="' + eventoId + '"' + (r.asistio ? ' checked' : '') + (cancelado ? ' disabled' : '') + '><div class="mc-title">' + esc(r.nombre) + '</div></label><span class="estado-badge estado-' + r.estado + '">' + r.estado + '</span></div><div class="mc-row">📧 ' + esc(r.email) + '</div>' + (r.asistio && r.fecha_asistencia ? '<div class="mc-row" style="color:var(--color-success)">✅ ' + new Date(r.fecha_asistencia).toLocaleString('es-PE') + '</div>' : '') + '</div>';
+        return '<div class="mc-item"' + (r.asistio ? ' style="border-color:#10b981"' : '') + '><div class="mc-header"><label style="display:flex;align-items:center;gap:10px;cursor:' + (cancelado ? 'default' : 'pointer') + '"><input type="checkbox" class="asist-check" data-reg-id="' + r.id + '" data-evento-id="' + eventoId + '"' + (r.asistio ? ' checked' : '') + (cancelado ? ' disabled' : '') + '><div class="mc-title">' + esc(r.nombre) + '</div></label><span class="estado-badge estado-' + r.estado + '">' + r.estado + '</span></div><div class="mc-row">📧 ' + esc(r.email) + '</div>' + (r.item_nombre ? '<div class="mc-row">🛒 ' + itemRegistroHtml(r) + '</div>' : '') + (r.asistio && r.fecha_asistencia ? '<div class="mc-row" style="color:var(--color-success)">✅ ' + new Date(r.fecha_asistencia).toLocaleString('es-PE') + '</div>' : '') + '</div>';
       }).join('') +
       '</div></div>';
   }
@@ -607,15 +613,13 @@
       '<div class="card"><div class="card-body"><div class="table-desktop"><table><thead><tr><th style="width:48px">✓</th><th>#</th><th>Nombre</th><th>Email</th><th>Teléfono</th><th>Cuenta conmigo</th><th>Estado</th><th>Hora asistencia</th><th>Fecha registro</th><th>Acciones</th></tr></thead><tbody>' +
       lista.map((r, i) => {
         const cancelado = r.estado === 'cancelado';
-        const itemLabel = r.item_nombre
-          ? esc(r.item_nombre)
-          : '<span style="color:var(--text-muted)">—</span>';
+        const itemLabel = itemRegistroHtml(r);
         return '<tr class="' + (r.asistio ? 'asistio' : '') + (cancelado ? ' asistio-cancelado' : '') + '"><td style="text-align:center"><input type="checkbox" class="asist-check-reg" data-id="' + r.id + '" data-evento="' + eventoId + '"' + (r.asistio ? ' checked' : '') + (cancelado ? ' disabled' : '') + '></td><td>' + (i+1) + '</td><td><strong>' + esc(r.nombre) + '</strong></td><td>' + esc(r.email) + '</td><td>' + (r.telefono ? esc(r.telefono) : '<span style="color:var(--text-muted)">—</span>') + '</td><td>' + itemLabel + '</td><td><select class="estado-select" data-id="' + r.id + '" data-evento="' + eventoId + '" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border-strong);background:var(--bg-input);color:var(--text-primary);font-size:.78rem"><option value="pendiente"' + (r.estado==='pendiente'?' selected':'') + '>⏳ Pendiente</option><option value="confirmado"' + (r.estado==='confirmado'?' selected':'') + '>✅ Confirmado</option><option value="cancelado"' + (r.estado==='cancelado'?' selected':'') + '>❌ Cancelado</option></select></td><td style="font-size:.8rem;color:var(--text-muted)">' + (r.fecha_asistencia ? new Date(r.fecha_asistencia).toLocaleString('es-PE') : '—') + '</td><td style="font-size:.8rem;color:var(--text-muted)">' + new Date(r.fecha_registro).toLocaleString('es-PE') + '</td><td>' + (r.notas ? '<button class="btn btn-outline btn-xs" onclick="window._lumaVerReg(' + r.id + ')">👁️</button> ' : '') + '<button class="btn btn-danger btn-xs" onclick="window._lumaDelReg(' + r.id + ',' + eventoId + ')">🗑️</button></td></tr>';
       }).join('') +
       '</tbody></table></div><div class="mobile-cards">' +
       lista.map(r => {
         const cancelado = r.estado === 'cancelado';
-        return '<div class="mc-item"' + (r.asistio ? ' style="border-color:#10b981"' : '') + '><div class="mc-header"><label style="display:flex;align-items:center;gap:10px"><input type="checkbox" class="asist-check-reg" data-id="' + r.id + '" data-evento="' + eventoId + '"' + (r.asistio ? ' checked' : '') + (cancelado ? ' disabled' : '') + '><div class="mc-title">' + esc(r.nombre) + '</div></label><span class="estado-badge estado-' + r.estado + '">' + r.estado + '</span></div><div class="mc-row">📧 ' + esc(r.email) + '</div>' + (r.telefono ? '<div class="mc-row">📞 ' + esc(r.telefono) + '</div>' : '') + (r.asistio && r.fecha_asistencia ? '<div class="mc-row" style="color:var(--color-success)">✅ ' + new Date(r.fecha_asistencia).toLocaleString('es-PE') + '</div>' : '') + '<div class="mc-row" style="font-size:.75rem;color:var(--text-muted)">' + new Date(r.fecha_registro).toLocaleString('es-PE') + '</div><div class="mc-actions"><select class="estado-select" data-id="' + r.id + '" data-evento="' + eventoId + '" style="padding:6px 8px;border-radius:6px;border:1px solid var(--border-strong);background:var(--bg-input);color:var(--text-primary);font-size:.78rem"><option value="pendiente"' + (r.estado==='pendiente'?' selected':'') + '>⏳ Pendiente</option><option value="confirmado"' + (r.estado==='confirmado'?' selected':'') + '>✅ Confirmado</option><option value="cancelado"' + (r.estado==='cancelado'?' selected':'') + '>❌ Cancelado</option></select><button class="btn btn-danger btn-xs" onclick="window._lumaDelReg(' + r.id + ',' + eventoId + ')">🗑️</button></div></div>';
+        return '<div class="mc-item"' + (r.asistio ? ' style="border-color:#10b981"' : '') + '><div class="mc-header"><label style="display:flex;align-items:center;gap:10px"><input type="checkbox" class="asist-check-reg" data-id="' + r.id + '" data-evento="' + eventoId + '"' + (r.asistio ? ' checked' : '') + (cancelado ? ' disabled' : '') + '><div class="mc-title">' + esc(r.nombre) + '</div></label><span class="estado-badge estado-' + r.estado + '">' + r.estado + '</span></div><div class="mc-row">📧 ' + esc(r.email) + '</div>' + (r.telefono ? '<div class="mc-row">📞 ' + esc(r.telefono) + '</div>' : '') + (r.item_nombre ? '<div class="mc-row">🛒 ' + itemRegistroHtml(r) + '</div>' : '') + (r.asistio && r.fecha_asistencia ? '<div class="mc-row" style="color:var(--color-success)">✅ ' + new Date(r.fecha_asistencia).toLocaleString('es-PE') + '</div>' : '') + '<div class="mc-row" style="font-size:.75rem;color:var(--text-muted)">' + new Date(r.fecha_registro).toLocaleString('es-PE') + '</div><div class="mc-actions"><select class="estado-select" data-id="' + r.id + '" data-evento="' + eventoId + '" style="padding:6px 8px;border-radius:6px;border:1px solid var(--border-strong);background:var(--bg-input);color:var(--text-primary);font-size:.78rem"><option value="pendiente"' + (r.estado==='pendiente'?' selected':'') + '>⏳ Pendiente</option><option value="confirmado"' + (r.estado==='confirmado'?' selected':'') + '>✅ Confirmado</option><option value="cancelado"' + (r.estado==='cancelado'?' selected':'') + '>❌ Cancelado</option></select><button class="btn btn-danger btn-xs" onclick="window._lumaDelReg(' + r.id + ',' + eventoId + ')">🗑️</button></div></div>';
       }).join('') +
       '</div></div></div>';
     panel.querySelectorAll('.estado-select').forEach(sel => {
