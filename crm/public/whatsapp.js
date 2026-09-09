@@ -7,6 +7,7 @@
   let conversaciones = [];
   let selectedId = null;
   let pollTimer = null;
+  let sending = false;
 
   function fmtTime(d) {
     if (!d) return '';
@@ -126,7 +127,12 @@
   async function sendMessage() {
     const input = document.getElementById('waInput');
     const text = input.value.trim();
-    if (!text || !selectedId) return;
+    if (!text || !selectedId || sending) return;
+
+    sending = true;
+    const btn = document.getElementById('waSendBtn');
+    btn.disabled = true;
+    input.disabled = true;
 
     try {
       await api(`/whatsapp/conversaciones/${selectedId}/mensajes`, {
@@ -134,10 +140,16 @@
         body: { mensaje: text },
       });
       input.value = '';
-      await selectChat(selectedId);
+      const msgs = await api(`/whatsapp/conversaciones/${selectedId}/mensajes`);
+      renderMessages(msgs);
       await loadConversaciones();
     } catch (err) {
       toast(err.message, 'danger');
+    } finally {
+      sending = false;
+      btn.disabled = false;
+      input.disabled = false;
+      input.focus();
     }
   }
 
@@ -173,8 +185,11 @@
   }
 
   document.getElementById('waSendBtn').addEventListener('click', sendMessage);
-  document.getElementById('waInput').addEventListener('keypress', e => {
-    if (e.key === 'Enter') sendMessage();
+  document.getElementById('waInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      sendMessage();
+    }
   });
   document.getElementById('waSearch').addEventListener('input', e => renderList(e.target.value.trim()));
   document.getElementById('btnNuevoChat').addEventListener('click', nuevoChat);

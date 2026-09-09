@@ -16,6 +16,12 @@ function canAccessWhatsApp(user) {
   return isStaffAdmin(user?.rol) || user?.rol === 'terapeuta';
 }
 
+/** Unifica @c.us y @s.whatsapp.net al mismo chat */
+function normalizeChatId(chatId) {
+  const phone = normalizePhone(String(chatId || '').split('@')[0]);
+  return phone ? `${phone}@c.us` : null;
+}
+
 function authWhatsApp(req, res, next) {
   auth(req, res, () => {
     if (!canAccessWhatsApp(req.user)) {
@@ -41,12 +47,14 @@ async function findPacienteByPhone(phone) {
 }
 
 async function upsertConversacion({ chatId, phone, contactName, body, timestamp, incrementUnread }) {
-  const paciente = await findPacienteByPhone(phone);
+  const normalizedChatId = normalizeChatId(chatId) || chatId;
+  const normalizedPhone = normalizePhone(phone || normalizedChatId?.split('@')[0]);
+  const paciente = await findPacienteByPhone(normalizedPhone);
   const ts = timestamp ? new Date(timestamp * 1000) : new Date();
 
   const [existing] = await pool.execute(
-    'SELECT id, no_leidos FROM wa_conversaciones WHERE chat_id = ? LIMIT 1',
-    [chatId]
+    'SELECT id, no_leidos FROM wa_conversaciones WHERE chat_id = ? OR phone = ? LIMIT 1',
+    [normalizedChatId, normalizedPhone]
   );
 
   if (existing.length) {
@@ -69,7 +77,7 @@ async function upsertConversacion({ chatId, phone, contactName, body, timestamp,
     `INSERT INTO wa_conversaciones
       (chat_id, phone, contact_name, paciente_id, ultimo_mensaje, ultimo_mensaje_at, no_leidos)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [chatId, phone, contactName || null, paciente?.id || null, body || '', ts, incrementUnread ? 1 : 0]
+    [normalizedChatId, normalizedPhone, contactName || null, paciente?.id || null, body || '', ts, incrementUnread ? 1 : 0]
   );
   return r.insertId;
 }
@@ -92,22 +100,33 @@ async function insertMensaje({
     if (dup.length) return dup[0].id;
   }
 
-  const [r] = await pool.execute(
-    `INSERT INTO wa_mensajes
-      (conversacion_id, wa_message_id, direccion, tipo, cuerpo, enviado_por, origen, timestamp_wa)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [
-      conversacionId,
-      waMessageId || null,
-      direccion,
-      tipo || 'text',
-      cuerpo || '',
-      enviadoPor || null,
-      origen || 'whatsapp',
-      timestamp || null,
-    ]
-  );
-  return r.insertId;
+  try {
+    const [r] = await pool.execute(
+      `INSERT INTO wa_mensajes
+        (conversacion_id, wa_message_id, direccion, tipo, cuerpo, enviado_por, origen, timestamp_wa)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        conversacionId,
+        waMessageId || null,
+        direccion,
+        tipo || 'text',
+        cuerpo || '',
+        enviadoPor || null,
+        origen || 'whatsapp',
+        timestamp || null,
+      ]
+    );
+    return r.insertId;
+  } catch (err) {
+    if (err.code === 'ER_DUP_ENTRY' && waMessageId) {
+      const [dup] = await pool.execute(
+        'SELECT id FROM wa_mensajes WHERE wa_message_id = ? LIMIT 1',
+        [waMessageId]
+      );
+      if (dup.length) return dup[0].id;
+    }
+    throw err;
+  }
 }
 
 // ── Webhook OpenWA (público, autenticado por token) ─────────────
@@ -125,8 +144,13 @@ router.post('/webhook', async (req, res) => {
     if (!event || !data) return res.json({ ok: true, skipped: true });
 
     if (event === 'message:received' || event === 'message:sent') {
-      const chatId = data.chatId;
+      const chatId = normalizeChatId(data.chatId);
       if (!chatId || chatId.includes('@g.us')) return res.json({ ok: true, skipped: true });
+
+      // Los envíos desde el CRM ya se guardan en POST /mensajes; evitar duplicado por webhook
+      if (event === 'message:sent' && data.source === 'crm') {
+        return res.json({ ok: true, skipped: true });
+      }
 
       const phone = normalizePhone(chatId.split('@')[0]);
       const isIncoming = event === 'message:received';
