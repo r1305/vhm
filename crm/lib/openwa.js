@@ -26,14 +26,32 @@ function isOpenwaConfigured() {
   );
 }
 
+const DEFAULT_COUNTRY_CODE = process.env.WA_DEFAULT_COUNTRY_CODE || '51';
+
 function normalizePhone(phone) {
-  return String(phone || '').replace(/\D/g, '');
+  const raw = String(phone || '').trim();
+  if (!raw) return '';
+
+  // JID de WhatsApp: extraer solo la parte numérica antes del @
+  const jidPart = raw.includes('@') ? raw.split('@')[0] : raw;
+  let digits = jidPart.replace(/\D/g, '');
+  if (!digits) return '';
+  if (digits.startsWith('00')) digits = digits.slice(2);
+
+  // Perú: móvil de 9 dígitos que empieza en 9 → agregar código 51
+  if (DEFAULT_COUNTRY_CODE === '51' && digits.length === 9 && digits.startsWith('9')) {
+    digits = `51${digits}`;
+  }
+  return digits;
 }
 
-function toChatId(phone) {
-  const digits = normalizePhone(phone);
-  if (!digits) return null;
-  return digits.includes('@') ? digits : `${digits}@c.us`;
+function toChatId(phoneOrJid) {
+  const raw = String(phoneOrJid || '').trim();
+  if (!raw) return null;
+  if (raw.includes('@lid')) return raw;
+  if (raw.includes('@')) return raw;
+  const digits = normalizePhone(raw);
+  return digits ? `${digits}@c.us` : null;
 }
 
 async function openwaFetch(path, options = {}) {
