@@ -2,6 +2,7 @@ const { Router } = require('express');
 const bcrypt = require('bcryptjs');
 const pool = require('./db');
 const { authMiddleware } = require('./auth');
+const { seedAccesosForUser } = require('./lib/siteAccesos');
 
 const router = Router();
 router.use(authMiddleware);
@@ -48,6 +49,7 @@ router.post('/', requireAdmin, async (req, res) => {
       'INSERT INTO usuarios (username, password, nombre, email, rol) VALUES (?, ?, ?, ?, ?)',
       [username, hash, nombre, email, userRole]
     );
+    await seedAccesosForUser(result.insertId, userRole);
     res.status(201).json({ id: result.insertId, message: 'Usuario creado' });
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') return res.status(409).json({ error: 'El username ya existe' });

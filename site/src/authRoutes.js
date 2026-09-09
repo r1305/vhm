@@ -3,6 +3,8 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const pool = require('./db');
 const { JWT_SECRET } = require('./auth');
+const { ensureVideoSchema } = require('./ensureSchema');
+const { getAccesosForUser } = require('./lib/siteAccesos');
 
 const router = Router();
 
@@ -40,6 +42,7 @@ setInterval(() => {
 
 router.post('/login', async (req, res) => {
   try {
+    await ensureVideoSchema();
     const ip = req.ip || req.connection.remoteAddress;
     const record = getAttempts(ip);
     if (record && record.count >= MAX_ATTEMPTS) {
@@ -64,8 +67,18 @@ router.post('/login', async (req, res) => {
     }
 
     resetAttempts(ip);
+    const menuItems = await getAccesosForUser(user.id, user.rol);
     const token = jwt.sign({ id: user.id, username: user.username, rol: user.rol }, JWT_SECRET, { expiresIn: '8h' });
-    res.json({ token, user: { id: user.id, username: user.username, nombre: user.nombre, rol: user.rol } });
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+        nombre: user.nombre,
+        rol: user.rol,
+        menuItems,
+      },
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error en el login' });

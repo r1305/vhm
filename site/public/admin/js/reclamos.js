@@ -279,7 +279,8 @@
   }
 
   function init() {
-    AdminLayout.init({ page: 'reclamos', title: '📋 Reclamos' });
+    AdminLayout.init({ page: 'reclamos', title: '📋 Reclamos' }).then(function (ok) {
+    if (!ok) return;
     AdminUtils.bindModalClose();
 
     $('pg-prev').addEventListener('click', function () {
@@ -301,6 +302,7 @@
     });
 
     cargarReclamos();
+    });
   }
 
   if (document.readyState === 'loading') {
