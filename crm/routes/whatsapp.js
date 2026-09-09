@@ -27,7 +27,7 @@ function normalizeChatId(chatId) {
   if (raw.includes('@lid')) return raw;
   if (raw.includes('@g.us')) return raw;
   const phone = normalizePhone(raw.split('@')[0]);
-  return phone ? `${phone}@c.us` : null;
+  return phone ? `${phone}@s.whatsapp.net` : null;
 }
 
 function phoneTail(phone) {
@@ -725,9 +725,11 @@ router.post('/conversaciones/:id/mensajes', authWhatsApp, async (req, res) => {
     if (!conv) return res.status(404).json({ error: 'Conversación no encontrada' });
 
     const conversacionId = await mergeConversacionesByPhone(conv.phone, conv.id) || conv.id;
-    const destino = isWhatsAppPhone(conv.phone)
-      ? (conv.chat_id?.includes('@lid') ? toChatId(conv.phone) : (conv.chat_id || toChatId(conv.phone)))
-      : (conv.lid_chat_id || conv.chat_id || toChatId(conv.phone));
+    const destino = conv.lid_chat_id
+      || (conv.chat_id?.includes('@lid') ? conv.chat_id : null)
+      || (isWhatsAppPhone(conv.phone) ? (normalizeChatId(conv.chat_id) || toChatId(conv.phone)) : null)
+      || conv.chat_id
+      || toChatId(conv.phone);
 
     const result = await sendWhatsApp({ to: destino, message: text });
     const ts = Math.floor(Date.now() / 1000);
