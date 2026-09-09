@@ -131,6 +131,16 @@ async function resolveLidPhone(lidChatId) {
   }
 }
 
+async function markChatRead({ chatId, messageIds, sessionId }) {
+  const sid = sessionId || process.env.OPENWA_SESSION;
+  if (!sid || !chatId) return { ok: false, read: 0 };
+  const params = new URLSearchParams({ sessionId: sid });
+  return openwaFetch(`/api/chats/${encodeURIComponent(chatId)}/read?${params}`, {
+    method: 'POST',
+    body: JSON.stringify({ messageIds: messageIds || [] }),
+  });
+}
+
 async function getSessionMessagesByPhone(phone, sessionId, limit = 300) {
   const digits = normalizePhone(phone);
   const sid = sessionId || process.env.OPENWA_SESSION;
@@ -152,4 +162,5 @@ module.exports = {
   getSessionMessages,
   getSessionMessagesByPhone,
   resolveLidPhone,
+  markChatRead,
 };
