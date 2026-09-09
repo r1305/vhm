@@ -18,7 +18,7 @@
   async function cargar() {
     panel.innerHTML = '<p style="padding:20px;color:var(--text-muted)">Cargando...</p>';
     try {
-      const res = await AdminApi.apiFetch('/accesos');
+      const res = await AdminApi.apiFetch('/accesos', { headers: AdminApi.authHeaders() });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Error al cargar');
       catalog = data.catalog || [];
@@ -86,6 +86,7 @@
     try {
       const res = await AdminApi.apiFetch('/accesos/usuario/' + userActivo.id, {
         method: 'PUT',
+        headers: AdminApi.authHeaders(),
         body: JSON.stringify({ items }),
       });
       const data = await res.json();

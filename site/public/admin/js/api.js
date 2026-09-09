@@ -29,7 +29,16 @@
   }
 
   async function apiFetch(url, options) {
-    const res = await fetch(API_BASE + url, { credentials: 'same-origin', ...(options || {}) });
+    options = options || {};
+    const headers = Object.assign({}, authHeaders(), options.headers || {});
+    if (options.body instanceof FormData) {
+      delete headers['Content-Type'];
+    }
+    const res = await fetch(API_BASE + url, {
+      credentials: 'same-origin',
+      ...options,
+      headers,
+    });
     if (res.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
