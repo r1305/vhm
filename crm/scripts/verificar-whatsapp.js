@@ -64,6 +64,18 @@ async function main() {
     console.log('health:', JSON.stringify(health));
     if (health.sessionsReady < 1) issues.push('Ninguna sesión WhatsApp en estado ready');
     else ok.push(`${health.sessionsReady} sesión(es) ready`);
+    if (health.version && health.version < '1.0.1') {
+      issues.push(`OpenWA desactualizado (v${health.version}) — ejecuta redeploy.sh`);
+    } else if (health.version) {
+      ok.push(`OpenWA v${health.version} desplegado`);
+    }
+    if (health.engines?.length) {
+      const eng = health.engines[0];
+      console.log('engine:', JSON.stringify(eng));
+      if (!eng.lastIncomingAt) {
+        issues.push('Sesión sin mensajes entrantes desde el último reinicio — envía prueba tras deploy');
+      }
+    }
   }
 
   console.log('\n=== Webhooks de sesión OpenWA ===');
