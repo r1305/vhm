@@ -81,8 +81,11 @@ function isLidPhone(digits) {
 
 function resolveWebhookContact(data) {
   const rawChatId = String(data.chatId || '');
+  const remoteJid = data.remoteJid && String(data.remoteJid).includes('@') ? String(data.remoteJid) : null;
   const fromJid = data.from && String(data.from).includes('@') ? String(data.from) : null;
-  let lidChatId = data.lidChatId || (rawChatId.includes('@lid') ? rawChatId : null);
+  let lidChatId = data.lidChatId
+    || (remoteJid?.includes('@lid') ? remoteJid : null)
+    || (rawChatId.includes('@lid') ? rawChatId : null);
   if (!lidChatId && fromJid?.includes('@lid')) lidChatId = fromJid;
   const phoneChatId = data.phoneChatId || null;
 
@@ -95,6 +98,9 @@ function resolveWebhookContact(data) {
   } else if (rawChatId && !rawChatId.includes('@lid')) {
     phone = normalizePhone(rawChatId.split('@')[0]);
     chatId = normalizeChatId(rawChatId);
+  } else if (remoteJid && !remoteJid.includes('@lid')) {
+    phone = normalizePhone(remoteJid.split('@')[0]);
+    chatId = normalizeChatId(remoteJid);
   } else if (fromJid && !fromJid.includes('@lid')) {
     phone = normalizePhone(fromJid.split('@')[0]);
     chatId = normalizeChatId(fromJid);
@@ -104,6 +110,35 @@ function resolveWebhookContact(data) {
   if (!chatId && lidChatId) chatId = lidChatId;
 
   return { phone, chatId, lidChatId };
+}
+
+/** Asocia un @lid entrante con la conversación de teléfono que acaba de escribirle el CRM */
+async function findConversationForLidInbound(lidChatId) {
+  if (!lidChatId || !String(lidChatId).includes('@lid')) return null;
+
+  const [awaiting] = await pool.execute(
+    `SELECT id FROM wa_conversaciones
+     WHERE awaiting_lid_until IS NOT NULL AND awaiting_lid_until > NOW()
+       AND phone IS NOT NULL AND LENGTH(REPLACE(phone,'+','')) >= 10
+       AND (lid_chat_id IS NULL OR lid_chat_id = ?)
+     ORDER BY
+       CASE WHEN lid_chat_id = ? THEN 0 ELSE 1 END,
+       ultimo_mensaje_at DESC,
+       updated_at DESC
+     LIMIT 1`,
+    [lidChatId, lidChatId]
+  );
+  if (awaiting.length) return awaiting[0].id;
+
+  const [openAwaiting] = await pool.execute(
+    `SELECT id FROM wa_conversaciones
+     WHERE awaiting_lid_until > NOW()
+       AND phone IS NOT NULL AND lid_chat_id IS NULL
+     ORDER BY ultimo_mensaje_at DESC`
+  );
+  if (openAwaiting.length === 1) return openAwaiting[0].id;
+
+  return null;
 }
 
 async function findConversacionId({ chatId, phone, lidChatId, preferId = null }) {
@@ -127,6 +162,9 @@ async function findConversacionId({ chatId, phone, lidChatId, preferId = null })
       const merged = await mergeConversacionesByPhone(mappedPhone, preferId);
       if (merged) return merged;
     }
+
+    const awaitingId = await findConversationForLidInbound(lidChatId);
+    if (awaitingId) return awaitingId;
   }
 
   const normalizedChatId = chatId && !String(chatId).includes('@lid')
@@ -159,7 +197,61 @@ async function absorbOrphanLidConversations(primaryId) {
   const [[primary]] = await pool.execute('SELECT * FROM wa_conversaciones WHERE id = ?', [primaryId]);
   if (!primary) return primaryId;
 
+  if (!isWhatsAppPhone(primary.phone)) {
+    const orphanLid = primary.lid_chat_id || (String(primary.chat_id).includes('@lid') ? primary.chat_id : null);
+    if (orphanLid) {
+      const mapped = await resolveLidPhone(orphanLid);
+      if (mapped && isWhatsAppPhone(mapped)) {
+        const targetId = await mergeConversacionesByPhone(mapped, null);
+        if (targetId && targetId !== primaryId) {
+          await pool.execute(
+            'UPDATE wa_mensajes SET conversacion_id = ? WHERE conversacion_id = ?',
+            [targetId, primaryId]
+          );
+          await pool.execute(
+            `UPDATE wa_conversaciones
+             SET lid_chat_id = COALESCE(lid_chat_id, ?),
+                 awaiting_lid_until = COALESCE(awaiting_lid_until, DATE_ADD(NOW(), INTERVAL 2 HOUR))
+             WHERE id = ?`,
+            [orphanLid, targetId]
+          );
+          await pool.execute('DELETE FROM wa_conversaciones WHERE id = ?', [primaryId]);
+          return absorbOrphanLidConversations(targetId);
+        }
+      }
+    }
+  }
+
   let lid = primary.lid_chat_id || (String(primary.chat_id).includes('@lid') ? primary.chat_id : null);
+
+  if (isWhatsAppPhone(primary.phone) && primary.awaiting_lid_until
+    && new Date(primary.awaiting_lid_until) > new Date()) {
+    const [orphans] = await pool.execute(
+      `SELECT id, chat_id, lid_chat_id FROM wa_conversaciones
+       WHERE id != ? AND chat_id LIKE '%@lid'
+         AND (phone IS NULL OR phone = '')
+         AND ultimo_mensaje_at > DATE_SUB(NOW(), INTERVAL 2 HOUR)`,
+      [primaryId]
+    );
+    const eligible = orphans.filter((o) => {
+      const oLid = o.lid_chat_id || o.chat_id;
+      return !lid || oLid === lid;
+    });
+    if (eligible.length === 1) {
+      const o = eligible[0];
+      const oLid = o.lid_chat_id || o.chat_id;
+      await pool.execute(
+        'UPDATE wa_conversaciones SET lid_chat_id = COALESCE(lid_chat_id, ?) WHERE id = ?',
+        [oLid, primaryId]
+      );
+      await pool.execute(
+        'UPDATE wa_mensajes SET conversacion_id = ? WHERE conversacion_id = ?',
+        [primaryId, o.id]
+      );
+      await pool.execute('DELETE FROM wa_conversaciones WHERE id = ?', [o.id]);
+      if (!lid) lid = oLid;
+    }
+  }
 
   if (lid) {
     await pool.execute(
@@ -274,6 +366,14 @@ async function dedupeAllConversaciones() {
       await mergeConversacionesByPhone(mapped, row.id);
     }
   }
+
+  const [awaitingRows] = await pool.execute(
+    `SELECT id FROM wa_conversaciones
+     WHERE awaiting_lid_until > NOW() AND phone IS NOT NULL`
+  );
+  for (const row of awaitingRows) {
+    await absorbOrphanLidConversations(row.id);
+  }
 }
 
 async function hasRecentOutgoingCrm({ phone, cuerpo, waMessageId }) {
@@ -320,6 +420,28 @@ async function getRelatedConversacionIds(conv) {
       [lid, lid]
     );
     byLid.forEach((r) => ids.add(r.id));
+  }
+
+  if (tail) {
+    const [lidOrphans] = await pool.execute(
+      `SELECT id, chat_id, lid_chat_id FROM wa_conversaciones
+       WHERE id != ? AND (chat_id LIKE '%@lid' OR lid_chat_id IS NOT NULL)
+         AND ultimo_mensaje_at > DATE_SUB(NOW(), INTERVAL 48 HOUR)`,
+      [conv.id]
+    );
+    for (const o of lidOrphans) {
+      const oLid = o.lid_chat_id || (String(o.chat_id).includes('@lid') ? o.chat_id : null);
+      if (!oLid) continue;
+      if (lid && oLid !== lid) continue;
+      const mapped = await resolveLidPhone(oLid);
+      if (mapped && phoneTail(mapped) === tail) {
+        ids.add(o.id);
+        continue;
+      }
+      if (!lid && conv.awaiting_lid_until && new Date(conv.awaiting_lid_until) > new Date()) {
+        ids.add(o.id);
+      }
+    }
   }
 
   return [...ids];
@@ -395,7 +517,27 @@ async function syncMensajesFromOpenwa(conv, conversacionId) {
   }
 
   for (const row of collected.values()) {
-    if (row.direction === 'outgoing') continue;
+    if (row.direction === 'outgoing') {
+      if (row.wa_message_id) {
+        const [exists] = await pool.execute(
+          'SELECT id FROM wa_mensajes WHERE wa_message_id = ? LIMIT 1',
+          [row.wa_message_id]
+        );
+        if (exists.length) continue;
+      }
+      await insertMensaje({
+        conversacionId,
+        waMessageId: row.wa_message_id,
+        direccion: 'outgoing',
+        tipo: row.type || 'text',
+        cuerpo: row.body || '',
+        origen: 'telefono',
+        timestamp: row.timestamp,
+        mediaPath: row.media_path || null,
+        reassignConversacion: true,
+      });
+      continue;
+    }
     if (row.wa_message_id && row.media_path) {
       await pool.execute(
         `UPDATE wa_mensajes SET media_path = COALESCE(media_path, ?), tipo = ?
@@ -983,6 +1125,7 @@ router.post('/conversaciones/:id/mensajes/media', authWhatsApp, upload.single('f
       `UPDATE wa_conversaciones
        SET chat_id = COALESCE(?, chat_id),
            lid_chat_id = COALESCE(?, lid_chat_id),
+           awaiting_lid_until = DATE_ADD(NOW(), INTERVAL 2 HOUR),
            ultimo_mensaje = ?, ultimo_mensaje_at = NOW(), no_leidos = 0, updated_at = NOW()
        WHERE id = ?`,
       [resolvedChatId, resolvedLid, cuerpo, conversacionId]
