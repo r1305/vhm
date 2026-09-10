@@ -40,21 +40,33 @@
     return placeholders.includes(b) || (isMediaTipo(tipo) && !b);
   }
 
+  function hasMediaSource(m) {
+    return Boolean(m.media_path || m.wa_message_id);
+  }
+
+  function mediaPlaceholder(tipo, cuerpo) {
+    const labels = { image: '🖼️ Imagen', audio: '🎵 Audio', video: '🎬 Video', document: '📄 Documento' };
+    return `<span class="wa-msg-placeholder">${esc(cuerpo || labels[tipo] || 'Medio')}</span>`;
+  }
+
   function renderMessageBody(m) {
     const tipo = m.tipo || 'text';
     if (!isMediaTipo(tipo)) return esc(m.cuerpo || '');
+    if (!hasMediaSource(m)) return mediaPlaceholder(tipo, m.cuerpo);
 
     const url = mediaUrl(m.id);
     const cap = !isPlaceholderBody(m.cuerpo, tipo) ? `<div class="wa-msg-caption">${esc(m.cuerpo)}</div>` : '';
 
+    const fail = "this.onerror=null;this.outerHTML='<span class=\\'wa-msg-placeholder\\'>Medio no disponible</span>'";
+
     if (tipo === 'image') {
-      return `<a href="${url}" target="_blank" rel="noopener"><img class="wa-msg-media wa-msg-img" src="${url}" alt="Imagen" loading="lazy"></a>${cap}`;
+      return `<a href="${url}" target="_blank" rel="noopener"><img class="wa-msg-media wa-msg-img" src="${url}" alt="Imagen" loading="lazy" onerror="${fail}"></a>${cap}`;
     }
     if (tipo === 'video') {
-      return `<video class="wa-msg-media wa-msg-video" src="${url}" controls preload="metadata"></video>${cap}`;
+      return `<video class="wa-msg-media wa-msg-video" src="${url}" controls preload="metadata" onerror="${fail}"></video>${cap}`;
     }
     if (tipo === 'audio') {
-      return `<audio class="wa-msg-audio" controls preload="metadata" src="${url}"></audio>${cap}`;
+      return `<audio class="wa-msg-audio" controls preload="metadata" src="${url}" onerror="${fail}"></audio>${cap}`;
     }
     if (tipo === 'document') {
       const label = !isPlaceholderBody(m.cuerpo, tipo) ? esc(m.cuerpo) : 'Descargar documento';
