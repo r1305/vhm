@@ -137,6 +137,21 @@ async function resolveLidPhone(lidChatId) {
   }
 }
 
+/** JID de envío (incluye @lid) vía OpenWA onWhatsApp */
+async function resolvePhoneJid(phone) {
+  await loadOpenwaConfigFromDB();
+  const { sessionId } = getOpenwaConfig();
+  const digits = normalizePhone(phone);
+  if (!sessionId || !digits) return toChatId(phone);
+  try {
+    const params = new URLSearchParams({ phone: digits, sessionId });
+    const data = await openwaFetch(`/api/chats/jid/resolve?${params}`);
+    return data?.jid || toChatId(digits);
+  } catch (_) {
+    return toChatId(digits);
+  }
+}
+
 async function markChatRead({ chatId, messageIds, sessionId }) {
   const sid = sessionId || process.env.OPENWA_SESSION;
   if (!sid || !chatId) return { ok: false, read: 0 };
@@ -232,5 +247,6 @@ module.exports = {
   getSessionMessages,
   getSessionMessagesByPhone,
   resolveLidPhone,
+  resolvePhoneJid,
   markChatRead,
 };

@@ -17,6 +17,7 @@ const {
   getSessionMessagesByPhone,
   getChatMessages,
   resolveLidPhone,
+  resolvePhoneJid,
   markChatRead,
 } = require('../lib/openwa');
 const {
@@ -152,25 +153,64 @@ async function findConversacionId({ chatId, phone, lidChatId, preferId = null })
   return null;
 }
 
-/** Une solo conversaciones @lid ya vinculadas al mismo LID del chat principal */
+/** Une conversaciones @lid huérfanas con el chat principal (mismo teléfono/LID) */
 async function absorbOrphanLidConversations(primaryId) {
   const [[primary]] = await pool.execute('SELECT * FROM wa_conversaciones WHERE id = ?', [primaryId]);
-  if (!primary?.lid_chat_id) return primaryId;
+  if (!primary) return primaryId;
 
-  const lid = primary.lid_chat_id;
-  const [orphans] = await pool.execute(
-    `SELECT id FROM wa_conversaciones
-     WHERE id != ? AND (lid_chat_id = ? OR chat_id = ?)`,
-    [primaryId, lid, lid]
-  );
+  let lid = primary.lid_chat_id || (String(primary.chat_id).includes('@lid') ? primary.chat_id : null);
 
-  for (const o of orphans) {
+  if (lid) {
     await pool.execute(
-      'UPDATE wa_mensajes SET conversacion_id = ? WHERE conversacion_id = ?',
-      [primaryId, o.id]
+      'UPDATE wa_conversaciones SET lid_chat_id = COALESCE(lid_chat_id, ?) WHERE id = ?',
+      [lid, primaryId]
     );
-    await pool.execute('DELETE FROM wa_conversaciones WHERE id = ?', [o.id]);
+    const [orphans] = await pool.execute(
+      `SELECT id FROM wa_conversaciones
+       WHERE id != ? AND (lid_chat_id = ? OR chat_id = ?)`,
+      [primaryId, lid, lid]
+    );
+    for (const o of orphans) {
+      await pool.execute(
+        'UPDATE wa_mensajes SET conversacion_id = ? WHERE conversacion_id = ?',
+        [primaryId, o.id]
+      );
+      await pool.execute('DELETE FROM wa_conversaciones WHERE id = ?', [o.id]);
+    }
   }
+
+  if (isWhatsAppPhone(primary.phone)) {
+    const tail = phoneTail(primary.phone);
+    const [candidates] = await pool.execute(
+      `SELECT id, chat_id, lid_chat_id, phone FROM wa_conversaciones
+       WHERE id != ?
+         AND (chat_id LIKE '%@lid' OR lid_chat_id IS NOT NULL)`,
+      [primaryId]
+    );
+    for (const o of candidates) {
+      const oLid = o.lid_chat_id || (String(o.chat_id).includes('@lid') ? o.chat_id : null);
+      if (!oLid) continue;
+      let matches = false;
+      if (o.phone && isWhatsAppPhone(o.phone) && phoneTail(o.phone) === tail) {
+        matches = true;
+      } else {
+        const mapped = await resolveLidPhone(oLid);
+        if (mapped && phoneTail(mapped) === tail) matches = true;
+      }
+      if (!matches) continue;
+      await pool.execute(
+        'UPDATE wa_conversaciones SET lid_chat_id = COALESCE(lid_chat_id, ?) WHERE id = ?',
+        [oLid, primaryId]
+      );
+      await pool.execute(
+        'UPDATE wa_mensajes SET conversacion_id = ? WHERE conversacion_id = ?',
+        [primaryId, o.id]
+      );
+      await pool.execute('DELETE FROM wa_conversaciones WHERE id = ?', [o.id]);
+      if (!lid) lid = oLid;
+    }
+  }
+
   return primaryId;
 }
 
@@ -259,7 +299,29 @@ async function hasRecentOutgoingCrm({ phone, cuerpo, waMessageId }) {
 }
 
 async function getRelatedConversacionIds(conv) {
-  return [conv.id];
+  const ids = new Set([conv.id]);
+  const tail = isWhatsAppPhone(conv.phone) ? phoneTail(conv.phone) : '';
+  const lid = conv.lid_chat_id || (String(conv.chat_id).includes('@lid') ? conv.chat_id : null);
+
+  if (tail) {
+    const [byPhone] = await pool.execute(
+      `SELECT id FROM wa_conversaciones
+       WHERE LENGTH(REPLACE(REPLACE(phone,'+',''),' ','')) BETWEEN 10 AND 13
+         AND RIGHT(REPLACE(REPLACE(phone,'+',''),' ',''), 9) = ?`,
+      [tail]
+    );
+    byPhone.forEach((r) => ids.add(r.id));
+  }
+
+  if (lid) {
+    const [byLid] = await pool.execute(
+      'SELECT id FROM wa_conversaciones WHERE lid_chat_id = ? OR chat_id = ?',
+      [lid, lid]
+    );
+    byLid.forEach((r) => ids.add(r.id));
+  }
+
+  return [...ids];
 }
 
 function normalizeOpenwaRow(m) {
@@ -291,7 +353,11 @@ function messageMatchesContact(row, conv, tail) {
     const b = normalizeChatId(conv.chat_id);
     if (a && b && a === b) return true;
   }
-  if (chatId.includes('@lid') || !tail) return false;
+  if (chatId.includes('@lid')) {
+    // Mensajes @lid devueltos por búsqueda por teléfono en OpenWA
+    return Boolean(tail);
+  }
+  if (!tail) return false;
   const digits = chatId.split('@')[0].replace(/\D/g, '');
   if (digits.length >= 10 && digits.slice(-9) === tail) return true;
   return false;
@@ -679,15 +745,34 @@ router.post('/webhook', async (req, res) => {
       }
       const origen = data.source === 'phone' ? 'telefono' : (data.source === 'crm' ? 'crm' : 'whatsapp');
 
-      const conversacionId = await upsertConversacion({
+      let phone = contact.phone;
+      const lidChatId = contact.lidChatId;
+      if (!phone && lidChatId) {
+        const mapped = await resolveLidPhone(lidChatId);
+        if (mapped && isWhatsAppPhone(mapped)) phone = mapped;
+      }
+
+      let conversacionId = await upsertConversacion({
         chatId: effectiveChatId,
-        phone: contact.phone,
-        lidChatId: contact.lidChatId,
+        phone,
+        lidChatId,
         contactName: data.fromName || null,
         body: data.body || data.text || '',
         timestamp: data.timestamp,
         incrementUnread: isIncoming,
       });
+
+      if (phone) {
+        conversacionId = await mergeConversacionesByPhone(phone, conversacionId) || conversacionId;
+      }
+      conversacionId = await absorbOrphanLidConversations(conversacionId);
+
+      if (lidChatId) {
+        await pool.execute(
+          'UPDATE wa_conversaciones SET lid_chat_id = COALESCE(lid_chat_id, ?), awaiting_lid_until = NULL WHERE id = ?',
+          [lidChatId, conversacionId]
+        );
+      }
 
       const mediaPath = data.mediaPath || data.media_path || null;
       const msgTipo = data.messageType || 'text';
@@ -702,14 +787,6 @@ router.post('/webhook', async (req, res) => {
         mediaPath,
         reassignConversacion: isIncoming,
       });
-
-      if (isIncoming && contact.lidChatId) {
-        await pool.execute(
-          'UPDATE wa_conversaciones SET lid_chat_id = COALESCE(lid_chat_id, ?), awaiting_lid_until = NULL WHERE id = ?',
-          [contact.lidChatId, conversacionId]
-        );
-        await absorbOrphanLidConversations(conversacionId);
-      }
     }
 
     res.json({ ok: true });
@@ -1015,7 +1092,23 @@ router.post('/iniciar', authWhatsApp, async (req, res) => {
       incrementUnread: false,
     });
 
-    const conversacionId = await mergeConversacionesByPhone(phone, id) || id;
+    let conversacionId = await mergeConversacionesByPhone(phone, id) || id;
+
+    if (isOpenwaConfigured()) {
+      try {
+        const jid = await resolvePhoneJid(phone);
+        if (jid?.includes('@lid')) {
+          await pool.execute(
+            'UPDATE wa_conversaciones SET lid_chat_id = COALESCE(lid_chat_id, ?) WHERE id = ?',
+            [jid, conversacionId]
+          );
+        }
+      } catch (err) {
+        console.warn('[whatsapp/iniciar] resolve jid:', err.message);
+      }
+    }
+
+    conversacionId = await absorbOrphanLidConversations(conversacionId);
 
     await pool.execute(
       'UPDATE wa_conversaciones SET awaiting_lid_until = DATE_ADD(NOW(), INTERVAL 2 HOUR) WHERE id = ?',
