@@ -220,6 +220,15 @@ async function fetchOpenwaMediaFile(sessionId, filename) {
   return res;
 }
 
+async function fetchOpenwaMediaByMessage(sessionId, messageId, chatId) {
+  const params = new URLSearchParams();
+  if (chatId) params.set('chatId', chatId);
+  const qs = params.toString() ? `?${params}` : '';
+  return openwaRawFetch(
+    `/api/media/by-message/${encodeURIComponent(sessionId)}/${encodeURIComponent(messageId)}${qs}`
+  );
+}
+
 async function downloadOpenwaMedia({ sessionId, messageId, chatId }) {
   const res = await openwaRawFetch('/api/media/download', {
     method: 'POST',
@@ -240,6 +249,7 @@ module.exports = {
   sendWhatsAppMedia,
   mediaTypeFromMime,
   fetchOpenwaMediaFile,
+  fetchOpenwaMediaByMessage,
   downloadOpenwaMedia,
   getChats,
   getChatMessages,

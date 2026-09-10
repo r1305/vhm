@@ -12,6 +12,7 @@ const {
   sendWhatsAppMedia,
   mediaTypeFromMime,
   fetchOpenwaMediaFile,
+  fetchOpenwaMediaByMessage,
   downloadOpenwaMedia,
   searchMessagesByPhone,
   getSessionMessagesByPhone,
@@ -1007,6 +1008,25 @@ router.post('/conversaciones/:id/mensajes/media', authWhatsApp, upload.single('f
   }
 });
 
+async function proxyOpenwaMedia(upstream, res, mime) {
+  if (!upstream?.ok) return false;
+  res.setHeader('Content-Type', upstream.headers.get('content-type') || mime);
+  res.setHeader('Cache-Control', 'private, max-age=3600');
+  const buf = Buffer.from(await upstream.arrayBuffer());
+  res.send(buf);
+  return true;
+}
+
+function collectMediaChatJids(msg) {
+  const jids = new Set();
+  const add = (j) => { if (j) jids.add(String(j)); };
+  add(msg.lid_chat_id);
+  if (msg.chat_id?.includes('@lid')) add(msg.chat_id);
+  add(normalizeChatId(msg.chat_id));
+  add(toChatId(msg.phone));
+  return [...jids];
+}
+
 // ── Servir medio (proxy OpenWA) ───────────────────────────────────
 router.get('/mensajes/:id/media', authWhatsApp, async (req, res) => {
   try {
@@ -1023,35 +1043,42 @@ router.get('/mensajes/:id/media', authWhatsApp, async (req, res) => {
     await loadOpenwaConfigFromDB();
     const sessionId = process.env.OPENWA_SESSION || '';
     const mime = msg.media_mime || guessMediaMime(msg.tipo);
+    const chatJids = collectMediaChatJids(msg);
+
+    if (msg.wa_message_id) {
+      for (const chatJid of chatJids) {
+        try {
+          const upstream = await fetchOpenwaMediaByMessage(sessionId, msg.wa_message_id, chatJid);
+          if (await proxyOpenwaMedia(upstream, res, mime)) return;
+        } catch (_) {}
+      }
+    }
 
     if (msg.media_path) {
       const filename = String(msg.media_path).split('/').pop();
-      const upstream = await fetchOpenwaMediaFile(sessionId, filename);
-      res.setHeader('Content-Type', upstream.headers.get('content-type') || mime);
-      res.setHeader('Cache-Control', 'private, max-age=3600');
-      const buf = Buffer.from(await upstream.arrayBuffer());
-      return res.send(buf);
+      try {
+        const upstream = await fetchOpenwaMediaFile(sessionId, filename);
+        if (await proxyOpenwaMedia(upstream, res, mime)) return;
+      } catch (_) {}
     }
 
     if (msg.wa_message_id) {
-      const chatJid = msg.lid_chat_id
-        || (msg.chat_id?.includes('@lid') ? msg.chat_id : null)
-        || normalizeChatId(msg.chat_id)
-        || toChatId(msg.phone);
-      const upstream = await downloadOpenwaMedia({
-        sessionId,
-        messageId: msg.wa_message_id,
-        chatId: chatJid,
-      });
-      res.setHeader('Content-Type', upstream.headers.get('content-type') || mime);
-      res.setHeader('Cache-Control', 'private, max-age=300');
-      const buf = Buffer.from(await upstream.arrayBuffer());
-      return res.send(buf);
+      for (const chatJid of chatJids) {
+        try {
+          const upstream = await downloadOpenwaMedia({
+            sessionId,
+            messageId: msg.wa_message_id,
+            chatId: chatJid,
+          });
+          if (await proxyOpenwaMedia(upstream, res, mime)) return;
+        } catch (_) {}
+      }
     }
 
     return res.status(404).json({ error: 'Medio no disponible' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[whatsapp/media]', req.params.id, err.message);
+    return res.status(404).json({ error: 'Medio no disponible' });
   }
 });
 
