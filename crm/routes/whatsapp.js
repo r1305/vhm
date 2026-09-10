@@ -14,14 +14,12 @@ const {
   resolveLidPhone,
   markChatRead,
 } = require('../lib/openwa');
-
-function resolveChatJidForConv(conv) {
-  return conv.lid_chat_id
-    || (conv.chat_id?.includes('@lid') ? conv.chat_id : null)
-    || (isWhatsAppPhone(conv.phone) ? (normalizeChatId(conv.chat_id) || toChatId(conv.phone)) : null)
-    || conv.chat_id
-    || toChatId(conv.phone);
-}
+const {
+  normalizeChatId,
+  isWhatsAppPhone,
+  phoneTail,
+  resolveChatJidForConv,
+} = require('../lib/waChatJid');
 
 function mapAckStatus(status) {
   const n = typeof status === 'number' ? status : Number(status);
@@ -41,27 +39,6 @@ const router = Router();
 
 function canAccessWhatsApp(user) {
   return isStaffAdmin(user?.rol) || user?.rol === 'terapeuta';
-}
-
-/** Unifica @c.us y @s.whatsapp.net; conserva @lid tal cual */
-function normalizeChatId(chatId) {
-  const raw = String(chatId || '').trim();
-  if (!raw) return null;
-  if (raw.includes('@lid')) return raw;
-  if (raw.includes('@g.us')) return raw;
-  const phone = normalizePhone(raw.split('@')[0]);
-  return phone ? `${phone}@s.whatsapp.net` : null;
-}
-
-function phoneTail(phone) {
-  const digits = normalizePhone(phone);
-  return digits.length >= 9 ? digits.slice(-9) : digits;
-}
-
-/** Teléfono real (10-13 dígitos). Los @lid de WhatsApp tienen 14+ dígitos. */
-function isWhatsAppPhone(digits) {
-  const d = normalizePhone(digits);
-  return d.length >= 10 && d.length <= 13;
 }
 
 function isLidPhone(digits) {
@@ -799,11 +776,7 @@ router.post('/conversaciones/:id/mensajes', authWhatsApp, async (req, res) => {
     if (!conv) return res.status(404).json({ error: 'Conversación no encontrada' });
 
     const conversacionId = await mergeConversacionesByPhone(conv.phone, conv.id) || conv.id;
-    const destino = conv.lid_chat_id
-      || (conv.chat_id?.includes('@lid') ? conv.chat_id : null)
-      || (isWhatsAppPhone(conv.phone) ? (normalizeChatId(conv.chat_id) || toChatId(conv.phone)) : null)
-      || conv.chat_id
-      || toChatId(conv.phone);
+    const destino = resolveChatJidForConv(conv);
 
     const result = await sendWhatsApp({ to: destino, message: text });
     const ts = Math.floor(Date.now() / 1000);

@@ -12,8 +12,9 @@ async function sendWhatsAppGreen({ to, message }) {
     return { skipped: true };
   }
   try {
+    // OpenWA resuelve LID vía onWhatsApp al enviar (no requiere chat previo en CRM)
     const result = await sendWhatsApp({ to, message });
-    return { ok: true, messageId: result.messageId };
+    return { ok: true, messageId: result.messageId, chatId: result.chatId || null };
   } catch (err) {
     throw err;
   }
