@@ -5,12 +5,13 @@ const CATALOG_SEED = [
   { clave: 'testimonios', nombre: 'Testimonios', descripcion: 'Gestión de testimonios', seccion: 'principal', orden: 2 },
   { clave: 'videos', nombre: 'La Tribu', descripcion: 'Videos, categorías y landing', seccion: 'principal', orden: 3 },
   { clave: 'tribu-users', nombre: 'Usuarios Tribu', descripcion: 'Miembros de La Tribu', seccion: 'principal', orden: 4 },
-  { clave: 'usuarios', nombre: 'Administradores', descripcion: 'Usuarios del panel admin', seccion: 'config', orden: 5 },
-  { clave: 'config', nombre: 'Ajustes', descripcion: 'Configuración del sitio', seccion: 'config', orden: 6 },
-  { clave: 'accesos', nombre: 'Accesos', descripcion: 'Permisos de vistas por usuario', seccion: 'config', orden: 7 },
+  { clave: 'plantillas', nombre: 'Plantillas', descripcion: 'Eventos y mensajes para WhatsApp', seccion: 'principal', orden: 5 },
+  { clave: 'usuarios', nombre: 'Administradores', descripcion: 'Usuarios del panel admin', seccion: 'config', orden: 6 },
+  { clave: 'config', nombre: 'Ajustes', descripcion: 'Configuración del sitio', seccion: 'config', orden: 7 },
+  { clave: 'accesos', nombre: 'Accesos', descripcion: 'Permisos de vistas por usuario', seccion: 'config', orden: 8 },
 ];
 
-const DEFAULTS_ADMIN = ['reclamos', 'testimonios', 'videos', 'tribu-users', 'usuarios'];
+const DEFAULTS_ADMIN = ['reclamos', 'testimonios', 'videos', 'tribu-users', 'plantillas', 'usuarios'];
 
 async function ensureAccesosSchema() {
   await pool.query(`

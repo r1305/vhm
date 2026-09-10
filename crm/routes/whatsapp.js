@@ -33,6 +33,11 @@ const upload = multer({
   limits: { fileSize: 50 * 1024 * 1024 },
 });
 
+function respondRouteError(res, err) {
+  const status = err.status && err.status >= 400 && err.status < 600 ? err.status : 500;
+  res.status(status).json({ error: err.message, code: err.code || undefined });
+}
+
 const MEDIA_LABELS = {
   image: '🖼️ Imagen',
   audio: '🎵 Audio',
@@ -1086,7 +1091,7 @@ router.post('/conversaciones/:id/mensajes', authWhatsApp, async (req, res) => {
 
     res.status(201).json({ ok: true, id: msgId, conversacionId, messageId: result.messageId });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    respondRouteError(res, err);
   }
 });
 
@@ -1147,7 +1152,7 @@ router.post('/conversaciones/:id/mensajes/media', authWhatsApp, upload.single('f
 
     res.status(201).json({ ok: true, id: msgId, conversacionId, messageId: result.messageId, tipo });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    respondRouteError(res, err);
   }
 });
 

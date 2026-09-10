@@ -61,6 +61,34 @@ function getOpenwaConfig() {
   return { baseUrl, apiKey, sessionId };
 }
 
+class OpenwaError extends Error {
+  constructor(message, { status = 500, code = null } = {}) {
+    super(message);
+    this.name = 'OpenwaError';
+    this.status = status;
+    this.code = code;
+  }
+}
+
+function parseOpenwaFailure(status, txt) {
+  let body = {};
+  try { body = JSON.parse(txt); } catch (_) {}
+  const raw = body.message || body.error || txt.slice(0, 200);
+  if (status === 503 && body.error === 'duplicate_instance') {
+    return new OpenwaError(
+      'OpenWA tiene dos procesos activos en el servidor. En cPanel: Stop → limpia workers duplicados → Start una sola vez.',
+      { status: 503, code: 'duplicate_instance' }
+    );
+  }
+  if ((status === 400 || status === 503) && /session is not active/i.test(String(raw))) {
+    return new OpenwaError(
+      'La sesión de WhatsApp no está activa. Espera 30s tras reiniciar OpenWA o verifica instancia duplicada en /openwa/api/health.',
+      { status: 503, code: 'session_inactive' }
+    );
+  }
+  return new OpenwaError(`OpenWA ${status}: ${raw}`, { status });
+}
+
 async function openwaRawFetch(path, options = {}) {
   await loadOpenwaConfigFromDB();
   const { baseUrl, apiKey } = getOpenwaConfig();
@@ -74,15 +102,25 @@ async function openwaRawFetch(path, options = {}) {
   return fetch(`${baseUrl}${path}`, { ...options, headers });
 }
 
-async function openwaFetch(path, options = {}) {
-  const res = await openwaRawFetch(path, options);
-  if (!res.ok) {
+async function openwaFetch(path, options = {}, retries = 3) {
+  let lastErr;
+  for (let attempt = 0; attempt < retries; attempt++) {
+    const res = await openwaRawFetch(path, options);
+    if (res.ok) {
+      const ct = res.headers.get('content-type') || '';
+      if (ct.includes('application/json')) return res.json();
+      return res.text();
+    }
     const txt = await res.text().catch(() => '');
-    throw new Error(`OpenWA ${res.status}: ${txt.slice(0, 200)}`);
+    lastErr = parseOpenwaFailure(res.status, txt);
+    const retryable = lastErr.code === 'duplicate_instance' || lastErr.code === 'session_inactive';
+    if (retryable && attempt < retries - 1) {
+      await new Promise((r) => setTimeout(r, 400 + attempt * 350));
+      continue;
+    }
+    throw lastErr;
   }
-  const ct = res.headers.get('content-type') || '';
-  if (ct.includes('application/json')) return res.json();
-  return res.text();
+  throw lastErr;
 }
 
 async function sendWhatsApp({ to, message }) {
@@ -239,6 +277,7 @@ async function downloadOpenwaMedia({ sessionId, messageId, chatId }) {
 }
 
 module.exports = {
+  OpenwaError,
   loadOpenwaConfigFromDB,
   isOpenwaConfigured,
   normalizePhone,
