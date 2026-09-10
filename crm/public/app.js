@@ -6,6 +6,7 @@
 
   const BASE = window.__APP_BASE__ || '';
   const API  = `${BASE}/api`;
+  const CRM_TZ = 'America/Lima';
 
   /* ── Constantes ──────────────────────────────────── */
   const ESTADO_PACIENTE = {
@@ -90,10 +91,44 @@
     return d.innerHTML;
   }
 
-  /* ── Formato ─────────────────────────────────────── */
+  /* ── Formato (siempre America/Lima, independiente del navegador) ── */
+  function limaDateKey(d) {
+    if (!d) return '';
+    return new Intl.DateTimeFormat('en-CA', { timeZone: CRM_TZ }).format(new Date(d));
+  }
+
   function fmtDate(d) {
     if (!d) return '—';
-    return new Date(d).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' });
+    return new Date(d).toLocaleDateString('es-PE', {
+      timeZone: CRM_TZ,
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+  }
+
+  function fmtTime(d) {
+    if (!d) return '';
+    const dt = new Date(d);
+    if (Number.isNaN(dt.getTime())) return '';
+    const sameDay = limaDateKey(dt) === limaDateKey(new Date());
+    return sameDay
+      ? dt.toLocaleTimeString('es-PE', { timeZone: CRM_TZ, hour: '2-digit', minute: '2-digit' })
+      : dt.toLocaleDateString('es-PE', { timeZone: CRM_TZ, day: '2-digit', month: 'short' });
+  }
+
+  function fmtDateTime(d) {
+    if (!d) return '—';
+    const dt = new Date(d);
+    if (Number.isNaN(dt.getTime())) return '—';
+    return dt.toLocaleString('es-PE', {
+      timeZone: CRM_TZ,
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   }
 
   function fmtMoney(v) {
@@ -160,7 +195,8 @@
 
   /* ── Exponer globals (antes de listeners para que módulos siempre tengan acceso) ── */
   window.CRM = {
-    api, toast, esc, fmtDate, fmtMoney, badge, fullName,
+    api, toast, esc, fmtDate, fmtTime, fmtDateTime, limaDateKey, CRM_TZ,
+    fmtMoney, badge, fullName,
     openModal, closeModal,
     ESTADO_PACIENTE, ESTADO_LEAD, FUENTE_ICON, ESTADO_CITA,
     estadoCitaOptionsHtml, estadoCitaSelectEntries,

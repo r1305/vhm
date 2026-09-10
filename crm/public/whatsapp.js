@@ -2,7 +2,7 @@
 (function () {
   'use strict';
 
-  const { api, toast, esc, openModal, closeModal } = window.CRM;
+  const { api, toast, esc, openModal, closeModal, fmtTime } = window.CRM;
   const API_BASE = `${window.__APP_BASE__ || ''}/api`;
 
   let conversaciones = [];
@@ -13,16 +13,6 @@
   let mediaRecorder = null;
   let audioChunks = [];
   let recordStartedAt = 0;
-
-  function fmtTime(d) {
-    if (!d) return '';
-    const dt = new Date(d);
-    const now = new Date();
-    const sameDay = dt.toDateString() === now.toDateString();
-    return sameDay
-      ? dt.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })
-      : dt.toLocaleDateString('es-PE', { day: '2-digit', month: 'short' });
-  }
 
   function isRealPhone(p) {
     const d = String(p || '').replace(/\D/g, '');
