@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Plantillas - VHM Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/admin.css">
+  <link rel="stylesheet" href="css/plantillas.css">
+  <script src="js/base.js"></script>
+</head>
+<body>
+  <div id="admin-root"><div id="page-main" style="display:none">
+    <div class="section-header">
+      <div>
+        <h2>📝 Plantillas</h2>
+        <p>Eventos y mensajes con formato WhatsApp para copiar y enviar</p>
+      </div>
+      <button type="button" class="btn btn-primary" id="btn-nuevo-evento">+ Nuevo evento</button>
+    </div>
+    <div id="plantillas-list" class="plantillas-list"></div>
+
+    <div class="modal-overlay" id="modal-evento">
+      <div class="modal" style="max-width:420px">
+        <div class="modal-header">
+          <h3 id="modal-evento-title">📅 Nuevo evento</h3>
+          <button type="button" class="modal-close" data-modal-close="modal-evento">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="ev-nombre">Nombre *</label>
+            <input type="text" id="ev-nombre" placeholder="Ej: Taller de mindfulness">
+          </div>
+          <div class="form-group">
+            <label for="ev-fecha">Fecha *</label>
+            <input type="date" id="ev-fecha">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" data-modal-close="modal-evento">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="btn-guardar-evento">Guardar</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-overlay" id="modal-mensaje">
+      <div class="modal modal-mensaje">
+        <div class="modal-header">
+          <h3 id="modal-mensaje-title">💬 Nuevo mensaje</h3>
+          <button type="button" class="modal-close" data-modal-close="modal-mensaje">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="msg-titulo">Título *</label>
+            <input type="text" id="msg-titulo" placeholder="Ej: Recordatorio 24h">
+          </div>
+          <div class="form-group">
+            <label>Mensaje * <span class="optional">(formato WhatsApp)</span></label>
+            <div id="wa-editor-root"></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" data-modal-close="modal-mensaje">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="btn-guardar-mensaje">Guardar</button>
+        </div>
+      </div>
+    </div>
+  </div></div>
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/toast.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/layout.js"></script>
+  <script src="js/wa-editor.js"></script>
+  <script src="js/plantillas.js"></script>
+</body>
+</html>

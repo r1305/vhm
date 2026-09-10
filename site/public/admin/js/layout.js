@@ -4,12 +4,13 @@
     testimonios: { href: 'testimonios.html', icon: '⭐', label: 'Testimonios', section: 'principal' },
     videos: { href: 'videos.html', icon: '🎬', label: 'La Tribu', section: 'principal' },
     'tribu-users': { href: 'tribu-users.html', icon: '🫂', label: 'Usuarios Tribu', section: 'principal' },
+    plantillas: { href: 'plantillas.html', icon: '📝', label: 'Plantillas', section: 'principal' },
     usuarios: { href: 'usuarios.html', icon: '👥', label: 'Administradores', section: 'config' },
     config: { href: 'config.html', icon: '⚙️', label: 'Ajustes', section: 'config' },
     accesos: { href: 'accesos.html', icon: '🔐', label: 'Accesos', section: 'config' },
   };
 
-  const NAV_ORDER = ['reclamos', 'testimonios', 'videos', 'tribu-users', 'usuarios', 'config', 'accesos'];
+  const NAV_ORDER = ['reclamos', 'testimonios', 'videos', 'tribu-users', 'plantillas', 'usuarios', 'config', 'accesos'];
 
   function logoSrc() {
     return AdminApi.asset('logo_vhm.jpeg');

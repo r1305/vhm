@@ -221,6 +221,7 @@ const ADMIN_PAGES = [
   'usuarios.html',
   'config.html',
   'accesos.html',
+  'plantillas.html',
   'index.html',
 ];
 
@@ -407,6 +408,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/reclamos', reclamosRoutes);
 app.use('/api/usuarios', usuariosRoutes);
 app.use('/api/accesos', require('./accesosRoutes'));
+app.use('/api/plantillas', require('./plantillasRoutes'));
 app.use('/api/config-email', configEmailRoutes);
 app.use('/api/config-pixel', configPixelRoutes);
 app.use('/api/config-whatsapp', configWhatsappRoutes);
