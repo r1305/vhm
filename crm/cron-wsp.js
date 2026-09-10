@@ -84,7 +84,8 @@ async function sendBroadcastToTerapeutas(message) {
         console.log(`[cron-wsp] ${t.nombre} — skipped (sin config)`);
         stats.omitidos++;
       } else {
-        console.log(`[cron-wsp] ${t.nombre} — enviado ✓`);
+        const via = r.chatId?.includes('@lid') ? 'LID' : 'tel';
+        console.log(`[cron-wsp] ${t.nombre} — enviado ✓ (${via})`);
         stats.enviados++;
       }
     } catch (err) {
