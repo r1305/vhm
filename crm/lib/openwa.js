@@ -54,26 +54,32 @@ function toChatId(phoneOrJid) {
   return digits ? `${digits}@s.whatsapp.net` : null;
 }
 
-async function openwaFetch(path, options = {}) {
-  await loadOpenwaConfigFromDB();
+function getOpenwaConfig() {
   const baseUrl = (process.env.OPENWA_URL || '').replace(/\/$/, '');
-  const apiKey  = process.env.OPENWA_API_KEY || '';
+  const apiKey = process.env.OPENWA_API_KEY || '';
+  const sessionId = process.env.OPENWA_SESSION || '';
+  return { baseUrl, apiKey, sessionId };
+}
+
+async function openwaRawFetch(path, options = {}) {
+  await loadOpenwaConfigFromDB();
+  const { baseUrl, apiKey } = getOpenwaConfig();
   if (!baseUrl || !apiKey) throw new Error('OpenWA no configurado');
 
-  const res = await fetch(`${baseUrl}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      'X-API-Key': apiKey,
-      ...(options.headers || {}),
-    },
-  });
+  const headers = { 'X-API-Key': apiKey, ...(options.headers || {}) };
+  if (options.body && !headers['Content-Type'] && !(options.body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json';
+  }
 
+  return fetch(`${baseUrl}${path}`, { ...options, headers });
+}
+
+async function openwaFetch(path, options = {}) {
+  const res = await openwaRawFetch(path, options);
   if (!res.ok) {
     const txt = await res.text().catch(() => '');
     throw new Error(`OpenWA ${res.status}: ${txt.slice(0, 200)}`);
   }
-
   const ct = res.headers.get('content-type') || '';
   if (ct.includes('application/json')) return res.json();
   return res.text();
@@ -149,13 +155,77 @@ async function getSessionMessagesByPhone(phone, sessionId, limit = 300) {
   return openwaFetch(`/api/sessions/${encodeURIComponent(sid)}/messages?${params}`);
 }
 
+function mediaTypeFromMime(mime) {
+  const m = String(mime || '').toLowerCase();
+  if (m.startsWith('image/')) return 'image';
+  if (m.startsWith('video/')) return 'video';
+  if (m.startsWith('audio/')) return 'audio';
+  return 'document';
+}
+
+async function sendWhatsAppMedia({ to, buffer, originalname, mimetype, caption, duration }) {
+  await loadOpenwaConfigFromDB();
+  const { sessionId, baseUrl, apiKey } = getOpenwaConfig();
+  const chatId = toChatId(to);
+  if (!sessionId || !chatId || !buffer) throw new Error('OpenWA no configurado');
+
+  const form = new FormData();
+  form.append('sessionId', sessionId);
+  form.append('chatId', chatId);
+  if (caption) form.append('caption', caption);
+  if (duration != null && duration !== '') form.append('duration', String(duration));
+  form.append('file', new Blob([buffer], { type: mimetype || 'application/octet-stream' }), originalname || 'file');
+
+  const res = await fetch(`${baseUrl}/api/sessions/${encodeURIComponent(sessionId)}/messages/send-media`, {
+    method: 'POST',
+    headers: { 'X-API-Key': apiKey },
+    body: form,
+  });
+  if (!res.ok) {
+    const txt = await res.text().catch(() => '');
+    throw new Error(`OpenWA ${res.status}: ${txt.slice(0, 200)}`);
+  }
+  const data = await res.json();
+  const tipo = data.type || mediaTypeFromMime(mimetype);
+  return {
+    ok: true,
+    messageId: data.messageId,
+    chatId: data.chatId || chatId,
+    tipo,
+    mediaPath: data.mediaPath || null,
+    caption: caption || '',
+  };
+}
+
+async function fetchOpenwaMediaFile(sessionId, filename) {
+  const res = await openwaRawFetch(
+    `/api/media/file/${encodeURIComponent(sessionId)}/${encodeURIComponent(filename)}`
+  );
+  if (!res.ok) throw new Error(`OpenWA media ${res.status}`);
+  return res;
+}
+
+async function downloadOpenwaMedia({ sessionId, messageId, chatId }) {
+  const res = await openwaRawFetch('/api/media/download', {
+    method: 'POST',
+    body: JSON.stringify({ sessionId, messageId, chatId }),
+  });
+  if (!res.ok) throw new Error(`OpenWA download ${res.status}`);
+  return res;
+}
+
 module.exports = {
   loadOpenwaConfigFromDB,
   isOpenwaConfigured,
   normalizePhone,
   toChatId,
   openwaFetch,
+  openwaRawFetch,
   sendWhatsApp,
+  sendWhatsAppMedia,
+  mediaTypeFromMime,
+  fetchOpenwaMediaFile,
+  downloadOpenwaMedia,
   getChats,
   getChatMessages,
   searchMessagesByPhone,

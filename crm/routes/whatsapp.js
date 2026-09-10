@@ -1,4 +1,5 @@
 const { Router } = require('express');
+const multer = require('multer');
 const pool = require('../lib/db');
 const { auth } = require('../lib/auth');
 const { isStaffAdmin } = require('../lib/roles');
@@ -8,6 +9,10 @@ const {
   normalizePhone,
   toChatId,
   sendWhatsApp,
+  sendWhatsAppMedia,
+  mediaTypeFromMime,
+  fetchOpenwaMediaFile,
+  downloadOpenwaMedia,
   searchMessagesByPhone,
   getSessionMessagesByPhone,
   getChatMessages,
@@ -20,6 +25,32 @@ const {
   phoneTail,
   resolveChatJidForConv,
 } = require('../lib/waChatJid');
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 50 * 1024 * 1024 },
+});
+
+const MEDIA_LABELS = {
+  image: '🖼️ Imagen',
+  audio: '🎵 Audio',
+  video: '🎬 Video',
+  document: '📄 Documento',
+};
+
+function mediaBodyLabel(tipo, cuerpo) {
+  const t = String(tipo || 'text');
+  const body = String(cuerpo || '').trim();
+  if (body && !Object.values(MEDIA_LABELS).includes(body)) return body;
+  return MEDIA_LABELS[t] || body || '';
+}
+
+function guessMediaMime(tipo) {
+  if (tipo === 'image') return 'image/jpeg';
+  if (tipo === 'video') return 'video/mp4';
+  if (tipo === 'audio') return 'audio/ogg';
+  return 'application/octet-stream';
+}
 
 function mapAckStatus(status) {
   const n = typeof status === 'number' ? status : Number(status);
@@ -247,6 +278,7 @@ function normalizeOpenwaRow(m) {
     type: m.type || 'text',
     direction,
     timestamp: ts || null,
+    media_path: m.media_path || null,
   };
 }
 
@@ -297,6 +329,13 @@ async function syncMensajesFromOpenwa(conv, conversacionId) {
 
   for (const row of collected.values()) {
     if (row.direction === 'outgoing') continue;
+    if (row.wa_message_id && row.media_path) {
+      await pool.execute(
+        `UPDATE wa_mensajes SET media_path = COALESCE(media_path, ?), tipo = ?
+         WHERE wa_message_id = ?`,
+        [row.media_path, row.type || 'text', row.wa_message_id]
+      );
+    }
     await insertMensaje({
       conversacionId,
       waMessageId: row.wa_message_id,
@@ -305,6 +344,7 @@ async function syncMensajesFromOpenwa(conv, conversacionId) {
       cuerpo: row.body || '',
       origen: 'whatsapp',
       timestamp: row.timestamp,
+      mediaPath: row.media_path || null,
       reassignConversacion: false,
     });
     if (row.chat_id?.includes('@lid') && conv.lid_chat_id === row.chat_id) {
@@ -506,6 +546,8 @@ async function insertMensaje({
   enviadoPor,
   origen,
   timestamp,
+  mediaPath,
+  mediaMime,
   reassignConversacion = false,
 }) {
   if (!waMessageId && direccion === 'outgoing' && cuerpo) {
@@ -537,6 +579,12 @@ async function insertMensaje({
       [waMessageId]
     );
     if (dup.length) {
+      if (mediaPath) {
+        await pool.execute(
+          'UPDATE wa_mensajes SET media_path = COALESCE(media_path, ?), media_mime = COALESCE(media_mime, ?) WHERE id = ?',
+          [mediaPath, mediaMime || null, dup[0].id]
+        );
+      }
       return await reconcileMensajeDup(dup[0], {
         conversacionId, enviadoPor, origen, cuerpo, direccion, reassignConversacion,
       });
@@ -549,8 +597,8 @@ async function insertMensaje({
   try {
     const [r] = await pool.execute(
       `INSERT INTO wa_mensajes
-        (conversacion_id, wa_message_id, direccion, tipo, cuerpo, enviado_por, origen, timestamp_wa, ack_status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        (conversacion_id, wa_message_id, direccion, tipo, cuerpo, enviado_por, origen, timestamp_wa, ack_status, media_path, media_mime)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         conversacionId,
         storeWaId,
@@ -561,6 +609,8 @@ async function insertMensaje({
         origen || 'whatsapp',
         timestamp || null,
         ackStatus,
+        mediaPath || null,
+        mediaMime || null,
       ]
     );
     return r.insertId;
@@ -639,14 +689,17 @@ router.post('/webhook', async (req, res) => {
         incrementUnread: isIncoming,
       });
 
+      const mediaPath = data.mediaPath || data.media_path || null;
+      const msgTipo = data.messageType || 'text';
       await insertMensaje({
         conversacionId,
         waMessageId: data.messageId || null,
         direccion: isIncoming ? 'incoming' : 'outgoing',
-        tipo: data.messageType || 'text',
-        cuerpo: data.body || data.text || '',
+        tipo: msgTipo,
+        cuerpo: mediaBodyLabel(msgTipo, data.body || data.text || ''),
         origen,
         timestamp: data.timestamp,
+        mediaPath,
         reassignConversacion: isIncoming,
       });
 
@@ -812,6 +865,114 @@ router.post('/conversaciones/:id/mensajes', authWhatsApp, async (req, res) => {
     });
 
     res.status(201).json({ ok: true, id: msgId, conversacionId, messageId: result.messageId });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Enviar imagen / video / audio / documento ───────────────────
+router.post('/conversaciones/:id/mensajes/media', authWhatsApp, upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'Archivo requerido' });
+    if (!isOpenwaConfigured()) return res.status(400).json({ error: 'OpenWA no configurado' });
+
+    const [[conv]] = await pool.execute('SELECT * FROM wa_conversaciones WHERE id = ?', [req.params.id]);
+    if (!conv) return res.status(404).json({ error: 'Conversación no encontrada' });
+
+    const conversacionId = await mergeConversacionesByPhone(conv.phone, conv.id) || conv.id;
+    const destino = resolveChatJidForConv(conv);
+    const caption = String(req.body?.caption || '').trim();
+    const duration = req.body?.duration;
+
+    const result = await sendWhatsAppMedia({
+      to: destino,
+      buffer: req.file.buffer,
+      originalname: req.file.originalname,
+      mimetype: req.file.mimetype,
+      caption,
+      duration,
+    });
+
+    const tipo = result.tipo || mediaTypeFromMime(req.file.mimetype);
+    const cuerpo = mediaBodyLabel(tipo, caption);
+    const ts = Math.floor(Date.now() / 1000);
+    const resolvedLid = result.chatId?.includes('@lid') ? result.chatId : conv.lid_chat_id;
+    const resolvedChatId = result.chatId?.includes('@lid')
+      ? null
+      : (normalizeChatId(result.chatId || destino) || destino);
+
+    await pool.execute(
+      `UPDATE wa_conversaciones
+       SET chat_id = COALESCE(?, chat_id),
+           lid_chat_id = COALESCE(?, lid_chat_id),
+           ultimo_mensaje = ?, ultimo_mensaje_at = NOW(), no_leidos = 0, updated_at = NOW()
+       WHERE id = ?`,
+      [resolvedChatId, resolvedLid, cuerpo, conversacionId]
+    );
+
+    const msgId = await insertMensaje({
+      conversacionId,
+      waMessageId: result.messageId || null,
+      direccion: 'outgoing',
+      tipo,
+      cuerpo,
+      enviadoPor: req.user.id,
+      origen: 'crm',
+      timestamp: ts,
+      mediaPath: result.mediaPath || null,
+      mediaMime: req.file.mimetype,
+      reassignConversacion: true,
+    });
+
+    res.status(201).json({ ok: true, id: msgId, conversacionId, messageId: result.messageId, tipo });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Servir medio (proxy OpenWA) ───────────────────────────────────
+router.get('/mensajes/:id/media', authWhatsApp, async (req, res) => {
+  try {
+    const [[msg]] = await pool.execute(
+      `SELECT m.*, c.chat_id, c.lid_chat_id, c.phone
+       FROM wa_mensajes m
+       INNER JOIN wa_conversaciones c ON c.id = m.conversacion_id
+       WHERE m.id = ?`,
+      [req.params.id]
+    );
+    if (!msg) return res.status(404).json({ error: 'Mensaje no encontrado' });
+    if (!isOpenwaConfigured()) return res.status(400).json({ error: 'OpenWA no configurado' });
+
+    await loadOpenwaConfigFromDB();
+    const sessionId = process.env.OPENWA_SESSION || '';
+    const mime = msg.media_mime || guessMediaMime(msg.tipo);
+
+    if (msg.media_path) {
+      const filename = String(msg.media_path).split('/').pop();
+      const upstream = await fetchOpenwaMediaFile(sessionId, filename);
+      res.setHeader('Content-Type', upstream.headers.get('content-type') || mime);
+      res.setHeader('Cache-Control', 'private, max-age=3600');
+      const buf = Buffer.from(await upstream.arrayBuffer());
+      return res.send(buf);
+    }
+
+    if (msg.wa_message_id) {
+      const chatJid = msg.lid_chat_id
+        || (msg.chat_id?.includes('@lid') ? msg.chat_id : null)
+        || normalizeChatId(msg.chat_id)
+        || toChatId(msg.phone);
+      const upstream = await downloadOpenwaMedia({
+        sessionId,
+        messageId: msg.wa_message_id,
+        chatId: chatJid,
+      });
+      res.setHeader('Content-Type', upstream.headers.get('content-type') || mime);
+      res.setHeader('Cache-Control', 'private, max-age=300');
+      const buf = Buffer.from(await upstream.arrayBuffer());
+      return res.send(buf);
+    }
+
+    return res.status(404).json({ error: 'Medio no disponible' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

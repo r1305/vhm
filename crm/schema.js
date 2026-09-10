@@ -503,6 +503,8 @@ async function ensureSchema() {
     try { await conn.execute('ALTER TABLE wa_conversaciones ADD COLUMN awaiting_lid_until DATETIME DEFAULT NULL'); } catch (_) {}
     try { await conn.execute("ALTER TABLE wa_mensajes ADD COLUMN ack_status VARCHAR(20) DEFAULT NULL"); } catch (_) {}
     try { await conn.execute('ALTER TABLE wa_mensajes ADD COLUMN wa_leido TINYINT NOT NULL DEFAULT 0'); } catch (_) {}
+    try { await conn.execute('ALTER TABLE wa_mensajes ADD COLUMN media_path VARCHAR(255) DEFAULT NULL'); } catch (_) {}
+    try { await conn.execute('ALTER TABLE wa_mensajes ADD COLUMN media_mime VARCHAR(80) DEFAULT NULL'); } catch (_) {}
     try { await conn.execute('ALTER TABLE wa_conversaciones MODIFY phone VARCHAR(30) DEFAULT NULL'); } catch (_) {}
     try { await conn.execute('CREATE INDEX idx_wa_lid ON wa_conversaciones (lid_chat_id)'); } catch (_) {}
 
