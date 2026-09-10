@@ -62,6 +62,14 @@ async function main() {
   const health = healthRes.ok ? await healthRes.json() : null;
   if (health) {
     console.log('health:', JSON.stringify(health));
+    if (health.status === 'duplicate_instance' || health.instance?.primary === false) {
+      issues.push(
+        `INSTANCIA DUPLICADA OpenWA: este PID ${health.instance?.pid} no recibe WhatsApp; activo PID ${health.instance?.lockPid}. `
+        + 'Detén la app en cPanel, ejecuta cpanel-clean-workers.sh --openwa-only -f, borra openwa/data/instance.lock y reinicia UNA sola vez.'
+      );
+    } else if (health.status === 'ok') {
+      ok.push('OpenWA instancia primaria única');
+    }
     if (health.sessionsReady < 1) issues.push('Ninguna sesión WhatsApp en estado ready');
     else ok.push(`${health.sessionsReady} sesión(es) ready`);
     if (health.version && health.version < '1.0.1') {
