@@ -3,11 +3,16 @@
   'use strict';
 
   const { api, toast, esc, openModal, closeModal } = window.CRM;
+  const API_BASE = `${window.__APP_BASE__ || ''}/api`;
 
   let conversaciones = [];
   let selectedId = null;
   let pollTimer = null;
   let sending = false;
+  let recording = false;
+  let mediaRecorder = null;
+  let audioChunks = [];
+  let recordStartedAt = 0;
 
   function fmtTime(d) {
     if (!d) return '';
@@ -29,6 +34,43 @@
     if (c.contact_name) return c.contact_name;
     if (isRealPhone(c.phone)) return c.phone;
     return 'Contacto WhatsApp';
+  }
+
+  function mediaUrl(msgId) {
+    return `${API_BASE}/whatsapp/mensajes/${msgId}/media`;
+  }
+
+  function isMediaTipo(tipo) {
+    return ['image', 'video', 'audio', 'document'].includes(String(tipo || ''));
+  }
+
+  function isPlaceholderBody(body, tipo) {
+    const b = String(body || '').trim();
+    const placeholders = ['🖼️ Imagen', '🎵 Audio', '🎬 Video', '📄 Documento', 'Sticker'];
+    return placeholders.includes(b) || (isMediaTipo(tipo) && !b);
+  }
+
+  function renderMessageBody(m) {
+    const tipo = m.tipo || 'text';
+    if (!isMediaTipo(tipo)) return esc(m.cuerpo || '');
+
+    const url = mediaUrl(m.id);
+    const cap = !isPlaceholderBody(m.cuerpo, tipo) ? `<div class="wa-msg-caption">${esc(m.cuerpo)}</div>` : '';
+
+    if (tipo === 'image') {
+      return `<a href="${url}" target="_blank" rel="noopener"><img class="wa-msg-media wa-msg-img" src="${url}" alt="Imagen" loading="lazy"></a>${cap}`;
+    }
+    if (tipo === 'video') {
+      return `<video class="wa-msg-media wa-msg-video" src="${url}" controls preload="metadata"></video>${cap}`;
+    }
+    if (tipo === 'audio') {
+      return `<audio class="wa-msg-audio" controls preload="metadata" src="${url}"></audio>${cap}`;
+    }
+    if (tipo === 'document') {
+      const label = !isPlaceholderBody(m.cuerpo, tipo) ? esc(m.cuerpo) : 'Descargar documento';
+      return `<a class="wa-msg-doc" href="${url}" target="_blank" rel="noopener"><i class="fas fa-file"></i> ${label}</a>`;
+    }
+    return esc(m.cuerpo || '');
   }
 
   function renderList(filter = '') {
@@ -166,7 +208,7 @@
       const source = m.direccion === 'outgoing' ? origenLabel(m.origen) : '';
       const sender = m.enviado_nombre ? ` · ${m.enviado_nombre}` : '';
       return `<div class="wa-msg ${cls}">
-        <div>${esc(m.cuerpo || '')}</div>
+        <div class="wa-msg-body">${renderMessageBody(m)}</div>
         <div class="wa-msg-meta">
           <span class="wa-msg-time">${fmtTime(ts)}${esc(sender)}</span>
           ${ackHtml(m)}
@@ -177,15 +219,27 @@
     box.scrollTop = box.scrollHeight;
   }
 
+  function setComposeBusy(busy) {
+    sending = busy;
+    document.getElementById('waSendBtn').disabled = busy;
+    document.getElementById('waInput').disabled = busy;
+    document.getElementById('waAttachBtn').disabled = busy;
+    document.getElementById('waMicBtn').disabled = busy;
+  }
+
+  async function refreshAfterSend(res) {
+    if (res?.conversacionId) selectedId = res.conversacionId;
+    const msgs = await fetchMensajes(selectedId);
+    renderMessages(msgs);
+    await loadConversaciones();
+  }
+
   async function sendMessage() {
     const input = document.getElementById('waInput');
     const text = input.value.trim();
     if (!text || !selectedId || sending) return;
 
-    sending = true;
-    const btn = document.getElementById('waSendBtn');
-    btn.disabled = true;
-    input.disabled = true;
+    setComposeBusy(true);
     input.value = '';
 
     try {
@@ -193,19 +247,106 @@
         method: 'POST',
         body: { mensaje: text },
       });
-      if (res.conversacionId) selectedId = res.conversacionId;
-      const msgs = await fetchMensajes(selectedId);
-      renderMessages(msgs);
-      await loadConversaciones();
+      await refreshAfterSend(res);
     } catch (err) {
       toast(err.message, 'danger');
       const msgs = await fetchMensajes(selectedId).catch(() => []);
       renderMessages(msgs);
     } finally {
-      sending = false;
-      btn.disabled = false;
-      input.disabled = false;
+      setComposeBusy(false);
       input.focus();
+    }
+  }
+
+  async function sendMedia(file, caption = '', duration = null) {
+    if (!file || !selectedId || sending) return;
+
+    setComposeBusy(true);
+    const form = new FormData();
+    form.append('file', file);
+    if (caption) form.append('caption', caption);
+    if (duration != null) form.append('duration', String(duration));
+
+    try {
+      const res = await fetch(`${API_BASE}/whatsapp/conversaciones/${selectedId}/mensajes/media`, {
+        method: 'POST',
+        credentials: 'same-origin',
+        body: form,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
+      await refreshAfterSend(data);
+    } catch (err) {
+      toast(err.message, 'danger');
+    } finally {
+      setComposeBusy(false);
+    }
+  }
+
+  function onFileSelected(e) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    const isImage = file.type.startsWith('image/');
+    const isVideo = file.type.startsWith('video/');
+    if (isImage || isVideo) {
+      const cap = window.prompt('Caption (opcional):', '') || '';
+      sendMedia(file, cap.trim());
+      return;
+    }
+    sendMedia(file);
+  }
+
+  function setRecordingUI(active) {
+    const btn = document.getElementById('waMicBtn');
+    btn.classList.toggle('recording', active);
+    btn.innerHTML = active ? '<i class="fas fa-stop"></i>' : '<i class="fas fa-microphone"></i>';
+    btn.title = active ? 'Detener grabación' : 'Grabar nota de voz';
+  }
+
+  async function toggleRecording() {
+    if (!selectedId || sending) return;
+
+    if (recording && mediaRecorder) {
+      mediaRecorder.stop();
+      return;
+    }
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      toast('Tu navegador no permite grabar audio', 'danger');
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus') ? 'audio/ogg;codecs=opus' : '');
+      mediaRecorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+      audioChunks = [];
+      recordStartedAt = Date.now();
+
+      mediaRecorder.ondataavailable = (ev) => {
+        if (ev.data?.size) audioChunks.push(ev.data);
+      };
+      mediaRecorder.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop());
+        recording = false;
+        setRecordingUI(false);
+        const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
+        if (!blob.size) return;
+        const ext = blob.type.includes('ogg') ? 'ogg' : 'webm';
+        const file = new File([blob], `nota-voz.${ext}`, { type: blob.type });
+        const duration = Math.max(1, Math.round((Date.now() - recordStartedAt) / 1000));
+        await sendMedia(file, '', duration);
+      };
+
+      mediaRecorder.start();
+      recording = true;
+      setRecordingUI(true);
+    } catch (err) {
+      toast('No se pudo acceder al micrófono', 'danger');
     }
   }
 
@@ -250,6 +391,9 @@
   });
   document.getElementById('waSearch').addEventListener('input', e => renderList(e.target.value.trim()));
   document.getElementById('btnNuevoChat').addEventListener('click', nuevoChat);
+  document.getElementById('waAttachBtn').addEventListener('click', () => document.getElementById('waFileInput').click());
+  document.getElementById('waFileInput').addEventListener('change', onFileSelected);
+  document.getElementById('waMicBtn').addEventListener('click', toggleRecording);
 
   loadConversaciones();
   checkStatus();

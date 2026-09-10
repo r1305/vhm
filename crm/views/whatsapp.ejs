@@ -32,8 +32,11 @@
     </div>
 
     <footer class="wa-compose" id="waCompose" style="display:none">
+      <input type="file" id="waFileInput" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt" hidden>
+      <button type="button" class="btn btn-outline wa-compose-btn" id="waAttachBtn" title="Adjuntar archivo"><i class="fas fa-paperclip"></i></button>
+      <button type="button" class="btn btn-outline wa-compose-btn" id="waMicBtn" title="Grabar nota de voz"><i class="fas fa-microphone"></i></button>
       <input type="text" id="waInput" placeholder="Escribe un mensaje..." autocomplete="off">
-      <button class="btn btn-primary" id="waSendBtn"><i class="fas fa-paper-plane"></i></button>
+      <button type="button" class="btn btn-primary" id="waSendBtn"><i class="fas fa-paper-plane"></i></button>
     </footer>
   </section>
 </div>
