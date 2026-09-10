@@ -1,4 +1,5 @@
 require('dotenv').config();
+process.env.TZ = 'America/Lima';
 const path    = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 const express = require('express');

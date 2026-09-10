@@ -4,7 +4,7 @@
 (function () {
   'use strict';
 
-  const { api, toast, esc, fullName, openModal } = window.CRM;
+  const { api, toast, esc, fmtDate, fullName, openModal } = window.CRM;
   const USER_ROL = window.__USER_ROL__ || 'terapeuta';
   const IS_SUPERADMIN = USER_ROL === 'superadmin';
 
@@ -51,7 +51,7 @@
             <div class="ter-card-top">
               <div class="ter-avatar">${(t.nombre?.[0]||'').toUpperCase()}</div>
               <div style="display:flex;gap:4px;align-items:center">
-                ${t.pwa_installed_at ? `<i class="fas fa-mobile-screen" title="PWA instalada el ${new Date(t.pwa_installed_at).toLocaleDateString('es-PE')}" style="color:var(--primary);font-size:13px"></i>` : ''}
+                ${t.pwa_installed_at ? `<i class="fas fa-mobile-screen" title="PWA instalada el ${fmtDate(t.pwa_installed_at)}" style="color:var(--primary);font-size:13px"></i>` : ''}
                 <button class="btn-icon" data-edit="${t.id}" title="Editar"><i class="fas fa-pen"></i></button>
               </div>
             </div>
