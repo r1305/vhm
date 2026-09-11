@@ -9,14 +9,47 @@
   const DIAS     = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
   const TZ_TER   = 'America/Lima';
 
-  const TZ_VIS  = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const mismoTz = TZ_VIS === TZ_TER;
+  let TZ_VIS  = Intl.DateTimeFormat().resolvedOptions().timeZone || TZ_TER;
+  function mismoTz() { return TZ_VIS === TZ_TER; }
+
+  const TZ_LABELS = {
+    'America/Lima': 'Lima · GMT−5',
+    'America/Mexico_City': 'Ciudad de México',
+    'America/Bogota': 'Bogotá · GMT−5',
+    'America/Santiago': 'Santiago',
+    'America/Buenos_Aires': 'Buenos Aires',
+    'America/New_York': 'Nueva York',
+    'America/Los_Angeles': 'Los Ángeles',
+    'Europe/Madrid': 'Madrid',
+  };
+
+  function tzLabel(tz) {
+    return TZ_LABELS[tz] || tz.replace(/_/g, ' ');
+  }
+
+  function updateTzBar() {
+    const label = document.getElementById('agTzLabel');
+    if (!label) return;
+    const base = tzLabel(TZ_TER);
+    const vis = tzLabel(TZ_VIS);
+    label.innerHTML = mismoTz()
+      ? `<i class="fas fa-globe-americas"></i> Hora local: ${base}`
+      : `<i class="fas fa-globe-americas"></i> Terapeuta: ${base} · Tu zona: ${vis}`;
+  }
+
+  function syncTelefono() {
+    const pais = document.getElementById('ag_pais').value.replace(/\D/g, '');
+    const local = document.getElementById('ag_telefono_local').value.replace(/\D/g, '');
+    const full = local ? `${pais}${local}` : '';
+    document.getElementById('ag_telefono').value = full;
+    return full;
+  }
 
   function slotEnLocal(fechaStr, horaStr) {
     const dt = new Date(`${fechaStr}T${horaStr}:00`);
-    const limaOffset  = getOffsetMin(TZ_TER, dt);
-    const localOffset = -dt.getTimezoneOffset();
-    const diff        = localOffset - limaOffset;
+    const limaOffset = getOffsetMin(TZ_TER, dt);
+    const visOffset  = getOffsetMin(TZ_VIS, dt);
+    const diff       = visOffset - limaOffset;
     return new Date(dt.getTime() - diff * 60000);
   }
 
@@ -99,10 +132,44 @@
     lookupTimer = setTimeout(lookupPaciente, 600);
   }
 
-  document.getElementById('ag_telefono').addEventListener('blur', lookupPaciente);
+  document.getElementById('ag_telefono_local').addEventListener('blur', () => { syncTelefono(); lookupPaciente(); });
   document.getElementById('ag_email').addEventListener('blur', lookupPaciente);
-  document.getElementById('ag_telefono').addEventListener('input', scheduleLookup);
+  document.getElementById('ag_telefono_local').addEventListener('input', () => { syncTelefono(); scheduleLookup(); });
+  document.getElementById('ag_pais').addEventListener('change', () => { syncTelefono(); scheduleLookup(); });
   document.getElementById('ag_email').addEventListener('input', scheduleLookup);
+
+  document.getElementById('agTzToggle').addEventListener('click', () => {
+    const picker = document.getElementById('agTzPicker');
+    picker.hidden = !picker.hidden;
+  });
+  document.getElementById('agTzSelect').addEventListener('change', (e) => {
+    TZ_VIS = e.target.value;
+    updateTzBar();
+    if (fechaSel) {
+      const dia = slotsData.find(d => d.fecha === fechaSel);
+      if (dia) {
+        document.getElementById('agSlots').innerHTML = dia.slots.map(h => {
+          const [hh] = h.split(':').map(Number);
+          const hfin = `${String(hh+1).padStart(2,'0')}:${h.slice(3)}`;
+          const limaLabel  = `${h} – ${hfin}`;
+          const localLabel = mismoTz() ? '' : (() => {
+            const hLocal    = formatHoraLocal(fechaSel, h);
+            const hfinLocal = formatHoraLocal(fechaSel, hfin);
+            return `<span class="ag-slot-local">${hLocal} – ${hfinLocal} <small>tu hora</small></span>`;
+          })();
+          const sel = h === horaSel ? ' ag-slot-sel' : '';
+          return `<button class="ag-slot${sel}" data-hora="${h}">
+            <span class="ag-slot-lima">${limaLabel} <small>Lima</small></span>
+            ${localLabel}
+          </button>`;
+        }).join('');
+        document.querySelectorAll('.ag-slot').forEach(btn => {
+          btn.addEventListener('click', () => seleccionarHora(btn.dataset.hora));
+        });
+      }
+      if (horaSel) seleccionarHora(horaSel);
+    }
+  });
 
   // ── Cargar slots del mes ────────────────────────────────────────
   async function loadMes() {
@@ -172,7 +239,7 @@
       const [hh] = h.split(':').map(Number);
       const hfin = `${String(hh+1).padStart(2,'0')}:${h.slice(3)}`;
       const limaLabel  = `${h} – ${hfin}`;
-      const localLabel = mismoTz ? '' : (() => {
+      const localLabel = mismoTz() ? '' : (() => {
         const hLocal    = formatHoraLocal(f, h);
         const hfinLocal = formatHoraLocal(f, hfin);
         return `<span class="ag-slot-local">${hLocal} – ${hfinLocal} <small>tu hora</small></span>`;
@@ -199,7 +266,7 @@
     const [hh]    = h.split(':').map(Number);
     const hfin    = `${String(hh+1).padStart(2,'0')}:${h.slice(3)}`;
     const limaLabel  = `${h} – ${hfin} <small style="opacity:.7">(Lima)</small>`;
-    const localExtra = mismoTz ? '' : (() => {
+    const localExtra = mismoTz() ? '' : (() => {
       const hL  = formatHoraLocal(fechaSel, h);
       const hfL = formatHoraLocal(fechaSel, hfin);
       return ` &nbsp;·&nbsp; ${hL} – ${hfL} <small style="opacity:.7">(tu hora)</small>`;
@@ -216,7 +283,7 @@
   document.getElementById('agConfirmar').addEventListener('click', async () => {
     const nombre   = document.getElementById('ag_nombre').value.trim();
     const apellido = document.getElementById('ag_apellido').value.trim();
-    const telefono = document.getElementById('ag_telefono').value.trim();
+    const telefono = syncTelefono();
     const email    = document.getElementById('ag_email').value.trim();
     const motivo   = document.getElementById('ag_motivo').value.trim();
     const modalidad = document.querySelector('input[name="ag_modalidad"]:checked')?.value || 'presencial';
@@ -224,8 +291,8 @@
 
     if (!telefono) { mostrarError('El teléfono es obligatorio'); return; }
     const telLimpio = telefono.replace(/[\s\-().+]/g, '');
-    if (!/^\d{10,15}$/.test(telLimpio)) {
-      mostrarError('Ingresa el teléfono con código de país sin espacios ni símbolos. Ej: 51999999999 para Perú');
+    if (!/^\d{9,15}$/.test(telLimpio)) {
+      mostrarError('Ingresa un número de teléfono válido para el país seleccionado');
       return;
     }
     if (!nombre)   { mostrarError('El nombre es obligatorio'); return; }
@@ -270,8 +337,16 @@
   // ── Navegación entre steps ──────────────────────────────────────
   function goStep(n) {
     document.querySelectorAll('.ag-step').forEach((el, i) => {
-      el.classList.toggle('active', i+1 === n);
+      el.classList.toggle('active', i + 1 === n);
     });
+    document.querySelectorAll('.ag-progress-item').forEach((el) => {
+      const step = Number(el.dataset.step);
+      el.classList.toggle('active', step === n && n < 4);
+      el.classList.toggle('done', step < n && n < 4);
+    });
+    const showTz = n > 0 && n < 4;
+    document.getElementById('agTzBar').style.display = showTz ? 'flex' : 'none';
+    document.getElementById('agProgress').style.display = n < 4 ? 'flex' : 'none';
     window.scrollTo(0, 0);
   }
 
@@ -279,8 +354,9 @@
   document.getElementById('agBackToStep2').addEventListener('click', () => goStep(2));
   document.getElementById('agNuevaCita').addEventListener('click', () => {
     fechaSel = null; horaSel = null;
-    ['ag_nombre','ag_apellido','ag_telefono','ag_email','ag_motivo'].forEach(id => {
-      document.getElementById(id).value = '';
+    ['ag_nombre','ag_apellido','ag_telefono','ag_telefono_local','ag_email','ag_motivo'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
     });
     const nombreEl   = document.getElementById('ag_nombre');
     const apellidoEl = document.getElementById('ag_apellido');
@@ -311,5 +387,10 @@
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   }
 
+  const tzSelect = document.getElementById('agTzSelect');
+  if (tzSelect && [...tzSelect.options].some(o => o.value === TZ_VIS)) {
+    tzSelect.value = TZ_VIS;
+  }
+  updateTzBar();
   loadMes();
 })();

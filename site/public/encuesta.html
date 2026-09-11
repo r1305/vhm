@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="es" data-product="tribu" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Encuesta — La Tribu VHM</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/vhm-design-tokens-v1.css">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--font-ui);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+    .wrap { max-width: 640px; margin: 0 auto; padding: 32px 20px 48px; }
+    .brand { text-align: center; margin-bottom: 28px; }
+    .brand span {
+      display: inline-block; font-weight: 700; font-size: 1.1rem;
+      color: var(--primary);
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-card);
+      padding: 28px 24px;
+      box-shadow: var(--shadow-card);
+    }
+    h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 8px; }
+    .desc { color: var(--text-secondary); font-size: .95rem; margin-bottom: 24px; }
+    .q-block { margin-bottom: 28px; padding-bottom: 24px; border-bottom: 1px solid var(--border); }
+    .q-block:last-of-type { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+    .q-title { font-weight: 600; font-size: 1rem; margin-bottom: 4px; }
+    .q-hint { font-size: .78rem; color: var(--text-tertiary); margin-bottom: 12px; }
+    .opt {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 12px 14px; margin-bottom: 8px;
+      border: 1.5px solid var(--border); border-radius: var(--radius-field);
+      cursor: pointer; transition: border-color .15s, background .15s;
+    }
+    .opt:hover { border-color: var(--primary); background: var(--primary-soft); }
+    .opt input { margin-top: 3px; accent-color: var(--primary); flex-shrink: 0; }
+    .opt span { font-size: .92rem; }
+    .opt.selected { border-color: var(--primary); background: var(--primary-soft); }
+    .btn-submit {
+      width: 100%; margin-top: 24px; min-height: 48px;
+      border: none; border-radius: var(--radius-button);
+      background: var(--primary); color: var(--on-primary);
+      font-size: 1rem; font-weight: 600; cursor: pointer;
+      transition: background .15s;
+    }
+    .btn-submit:hover:not(:disabled) { background: var(--primary-hover); }
+    .btn-submit:disabled { opacity: .55; cursor: not-allowed; }
+    .state-box { text-align: center; padding: 48px 20px; color: var(--text-secondary); }
+    .state-box .icon { font-size: 2.5rem; margin-bottom: 12px; }
+    .msg-ok { color: var(--success); font-weight: 600; font-size: 1.1rem; }
+    .err { color: var(--danger); font-size: .9rem; margin-top: 12px; }
+    @media (max-width: 480px) {
+      .wrap { padding: 20px 14px 36px; }
+      .card { padding: 20px 16px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="brand"><span>La Tribu · VHM</span></div>
+    <div id="app">
+      <div class="state-box"><div class="icon">⏳</div><p>Cargando encuesta…</p></div>
+    </div>
+  </div>
+  <script>
+(function () {
+  var base = (window.__APP_BASE__ || '').replace(/\/+$/, '');
+  var apiBase = (base || '') + '/api';
+  var slug = (function () {
+    var parts = location.pathname.replace(/\/+$/, '').split('/');
+    var i = parts.indexOf('encuesta');
+    if (i >= 0 && parts[i + 1]) return parts[i + 1];
+    var q = new URLSearchParams(location.search).get('slug');
+    return q || '';
+  })();
+
+  var app = document.getElementById('app');
+  var survey = null;
+
+  function esc(s) {
+    var d = document.createElement('div');
+    d.textContent = s == null ? '' : String(s);
+    return d.innerHTML;
+  }
+
+  function showError(msg) {
+    app.innerHTML = '<div class="card state-box"><div class="icon">😕</div><p>' + esc(msg) + '</p></div>';
+  }
+
+  function showSuccess() {
+    app.innerHTML = '<div class="card state-box"><div class="icon">✅</div><p class="msg-ok">¡Gracias por tu respuesta!</p><p style="margin-top:8px;color:var(--text-secondary)">Tu opinión nos ayuda a mejorar.</p></div>';
+  }
+
+  function renderForm() {
+    var html = '<div class="card">';
+    html += '<h1>' + esc(survey.titulo) + '</h1>';
+    if (survey.descripcion) html += '<p class="desc">' + esc(survey.descripcion) + '</p>';
+    html += '<form id="survey-form">';
+    survey.preguntas.forEach(function (p, idx) {
+      var hint = p.tipo === 'multiple' ? 'Puedes elegir varias opciones' : 'Elige una opción';
+      if (!p.obligatoria) hint += ' (opcional)';
+      html += '<div class="q-block" data-qid="' + p.id + '" data-tipo="' + p.tipo + '" data-req="' + (p.obligatoria ? '1' : '0') + '">';
+      html += '<div class="q-title">' + (idx + 1) + '. ' + esc(p.texto) + '</div>';
+      html += '<div class="q-hint">' + hint + '</div>';
+      p.opciones.forEach(function (o) {
+        var inputType = p.tipo === 'multiple' ? 'checkbox' : 'radio';
+        var name = 'q_' + p.id + (p.tipo === 'single' ? '' : '_' + o.id);
+        html += '<label class="opt"><input type="' + inputType + '" name="' + name + '" value="' + o.id + '"><span>' + esc(o.texto) + '</span></label>';
+      });
+      html += '</div>';
+    });
+    html += '<button type="submit" class="btn-submit" id="btn-send">Enviar respuestas</button>';
+    html += '<div class="err" id="form-err" style="display:none"></div>';
+    html += '</form></div>';
+    app.innerHTML = html;
+
+    app.querySelectorAll('.opt input').forEach(function (inp) {
+      inp.addEventListener('change', function () {
+        var label = inp.closest('.opt');
+        if (inp.type === 'radio') {
+          label.parentElement.querySelectorAll('.opt').forEach(function (l) { l.classList.remove('selected'); });
+        }
+        label.classList.toggle('selected', inp.checked);
+      });
+    });
+
+    document.getElementById('survey-form').addEventListener('submit', submitForm);
+  }
+
+  async function submitForm(e) {
+    e.preventDefault();
+    var errEl = document.getElementById('form-err');
+    errEl.style.display = 'none';
+    var respuestas = [];
+    var valid = true;
+
+    survey.preguntas.forEach(function (p) {
+      var block = app.querySelector('[data-qid="' + p.id + '"]');
+      var inputs = block.querySelectorAll('input:checked');
+      var ids = [];
+      inputs.forEach(function (inp) { ids.push(parseInt(inp.value, 10)); });
+      if (p.obligatoria && !ids.length) valid = false;
+      respuestas.push({ pregunta_id: p.id, opcion_ids: ids });
+    });
+
+    if (!valid) {
+      errEl.textContent = 'Completa todas las preguntas obligatorias.';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    var btn = document.getElementById('btn-send');
+    btn.disabled = true;
+    btn.textContent = 'Enviando…';
+    try {
+      var res = await fetch(apiBase + '/encuestas/public/' + encodeURIComponent(slug) + '/responder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ respuestas: respuestas }),
+      });
+      var data = await res.json().catch(function () { return {}; });
+      if (!res.ok) throw new Error(data.error || 'No se pudo enviar');
+      showSuccess();
+    } catch (err) {
+      errEl.textContent = err.message || 'Error al enviar';
+      errEl.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Enviar respuestas';
+    }
+  }
+
+  if (!slug) {
+    showError('Enlace de encuesta no válido.');
+    return;
+  }
+
+  fetch(apiBase + '/encuestas/public/' + encodeURIComponent(slug))
+    .then(function (r) { return r.json().then(function (d) { if (!r.ok) throw new Error(d.error || 'No encontrada'); return d; }); })
+    .then(function (data) { survey = data; renderForm(); })
+    .catch(function (e) { showError(e.message || 'Encuesta no disponible'); });
+})();
+  </script>
+</body>
+</html>

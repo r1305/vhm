@@ -6,9 +6,9 @@
 
   const { api, toast, esc } = window.CRM;
 
-  const COLORS = ['#7c3aed','#4f46e5','#0891b2','#16a34a','#d97706','#dc2626','#db2777','#6366f1','#0ea5e9','#84cc16'];
+  const COLORS = ['#176B87','#237A68','#A84F3E','#287A5B','#A66A13','#B64A5A','#3E6FA4','#12566D','#64B5CE','#61BFA9'];
 
-  function barChart(container, rows, { labelKey, valueKey, color = '#7c3aed', fmt = v => v } = {}) {
+  function barChart(container, rows, { labelKey, valueKey, color = '#176B87', fmt = v => v } = {}) {
     if (!rows.length) { container.innerHTML = '<div class="list-empty">Sin datos en este período</div>'; return; }
     const max = Math.max(...rows.map(r => parseFloat(r[valueKey]) || 0), 1);
     container.innerHTML = rows.map(r => {
@@ -38,7 +38,7 @@
     }).join('') + `<div style="font-size:11px;color:var(--text-muted);margin-top:8px;border-top:1px solid var(--border);padding-top:6px">Total: <strong>${total}</strong></div>`;
   }
 
-  function sparkLine(container, rows, { dateKey, valueKey, color = '#7c3aed', fmt = v => v } = {}) {
+  function sparkLine(container, rows, { dateKey, valueKey, color = '#176B87', fmt = v => v } = {}) {
     if (!rows.length) { container.innerHTML = '<div class="list-empty">Sin datos en este período</div>'; return; }
     const vals = rows.map(r => parseFloat(r[valueKey]) || 0);
     const maxV = Math.max(...vals, 1);
@@ -90,11 +90,11 @@
         <div class="kpi-card"><div class="kpi-label">Pacientes nuevos</div><div class="kpi-value">${k.pacientes_nuevos||0}</div><div class="kpi-sub">${k.pacientes_activos||0} activos en total</div></div>
         <div class="kpi-card" style="border-left:3px solid var(--danger)"><div class="kpi-label">Cancelaciones</div><div class="kpi-value">${k.citas_canceladas||0}</div></div>`;
 
-      sparkLine(document.getElementById('grafCitasDia'), d.citasPorDia||[], { dateKey:'fecha', valueKey:'total', color:'#7c3aed' });
+      sparkLine(document.getElementById('grafCitasDia'), d.citasPorDia||[], { dateKey:'fecha', valueKey:'total', color:'#176B87' });
 
       barChart(document.getElementById('grafTerapeuta'),
         (d.citasPorTerapeuta||[]).map(t => ({ ...t, nombre_corto: t.nombre+(t.apellido?' '+t.apellido[0]+'.':'') })),
-        { labelKey:'nombre_corto', valueKey:'total', color:'#7c3aed' });
+        { labelKey:'nombre_corto', valueKey:'total', color:'#176B87' });
       donutChart(document.getElementById('grafEstadoCita'), d.citasPorEstado||[], { labelKey:'estado', valueKey:'total' });
       donutChart(document.getElementById('grafModalidad'), d.citasPorModalidad||[], { labelKey:'modalidad', valueKey:'total' });
 

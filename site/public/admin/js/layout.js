@@ -5,12 +5,13 @@
     videos: { href: 'videos.html', icon: '🎬', label: 'La Tribu', section: 'principal' },
     'tribu-users': { href: 'tribu-users.html', icon: '🫂', label: 'Usuarios Tribu', section: 'principal' },
     plantillas: { href: 'plantillas.html', icon: '📝', label: 'Plantillas', section: 'principal' },
+    encuestas: { href: 'encuestas.html', icon: '📊', label: 'Encuestas', section: 'principal' },
     usuarios: { href: 'usuarios.html', icon: '👥', label: 'Administradores', section: 'config' },
     config: { href: 'config.html', icon: '⚙️', label: 'Ajustes', section: 'config' },
     accesos: { href: 'accesos.html', icon: '🔐', label: 'Accesos', section: 'config' },
   };
 
-  const NAV_ORDER = ['reclamos', 'testimonios', 'videos', 'tribu-users', 'plantillas', 'usuarios', 'config', 'accesos'];
+  const NAV_ORDER = ['reclamos', 'testimonios', 'videos', 'tribu-users', 'plantillas', 'encuestas', 'usuarios', 'config', 'accesos'];
 
   function logoSrc() {
     return AdminApi.asset('logo_vhm.jpeg');
@@ -79,7 +80,7 @@
       '<aside class="sidebar" id="sidebar">' +
         '<div class="sidebar-brand">' +
           '<img src="' + logoSrc() + '" alt="VHM">' +
-          '<div class="brand-text"><div class="brand-title">VHM Admin</div><div class="brand-sub">Panel de gestión</div></div>' +
+          '<div class="brand-text"><div class="brand-title">Tribu Admin</div><div class="brand-sub">Panel de gestión</div></div>' +
         '</div>' +
         '<nav class="sidebar-nav">' +
           '<div class="nav-label">Principal</div>' + navHtml(navPrincipal) +

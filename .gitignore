@@ -1,3 +1,7 @@
 node_modules/
 .env
+.env.local
 *.log
+*client_secret*.json
+tmp_check.js
+referencia_estilos.jpeg

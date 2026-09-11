@@ -13,9 +13,9 @@ shell.get('/health', (req, res) => {
   res.json({ ok: true, service: 'luma', mountPath: MOUNT_PATH });
 });
 
-shell.use(MOUNT_PATH, lumaApp);
-
 shell.get('/', (req, res) => res.redirect(MOUNT_PATH + '/'));
+
+shell.use(MOUNT_PATH, lumaApp);
 
 if (typeof PhusionPassenger !== 'undefined') {
   PhusionPassenger.configure({

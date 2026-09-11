@@ -18,7 +18,7 @@
     const map = {
       activo: 'background:#d1fae5;color:#065f46',
       prospecto: 'background:#dbeafe;color:#1d4ed8',
-      alta: 'background:#ede9fe;color:#6d28d9',
+      alta: 'background:#F7ECE9;color:#A84F3E',
       inactivo: 'background:#f3f4f6;color:#6b7280',
       lista_espera: 'background:#fef3c7;color:#92400e',
     };

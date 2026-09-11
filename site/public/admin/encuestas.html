@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Encuestas - Tribu Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/admin.css">
+  <style>
+    .enc-list { display: flex; flex-direction: column; gap: 12px; }
+    .enc-item { border: 1px solid var(--border-color); border-radius: 14px; background: var(--bg-card); overflow: hidden; }
+    .enc-head {
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+      padding: 16px 18px; cursor: pointer; transition: background .15s;
+    }
+    .enc-head:hover { background: var(--bg-hover); }
+    .enc-title { font-weight: 700; font-size: 1rem; color: var(--text-primary); }
+    .enc-meta { font-size: .78rem; color: var(--text-muted); margin-top: 4px; }
+    .enc-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; flex-shrink: 0; }
+    .enc-chevron { font-size: .85rem; color: var(--text-muted); margin-left: 8px; transition: transform .2s; }
+    .enc-item.open .enc-chevron { transform: rotate(180deg); }
+    .enc-results { display: none; padding: 0 18px 18px; border-top: 1px solid var(--border-color); }
+    .enc-item.open .enc-results { display: block; }
+    .enc-results-loading { padding: 24px; text-align: center; color: var(--text-muted); }
+    .res-total { font-size: .85rem; color: var(--text-secondary); margin: 14px 0 16px; }
+    .res-q { margin-bottom: 22px; }
+    .res-q-title { font-weight: 600; font-size: .9rem; margin-bottom: 10px; }
+    .res-q-type { font-size: .72rem; color: var(--text-muted); font-weight: 500; margin-left: 6px; }
+    .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; font-size: .82rem; }
+    .bar-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .bar-track { flex: 0 0 120px; height: 8px; background: var(--bg-input); border-radius: 4px; overflow: hidden; }
+    .bar-fill { height: 100%; background: linear-gradient(90deg, #A84F3E, #E58B78); border-radius: 4px; }
+    .bar-num { flex: 0 0 72px; text-align: right; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+    .q-editor { border: 1px solid var(--border-color); border-radius: 12px; padding: 14px; margin-bottom: 12px; background: var(--bg-input); }
+    .q-editor-head { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; align-items: center; }
+    .q-editor-head input[type=text] { flex: 1; min-width: 180px; }
+    .opt-row { display: flex; gap: 8px; margin-bottom: 6px; align-items: center; }
+    .opt-row input { flex: 1; }
+    .link-box {
+      display: flex; gap: 8px; align-items: center; margin-top: 8px;
+      padding: 10px 12px; background: var(--bg-input); border-radius: 10px; border: 1px solid var(--border-color);
+    }
+    .link-box input { flex: 1; font-size: .82rem; background: transparent; border: none; color: var(--text-secondary); }
+    .share-row { margin-top: 10px; }
+    .modal.lg { max-width: 720px; }
+  </style>
+  <script src="js/base.js"></script>
+</head>
+<body>
+  <div id="admin-root"><div id="page-main" style="display:none">
+    <div class="section-header">
+      <div>
+        <h2>📊 Encuestas</h2>
+        <p>Crea encuestas con opción única o múltiple y comparte el enlace</p>
+      </div>
+      <button type="button" class="btn btn-primary" id="btn-nueva">+ Nueva encuesta</button>
+    </div>
+    <div class="card">
+      <div class="card-body">
+        <div id="enc-list" class="enc-list">
+          <div class="table-empty"><div class="empty-icon">📊</div><div class="empty-text">Cargando…</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-overlay" id="modal-encuesta">
+      <div class="modal lg">
+        <div class="modal-header">
+          <h3 id="modal-enc-title">📊 Nueva encuesta</h3>
+          <button type="button" class="modal-close" data-modal-close="modal-encuesta">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="enc-titulo">Título</label>
+            <input type="text" id="enc-titulo" placeholder="Ej. Satisfacción del evento">
+          </div>
+          <div class="form-group">
+            <label for="enc-desc">Descripción (opcional)</label>
+            <textarea id="enc-desc" rows="2" placeholder="Texto introductorio para quien responde"></textarea>
+          </div>
+          <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="form-group">
+              <label for="enc-slug">Enlace (slug)</label>
+              <input type="text" id="enc-slug" placeholder="satisfaccion-evento">
+            </div>
+            <div class="form-group">
+              <label for="enc-activa">Estado</label>
+              <select id="enc-activa">
+                <option value="1">🟢 Activa</option>
+                <option value="0">🔴 Inactiva</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Preguntas</label>
+            <div id="preguntas-editor"></div>
+            <button type="button" class="btn btn-outline btn-sm" id="btn-add-pregunta" style="margin-top:8px">+ Agregar pregunta</button>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" data-modal-close="modal-encuesta">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="btn-guardar-enc">💾 Guardar</button>
+        </div>
+      </div>
+    </div>
+  </div></div>
+  <script src="js/api.js"></script><script src="js/auth.js"></script><script src="js/toast.js"></script><script src="js/utils.js"></script><script src="js/layout.js"></script><script src="js/encuestas.js"></script>
+</body>
+</html>

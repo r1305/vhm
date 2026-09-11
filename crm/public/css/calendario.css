@@ -31,8 +31,8 @@
   cursor: pointer;
   transition: background .15s;
 }
-.cal-mes td:hover { background: var(--primary-light, #f0f4ff); }
-.cal-mes td.cal-hoy { background: var(--primary-light, #f0f4ff); }
+.cal-mes td:hover { background: var(--primary-soft, #EAF2F5); }
+.cal-mes td.cal-hoy { background: var(--primary-soft, #EAF2F5); }
 .cal-mes td.cal-hoy .cal-dia-num { background: var(--primary); color: #fff; }
 .cal-mes td.cal-otro-mes .cal-dia-num { color: var(--text-muted); opacity: .5; }
 .cal-dia-num {
@@ -108,8 +108,8 @@
   min-height: 60px;
   cursor: pointer;
 }
-.cal-semana td:hover { background: var(--primary-light, #f0f4ff); }
-.cal-semana td.cal-hoy-col { background: var(--primary-light, #f0f4ff); }
+.cal-semana td:hover { background: var(--primary-soft, #EAF2F5); }
+.cal-semana td.cal-hoy-col { background: var(--primary-soft, #EAF2F5); }
 .cal-semana .cal-time-col {
   width: 52px;
   text-align: right;
@@ -145,7 +145,7 @@
   cursor: pointer;
   transition: background .12s;
 }
-.cal-dia-cell:hover { background: var(--primary-light, #f0f4ff); }
+.cal-dia-cell:hover { background: var(--primary-soft, #EAF2F5); }
 
 .cal-mes td.cal-dia-bloqueado {
   background: repeating-linear-gradient(
@@ -186,11 +186,11 @@
     var(--card-bg) 10px
   );
 }
-.cal-color-0 { background: #6366f1; }
-.cal-color-1 { background: #22c55e; }
-.cal-color-2 { background: #f59e0b; }
-.cal-color-3 { background: #ef4444; }
-.cal-color-4 { background: #06b6d4; }
-.cal-color-5 { background: #ec4899; }
-.cal-color-6 { background: #8b5cf6; }
-.cal-color-7 { background: #14b8a6; }
+.cal-color-0 { background: #176B87; }
+.cal-color-1 { background: #287A5B; }
+.cal-color-2 { background: #A66A13; }
+.cal-color-3 { background: #B64A5A; }
+.cal-color-4 { background: #3E6FA4; }
+.cal-color-5 { background: #237A68; }
+.cal-color-6 { background: #A84F3E; }
+.cal-color-7 { background: #176B87; }

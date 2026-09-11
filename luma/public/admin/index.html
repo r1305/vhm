@@ -1,22 +1,39 @@
 <!doctype html>
-<html lang="es">
+<html lang="es" data-product="tribu" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Luma Admin — VHM</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/vhm-design-tokens-v1.css">
   <style>
     :root {
-      --bg-body:#0f0f1a; --bg-card:#1a1a2e; --bg-card-hover:#1e1e34; --bg-elevated:#1e1e34;
-      --bg-input:#16162a; --bg-hover:#2a2a42; --bg-hover-strong:#3a3a52;
-      --text-primary:#e4e4ed; --text-secondary:#a0a0b4; --text-muted:#7a7a8e; --text-light:#5a5a6e;
-      --border-color:#2a2a42; --border-strong:#3a3a52; --border-light:#3a3a52;
-      --color-primary:#667eea; --color-danger:#ef4444; --color-success:#10b981; --color-warning:#f59e0b;
-      --gradient:linear-gradient(135deg,#667eea,#764ba2);
-      --shadow-card:0 1px 3px rgba(0,0,0,.2); --shadow-modal:0 20px 60px rgba(0,0,0,.5);
-      --shadow-toast:0 8px 24px rgba(0,0,0,.4); --overlay-bg:rgba(0,0,0,.7);
-      --table-header:#1a1a2e; --sidebar-bg:#1a1a2e;
+      --bg-body: var(--bg);
+      --bg-card: var(--surface);
+      --bg-card-hover: var(--surface-subtle);
+      --bg-elevated: var(--surface-raised);
+      --bg-input: var(--bg);
+      --bg-hover: var(--surface-subtle);
+      --bg-hover-strong: var(--surface-raised);
+      --text-primary: var(--text);
+      --text-secondary: var(--text-secondary);
+      --text-muted: var(--text-tertiary);
+      --text-light: var(--text-tertiary);
+      --border-color: var(--border);
+      --border-strong: var(--border);
+      --border-light: var(--border);
+      --color-primary: var(--primary);
+      --color-danger: var(--danger);
+      --color-success: var(--success);
+      --color-warning: var(--warning);
+      --gradient: linear-gradient(135deg, var(--primary), var(--primary-hover));
+      --shadow-card: none;
+      --shadow-modal: 0 20px 60px rgba(0, 0, 0, 0.45);
+      --shadow-toast: 0 8px 24px rgba(0, 0, 0, 0.35);
+      --overlay-bg: rgba(14, 23, 20, 0.65);
+      --table-header: var(--surface);
+      --sidebar-bg: var(--surface);
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg-body); color: var(--text-primary); min-height: 100vh; }
@@ -24,7 +41,7 @@
     button { cursor: pointer; font-family: inherit; }
     input, textarea, select { font-family: inherit; }
     ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-thumb { background: #3a3a52; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb { background: #2D3A35; border-radius: 3px; }
 
     /* SIDEBAR */
     .sidebar {
@@ -44,7 +61,7 @@
       transition: all .15s; cursor: pointer; border: none; background: none; width: 100%; text-align: left;
     }
     .nav-item:hover { background: var(--bg-hover); color: var(--text-primary); }
-    .nav-item.active { background: var(--gradient); color: #fff; box-shadow: 0 4px 12px rgba(102,126,234,.35); }
+    .nav-item.active { background: rgba(168,79,62,.16); color: #E58B78; box-shadow: none; }
     .nav-item .nav-icon { font-size: 1.2rem; width: 22px; text-align: center; flex-shrink: 0; }
     .sidebar-footer { padding: 12px; border-top: 1px solid var(--border-color); }
     .user-card { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 10px; background: var(--bg-input); margin-bottom: 8px; }
@@ -369,7 +386,7 @@
   <div class="topbar">
     <button class="hamburger" id="btn-hamburger">☰</button>
     <div class="page-title" id="page-title">📊 Dashboard</div>
-    <a id="btn-ver-publico" href="../" target="_blank" class="btn btn-outline btn-sm">🌐 Ver página</a>
+    <a id="btn-ver-publico" href="./" target="_blank" class="btn btn-outline btn-sm">🌐 Ver página</a>
   </div>
   <div class="content" id="main-content"></div>
 </div>

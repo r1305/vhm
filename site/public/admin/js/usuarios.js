@@ -38,7 +38,7 @@
 
   function rolBadgeStyle(rol) {
     return rol === 'SUPER_ADMIN'
-      ? 'background:#ede9fe;color:#6d28d9'
+      ? 'background:#F7ECE9;color:#A84F3E'
       : 'background:#dbeafe;color:#1d4ed8';
   }
 
@@ -73,7 +73,7 @@
 
       rows +=
         '<tr>' +
-          '<td><strong style="color:#667eea">' + AdminApi.escapeHtml(u.username) + '</strong></td>' +
+          '<td><strong style="color:#A84F3E">' + AdminApi.escapeHtml(u.username) + '</strong></td>' +
           '<td>' + AdminApi.escapeHtml(u.nombre) + '</td>' +
           '<td>' + AdminApi.escapeHtml(u.email) + '</td>' +
           '<td>' + rolBadge + '</td>' +

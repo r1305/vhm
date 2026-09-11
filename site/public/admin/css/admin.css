@@ -1,60 +1,62 @@
+@import url('../../css/vhm-design-tokens-v1.css');
+
 :root {
-  --bg-body: #f4f6fb;
-  --text-primary: #1a1a2e;
-  --text-secondary: #555;
-  --text-muted: #888;
-  --text-light: #aaa;
-  --bg-card: #fff;
-  --bg-card-hover: #fafbfe;
-  --bg-elevated: #fff;
-  --border-color: #edf0f5;
-  --border-strong: #e8e8f0;
-  --border-light: #d0d5e0;
-  --bg-input: #f8f9fe;
-  --bg-hover: #f0f2f8;
-  --bg-hover-strong: #e8e8f0;
-  --gradient-start: #667eea;
-  --gradient-end: #764ba2;
+  --bg-body: var(--bg);
+  --text-primary: var(--text);
+  --text-secondary: var(--text-secondary);
+  --text-muted: var(--text-tertiary);
+  --text-light: var(--text-tertiary);
+  --bg-card: var(--surface);
+  --bg-card-hover: var(--surface-subtle);
+  --bg-elevated: var(--surface);
+  --border-color: var(--border);
+  --border-strong: var(--border);
+  --border-light: var(--border);
+  --bg-input: var(--surface-subtle);
+  --bg-hover: var(--surface-subtle);
+  --bg-hover-strong: var(--border);
+  --gradient-start: var(--primary, #A84F3E);
+  --gradient-end: var(--primary-hover, #8F4234);
   --gradient: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
-  --shadow-card: 0 1px 3px rgba(0,0,0,.03);
-  --shadow-modal: 0 20px 60px rgba(0,0,0,.2);
-  --shadow-toast: 0 8px 24px rgba(0,0,0,.12);
-  --overlay-bg: rgba(0,0,0,.5);
-  --table-header: #f8f9fe;
-  --scrollbar-thumb: #c4c4d4;
-  --scrollbar-thumb-hover: #a0a0b4;
-  --sidebar-bg: #fff;
-  --login-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  --color-danger: #ef4444;
-  --color-success: #10b981;
-  --color-warning: #f59e0b;
-  --color-primary: #667eea;
-  --color-purple: #6d28d9;
+  --shadow-modal: 0 20px 60px rgba(14, 23, 20, 0.18);
+  --shadow-toast: 0 8px 24px rgba(14, 23, 20, 0.12);
+  --overlay-bg: rgba(14, 23, 20, 0.42);
+  --table-header: var(--surface-subtle);
+  --scrollbar-thumb: var(--border);
+  --scrollbar-thumb-hover: var(--text-tertiary);
+  --sidebar-bg: var(--surface);
+  --login-gradient: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-primary: var(--primary, #A84F3E);
+  --color-accent: var(--accent-dark, #E58B78);
+  --color-purple: var(--primary-hover, #8F4234);
 }
 [data-theme="dark"] {
-  --bg-body: #0f0f1a;
-  --text-primary: #e4e4ed;
-  --text-secondary: #a0a0b4;
-  --text-muted: #7a7a8e;
-  --text-light: #5a5a6e;
-  --bg-card: #1a1a2e;
-  --bg-card-hover: #1e1e34;
-  --bg-elevated: #1e1e34;
-  --border-color: #2a2a42;
-  --border-strong: #3a3a52;
-  --border-light: #3a3a52;
-  --bg-input: #16162a;
-  --bg-hover: #2a2a42;
-  --bg-hover-strong: #3a3a52;
-  --shadow-card: 0 1px 3px rgba(0,0,0,.2);
-  --shadow-modal: 0 20px 60px rgba(0,0,0,.5);
-  --shadow-toast: 0 8px 24px rgba(0,0,0,.4);
-  --overlay-bg: rgba(0,0,0,.7);
-  --table-header: #1a1a2e;
-  --scrollbar-thumb: #3a3a52;
-  --scrollbar-thumb-hover: #5a5a6e;
-  --sidebar-bg: #1a1a2e;
-  --login-gradient: linear-gradient(135deg, #1a1a2e 0%, #2a1a4e 100%);
+  --bg-body: var(--bg);
+  --text-primary: var(--text);
+  --text-secondary: var(--text-secondary);
+  --text-muted: var(--text-tertiary);
+  --text-light: var(--text-tertiary);
+  --bg-card: var(--surface);
+  --bg-card-hover: var(--surface-subtle);
+  --bg-elevated: var(--surface-raised);
+  --border-color: var(--border);
+  --border-strong: var(--border);
+  --border-light: var(--border);
+  --bg-input: var(--bg);
+  --bg-hover: var(--surface-subtle);
+  --bg-hover-strong: var(--surface-raised);
+  --shadow-card: none;
+  --shadow-modal: 0 20px 60px rgba(0, 0, 0, 0.45);
+  --shadow-toast: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --overlay-bg: rgba(14, 23, 20, 0.65);
+  --table-header: var(--surface);
+  --scrollbar-thumb: var(--border);
+  --scrollbar-thumb-hover: var(--text-tertiary);
+  --sidebar-bg: var(--surface);
+  --login-gradient: linear-gradient(135deg, var(--accent-dark-tint) 0%, var(--surface-raised) 100%);
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -123,7 +125,7 @@ input, textarea, select { font-family: inherit; }
   display: flex; align-items: center; justify-content: center; gap: 8px;
   transition: transform .15s, box-shadow .2s;
 }
-.login-box button:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(102,126,234,.4); }
+.login-box button:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(168,79,62,.35); }
 .login-box button:disabled { opacity: .6; cursor: not-allowed; transform: none; }
 
 /* ========== SIDEBAR ========== */
@@ -161,8 +163,13 @@ input, textarea, select { font-family: inherit; }
 }
 .nav-item:hover { background: var(--bg-hover); color: var(--text-primary); }
 .nav-item.active {
-  background: var(--gradient);
-  color: #fff; box-shadow: 0 4px 12px rgba(102,126,234,.35);
+  background: var(--primary-soft, #F7ECE9);
+  color: var(--primary, #A84F3E);
+  box-shadow: none;
+}
+[data-theme="dark"] .nav-item.active {
+  background: rgba(168, 79, 62, .16);
+  color: var(--accent-dark, #E58B78);
 }
 .nav-item .nav-icon { font-size: 1.25rem; width: 24px; text-align: center; flex-shrink: 0; }
 .nav-item .nav-badge {
@@ -247,7 +254,7 @@ input, textarea, select { font-family: inherit; }
 .btn:hover:not(:disabled) { transform: translateY(-1px); }
 .btn:disabled { opacity: .6; cursor: not-allowed; transform: none; }
 .btn-primary { background: var(--gradient); color: #fff; }
-.btn-primary:hover:not(:disabled) { box-shadow: 0 4px 12px rgba(102,126,234,.35); }
+.btn-primary:hover:not(:disabled) { box-shadow: 0 4px 12px rgba(168,79,62,.35); }
 .btn-success { background: var(--color-success); color: #fff; }
 .btn-success:hover:not(:disabled) { box-shadow: 0 4px 12px rgba(16,185,129,.3); }
 .btn-danger { background: var(--color-danger); color: #fff; }

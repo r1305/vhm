@@ -5,7 +5,7 @@
   const { api, toast, esc, fmtDate, badge, ESTADO_CITA } = window.CRM;
   const terapeutaId = window.__USER_ROL__ === 'terapeuta' ? window.__USER_ID__ : '';
 
-  const COLORS = ['#7c3aed', '#0891b2', '#16a34a', '#d97706', '#dc2626', '#6366f1', '#db2777', '#84cc16'];
+  const COLORS = ['#176B87', '#237A68', '#A84F3E', '#287A5B', '#A66A13', '#B64A5A', '#3E6FA4', '#64B5CE'];
   const MODALIDAD_LABEL = { presencial: 'Presencial', videollamada: 'Videollamada', telefono: 'Teléfono' };
   const ACTIVOS = new Set(['pendiente', 'confirmada', 'reagendada']);
 
@@ -32,7 +32,7 @@
     return (estados || []).filter(e => keys.includes(e.estado)).reduce((s, e) => s + Number(e.total || 0), 0);
   }
 
-  function barChart(container, rows, { labelKey, valueKey, color = '#7c3aed', fmt = v => v } = {}) {
+  function barChart(container, rows, { labelKey, valueKey, color = '#176B87', fmt = v => v } = {}) {
     if (!rows.length) { container.innerHTML = '<div class="list-empty">Sin datos en este período</div>'; return; }
     const max = Math.max(...rows.map(r => parseFloat(r[valueKey]) || 0), 1);
     container.innerHTML = rows.map(r => {
@@ -63,7 +63,7 @@
     }).join('') + `<div style="font-size:12px;color:var(--text-muted);margin-top:10px;border-top:1px solid var(--border);padding-top:8px">Total registrado: <strong>${total}</strong> citas</div>`;
   }
 
-  function sparkLine(container, rows, { dateKey, valueKey, color = '#7c3aed' } = {}) {
+  function sparkLine(container, rows, { dateKey, valueKey, color = '#176B87' } = {}) {
     if (!rows.length) { container.innerHTML = '<div class="list-empty">Sin actividad en este período</div>'; return; }
     const vals = rows.map(r => parseFloat(r[valueKey]) || 0);
     const maxV = Math.max(...vals, 1);
@@ -219,7 +219,7 @@
         </div>`).join('');
 
       sparkLine(document.getElementById('mrSparkCitas'), d.citasPorDia || [], {
-        dateKey: 'fecha', valueKey: 'total', color: '#7c3aed',
+        dateKey: 'fecha', valueKey: 'total', color: '#176B87',
       });
 
       donutChart(document.getElementById('mrDonutEstado'), estados, {

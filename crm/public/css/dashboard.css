@@ -6,42 +6,34 @@
 
 /* badges de conteo en cabecera */
 .dash-badge {
-  font-size: 11px; font-weight: 700; padding: 2px 8px;
-  border-radius: 12px; background: #e5e7eb; color: #374151;
+  font-size: 11px; font-weight: 600; padding: 2px 8px;
+  border-radius: 999px; background: var(--surface-subtle); color: var(--text-muted);
 }
-.dash-badge-red    { background: #fee2e2; color: #991b1b; }
-.dash-badge-purple { background: #ede9fe; color: #5b21b6; }
-.dash-badge-orange { background: #ffedd5; color: #9a3412; }
-.dash-badge-blue   { background: #e0f2fe; color: #0369a1; }
+.dash-badge-red,
+.dash-badge-purple,
+.dash-badge-orange,
+.dash-badge-blue { background: var(--surface-subtle); color: var(--text-muted); }
 
-/* sesiones */
-.sesiones-icon-pocas { background: #fef3c7; color: #d97706; }
-.sesiones-icon-cero  { background: #fee2e2; color: #dc2626; }
+.card-header i { color: var(--text-muted); }
 
-.badge-sesiones {
-  font-size: 11px; font-weight: 600; padding: 3px 8px;
-  border-radius: 12px; white-space: nowrap;
+.kpi-state {
+  display: inline-block; margin-top: 8px;
+  font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px;
 }
-.badge-sesiones-pocas { background: #fef3c7; color: #92400e; }
-.badge-sesiones-cero  { background: #fee2e2; color: #991b1b; }
+.kpi-state-ok { background: var(--success-bg); color: var(--success); }
+.kpi-state-warn { background: var(--warning-bg); color: var(--warning); }
 
-/* riesgo / vencidos */
-.badge-riesgo {
-  font-size: 11px; font-weight: 600; padding: 3px 8px;
-  border-radius: 12px; background: #fee2e2; color: #991b1b; white-space: nowrap;
-}
-
-/* deuda */
-.badge-deuda {
-  font-size: 12px; font-weight: 700; padding: 3px 8px;
-  border-radius: 12px; background: #ede9fe; color: #5b21b6; white-space: nowrap;
-}
-
-/* ocupación */
+.badge-sesiones,
+.badge-riesgo,
+.badge-deuda,
 .badge-ocupacion {
   font-size: 11px; font-weight: 600; padding: 3px 8px;
-  border-radius: 12px; background: #d1fae5; color: #065f46; white-space: nowrap;
+  border-radius: 999px; white-space: nowrap;
+  background: var(--surface-subtle); color: var(--text-secondary);
 }
+.badge-sesiones-pocas,
+.badge-sesiones-cero { background: var(--warning-bg); color: var(--warning); }
+.badge-riesgo { background: var(--danger-bg); color: var(--danger); }
 
 @media (max-width: 900px) {
   .dash-grid { grid-template-columns: 1fr; }
