@@ -1,0 +1,101 @@
+/* La Tribu — tokens por producto (PDF §04), sin base compartida */
+@import url('vhm-design-tokens-v1.css');
+
+:root,
+[data-product="tribu"] {
+  --violet: var(--primary);
+  --purple: var(--primary);
+  --pink: var(--primary-hover);
+  --coral: var(--primary-hover);
+  --panel: var(--surface);
+  --line: var(--border);
+  --txt: var(--text);
+  --muted: var(--text-secondary);
+  --tribu-600: var(--primary);
+  --tribu-700: var(--primary-hover);
+  --tribu-100: var(--primary-soft);
+  --grad-warm: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
+  --grad-cool: linear-gradient(135deg, var(--primary) 0%, #237A68 55%, #176B87 100%);
+}
+
+body {
+  font-family: var(--font-ui) !important;
+  color: var(--txt) !important;
+  background: var(--bg) !important;
+}
+
+nav {
+  background: color-mix(in srgb, var(--surface) 92%, transparent) !important;
+  border-bottom-color: var(--line) !important;
+}
+nav .logo { -webkit-text-fill-color: unset !important; color: var(--primary) !important; background: none !important; }
+[data-theme="dark"] nav .logo { color: var(--accent-dark) !important; }
+nav .links a { color: var(--text-secondary) !important; }
+nav .links a:hover { color: var(--link) !important; }
+
+.hero {
+  background: linear-gradient(180deg, var(--surface) 0%, var(--bg) 100%) !important;
+}
+.hero h1 { color: var(--txt) !important; }
+.hero h1 span { -webkit-text-fill-color: unset !important; color: var(--primary) !important; background: none !important; }
+[data-theme="dark"] .hero h1 span { color: var(--accent-dark) !important; }
+
+.pill, .hero .eyebrow {
+  color: var(--primary-hover) !important;
+  background: var(--primary-soft) !important;
+  border-color: var(--border) !important;
+}
+[data-theme="dark"] .pill,
+[data-theme="dark"] .hero .eyebrow {
+  color: var(--accent-dark) !important;
+}
+.pill:hover { background: var(--surface-raised) !important; }
+
+.card, .cat-accordion, .auth-box, .player-box, .plan-card, .profile-card {
+  background: var(--panel) !important;
+  border-color: var(--line) !important;
+  box-shadow: var(--shadow-card);
+}
+[data-theme="dark"] .card,
+[data-theme="dark"] .cat-accordion,
+[data-theme="dark"] .auth-box,
+[data-theme="dark"] .player-box,
+[data-theme="dark"] .plan-card,
+[data-theme="dark"] .profile-card {
+  box-shadow: none !important;
+}
+
+.btn-primary, .auth-btn, .lock-btn-primary, .plan-adquirir, .profile-btn-primary {
+  background: var(--primary) !important;
+  color: var(--on-primary) !important;
+  min-height: var(--control-min-h) !important;
+  border-radius: var(--radius-button) !important;
+}
+.btn-primary:hover, .auth-btn:hover, .plan-adquirir:hover {
+  background: var(--primary-hover) !important;
+}
+
+.auth-overlay, .player-overlay, .evt-overlay {
+  background: rgba(14, 23, 20, 0.42) !important;
+}
+[data-theme="dark"] .auth-overlay,
+[data-theme="dark"] .player-overlay,
+[data-theme="dark"] .evt-overlay {
+  background: rgba(14, 23, 20, 0.72) !important;
+}
+
+input:focus, textarea:focus, select:focus {
+  border-color: var(--primary) !important;
+  box-shadow: var(--focus-ring) !important;
+}
+[data-theme="dark"] input:focus,
+[data-theme="dark"] textarea:focus,
+[data-theme="dark"] select:focus {
+  border-color: var(--accent-dark) !important;
+}
+
+footer {
+  background: var(--surface) !important;
+}
+footer a { color: var(--link) !important; }
+[data-theme="dark"] footer a { color: var(--accent-dark) !important; }

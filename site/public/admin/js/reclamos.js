@@ -39,7 +39,7 @@
       }
       return (
         '<tr>' +
-          '<td><strong style="color:#667eea">' + esc(r.numero_reclamo) + '</strong></td>' +
+          '<td><strong style="color:#A84F3E">' + esc(r.numero_reclamo) + '</strong></td>' +
           '<td>' + esc(fmtDate(r.fecha_registro)) + '</td>' +
           '<td>' + esc(r.nombres + ' ' + r.apellidos) + '</td>' +
           '<td>' + esc(r.tipo_reclamo) + '</td>' +

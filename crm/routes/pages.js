@@ -230,12 +230,12 @@ router.get('/dashboard', requireSession, (req, res, next) => {
     `);
 
     const kpis = [
-      { label: 'Pacientes activos',   value: pacientes_activos, css: 'accent' },
-      { label: 'Tasa de retención',   value: `${tasaRetencion}%`, sub: `${retenidos} con 2+ paquetes`, css: tasaRetencion >= 50 ? 'success' : 'warning' },
-      { label: 'Conversión leads',    value: `${tasaConversion}%`, sub: `${convertidos_mes} de ${leads_mes} este mes`, css: tasaConversion >= 30 ? 'success' : 'warning' },
-      { label: 'No-show del mes',     value: `${tasaNoShow}%`, sub: `${no_show_mes} de ${citas_mes} citas`, css: tasaNoShow > 15 ? 'warning' : 'success' },
-      { label: 'Altas este mes',      value: altas_mes, sub: 'tratamientos finalizados', css: '' },
-      { label: 'Sin paquete activo',  value: sin_paquete, sub: 'pacientes activos', css: sin_paquete > 0 ? 'warning' : 'success' },
+      { label: 'Pacientes activos',   value: pacientes_activos, sub: null, state: null },
+      { label: 'Tasa de retención',   value: `${tasaRetencion}%`, sub: `${retenidos} con 2+ paquetes`, state: tasaRetencion >= 50 ? 'ok' : 'warn' },
+      { label: 'Conversión leads',    value: `${tasaConversion}%`, sub: `${convertidos_mes} de ${leads_mes} este mes`, state: tasaConversion >= 30 ? 'ok' : 'warn' },
+      { label: 'No-show del mes',     value: `${tasaNoShow}%`, sub: `${no_show_mes} de ${citas_mes} citas`, state: tasaNoShow > 15 ? 'warn' : 'ok' },
+      { label: 'Altas este mes',      value: altas_mes, sub: 'tratamientos finalizados', state: null },
+      { label: 'Sin paquete activo',  value: sin_paquete, sub: 'pacientes activos', state: sin_paquete > 0 ? 'warn' : null },
     ];
 
     render(res, 'dashboard', {

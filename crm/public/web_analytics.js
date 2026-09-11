@@ -5,7 +5,7 @@
   'use strict';
 
   const { api, toast, esc, fmtDate } = window.CRM;
-  const COLORS = ['#7c3aed','#4f46e5','#0891b2','#16a34a','#d97706','#dc2626','#db2777'];
+  const COLORS = ['#176B87','#237A68','#A84F3E','#287A5B','#A66A13','#B64A5A','#3E6FA4'];
 
   function fmtSeg(s) { if (!s) return '—'; const m = Math.floor(s/60), sec = s%60; return m > 0 ? `${m}m ${sec}s` : `${sec}s`; }
 
@@ -19,7 +19,7 @@
     document.getElementById('anaHasta').value = hasta;
   }
 
-  function barH(container, rows, { labelKey, valueKey, color='#7c3aed', fmt=v=>v }={}) {
+  function barH(container, rows, { labelKey, valueKey, color='#176B87', fmt=v=>v }={}) {
     if (!rows.length) { container.innerHTML = '<div class="list-empty">Sin datos</div>'; return; }
     const max = Math.max(...rows.map(r => parseFloat(r[valueKey])||0), 1);
     container.innerHTML = rows.map(r => {
@@ -47,7 +47,7 @@
     }).join('');
   }
 
-  function sparkDual(container, rows, { dateKey, v1Key, v2Key, label1='Sesiones', label2='Únicos', color1='#7c3aed', color2='#0891b2' }={}) {
+  function sparkDual(container, rows, { dateKey, v1Key, v2Key, label1='Sesiones', label2='Únicos', color1='#176B87', color2='#237A68' }={}) {
     if (!rows.length) { container.innerHTML = '<div class="list-empty">Sin datos en este período</div>'; return; }
     const v1 = rows.map(r => parseFloat(r[v1Key])||0), v2 = rows.map(r => parseFloat(r[v2Key])||0);
     const maxV = Math.max(...v1,...v2,1), W=100, H=60;

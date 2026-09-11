@@ -10,7 +10,7 @@
 (function () {
   'use strict';
 
-  const CRM      = 'https://vhm.com.pe/crm';
+  const CRM      = (window.__VHM_CRM_BASE__ || (window.location.origin + '/crm')).replace(/\/$/, '');
   const TRACK    = `${CRM}/api/track`;
   const SITE_URL = window.location.origin + (window.__APP_BASE__ || '');
 

@@ -68,14 +68,14 @@
   const css = `
     #vhm-widget-btn {
       position: fixed; bottom: 28px; right: 24px; z-index: 9997;
-      background: linear-gradient(135deg, #7c3aed, #4f46e5);
+      background: linear-gradient(135deg, #237A68, #1C6254);
       color: #fff; border: none; border-radius: 50px;
       padding: 14px 22px; font-size: 14px; font-weight: 600;
-      cursor: pointer; box-shadow: 0 4px 20px rgba(124,58,237,.45);
+      cursor: pointer; box-shadow: 0 4px 20px rgba(35,122,104,.45);
       display: flex; align-items: center; gap: 8px;
       transition: transform .2s, box-shadow .2s;
     }
-    #vhm-widget-btn:hover { transform: scale(1.05); box-shadow: 0 6px 28px rgba(124,58,237,.6); }
+    #vhm-widget-btn:hover { transform: scale(1.05); box-shadow: 0 6px 28px rgba(35,122,104,.6); }
     #vhm-widget-overlay {
       display: none; position: fixed; inset: 0; z-index: 9998;
       background: rgba(0,0,0,.6); backdrop-filter: blur(4px);
@@ -90,7 +90,7 @@
     }
     @keyframes vhmIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
     #vhm-widget-modal .vhm-head {
-      background: linear-gradient(135deg, #7c3aed, #4f46e5);
+      background: linear-gradient(135deg, #237A68, #1C6254);
       color: #fff; padding: 22px 24px 18px;
     }
     #vhm-widget-modal .vhm-head h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 4px; }
@@ -106,7 +106,7 @@
       background: transparent; font-size: 13px; font-weight: 500;
       cursor: pointer; color: #6b7280; transition: all .15s;
     }
-    .vhm-tab.active { background: #7c3aed; border-color: #7c3aed; color: #fff; }
+    .vhm-tab.active { background: #237A68; border-color: #237A68; color: #fff; }
     .vhm-form { display: none; }
     .vhm-form.active { display: block; }
     .vhm-group { margin-bottom: 12px; }
@@ -116,11 +116,11 @@
       border-radius: 8px; font-size: 14px; color: #111;
       transition: border-color .15s; outline: none;
     }
-    .vhm-input:focus { border-color: #7c3aed; }
+    .vhm-input:focus { border-color: #237A68; }
     .vhm-select { width: 100%; padding: 9px 12px; border: 1.5px solid #e5e7eb; border-radius: 8px; font-size: 14px; color: #111; }
     .vhm-textarea { width: 100%; padding: 9px 12px; border: 1.5px solid #e5e7eb; border-radius: 8px; font-size: 14px; color: #111; resize: vertical; min-height: 80px; }
     .vhm-btn {
-      width: 100%; padding: 11px; background: linear-gradient(135deg, #7c3aed, #4f46e5);
+      width: 100%; padding: 11px; background: linear-gradient(135deg, #237A68, #1C6254);
       color: #fff; border: none; border-radius: 8px; font-size: 14px; font-weight: 600;
       cursor: pointer; margin-top: 4px; transition: opacity .15s;
     }

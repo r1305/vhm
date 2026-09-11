@@ -1,0 +1,32 @@
+/* VHM sitio público — acento agenda clínica (esmeralda) */
+@import url('vhm-design-tokens-v1.css');
+
+:root {
+  --vhm-cta: #237A68;
+  --vhm-cta-hover: #1C6254;
+  --vhm-soft: #EAF4F1;
+  --vhm-accent-text: #61BFA9;
+}
+
+body {
+  font-family: var(--font-ui);
+}
+
+nav .links a { color: var(--vhm-accent-text); }
+nav .links a:hover { color: #fff; }
+
+.hero .cta {
+  background: var(--vhm-cta);
+  color: #fff;
+  border-radius: 12px;
+}
+.hero .cta:hover {
+  background: var(--vhm-cta-hover);
+}
+
+section h2 { color: var(--vhm-accent-text); }
+.service-card:hover { border-color: var(--vhm-cta); }
+.service-card h3 { color: #f3f7f5; }
+
+.contact-section a,
+.footer a:hover { color: var(--vhm-accent-text); }

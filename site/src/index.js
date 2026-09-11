@@ -43,6 +43,26 @@ app.use((req, res, next) => {
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(require('cookie-parser')());
 
+function crmPublicUrl() {
+  if (process.env.CRM_PUBLIC_URL) return String(process.env.CRM_PUBLIC_URL).replace(/\/$/, '');
+  try {
+    if (process.env.SITE_URL) return `${new URL(process.env.SITE_URL).origin}/crm`;
+  } catch (_) { /* ignore */ }
+  return 'https://vhm.com.pe/crm';
+}
+
+function crmPublicOrigin() {
+  try {
+    return new URL(crmPublicUrl()).origin;
+  } catch (_) {
+    return 'https://vhm.com.pe';
+  }
+}
+
+function inlineAppConfig(base) {
+  return `<script>window.__APP_BASE__=${JSON.stringify(base)};window.__VHM_CRM_BASE__=${JSON.stringify(crmPublicUrl())};</script>`;
+}
+
 // Security headers (omit CSP en /media/* para no bloquear reproducción directa del MP4)
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -53,7 +73,8 @@ app.use((req, res, next) => {
   res.setHeader('X-XSS-Protection', '1; mode=block');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://connect.facebook.net https://checkout.culqi.com https://js.culqi.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; media-src 'self' https://drive.google.com https://drive.usercontent.google.com https://*.googleusercontent.com blob:; connect-src 'self' https://connect.facebook.net https://graph.facebook.com https://api.culqi.com https://checkout.culqi.com https://checkoutview.culqi.com https://js.culqi.com; frame-src https://www.loom.com https://checkout.culqi.com https://checkoutview.culqi.com https://js.culqi.com; frame-ancestors 'none'");
+  const crmOrigin = crmPublicOrigin();
+  res.setHeader('Content-Security-Policy', `default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://connect.facebook.net https://checkout.culqi.com https://js.culqi.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; media-src 'self' https://drive.google.com https://drive.usercontent.google.com https://*.googleusercontent.com blob:; connect-src 'self' ${crmOrigin} https://connect.facebook.net https://graph.facebook.com https://api.culqi.com https://checkout.culqi.com https://checkoutview.culqi.com https://js.culqi.com; frame-src https://www.loom.com https://checkout.culqi.com https://checkoutview.culqi.com https://js.culqi.com; frame-ancestors 'none'`);
   if (process.env.NODE_ENV === 'production') {
     res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   }
@@ -104,12 +125,13 @@ app.use((req, res, next) => {
   // Validate CSRF on state-changing methods (skip public POST endpoints)
   if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {
     const publicPostPaths = ['/api/reclamos', '/api/clara/chat', '/api/auth/login', '/api/tribu-access/verificar', '/api/tribu-auth/login', '/api/tribu-auth/registro', '/api/tribu-auth/recuperar', '/api/tribu-auth/reset-password', '/api/tribu-auth/cambiar-password-temp', '/api/tribu-pagos/webhook', '/api/tribu-pagos/procesar-pago', '/api/tribu-pagos/cron-renovaciones'];
+    const isPublicEncuestaPost = req.method === 'POST' && /^\/api\/encuestas\/public\/[^/]+\/responder$/.test(req.path);
     const isPublicPost = req.method === 'POST' && publicPostPaths.some(p => req.path === p);
     const isPublicCronRenovaciones = req.method === 'GET' && req.path === '/api/tribu-pagos/cron-renovaciones';
     const isPublicVideoAction = req.method === 'POST' && req.path.startsWith('/api/videos/') && (req.path.endsWith('/vista') || req.path.endsWith('/like'));
     const isTribuBearer = req.headers.authorization?.startsWith('Bearer ') &&
       (req.path.startsWith('/api/tribu-auth/') || req.path.startsWith('/api/tribu-pagos/'));
-    if (!isPublicPost && !isPublicVideoAction && !isPublicCronRenovaciones && !isTribuBearer) {
+    if (!isPublicPost && !isPublicEncuestaPost && !isPublicVideoAction && !isPublicCronRenovaciones && !isTribuBearer) {
       const headerToken = req.headers['x-csrf-token'] || req.headers['csrf-token'];
       const cookieToken = req.cookies?.csrf_token;
       if (!validateCsrfToken(headerToken) || !validateCsrfToken(cookieToken) || headerToken !== cookieToken) {
@@ -194,8 +216,7 @@ function sendPublicHtml(res, filename) {
   const base = ((res.locals && res.locals.basePath) || process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
   const filePath = path.join(__dirname, '../public', filename);
   let html = fs.readFileSync(filePath, 'utf8');
-  // Inject __APP_BASE__ inline so it's always available before any other script
-  const inlineBase = `<script>window.__APP_BASE__=${JSON.stringify(base)};</script>`;
+  const inlineBase = inlineAppConfig(base);
   html = html.replace(/\bsrc="__app_base__\.js"/g, '');
   html = html.replace(/<script><\/script>/g, '');  // cleanup empty script from above
   html = html.replace(/(<head[^>]*>)/i, `$1\n  ${inlineBase}`);
@@ -222,6 +243,7 @@ const ADMIN_PAGES = [
   'config.html',
   'accesos.html',
   'plantillas.html',
+  'encuestas.html',
   'index.html',
 ];
 
@@ -232,7 +254,7 @@ function sendAdminHtml(res, filename) {
     return res.status(404).type('text/plain').send('Admin page not found: ' + filename);
   }
   let html = fs.readFileSync(filePath, 'utf8');
-  const inlineBase = `<script>window.__APP_BASE__=${JSON.stringify(base)};</script>`;
+  const inlineBase = inlineAppConfig(base);
   html = html.replace(/(<head[^>]*>)/i, `$1\n  ${inlineBase}`);
   html = html.replace(/(<head[^>]*>)/i, `$1\n  <base href="${base}/admin/">`);
   if (base) {
@@ -359,6 +381,10 @@ app.get('/latribu', (req, res) => {
   sendPublicHtml(res, 'videos.html');
 });
 
+app.get('/encuesta/:slug', (req, res) => {
+  sendPublicHtml(res, 'encuesta.html');
+});
+
 // Compatibilidad: rutas anteriores redirigen a La Tribu.
 app.get('/caminointerior', (req, res) => {
   res.redirect(301, (res.locals.basePath || '') + '/latribu');
@@ -415,6 +441,7 @@ app.use('/api/config-whatsapp', configWhatsappRoutes);
 app.use('/api/config-redes', require('./configRedesRoutes'));
 app.use('/api/hero-image', require('./heroImageRoutes'));
 app.use('/api/testimonios', testimoniosRoutes);
+app.use('/api/encuestas', require('./encuestasRoutes'));
 app.use('/api/videos', videosRoutes);
 app.use('/api/clara', claraRoutes);
 app.use('/api/eventos', eventosRoutes);

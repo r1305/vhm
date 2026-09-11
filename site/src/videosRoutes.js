@@ -7,7 +7,21 @@ const { pipeline } = require('stream/promises');
 const multer = require('multer');
 const pool = require('./db');
 const { authMiddleware } = require('./auth');
-const { LANDING_INTRO_DEFAULT, LANDING_PACTO_DEFAULT } = require('./ensureSchema');
+const { LANDING_INTRO_DEFAULT, LANDING_PACTO_DEFAULT, ensureVideoSchema } = require('./ensureSchema');
+
+function isDbUnreachable(err) {
+  const code = err && err.code;
+  return code === 'ECONNREFUSED' || code === 'ENOTFOUND' || code === 'ETIMEDOUT' || code === 'PROTOCOL_CONNECTION_LOST';
+}
+
+/** En local sin túnel MySQL, evita 500 en listados públicos (muestra catálogo vacío). */
+function publicListFallback(res, err, label) {
+  if (!isDbUnreachable(err)) return false;
+  console.warn(`[videos] ${label}: base de datos no disponible (${err.code}). Devuelve listado vacío.`);
+  res.setHeader('X-VHM-DB', 'unavailable');
+  res.json([]);
+  return true;
+}
 
 const router = Router();
 
@@ -376,6 +390,7 @@ router.put('/landing', authMiddleware, requireAdmin, async (req, res) => {
 
 router.get('/categorias', async (req, res) => {
   try {
+    await ensureVideoSchema();
     const [rows] = await pool.execute(
       `SELECT c.id, c.nombre, c.descripcion, c.orden,
               (SELECT COUNT(*) FROM videos v WHERE v.categoria_id = c.id AND v.activo = 1) AS total_videos
@@ -386,6 +401,7 @@ router.get('/categorias', async (req, res) => {
     res.json(rows);
   } catch (err) {
     console.error(err);
+    if (publicListFallback(res, err, 'categorias')) return;
     res.status(500).json({ error: 'Error al obtener categorías' });
   }
 });
@@ -393,6 +409,7 @@ router.get('/categorias', async (req, res) => {
 // Listar videos activos (con nombre de categoría)
 router.get('/', async (req, res) => {
   try {
+    await ensureVideoSchema();
     const [rows] = await pool.execute(
       `SELECT v.id, v.categoria_id, v.titulo, v.subtitulo, v.descripcion,
               v.video_url, v.thumbnail_url, v.duracion, v.vistas, v.likes, v.orden,
@@ -405,6 +422,7 @@ router.get('/', async (req, res) => {
     res.json(rows);
   } catch (err) {
     console.error(err);
+    if (publicListFallback(res, err, 'videos')) return;
     res.status(500).json({ error: 'Error al obtener videos' });
   }
 });

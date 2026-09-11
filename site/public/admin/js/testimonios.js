@@ -79,7 +79,7 @@
         : '<span class="badge badge-inactivo">❌ Inactivo</span>';
       return '<tr>' +
         '<td>' + foto + '</td>' +
-        '<td><strong style="color:#667eea">' + AdminApi.escapeHtml(t.autor || '') + '</strong></td>' +
+        '<td><strong style="color:#A84F3E">' + AdminApi.escapeHtml(t.autor || '') + '</strong></td>' +
         '<td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + AdminApi.escapeHtml(t.texto || '') + '</td>' +
         '<td style="font-size:.8rem;color:#888">' + AdminApi.escapeHtml(t.creado_por_nombre || '—') + '</td>' +
         '<td>' + badge + '</td>' +

@@ -1,9 +1,11 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-product="agenda">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Agendar cita — <%= terapeuta.nombre %> <%= terapeuta.apellido %></title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <link rel="stylesheet" href="<%= BASE %>/css/agendar.css">
   <script>
@@ -22,6 +24,32 @@
         <div class="ag-ter-esp"><%= terapeuta.especialidad %></div>
         <% } %>
       </div>
+    </div>
+
+    <nav class="ag-progress" id="agProgress" aria-label="Progreso de agendamiento">
+      <span class="ag-progress-item active" data-step="1"><span class="ag-progress-num">1</span> Fecha</span>
+      <span class="ag-progress-sep">·</span>
+      <span class="ag-progress-item" data-step="2"><span class="ag-progress-num">2</span> Hora</span>
+      <span class="ag-progress-sep">·</span>
+      <span class="ag-progress-item" data-step="3"><span class="ag-progress-num">3</span> Datos</span>
+    </nav>
+
+    <div class="ag-tz-bar" id="agTzBar">
+      <span id="agTzLabel"><i class="fas fa-globe-americas"></i> Hora local: Lima · GMT−5</span>
+      <button type="button" class="ag-tz-change" id="agTzToggle">Cambiar zona horaria</button>
+    </div>
+    <div class="ag-tz-picker" id="agTzPicker" hidden>
+      <label for="agTzSelect">Zona horaria</label>
+      <select id="agTzSelect">
+        <option value="America/Lima">Lima (GMT−5)</option>
+        <option value="America/Mexico_City">Ciudad de México (GMT−6)</option>
+        <option value="America/Bogota">Bogotá (GMT−5)</option>
+        <option value="America/Santiago">Santiago (GMT−4)</option>
+        <option value="America/Buenos_Aires">Buenos Aires (GMT−3)</option>
+        <option value="America/New_York">Nueva York (GMT−5/−4)</option>
+        <option value="America/Los_Angeles">Los Ángeles (GMT−8/−7)</option>
+        <option value="Europe/Madrid">Madrid (GMT+1/+2)</option>
+      </select>
     </div>
 
     <div class="ag-steps" id="agSteps">
@@ -51,19 +79,34 @@
         <div class="ag-resumen" id="agResumen"></div>
         <div class="ag-form">
           <div class="ag-field">
-            <label>Teléfono * <span class="ag-field-hint">con código de país</span></label>
-            <input id="ag_telefono" type="tel" placeholder="51999999999" inputmode="numeric">
-            <span class="ag-field-note">Ej: 51999999999 (Perú) &nbsp;·&nbsp; 15551234567 (EE.UU.) &nbsp;·&nbsp; 34612345678 (España)</span>
+            <label>Teléfono *</label>
+            <div class="ag-phone-row">
+              <select id="ag_pais" class="ag-phone-country" aria-label="País">
+                <option value="51">🇵🇪 +51</option>
+                <option value="1">🇺🇸 +1</option>
+                <option value="34">🇪🇸 +34</option>
+                <option value="52">🇲🇽 +52</option>
+                <option value="54">🇦🇷 +54</option>
+                <option value="56">🇨🇱 +56</option>
+                <option value="57">🇨🇴 +57</option>
+                <option value="593">🇪🇨 +593</option>
+                <option value="58">🇻🇪 +58</option>
+              </select>
+              <input id="ag_telefono_local" type="tel" placeholder="999 999 999" inputmode="tel" autocomplete="tel-national">
+            </div>
+            <input type="hidden" id="ag_telefono">
           </div>
           <div class="ag-field"><label>Email</label><input id="ag_email" type="email" placeholder="correo@ejemplo.com"></div>
           <div class="ag-lookup-status" id="agLookupStatus"></div>
-          <div class="ag-field">
-            <label>Nombre * </label>
-            <input id="ag_nombre" placeholder="Tu nombre" readonly>
-          </div>
-          <div class="ag-field">
-            <label>Apellido *</label>
-            <input id="ag_apellido" placeholder="Tu apellido" readonly>
+          <div class="ag-field-row">
+            <div class="ag-field">
+              <label>Nombre *</label>
+              <input id="ag_nombre" placeholder="Tu nombre" readonly>
+            </div>
+            <div class="ag-field">
+              <label>Apellido *</label>
+              <input id="ag_apellido" placeholder="Tu apellido" readonly>
+            </div>
           </div>
           <div class="ag-field"><label>Motivo de consulta</label><textarea id="ag_motivo" rows="3" placeholder="Cuéntanos brevemente…"></textarea></div>
           <div class="ag-field">

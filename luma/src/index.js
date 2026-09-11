@@ -37,7 +37,7 @@ app.use((req, res, next) => {
   next();
 });
 
-const BASE_PATH = (process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
+const BASE_PATH = (process.env.APP_MOUNT_PATH || '/luma').replace(/\/$/, '');
 app.use((req, res, next) => { res.locals.basePath = BASE_PATH; next(); });
 
 // CSRF (double-submit cookie)
@@ -88,12 +88,15 @@ function initOnce() {
 }
 app.use((req, res, next) => { initOnce().then(() => next()).catch(() => next()); });
 
-// Servir HTML con __APP_BASE__ inyectado (sin <base href> para evitar doble prefijo)
+// Servir HTML con __APP_BASE__ y <base href> para assets bajo APP_MOUNT_PATH (/luma)
 function sendHtml(res, filePath) {
-  const base = (res.locals.basePath || '').replace(/\/$/, '');
+  const base = (res.locals.basePath || BASE_PATH || '').replace(/\/$/, '');
   let html = fs.readFileSync(filePath, 'utf8');
   const inlineBase = `<script>window.__APP_BASE__=${JSON.stringify(base)};</script>`;
   html = html.replace(/(<head[^>]*>)/i, `$1\n  ${inlineBase}`);
+  if (base && !/<base\s/i.test(html)) {
+    html = html.replace(/(<head[^>]*>)/i, `$1\n  <base href="${base}/">`);
+  }
   res.set('Cache-Control', 'no-store').type('html').send(html);
 }
 
