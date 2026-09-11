@@ -190,12 +190,14 @@ router.post('/auth/login', async (req, res) => {
     const jwt = require('jsonwebtoken');
     const { JWT_SECRET } = require('./auth');
 
+    const ident = String(usuario).trim();
     const [rows] = await pool.execute(
       `SELECT a.id, a.nombre, a.usuario, a.password_hash, a.protegido, r.nombre AS rol
        FROM luma_admins a
        JOIN luma_roles r ON a.rol_id = r.id
-       WHERE a.usuario = ? AND a.activo = 1`,
-      [String(usuario).trim()]
+       WHERE a.activo = 1
+         AND (LOWER(a.usuario) = LOWER(?) OR LOWER(a.email) = LOWER(?))`,
+      [ident, ident]
     );
     if (!rows[0]) return res.status(401).json({ error: 'Credenciales inválidas' });
     const ok = await bcrypt.compare(password, rows[0].password_hash);
