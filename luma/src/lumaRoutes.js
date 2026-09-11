@@ -168,6 +168,18 @@ function parseCompromisoObligatorio(value) {
   return (value === true || value === 1 || value === '1') ? 1 : 0;
 }
 
+/** Solo eventos vigentes: hoy en curso o fechas futuras (zona America/Lima). */
+const SQL_EVENTOS_PUBLICOS_VIGENTES = `
+  e.activo = 1
+  AND (
+    e.fecha > CURDATE()
+    OR (
+      e.fecha = CURDATE()
+      AND TIME(COALESCE(e.hora_fin, e.hora_inicio)) >= CURTIME()
+    )
+  )
+`;
+
 // ── AUTH ──────────────────────────────────────────────────────────────────────
 
 router.post('/auth/login', async (req, res) => {
@@ -207,7 +219,7 @@ router.get('/eventos', async (req, res) => {
               COUNT(r.id) AS registrados
        FROM luma_eventos e
        LEFT JOIN luma_registros r ON r.evento_id = e.id AND r.estado != 'cancelado'
-       WHERE e.activo = 1
+       WHERE ${SQL_EVENTOS_PUBLICOS_VIGENTES.replace(/\n/g, ' ')}
        GROUP BY e.id ORDER BY e.fecha ASC, e.hora_inicio ASC`
     );
     const eventos = await attachItemsToEventos(rows);
@@ -221,7 +233,7 @@ router.get('/eventos/:id', async (req, res) => {
       `SELECT e.*, COUNT(r.id) AS registrados
        FROM luma_eventos e
        LEFT JOIN luma_registros r ON r.evento_id = e.id AND r.estado != 'cancelado'
-       WHERE e.id = ? AND e.activo = 1 GROUP BY e.id`,
+       WHERE e.id = ? AND ${SQL_EVENTOS_PUBLICOS_VIGENTES.replace(/\n/g, ' ')} GROUP BY e.id`,
       [req.params.id]
     );
     if (!rows[0]) return res.status(404).json({ error: 'Evento no encontrado' });

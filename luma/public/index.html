@@ -282,8 +282,14 @@
   </div>
 
   <script>
-    const BASE = (window.__APP_BASE__ || (function(){ var p=window.location.pathname; var m=p.match(/^(\/[^\/]+)/); return (m&&m[1]!=='/') ? m[1] : ''; })()).replace(/\/+$/, '');
-    const API = BASE + '/api';
+    const BASE = (window.__APP_BASE__ || (function () {
+      var p = window.location.pathname.replace(/\/+$/, '');
+      if (p.endsWith('/index.html')) p = p.slice(0, -'/index.html'.length);
+      var i = p.indexOf('/admin');
+      if (i > 0) return p.slice(0, i);
+      return p || '';
+    })()).replace(/\/+$/, '');
+    const API = (BASE ? BASE : '') + '/api';
     let eventoActivo = null;
 
     function fmt(fecha) {
@@ -309,7 +315,16 @@
         const res = await fetch(API + '/eventos');
         console.log('[luma] /eventos status:', res.status, res.url);
         if (!res.ok) throw new Error('HTTP ' + res.status);
-        const eventos = await res.json();
+        let eventos = await res.json();
+        const hoyLima = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
+        const ahoraLima = new Date().toLocaleTimeString('en-GB', { timeZone: 'America/Lima', hour12: false }).slice(0, 5);
+        eventos = (eventos || []).filter(function (e) {
+          const f = String(e.fecha || '').split('T')[0];
+          if (f > hoyLima) return true;
+          if (f < hoyLima) return false;
+          const horaFin = String(e.hora_fin || e.hora_inicio || '23:59').slice(0, 5);
+          return horaFin >= ahoraLima;
+        });
         const grid = document.getElementById('events-grid');
         if (!eventos.length) {
           grid.innerHTML = '<div class="empty"><div class="empty-icon">📭</div><p>No hay eventos próximos por ahora.</p></div>';
