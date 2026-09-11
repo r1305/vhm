@@ -43,18 +43,21 @@
       background: none; border: none; cursor: pointer; padding: 4px;
       color: var(--muted); font-size: 1.1rem; line-height: 1;
     }
-    button[type=submit] {
+    button#btn-login {
       width: 100%; padding: 14px; margin-top: 8px;
       background: var(--gradient); color: var(--on-primary);
       border: none; border-radius: 12px; font-size: 1rem; font-weight: 600;
       cursor: pointer; min-height: var(--control-min-h);
+      font-family: inherit; transition: opacity .15s;
     }
-    button[type=submit]:hover { opacity: .92; }
+    button#btn-login:hover:not(:disabled) { opacity: .92; }
+    button#btn-login:disabled { opacity: .55; cursor: not-allowed; }
     .error {
-      color: var(--danger); font-size: .85rem; margin-bottom: 12px;
-      display: none; padding: 10px; background: var(--danger-bg);
-      border-radius: 10px; text-align: left;
+      display: none; color: var(--danger); font-size: .85rem;
+      background: var(--danger-bg); border: 1px solid var(--danger);
+      border-radius: 10px; padding: 10px 14px; margin-bottom: 12px; text-align: left;
     }
+    @media (max-width: 480px) { .box { padding: 32px 24px 28px; } }
   </style>
 </head>
 <body>
@@ -62,34 +65,73 @@
     <div class="icon">🎪</div>
     <h2>Luma Admin</h2>
     <p>Gestión de eventos Tribu</p>
-    <div class="error" id="error"></div>
-    <form id="login-form">
-      <input type="text" id="user" placeholder="Usuario" autocomplete="username" required>
-      <div class="pw-wrap">
-        <input type="password" id="pass" placeholder="Contraseña" autocomplete="current-password" required>
-        <button type="button" class="pw-toggle" id="pw-toggle" aria-label="Mostrar contraseña">👁</button>
-      </div>
-      <button type="submit">Ingresar</button>
-    </form>
+    <div class="error" id="error-msg"></div>
+    <input type="text" id="email" placeholder="Usuario" autocomplete="username">
+    <div class="pw-wrap">
+      <input type="password" id="password" placeholder="Contraseña" autocomplete="current-password">
+      <button type="button" class="pw-toggle" id="pw-toggle" aria-label="Mostrar contraseña">👁</button>
+    </div>
+    <button type="button" id="btn-login">Iniciar sesión</button>
   </div>
   <script>
-    document.getElementById('pw-toggle').addEventListener('click', function () {
-      var p = document.getElementById('pass');
-      p.type = p.type === 'password' ? 'text' : 'password';
+    const BASE = (window.__APP_BASE__ || (function () {
+      var p = window.location.pathname.replace(/\/+$/, '');
+      var i = p.indexOf('/admin');
+      return i > 0 ? p.slice(0, i) : '';
+    })()).replace(/\/+$/, '');
+    const API = BASE + '/api';
+
+    if (localStorage.getItem('luma_token')) {
+      window.location.replace(BASE + '/admin/');
+    }
+
+    document.getElementById('btn-login').addEventListener('click', login);
+    document.getElementById('password').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') login();
     });
-    document.getElementById('login-form').addEventListener('submit', function (e) {
-      e.preventDefault();
-      var err = document.getElementById('error');
-      var u = document.getElementById('user').value.trim();
-      var p = document.getElementById('pass').value;
-      if (!u || !p) {
-        err.textContent = 'Ingresa usuario y contraseña';
-        err.style.display = 'block';
+    document.getElementById('pw-toggle').addEventListener('click', function () {
+      var inp = document.getElementById('password');
+      var show = inp.type === 'password';
+      inp.type = show ? 'text' : 'password';
+      this.textContent = show ? '🙈' : '👁';
+    });
+
+    async function login() {
+      var email = document.getElementById('email').value.trim();
+      var password = document.getElementById('password').value;
+      var errEl = document.getElementById('error-msg');
+      var btn = document.getElementById('btn-login');
+      errEl.style.display = 'none';
+      if (!email || !password) {
+        errEl.textContent = 'Completa todos los campos.';
+        errEl.style.display = 'block';
         return;
       }
-      sessionStorage.setItem('luma_admin', JSON.stringify({ user: u }));
-      location.href = 'index.html';
-    });
+      btn.disabled = true;
+      btn.textContent = 'Ingresando...';
+      try {
+        var res = await fetch(API + '/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ usuario: email, password: password }),
+        });
+        var data = await res.json().catch(function () { return {}; });
+        if (res.ok && data.token) {
+          localStorage.setItem('luma_token', data.token);
+          localStorage.setItem('luma_user', JSON.stringify(data.user));
+          window.location.replace(BASE + '/admin/');
+          return;
+        }
+        errEl.textContent = data.error || 'Error al iniciar sesión.';
+        errEl.style.display = 'block';
+      } catch (e) {
+        errEl.textContent = 'Error de conexión.';
+        errEl.style.display = 'block';
+      }
+      btn.disabled = false;
+      btn.textContent = 'Iniciar sesión';
+    }
   </script>
 </body>
 </html>

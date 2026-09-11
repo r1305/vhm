@@ -16,6 +16,10 @@ const pool = mysql.createPool({
   keepAliveInitialDelay: 10000,
 });
 
+pool.on('connection', (conn) => {
+  conn.query("SET time_zone = '-05:00'");
+});
+
 process.on('SIGTERM', () => pool.end());
 process.on('SIGINT',  () => pool.end());
 
