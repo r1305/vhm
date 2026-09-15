@@ -30,6 +30,7 @@
     btnNuevoEvento.addEventListener('click', function () { abrirModalEvento(); });
     btnGuardarEvento.addEventListener('click', guardarEvento);
     btnGuardarMensaje.addEventListener('click', guardarMensaje);
+    setupListDelegation();
 
     cargarEventos();
 
@@ -92,7 +93,68 @@
         '</div>';
       }).join('');
 
-      bindEventoEvents();
+    }
+
+    function setupListDelegation() {
+      listEl.addEventListener('click', function (e) {
+        var summary = e.target.closest('.plantilla-evento-summary[data-toggle]');
+        if (summary) {
+          if (e.target.closest('button:not(.plantilla-toggle)')) return;
+          toggleEvento(parseInt(summary.getAttribute('data-toggle'), 10));
+          return;
+        }
+
+        var btn = e.target.closest('[data-add-msg]');
+        if (btn) {
+          e.stopPropagation();
+          abrirModalMensaje(parseInt(btn.getAttribute('data-add-msg'), 10));
+          return;
+        }
+
+        btn = e.target.closest('[data-edit-ev]');
+        if (btn) {
+          e.stopPropagation();
+          var evId = parseInt(btn.getAttribute('data-edit-ev'), 10);
+          var ev = eventos.find(function (x) { return x.id === evId; });
+          if (ev) abrirModalEvento(ev);
+          return;
+        }
+
+        btn = e.target.closest('[data-del-ev]');
+        if (btn) {
+          e.stopPropagation();
+          eliminarEvento(parseInt(btn.getAttribute('data-del-ev'), 10));
+          return;
+        }
+
+        btn = e.target.closest('[data-edit-msg]');
+        if (btn) {
+          e.stopPropagation();
+          var msgId = parseInt(btn.getAttribute('data-edit-msg'), 10);
+          var eventoId = parseInt(btn.getAttribute('data-ev'), 10);
+          var m = (mensajesCache[eventoId] || []).find(function (x) { return x.id === msgId; });
+          if (m) abrirModalMensaje(eventoId, m);
+          return;
+        }
+
+        btn = e.target.closest('[data-del-msg]');
+        if (btn) {
+          e.stopPropagation();
+          eliminarMensaje(
+            parseInt(btn.getAttribute('data-del-msg'), 10),
+            parseInt(btn.getAttribute('data-ev'), 10)
+          );
+          return;
+        }
+
+        btn = e.target.closest('[data-copy-msg]');
+        if (btn) {
+          e.stopPropagation();
+          var copyId = parseInt(btn.getAttribute('data-copy-msg'), 10);
+          var m = (mensajesCache[openEventoId] || []).find(function (x) { return x.id === copyId; });
+          if (m) copiarMensaje(m.cuerpo);
+        }
+      });
     }
 
     function renderMensajesHtml(eventoId) {
@@ -123,69 +185,6 @@
         }).join('');
     }
 
-    function bindEventoEvents() {
-      listEl.querySelectorAll('[data-toggle]').forEach(function (el) {
-        el.addEventListener('click', function (e) {
-          if (e.target.closest('button:not(.plantilla-toggle)')) return;
-          var id = parseInt(el.getAttribute('data-toggle'), 10);
-          toggleEvento(id);
-        });
-      });
-
-      listEl.querySelectorAll('[data-add-msg]').forEach(function (btn) {
-        btn.addEventListener('click', function (e) {
-          e.stopPropagation();
-          abrirModalMensaje(parseInt(btn.getAttribute('data-add-msg'), 10));
-        });
-      });
-
-      listEl.querySelectorAll('[data-edit-ev]').forEach(function (btn) {
-        btn.addEventListener('click', function (e) {
-          e.stopPropagation();
-          var id = parseInt(btn.getAttribute('data-edit-ev'), 10);
-          var ev = eventos.find(function (x) { return x.id === id; });
-          if (ev) abrirModalEvento(ev);
-        });
-      });
-
-      listEl.querySelectorAll('[data-del-ev]').forEach(function (btn) {
-        btn.addEventListener('click', function (e) {
-          e.stopPropagation();
-          eliminarEvento(parseInt(btn.getAttribute('data-del-ev'), 10));
-        });
-      });
-
-      listEl.querySelectorAll('[data-edit-msg]').forEach(function (btn) {
-        btn.addEventListener('click', function (e) {
-          e.stopPropagation();
-          var msgId = parseInt(btn.getAttribute('data-edit-msg'), 10);
-          var evId = parseInt(btn.getAttribute('data-ev'), 10);
-          var m = (mensajesCache[evId] || []).find(function (x) { return x.id === msgId; });
-          if (m) abrirModalMensaje(evId, m);
-        });
-      });
-
-      listEl.querySelectorAll('[data-del-msg]').forEach(function (btn) {
-        btn.addEventListener('click', function (e) {
-          e.stopPropagation();
-          eliminarMensaje(
-            parseInt(btn.getAttribute('data-del-msg'), 10),
-            parseInt(btn.getAttribute('data-ev'), 10)
-          );
-        });
-      });
-
-      listEl.querySelectorAll('[data-copy-msg]').forEach(function (btn) {
-        btn.addEventListener('click', function (e) {
-          e.stopPropagation();
-          var msgId = parseInt(btn.getAttribute('data-copy-msg'), 10);
-          var evId = openEventoId;
-          var m = (mensajesCache[evId] || []).find(function (x) { return x.id === msgId; });
-          if (m) copiarMensaje(m.cuerpo);
-        });
-      });
-    }
-
     async function toggleEvento(id) {
       if (openEventoId === id) {
         openEventoId = null;
@@ -199,7 +198,6 @@
       } else {
         var detail = document.getElementById('detail-' + id);
         if (detail) detail.innerHTML = renderMensajesHtml(id);
-        bindEventoEvents();
       }
     }
 
@@ -209,7 +207,6 @@
         mensajesCache[eventoId] = await res.json();
         var detail = document.getElementById('detail-' + eventoId);
         if (detail) detail.innerHTML = renderMensajesHtml(eventoId);
-        bindEventoEvents();
       } catch (e) {
         toast('Error cargando mensajes', 'error');
       }
@@ -251,7 +248,6 @@
           var detail = document.getElementById('detail-' + openEventoId);
           if (detail && mensajesCache[openEventoId]) {
             detail.innerHTML = renderMensajesHtml(openEventoId);
-            bindEventoEvents();
           }
         }
       } catch (e) {
