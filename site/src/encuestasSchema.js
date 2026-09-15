@@ -1,4 +1,5 @@
 const pool = require('./db');
+const { migrateLegacySlugs } = require('./encuestasSlug');
 
 async function ensureEncuestasSchema() {
   await pool.query(`
@@ -75,6 +76,8 @@ async function ensureEncuestasSchema() {
   await pool.query(
     'ALTER TABLE encuesta_respuesta_detalle ADD COLUMN texto_respuesta TEXT NULL'
   ).catch(() => {});
+
+  await migrateLegacySlugs();
 }
 
 module.exports = { ensureEncuestasSchema };
