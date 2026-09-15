@@ -50,6 +50,7 @@
     }
     .link-box input { flex: 1; font-size: .82rem; background: transparent; border: none; color: var(--text-secondary); }
     .share-row { margin-top: 10px; }
+    .enc-link-hint { font-size: .78rem; color: var(--text-muted); margin: -4px 0 12px; }
     .modal.lg { max-width: 720px; }
   </style>
   <script src="js/base.js"></script>
@@ -87,9 +88,12 @@
             <textarea id="enc-desc" rows="2" placeholder="Texto introductorio para quien responde"></textarea>
           </div>
           <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-            <div class="form-group">
-              <label for="enc-slug">Enlace (slug)</label>
-              <input type="text" id="enc-slug" placeholder="satisfaccion-evento">
+            <div class="form-group" id="enc-link-group" style="display:none">
+              <label>Enlace para compartir</label>
+              <div class="link-box">
+                <input type="text" id="enc-link-preview" readonly>
+                <button type="button" class="btn btn-outline btn-xs" id="btn-copy-link">Copiar</button>
+              </div>
             </div>
             <div class="form-group">
               <label for="enc-activa">Estado</label>
@@ -99,6 +103,7 @@
               </select>
             </div>
           </div>
+          <p id="enc-link-hint" class="enc-link-hint">Al guardar se generará un enlace único de 10 caracteres.</p>
           <div class="form-group">
             <label>Preguntas</label>
             <div id="preguntas-editor"></div>

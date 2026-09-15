@@ -11,27 +11,24 @@ function requireAdmin(req, res, next) {
   return res.status(403).json({ error: 'Acceso restringido a administradores' });
 }
 
-function slugify(text) {
-  return String(text || '')
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 48) || 'encuesta';
+const SLUG_CHARS = 'abcdefghijklmnopqrstuvwxyz0123456789';
+const SLUG_LENGTH = 10;
+
+function randomSlug() {
+  let result = '';
+  for (let i = 0; i < SLUG_LENGTH; i++) {
+    result += SLUG_CHARS[crypto.randomInt(SLUG_CHARS.length)];
+  }
+  return result;
 }
 
-async function uniqueSlug(base) {
-  let slug = slugify(base);
-  let attempt = slug;
-  let n = 0;
-  for (;;) {
-    const [rows] = await pool.execute('SELECT id FROM encuestas WHERE slug = ? LIMIT 1', [attempt]);
-    if (!rows.length) return attempt;
-    n += 1;
-    attempt = `${slug}-${n}`;
-    if (n > 50) return `${slug}-${crypto.randomBytes(4).toString('hex')}`;
+async function uniqueSlug() {
+  for (let attempt = 0; attempt < 30; attempt++) {
+    const slug = randomSlug();
+    const [rows] = await pool.execute('SELECT id FROM encuestas WHERE slug = ? LIMIT 1', [slug]);
+    if (!rows.length) return slug;
   }
+  return crypto.randomBytes(8).toString('hex').slice(0, SLUG_LENGTH);
 }
 
 async function loadSurveyFull(encuestaId) {
@@ -301,7 +298,7 @@ router.post('/admin', authMiddleware, requireAdmin, async (req, res) => {
     if (!titulo) return res.status(400).json({ error: 'El título es obligatorio' });
     const descripcion = String(req.body.descripcion || '').trim() || null;
     const activa = req.body.activa !== false && req.body.activa !== 0 && req.body.activa !== '0' ? 1 : 0;
-    const slug = await uniqueSlug(req.body.slug || titulo);
+    const slug = await uniqueSlug();
     const preguntas = req.body.preguntas;
     if (!Array.isArray(preguntas) || !preguntas.length) {
       return res.status(400).json({ error: 'Agrega al menos una pregunta' });
@@ -331,13 +328,7 @@ router.put('/admin/:id', authMiddleware, requireAdmin, async (req, res) => {
     if (!titulo) return res.status(400).json({ error: 'El título es obligatorio' });
     const descripcion = String(req.body.descripcion || '').trim() || null;
     const activa = req.body.activa !== false && req.body.activa !== 0 && req.body.activa !== '0' ? 1 : 0;
-    let slug = exists[0].slug;
-    if (req.body.slug && String(req.body.slug).trim()) {
-      const wanted = slugify(req.body.slug);
-      const [dup] = await pool.execute('SELECT id FROM encuestas WHERE slug = ? AND id <> ? LIMIT 1', [wanted, id]);
-      if (dup.length) return res.status(400).json({ error: 'Ese enlace ya está en uso' });
-      slug = wanted;
-    }
+    const slug = exists[0].slug;
 
     const preguntas = req.body.preguntas;
     if (!Array.isArray(preguntas) || !preguntas.length) {
