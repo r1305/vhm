@@ -1,34 +1,14 @@
 const { Router } = require('express');
-const crypto = require('crypto');
 const pool = require('./db');
 const { authMiddleware } = require('./auth');
 const { ensureEncuestasSchema } = require('./encuestasSchema');
+const { uniqueSlug } = require('./encuestasSlug');
 
 const router = Router();
 
 function requireAdmin(req, res, next) {
   if (req.user && (req.user.rol === 'SUPER_ADMIN' || req.user.rol === 'ADMIN')) return next();
   return res.status(403).json({ error: 'Acceso restringido a administradores' });
-}
-
-const SLUG_CHARS = 'abcdefghijklmnopqrstuvwxyz0123456789';
-const SLUG_LENGTH = 10;
-
-function randomSlug() {
-  let result = '';
-  for (let i = 0; i < SLUG_LENGTH; i++) {
-    result += SLUG_CHARS[crypto.randomInt(SLUG_CHARS.length)];
-  }
-  return result;
-}
-
-async function uniqueSlug() {
-  for (let attempt = 0; attempt < 30; attempt++) {
-    const slug = randomSlug();
-    const [rows] = await pool.execute('SELECT id FROM encuestas WHERE slug = ? LIMIT 1', [slug]);
-    if (!rows.length) return slug;
-  }
-  return crypto.randomBytes(8).toString('hex').slice(0, SLUG_LENGTH);
 }
 
 async function loadSurveyFull(encuestaId) {
