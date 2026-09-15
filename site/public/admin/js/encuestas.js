@@ -18,6 +18,15 @@
     btnNueva.addEventListener('click', function () { abrirModal(); });
     btnGuardar.addEventListener('click', guardar);
     btnAddPregunta.addEventListener('click', function () { agregarPreguntaEditor(); });
+    document.getElementById('btn-copy-link').addEventListener('click', function () {
+      var url = document.getElementById('enc-link-preview').value;
+      if (!url) return;
+      navigator.clipboard.writeText(url).then(function () {
+        toast('Enlace copiado', 'success');
+      }).catch(function () {
+        prompt('Copia este enlace:', url);
+      });
+    });
 
     cargar();
 
@@ -166,8 +175,19 @@
       modalTitle.textContent = enc ? '📊 Editar encuesta' : '📊 Nueva encuesta';
       document.getElementById('enc-titulo').value = enc ? enc.titulo : '';
       document.getElementById('enc-desc').value = enc ? (enc.descripcion || '') : '';
-      document.getElementById('enc-slug').value = enc ? enc.slug : '';
       document.getElementById('enc-activa').value = enc && !enc.activa ? '0' : '1';
+      var linkGroup = document.getElementById('enc-link-group');
+      var linkHint = document.getElementById('enc-link-hint');
+      var linkPreview = document.getElementById('enc-link-preview');
+      if (enc && enc.slug) {
+        linkGroup.style.display = '';
+        linkHint.style.display = 'none';
+        linkPreview.value = publicLink(enc.slug);
+      } else {
+        linkGroup.style.display = 'none';
+        linkHint.style.display = '';
+        linkPreview.value = '';
+      }
       preguntasEditor.innerHTML = '';
       if (enc && enc.preguntas && enc.preguntas.length) {
         enc.preguntas.forEach(function (p) { agregarPreguntaEditor(p); });
@@ -270,7 +290,6 @@
       var payload = {
         titulo: titulo,
         descripcion: document.getElementById('enc-desc').value.trim(),
-        slug: document.getElementById('enc-slug').value.trim(),
         activa: document.getElementById('enc-activa').value === '1',
         preguntas: preguntas,
       };
