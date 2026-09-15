@@ -32,6 +32,13 @@
     .bar-track { flex: 0 0 120px; height: 8px; background: var(--bg-input); border-radius: 4px; overflow: hidden; }
     .bar-fill { height: 100%; background: linear-gradient(90deg, #A84F3E, #E58B78); border-radius: 4px; }
     .bar-num { flex: 0 0 72px; text-align: right; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+    .res-text-list { display: flex; flex-direction: column; gap: 8px; max-height: 240px; overflow-y: auto; }
+    .res-text-item {
+      padding: 10px 12px; font-size: .82rem; line-height: 1.45;
+      background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 8px;
+      white-space: pre-wrap; word-break: break-word;
+    }
+    .res-text-empty { font-size: .82rem; color: var(--text-muted); }
     .q-editor { border: 1px solid var(--border-color); border-radius: 12px; padding: 14px; margin-bottom: 12px; background: var(--bg-input); }
     .q-editor-head { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; align-items: center; }
     .q-editor-head input[type=text] { flex: 1; min-width: 180px; }
@@ -52,7 +59,7 @@
     <div class="section-header">
       <div>
         <h2>📊 Encuestas</h2>
-        <p>Crea encuestas con opción única o múltiple y comparte el enlace</p>
+        <p>Crea encuestas con opción única, múltiple o texto libre y comparte el enlace</p>
       </div>
       <button type="button" class="btn btn-primary" id="btn-nueva">+ Nueva encuesta</button>
     </div>

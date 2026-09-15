@@ -58,6 +58,13 @@
     .state-box .icon { font-size: 2.5rem; margin-bottom: 12px; }
     .msg-ok { color: var(--success); font-weight: 600; font-size: 1.1rem; }
     .err { color: var(--danger); font-size: .9rem; margin-top: 12px; }
+    .q-textarea {
+      width: 100%; min-height: 96px; padding: 12px 14px;
+      border: 1.5px solid var(--border); border-radius: var(--radius-field);
+      font-family: inherit; font-size: .92rem; line-height: 1.5;
+      resize: vertical; transition: border-color .15s;
+    }
+    .q-textarea:focus { outline: none; border-color: var(--primary); }
     @media (max-width: 480px) {
       .wrap { padding: 20px 14px 36px; }
       .card { padding: 20px 16px; }
@@ -106,16 +113,22 @@
     if (survey.descripcion) html += '<p class="desc">' + esc(survey.descripcion) + '</p>';
     html += '<form id="survey-form">';
     survey.preguntas.forEach(function (p, idx) {
-      var hint = p.tipo === 'multiple' ? 'Puedes elegir varias opciones' : 'Elige una opción';
+      var hint = p.tipo === 'multiple' ? 'Puedes elegir varias opciones'
+        : p.tipo === 'text' ? 'Escribe tu respuesta'
+        : 'Elige una opción';
       if (!p.obligatoria) hint += ' (opcional)';
       html += '<div class="q-block" data-qid="' + p.id + '" data-tipo="' + p.tipo + '" data-req="' + (p.obligatoria ? '1' : '0') + '">';
       html += '<div class="q-title">' + (idx + 1) + '. ' + esc(p.texto) + '</div>';
       html += '<div class="q-hint">' + hint + '</div>';
-      p.opciones.forEach(function (o) {
-        var inputType = p.tipo === 'multiple' ? 'checkbox' : 'radio';
-        var name = 'q_' + p.id + (p.tipo === 'single' ? '' : '_' + o.id);
-        html += '<label class="opt"><input type="' + inputType + '" name="' + name + '" value="' + o.id + '"><span>' + esc(o.texto) + '</span></label>';
-      });
+      if (p.tipo === 'text') {
+        html += '<textarea class="q-textarea" name="q_' + p.id + '" placeholder="Tu respuesta…" rows="3"></textarea>';
+      } else {
+        p.opciones.forEach(function (o) {
+          var inputType = p.tipo === 'multiple' ? 'checkbox' : 'radio';
+          var name = 'q_' + p.id + (p.tipo === 'single' ? '' : '_' + o.id);
+          html += '<label class="opt"><input type="' + inputType + '" name="' + name + '" value="' + o.id + '"><span>' + esc(o.texto) + '</span></label>';
+        });
+      }
       html += '</div>';
     });
     html += '<button type="submit" class="btn-submit" id="btn-send">Enviar respuestas</button>';
@@ -145,11 +158,18 @@
 
     survey.preguntas.forEach(function (p) {
       var block = app.querySelector('[data-qid="' + p.id + '"]');
-      var inputs = block.querySelectorAll('input:checked');
-      var ids = [];
-      inputs.forEach(function (inp) { ids.push(parseInt(inp.value, 10)); });
-      if (p.obligatoria && !ids.length) valid = false;
-      respuestas.push({ pregunta_id: p.id, opcion_ids: ids });
+      if (p.tipo === 'text') {
+        var ta = block.querySelector('textarea');
+        var texto = (ta && ta.value || '').trim();
+        if (p.obligatoria && !texto) valid = false;
+        respuestas.push({ pregunta_id: p.id, texto: texto });
+      } else {
+        var inputs = block.querySelectorAll('input:checked');
+        var ids = [];
+        inputs.forEach(function (inp) { ids.push(parseInt(inp.value, 10)); });
+        if (p.obligatoria && !ids.length) valid = false;
+        respuestas.push({ pregunta_id: p.id, opcion_ids: ids });
+      }
     });
 
     if (!valid) {

@@ -130,19 +130,32 @@
       var html = '<div class="res-total"><strong>' + data.total_respuestas + '</strong> respuesta' +
         (data.total_respuestas === 1 ? '' : 's') + ' en total</div>';
       data.preguntas.forEach(function (p, idx) {
-        var tipoLabel = p.tipo === 'multiple' ? 'Opción múltiple' : 'Opción única';
+        var tipoLabel = p.tipo === 'multiple' ? 'Opción múltiple' : p.tipo === 'text' ? 'Texto libre' : 'Opción única';
         html += '<div class="res-q"><div class="res-q-title">' + (idx + 1) + '. ' +
           AdminApi.escapeHtml(p.texto) + '<span class="res-q-type">' + tipoLabel + '</span></div>';
-        var maxCount = Math.max.apply(null, p.opciones.map(function (o) { return o.count; }).concat([1]));
-        p.opciones.forEach(function (o) {
-          var pct = o.percent || 0;
-          var w = Math.round((o.count / maxCount) * 100);
-          html += '<div class="bar-row">' +
-            '<div class="bar-label" title="' + AdminApi.escapeHtml(o.texto) + '">' + AdminApi.escapeHtml(o.texto) + '</div>' +
-            '<div class="bar-track"><div class="bar-fill" style="width:' + w + '%"></div></div>' +
-            '<div class="bar-num">' + o.count + ' (' + pct + '%)</div>' +
-          '</div>';
-        });
+        if (p.tipo === 'text') {
+          var textos = p.respuestas_texto || [];
+          if (!textos.length) {
+            html += '<div class="res-text-empty">Sin respuestas de texto.</div>';
+          } else {
+            html += '<div class="res-text-list">';
+            textos.forEach(function (r) {
+              html += '<div class="res-text-item">' + AdminApi.escapeHtml(r.texto) + '</div>';
+            });
+            html += '</div>';
+          }
+        } else {
+          var maxCount = Math.max.apply(null, p.opciones.map(function (o) { return o.count; }).concat([1]));
+          p.opciones.forEach(function (o) {
+            var pct = o.percent || 0;
+            var w = Math.round((o.count / maxCount) * 100);
+            html += '<div class="bar-row">' +
+              '<div class="bar-label" title="' + AdminApi.escapeHtml(o.texto) + '">' + AdminApi.escapeHtml(o.texto) + '</div>' +
+              '<div class="bar-track"><div class="bar-fill" style="width:' + w + '%"></div></div>' +
+              '<div class="bar-num">' + o.count + ' (' + pct + '%)</div>' +
+            '</div>';
+          });
+        }
         html += '</div>';
       });
       box.innerHTML = html;
@@ -177,13 +190,14 @@
     function agregarPreguntaEditor(data) {
       var wrap = document.createElement('div');
       wrap.className = 'q-editor';
-      var tipo = data && data.tipo === 'multiple' ? 'multiple' : 'single';
+      var tipo = data && ['multiple', 'text'].includes(data.tipo) ? data.tipo : 'single';
       var oblig = !data || data.obligatoria !== false;
       wrap.innerHTML =
         '<div class="q-editor-head">' +
           '<input type="text" class="q-texto" placeholder="Texto de la pregunta" value="' + AdminApi.escapeHtml(data ? data.texto : '') + '">' +
           '<select class="q-tipo"><option value="single"' + (tipo === 'single' ? ' selected' : '') + '>Una opción</option>' +
-          '<option value="multiple"' + (tipo === 'multiple' ? ' selected' : '') + '>Varias opciones</option></select>' +
+          '<option value="multiple"' + (tipo === 'multiple' ? ' selected' : '') + '>Varias opciones</option>' +
+          '<option value="text"' + (tipo === 'text' ? ' selected' : '') + '>Texto libre</option></select>' +
           '<label style="font-size:.8rem;display:flex;align-items:center;gap:4px"><input type="checkbox" class="q-oblig"' + (oblig ? ' checked' : '') + '> Obligatoria</label>' +
           '<button type="button" class="btn btn-danger btn-xs q-remove">✕</button>' +
         '</div>' +
@@ -191,15 +205,24 @@
         '<button type="button" class="btn btn-outline btn-xs q-add-opt">+ Opción</button>';
       preguntasEditor.appendChild(wrap);
       var optsBox = wrap.querySelector('.q-opciones');
+      var addOptBtn = wrap.querySelector('.q-add-opt');
+      var tipoSelect = wrap.querySelector('.q-tipo');
       var opciones = data && data.opciones && data.opciones.length
         ? data.opciones.map(function (o) { return o.texto; })
         : ['', ''];
       opciones.forEach(function (t) { agregarOpcionEditor(optsBox, t); });
+      function toggleOpcionesUI() {
+        var isText = tipoSelect.value === 'text';
+        optsBox.style.display = isText ? 'none' : '';
+        addOptBtn.style.display = isText ? 'none' : '';
+      }
+      tipoSelect.addEventListener('change', toggleOpcionesUI);
+      toggleOpcionesUI();
       wrap.querySelector('.q-remove').addEventListener('click', function () {
         if (preguntasEditor.children.length <= 1) { toast('Mínimo una pregunta', 'error'); return; }
         wrap.remove();
       });
-      wrap.querySelector('.q-add-opt').addEventListener('click', function () {
+      addOptBtn.addEventListener('click', function () {
         agregarOpcionEditor(optsBox, '');
       });
     }
@@ -229,8 +252,8 @@
           var t = inp.value.trim();
           if (t) opciones.push(t);
         });
-        if (opciones.length < 2) return;
-        preguntas.push({ texto: texto, tipo: tipo, obligatoria: obligatoria, opciones: opciones });
+        if (tipo !== 'text' && opciones.length < 2) return;
+        preguntas.push({ texto: texto, tipo: tipo, obligatoria: obligatoria, opciones: tipo === 'text' ? [] : opciones });
       });
       return preguntas;
     }
@@ -241,7 +264,7 @@
       if (!titulo) { toast('El título es obligatorio', 'error'); return; }
       var preguntas = leerPreguntasDelEditor();
       if (!preguntas.length) {
-        toast('Agrega al menos una pregunta con 2 opciones', 'error');
+        toast('Agrega al menos una pregunta válida (las de opción requieren mínimo 2 opciones)', 'error');
         return;
       }
       var payload = {

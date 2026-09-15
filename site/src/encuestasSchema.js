@@ -21,7 +21,7 @@ async function ensureEncuestasSchema() {
       id INT AUTO_INCREMENT PRIMARY KEY,
       encuesta_id INT NOT NULL,
       texto VARCHAR(500) NOT NULL,
-      tipo ENUM('single','multiple') NOT NULL DEFAULT 'single',
+      tipo ENUM('single','multiple','text') NOT NULL DEFAULT 'single',
       orden INT NOT NULL DEFAULT 0,
       obligatoria TINYINT(1) NOT NULL DEFAULT 1,
       KEY idx_ep_encuesta (encuesta_id),
@@ -55,7 +55,8 @@ async function ensureEncuestasSchema() {
       id INT AUTO_INCREMENT PRIMARY KEY,
       respuesta_id INT NOT NULL,
       pregunta_id INT NOT NULL,
-      opcion_id INT NOT NULL,
+      opcion_id INT NULL,
+      texto_respuesta TEXT NULL,
       KEY idx_erd_respuesta (respuesta_id),
       KEY idx_erd_pregunta (pregunta_id),
       KEY idx_erd_opcion (opcion_id),
@@ -64,6 +65,16 @@ async function ensureEncuestasSchema() {
       CONSTRAINT fk_erd_opcion FOREIGN KEY (opcion_id) REFERENCES encuesta_opciones(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
+
+  await pool.query(
+    "ALTER TABLE encuesta_preguntas MODIFY tipo ENUM('single','multiple','text') NOT NULL DEFAULT 'single'"
+  ).catch(() => {});
+  await pool.query(
+    'ALTER TABLE encuesta_respuesta_detalle MODIFY opcion_id INT NULL'
+  ).catch(() => {});
+  await pool.query(
+    'ALTER TABLE encuesta_respuesta_detalle ADD COLUMN texto_respuesta TEXT NULL'
+  ).catch(() => {});
 }
 
 module.exports = { ensureEncuestasSchema };

@@ -67,13 +67,14 @@ async function saveSurveyQuestions(encuestaId, preguntas) {
     const p = preguntas[i];
     const texto = String(p.texto || '').trim();
     if (!texto) continue;
-    const tipo = p.tipo === 'multiple' ? 'multiple' : 'single';
+    const tipo = ['multiple', 'text'].includes(p.tipo) ? p.tipo : 'single';
     const obligatoria = p.obligatoria !== false && p.obligatoria !== 0 && p.obligatoria !== '0' ? 1 : 0;
     const [ins] = await pool.execute(
       'INSERT INTO encuesta_preguntas (encuesta_id, texto, tipo, orden, obligatoria) VALUES (?, ?, ?, ?, ?)',
       [encuestaId, texto, tipo, i, obligatoria]
     );
     const preguntaId = ins.insertId;
+    if (tipo === 'text') continue;
     const opciones = Array.isArray(p.opciones) ? p.opciones : [];
     let ord = 0;
     for (const op of opciones) {
@@ -133,6 +134,13 @@ router.post('/public/:slug/responder', async (req, res) => {
 
     for (const p of encuesta.preguntas) {
       const r = byPregunta.get(p.id);
+      if (p.tipo === 'text') {
+        const texto = String(r?.texto || '').trim();
+        if (p.obligatoria && !texto) {
+          return res.status(400).json({ error: `La pregunta "${p.texto}" es obligatoria` });
+        }
+        continue;
+      }
       const ids = r && Array.isArray(r.opcion_ids) ? r.opcion_ids.map(Number).filter(Boolean) : [];
       if (p.obligatoria && !ids.length) {
         return res.status(400).json({ error: `La pregunta "${p.texto}" es obligatoria` });
@@ -158,6 +166,16 @@ router.post('/public/:slug/responder', async (req, res) => {
       const respuestaId = insR.insertId;
       for (const p of encuesta.preguntas) {
         const r = byPregunta.get(p.id);
+        if (p.tipo === 'text') {
+          const texto = String(r?.texto || '').trim();
+          if (texto) {
+            await conn.execute(
+              'INSERT INTO encuesta_respuesta_detalle (respuesta_id, pregunta_id, opcion_id, texto_respuesta) VALUES (?, ?, NULL, ?)',
+              [respuestaId, p.id, texto]
+            );
+          }
+          continue;
+        }
         const ids = r && Array.isArray(r.opcion_ids) ? r.opcion_ids.map(Number).filter(Boolean) : [];
         for (const oid of ids) {
           await conn.execute(
@@ -225,6 +243,25 @@ router.get('/admin/:id/resultados', authMiddleware, requireAdmin, async (req, re
 
     const preguntas = [];
     for (const p of encuesta.preguntas) {
+      if (p.tipo === 'text') {
+        const [textRows] = await pool.execute(
+          `SELECT d.texto_respuesta, r.created_at FROM encuesta_respuesta_detalle d
+           INNER JOIN encuesta_respuestas r ON r.id = d.respuesta_id
+           WHERE r.encuesta_id = ? AND d.pregunta_id = ? AND d.texto_respuesta IS NOT NULL AND d.texto_respuesta <> ''
+           ORDER BY r.created_at DESC`,
+          [encuestaId, p.id]
+        );
+        preguntas.push({
+          id: p.id,
+          texto: p.texto,
+          tipo: p.tipo,
+          respuestas_texto: textRows.map((row) => ({
+            texto: row.texto_respuesta,
+            fecha: row.created_at,
+          })),
+        });
+        continue;
+      }
       const opciones = [];
       for (const o of p.opciones) {
         const [cRows] = await pool.execute(
@@ -234,8 +271,7 @@ router.get('/admin/:id/resultados', authMiddleware, requireAdmin, async (req, re
           [encuestaId, p.id, o.id]
         );
         const count = cRows[0]?.cnt || 0;
-        const base = p.tipo === 'multiple' ? totalRespuestas : totalRespuestas;
-        const percent = base > 0 ? Math.round((count / base) * 1000) / 10 : 0;
+        const percent = totalRespuestas > 0 ? Math.round((count / totalRespuestas) * 1000) / 10 : 0;
         opciones.push({ id: o.id, texto: o.texto, count, percent });
       }
       preguntas.push({
