@@ -35,15 +35,33 @@ router.get('/', auth, async (req, res) => {
                COALESCE(
                  (SELECT pp.sesiones FROM paciente_paquetes pp
                   WHERE pp.paciente_id = p.id AND pp.activo = 1
-                  ORDER BY pp.id DESC LIMIT 1),
+                    AND pp.fecha_inicio <= CURDATE()
+                    AND (pp.vence_at IS NULL OR pp.vence_at >= CURDATE())
+                  ORDER BY pp.fecha_inicio ASC, pp.id ASC LIMIT 1),
                  (SELECT SUM(ps.sesiones) FROM paciente_sesiones ps WHERE ps.paciente_id = p.id),
                  0
                ) AS sesiones_total,
-               COALESCE((SELECT COUNT(*) FROM citas c
-                 WHERE c.paciente_id = p.id AND c.estado NOT IN ('cancelada','no_show')), 0) AS citas_confirmadas,
+               COALESCE(
+                 (SELECT COUNT(*) FROM citas c
+                  WHERE c.paciente_id = p.id
+                    AND c.paciente_paquete_id = (
+                      SELECT pp.id FROM paciente_paquetes pp
+                      WHERE pp.paciente_id = p.id AND pp.activo = 1
+                        AND pp.fecha_inicio <= CURDATE()
+                        AND (pp.vence_at IS NULL OR pp.vence_at >= CURDATE())
+                      ORDER BY pp.fecha_inicio ASC, pp.id ASC LIMIT 1
+                    )
+                    AND c.estado NOT IN ('cancelada','no_show')),
+                 (SELECT COUNT(*) FROM citas c
+                  WHERE c.paciente_id = p.id AND c.estado NOT IN ('cancelada','no_show')),
+                 0
+               ) AS citas_confirmadas,
                (SELECT pp.nombre FROM paciente_paquetes pp
                  WHERE pp.paciente_id = p.id AND pp.activo = 1
-                 ORDER BY pp.id DESC LIMIT 1) AS paquete_nombre
+                   AND pp.fecha_inicio <= CURDATE()
+                   AND (pp.vence_at IS NULL OR pp.vence_at >= CURDATE())
+                 ORDER BY pp.fecha_inicio ASC, pp.id ASC LIMIT 1) AS paquete_nombre,
+               (SELECT COUNT(*) FROM paciente_paquetes pp WHERE pp.paciente_id = p.id) AS paquetes_total
                FROM pacientes p LEFT JOIN terapeutas t ON p.terapeuta_id = t.id WHERE 1=1`;
     const params = [];
     if (q) { sql += ' AND (p.nombre LIKE ? OR p.apellido LIKE ? OR p.email LIKE ? OR p.telefono LIKE ?)'; const l=`%${q}%`; params.push(l,l,l,l); }

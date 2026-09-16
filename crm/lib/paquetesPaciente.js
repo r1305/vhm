@@ -1,7 +1,20 @@
 const pool = require('./db');
+const { buildCuotasPlan, normalizeDiasSiguienteCuota } = require('./cuotasPlan');
+
+const TZ = 'America/Lima';
 
 function todayStr() {
-  return new Date().toISOString().slice(0, 10);
+  return new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date());
+}
+
+function dateStr(d) {
+  if (!d) return null;
+  if (d instanceof Date) {
+    return new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(d);
+  }
+  const s = String(d);
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  return s.slice(0, 10);
 }
 
 function addMonths(dateStr, months) {
@@ -16,18 +29,25 @@ function addDays(dateStr, days) {
   return d.toISOString().slice(0, 10);
 }
 
-function distributeSessions(total, numCuotas) {
-  const blocks = [];
-  let start = 1;
-  const per = Math.floor(total / numCuotas);
-  let extra = total % numCuotas;
-  for (let i = 0; i < numCuotas; i++) {
-    const count = per + (extra > 0 ? 1 : 0);
-    if (extra > 0) extra -= 1;
-    blocks.push({ sesiones_inicio: start, sesiones_fin: start + count - 1 });
-    start += count;
-  }
-  return blocks;
+function isPackageExpired(paquete, hoy) {
+  return paquete.vence_at && dateStr(paquete.vence_at) < hoy;
+}
+
+function isPackageNotStarted(paquete, hoy) {
+  return dateStr(paquete.fecha_inicio) > hoy;
+}
+
+function computePackageEstado(paquete, hoy, citasUsadas) {
+  const exhausted = citasUsadas >= paquete.sesiones;
+  const expired = isPackageExpired(paquete, hoy);
+  const notStarted = isPackageNotStarted(paquete, hoy);
+
+  if (paquete.activo && !expired && !notStarted && !exhausted) return 'activo';
+  if (notStarted && !expired) return 'pendiente';
+  if (expired) return 'vencido';
+  if (exhausted) return 'agotado';
+  if (!paquete.activo && !notStarted && !expired && !exhausted) return 'reemplazado';
+  return 'inactivo';
 }
 
 async function countCitasActivas(pacienteId) {
@@ -39,17 +59,67 @@ async function countCitasActivas(pacienteId) {
   return row?.total || 0;
 }
 
+async function countCitasActivasForPaquete(pacientePaqueteId) {
+  const [[row]] = await pool.execute(
+    `SELECT COUNT(*) AS total FROM citas
+     WHERE paciente_paquete_id = ? AND estado NOT IN ('cancelada','no_show')`,
+    [pacientePaqueteId]
+  );
+  return row?.total || 0;
+}
+
+async function syncPackageLifecycle(pacienteId) {
+  const hoy = todayStr();
+  const [packages] = await pool.execute(
+    `SELECT * FROM paciente_paquetes WHERE paciente_id = ? ORDER BY fecha_inicio ASC, id ASC`,
+    [pacienteId]
+  );
+
+  for (const pkg of packages) {
+    if (!pkg.activo) continue;
+    const citas = await countCitasActivasForPaquete(pkg.id);
+    const exhausted = citas >= pkg.sesiones;
+    const expired = isPackageExpired(pkg, hoy);
+    if (expired || exhausted) {
+      await pool.execute('UPDATE paciente_paquetes SET activo = 0 WHERE id = ?', [pkg.id]);
+      pkg.activo = 0;
+    }
+  }
+
+  const hasActive = packages.some((p) => {
+    if (!p.activo) return false;
+    if (isPackageExpired(p, hoy) || isPackageNotStarted(p, hoy)) return false;
+    return true;
+  });
+
+  if (!hasActive) {
+    for (const pkg of packages) {
+      if (pkg.activo) continue;
+      if (isPackageNotStarted(pkg, hoy)) continue;
+      if (isPackageExpired(pkg, hoy)) continue;
+      const citas = await countCitasActivasForPaquete(pkg.id);
+      if (citas >= pkg.sesiones) continue;
+      await pool.execute('UPDATE paciente_paquetes SET activo = 1 WHERE id = ?', [pkg.id]);
+      pkg.activo = 1;
+      break;
+    }
+  }
+}
+
 async function getActivePacientePaquete(pacienteId) {
+  await syncPackageLifecycle(pacienteId);
+  const hoy = todayStr();
   const [[row]] = await pool.execute(
     `SELECT * FROM paciente_paquetes
      WHERE paciente_id = ? AND activo = 1
-     ORDER BY fecha_inicio DESC, id DESC
+     ORDER BY fecha_inicio ASC, id ASC
      LIMIT 1`,
     [pacienteId]
   );
   if (!row) return null;
-  const hoy = todayStr();
-  if (row.vence_at && String(row.vence_at).slice(0, 10) < hoy) return null;
+  if (isPackageExpired(row, hoy) || isPackageNotStarted(row, hoy)) return null;
+  const citas = await countCitasActivasForPaquete(row.id);
+  if (citas >= row.sesiones) return null;
   return row;
 }
 
@@ -69,19 +139,26 @@ async function loadCuotas(pacientePaqueteId) {
 }
 
 async function loadPacientePaquetes(pacienteId) {
+  await syncPackageLifecycle(pacienteId);
+  const hoy = todayStr();
   const [rows] = await pool.execute(
-    `SELECT * FROM paciente_paquetes WHERE paciente_id = ? ORDER BY activo DESC, fecha_inicio DESC, id DESC`,
+    `SELECT * FROM paciente_paquetes WHERE paciente_id = ? ORDER BY fecha_inicio DESC, id DESC`,
     [pacienteId]
   );
   const result = [];
   for (const row of rows) {
     const cuotas = await loadCuotas(row.id);
+    const sesionesUsadas = await countCitasActivasForPaquete(row.id);
+    const activo = !!row.activo;
     result.push({
       ...row,
       accede_comunidad: !!row.accede_comunidad,
-      activo: !!row.activo,
+      activo,
       precio: Number(row.precio),
       cuotas,
+      sesiones_usadas: sesionesUsadas,
+      sesiones_restantes: Math.max(0, row.sesiones - sesionesUsadas),
+      estado: computePackageEstado({ ...row, activo }, hoy, sesionesUsadas),
     });
   }
   return result;
@@ -103,61 +180,73 @@ async function createPacientePaquete(pacienteId, payload) {
   if (tipoPago === 'parcial' && numCuotas < 2) throw new Error('El pago parcial requiere al menos 2 cuotas');
   if (numCuotas > cat.sesiones) throw new Error('Las cuotas no pueden superar el número de sesiones');
 
+  await syncPackageLifecycle(pacienteId);
+  const activePkg = await getActivePacientePaquete(pacienteId);
+  if (activePkg) {
+    const citasUsadas = await countCitasActivasForPaquete(activePkg.id);
+    const restantes = activePkg.sesiones - citasUsadas;
+    throw new Error(
+      `El paciente ya tiene el paquete "${activePkg.nombre}" activo con ${restantes} sesión${restantes !== 1 ? 'es' : ''} disponible${restantes !== 1 ? 's' : ''}. Debe agotar o vencer ese paquete antes de adquirir otro.`
+    );
+  }
+
   const fechaInicio = payload.fecha_inicio || todayStr();
+  const nuevoActivo = 1;
+
   const venceAt = addDays(fechaInicio, parseInt(cat.validez_dias, 10) || 30);
   const precio = Number(cat.precio) || 0;
   const sesiones = parseInt(cat.sesiones, 10) || 1;
+  const diasSiguienteCuota = normalizeDiasSiguienteCuota(cat.dias_siguiente_cuota);
 
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
-    await conn.execute(
-      'UPDATE paciente_paquetes SET activo = 0 WHERE paciente_id = ? AND activo = 1',
-      [pacienteId]
-    );
 
     const [ins] = await conn.execute(
       `INSERT INTO paciente_paquetes
-        (paciente_id, paquete_catalogo_id, nombre, sesiones, validez_dias, accede_comunidad, precio,
-         fecha_inicio, vence_at, tipo_pago, num_cuotas, activo)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+        (paciente_id, paquete_catalogo_id, nombre, sesiones, validez_dias, dias_siguiente_cuota,
+         accede_comunidad, precio, fecha_inicio, vence_at, tipo_pago, num_cuotas, activo)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         pacienteId,
         catalogoId,
         cat.nombre,
         sesiones,
         cat.validez_dias,
+        diasSiguienteCuota,
         cat.accede_comunidad ? 1 : 0,
         precio,
         fechaInicio,
         venceAt,
         tipoPago,
         numCuotas,
+        nuevoActivo,
       ]
     );
 
     const pacientePaqueteId = ins.insertId;
-    const blocks = distributeSessions(sesiones, numCuotas);
-    const montoBase = Math.floor((precio / numCuotas) * 100) / 100;
-    let montoAsignado = 0;
+    const cuotasPlan = buildCuotasPlan({
+      precio,
+      sesiones,
+      diasSiguienteCuota,
+      fechaInicio,
+      numCuotas,
+      tipoPago,
+    });
 
-    for (let i = 0; i < numCuotas; i++) {
-      const monto = i === numCuotas - 1
-        ? Math.round((precio - montoAsignado) * 100) / 100
-        : montoBase;
-      montoAsignado += monto;
-      const block = blocks[i];
+    for (const cuota of cuotasPlan) {
       await conn.execute(
         `INSERT INTO paciente_paquete_cuotas
           (paciente_paquete_id, numero, monto, fecha_pago, sesiones_inicio, sesiones_fin, pagado)
-         VALUES (?, ?, ?, ?, ?, ?, 0)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [
           pacientePaqueteId,
-          i + 1,
-          monto,
-          addMonths(fechaInicio, i),
-          block.sesiones_inicio,
-          block.sesiones_fin,
+          cuota.numero,
+          cuota.monto,
+          cuota.fecha_pago,
+          cuota.sesiones_inicio,
+          cuota.sesiones_fin,
+          cuota.pagado,
         ]
       );
     }
@@ -191,18 +280,17 @@ async function markCuotaPagada(pacienteId, cuotaId) {
 }
 
 async function evaluateBooking(pacienteId) {
-  const citasActivas = await countCitasActivas(pacienteId);
-  const nextSessionNum = citasActivas + 1;
-  const paquete = await getActivePacientePaquete(pacienteId);
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const paquete = await getActivePacientePaquete(pacienteId);
+    if (!paquete) break;
 
-  if (paquete) {
+    const citasActivas = await countCitasActivasForPaquete(paquete.id);
+    const nextSessionNum = citasActivas + 1;
+
     if (nextSessionNum > paquete.sesiones) {
-      return {
-        ok: false,
-        codigo: 'SIN_SESIONES',
-        mensaje: 'No tienes sesiones disponibles para agendar. Contacta a tu terapeuta para adquirir más sesiones.',
-        sesiones_disponibles: 0,
-      };
+      await pool.execute('UPDATE paciente_paquetes SET activo = 0 WHERE id = ?', [paquete.id]);
+      await syncPackageLifecycle(pacienteId);
+      continue;
     }
 
     const [[cuota]] = await pool.execute(
@@ -228,6 +316,7 @@ async function evaluateBooking(pacienteId) {
     };
   }
 
+  const citasActivas = await countCitasActivas(pacienteId);
   const [[legacy]] = await pool.execute(
     `SELECT COALESCE((SELECT SUM(ps.sesiones) FROM paciente_sesiones ps WHERE ps.paciente_id = ?), 0) AS total`,
     [pacienteId]
@@ -258,14 +347,15 @@ async function evaluateBooking(pacienteId) {
 
 async function getSesionesResumen(pacienteId) {
   const paquete = await getActivePacientePaquete(pacienteId);
-  const citasActivas = await countCitasActivas(pacienteId);
   if (paquete) {
+    const citasActivas = await countCitasActivasForPaquete(paquete.id);
     return {
       sesiones_total: paquete.sesiones,
       citas_confirmadas: citasActivas,
       paquete_nombre: paquete.nombre,
     };
   }
+  const citasActivas = await countCitasActivas(pacienteId);
   const [[legacy]] = await pool.execute(
     `SELECT COALESCE((SELECT SUM(ps.sesiones) FROM paciente_sesiones ps WHERE ps.paciente_id = ?), 0) AS total`,
     [pacienteId]
@@ -280,8 +370,9 @@ async function getSesionesResumen(pacienteId) {
 module.exports = {
   addDays,
   addMonths,
-  distributeSessions,
   countCitasActivas,
+  countCitasActivasForPaquete,
+  syncPackageLifecycle,
   getActivePacientePaquete,
   loadCuotas,
   loadPacientePaquetes,
@@ -289,4 +380,5 @@ module.exports = {
   markCuotaPagada,
   evaluateBooking,
   getSesionesResumen,
+  computePackageEstado,
 };

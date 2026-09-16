@@ -20,6 +20,7 @@
           <div class="pkg-card-meta">
             <span><i class="fas fa-calendar-check"></i> ${p.sesiones} sesiones</span>
             <span><i class="fas fa-hourglass-half"></i> Validez: ${p.validez_dias} días</span>
+            <span><i class="fas fa-clock"></i> Sig. cuota: ${p.dias_siguiente_cuota || 15} días</span>
             <span><i class="fas fa-coins"></i> S/ ${Number(p.precio).toFixed(2)}</span>
             <span><i class="fas fa-users"></i> Comunidad: ${p.accede_comunidad ? 'Sí' : 'No'}</span>
           </div>
@@ -45,6 +46,9 @@
           <input type="number" min="1" class="form-control" id="pkg_sesiones" value="${p?.sesiones ?? 4}"></div>
         <div class="form-group"><label class="form-label">Validez (días) *</label>
           <input type="number" min="1" class="form-control" id="pkg_validez" value="${p?.validez_dias ?? 30}"></div>
+        <div class="form-group"><label class="form-label">Días para siguiente cuota *</label>
+          <input type="number" min="15" class="form-control" id="pkg_dias_cuota" value="${p?.dias_siguiente_cuota ?? 15}">
+          <span style="font-size:11px;color:var(--text-muted)">Mínimo 15 días entre cada cuota</span></div>
       </div>
       <div class="form-row">
         <div class="form-group"><label class="form-label">Precio (S/) *</label>
@@ -63,10 +67,14 @@
         nombre: document.getElementById('pkg_nombre').value.trim(),
         sesiones: Number(document.getElementById('pkg_sesiones').value),
         validez_dias: Number(document.getElementById('pkg_validez').value),
+        dias_siguiente_cuota: Number(document.getElementById('pkg_dias_cuota').value),
         precio: Number(document.getElementById('pkg_precio').value),
         accede_comunidad: document.getElementById('pkg_comunidad').checked,
       };
       if (!body.nombre) throw new Error('El nombre es obligatorio');
+      if (!body.dias_siguiente_cuota || body.dias_siguiente_cuota < 15) {
+        throw new Error('Los días para la siguiente cuota deben ser al menos 15');
+      }
       if (p) {
         body.activo = document.getElementById('pkg_activo').checked;
         await api(`/paquetes/${p.id}`, { method: 'PUT', body });

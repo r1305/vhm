@@ -73,7 +73,7 @@
               ${p.email    ? `<span><i class="fas fa-envelope" style="width:12px"></i> ${esc(p.email)}</span>` : ''}
               ${p.telefono ? `<span><i class="fas fa-phone"   style="width:12px"></i> ${esc(p.telefono)}</span>` : ''}
               ${p.terapeuta_nombre ? `<span><i class="fas fa-user-md" style="width:12px"></i> ${esc(p.terapeuta_nombre)}</span>` : ''}
-              ${p.paquete_nombre ? `<span><i class="fas fa-box" style="width:12px"></i> ${esc(p.paquete_nombre)}</span>` : ''}
+              ${p.paquete_nombre ? `<span><i class="fas fa-box" style="width:12px"></i> ${esc(p.paquete_nombre)}${Number(p.paquetes_total) > 1 ? ` (+${Number(p.paquetes_total) - 1} más)` : ''}</span>` : ''}
             </div>
             <div style="display:flex;gap:8px;margin-top:6px;font-size:12px">
               <span style="background:var(--primary-light);color:var(--primary);padding:2px 8px;border-radius:10px">
@@ -151,59 +151,91 @@
   }
 
   function renderCuotasPreview(catalogo, tipoPago, numCuotas, fechaInicio) {
-    if (!catalogo) return '';
-    const sesiones = Number(catalogo.sesiones) || 1;
-    const cuotas = tipoPago === 'parcial' ? Math.max(2, Number(numCuotas) || 2) : 1;
-    const precio = Number(catalogo.precio) || 0;
-    const per = Math.floor(sesiones / cuotas);
-    let extra = sesiones % cuotas;
-    let start = 1;
-    const montoBase = Math.floor((precio / cuotas) * 100) / 100;
-    let html = '<div class="pkg-cuotas-preview">';
-    for (let i = 0; i < cuotas; i++) {
-      const count = per + (extra > 0 ? 1 : 0);
-      if (extra > 0) extra -= 1;
-      const end = start + count - 1;
-      const fecha = addMonthsPreview(fechaInicio, i);
-      const monto = i === cuotas - 1
-        ? (precio - montoBase * (cuotas - 1)).toFixed(2)
-        : montoBase.toFixed(2);
+    if (!catalogo || !window.CuotasPlan) return '';
+    const plan = window.CuotasPlan.buildCuotasPlan({
+      precio: catalogo.precio,
+      sesiones: catalogo.sesiones,
+      diasSiguienteCuota: catalogo.dias_siguiente_cuota,
+      fechaInicio,
+      numCuotas,
+      tipoPago,
+    });
+    if (!plan.length) return '';
+    const totalPrecio = plan.reduce((sum, c) => sum + Number(c.monto), 0);
+    const diasCuota = window.CuotasPlan.normalizeDiasSiguienteCuota(catalogo.dias_siguiente_cuota);
+    let html = `<div class="pkg-cuotas-preview">
+      <div class="pkg-cuota-preview-summary">${plan.length} cuota${plan.length > 1 ? 's' : ''} · Total ${fmtMoney(totalPrecio)}${tipoPago === 'parcial' ? ` · cada ${diasCuota} días` : ''}</div>`;
+    for (const cuota of plan) {
+      const sesLabel = cuota.sesiones_inicio === cuota.sesiones_fin
+        ? `Sesión ${cuota.sesiones_inicio}`
+        : `Sesiones ${cuota.sesiones_inicio}–${cuota.sesiones_fin}`;
       html += `<div class="pkg-cuota-preview-item">
-        <strong>Cuota ${i + 1}</strong> · ${fmtMoney(monto)} · vence ${fecha}
-        <span class="pkg-cuota-ses">Sesiones ${start}–${end}</span>
+        <strong>Cuota ${cuota.numero}</strong> · ${fmtMoney(cuota.monto)} · pago ${cuota.fecha_pago}
+        <span class="pkg-cuota-ses">${sesLabel} (${cuota.sesiones_fin - cuota.sesiones_inicio + 1} ses.)</span>
       </div>`;
-      start = end + 1;
     }
     html += '</div>';
     return html;
   }
 
-  function addMonthsPreview(dateStr, months) {
+  function addDaysPreview(dateStr, days) {
     const d = new Date((dateStr || new Date().toISOString().slice(0, 10)) + 'T12:00:00');
-    d.setMonth(d.getMonth() + months);
+    d.setDate(d.getDate() + days);
     return d.toISOString().slice(0, 10);
   }
 
-  function renderPaqueteActivo(paquete, pid) {
-    if (!paquete) {
-      return '<p style="font-size:13px;color:var(--text-muted)">Sin paquete activo asignado.</p>';
-    }
-    const cuotasHtml = (paquete.cuotas || []).map((c) => `
+  const ESTADO_PAQUETE = {
+    activo:    { label: 'Activo',    cls: 'activo' },
+    pendiente:   { label: 'En cola',       cls: 'pendiente' },
+    vencido:     { label: 'Vencido',       cls: 'vencido' },
+    agotado:     { label: 'Agotado',       cls: 'agotado' },
+    reemplazado: { label: 'Reemplazado',   cls: 'inactivo' },
+    inactivo:    { label: 'Inactivo',      cls: 'inactivo' },
+  };
+
+  function renderCuotasPaquete(paquete, pid) {
+    return (paquete.cuotas || []).map((c) => `
       <div class="pkg-cuota-row ${c.pagado ? 'pagada' : ''}">
         <div>
           <strong>Cuota ${c.numero}</strong> · ${fmtMoney(c.monto)}
-          <div class="pkg-cuota-meta">Vence: ${String(c.fecha_pago).slice(0, 10)} · Sesiones ${c.sesiones_inicio}–${c.sesiones_fin}</div>
+          <div class="pkg-cuota-meta">Pago: ${String(c.fecha_pago).slice(0, 10)} · ${c.sesiones_inicio === c.sesiones_fin ? `Sesión ${c.sesiones_inicio}` : `Sesiones ${c.sesiones_inicio}–${c.sesiones_fin}`} (${c.sesiones_fin - c.sesiones_inicio + 1} ses.)</div>
         </div>
         ${c.pagado
           ? '<span class="badge badge-green">Pagada</span>'
           : `<button type="button" class="btn btn-outline btn-xs" data-pagar-cuota="${c.id}" data-pid="${pid}">Marcar pagada</button>`}
       </div>`).join('');
-    return `
-      <div class="pkg-activo-card">
-        <div class="pkg-activo-title">${esc(paquete.nombre)}</div>
-        <div class="pkg-activo-meta">${paquete.sesiones} sesiones · ${paquete.tipo_pago === 'parcial' ? paquete.num_cuotas + ' cuotas' : 'Pago total'} · vence ${String(paquete.vence_at || '').slice(0, 10)}</div>
-        <div class="pkg-cuotas-list">${cuotasHtml}</div>
-      </div>`;
+  }
+
+  function renderHistorialPaquetes(paquetes, pid) {
+    if (!paquetes.length) {
+      return '<p style="font-size:13px;color:var(--text-muted)">Sin paquetes adquiridos.</p>';
+    }
+    return `<div class="pkg-historial">${paquetes.map((pkg) => {
+      const est = ESTADO_PAQUETE[pkg.estado] || ESTADO_PAQUETE.inactivo;
+      const usadas = Number(pkg.sesiones_usadas) || 0;
+      const restantes = Number(pkg.sesiones_restantes) || 0;
+      const cuotasId = `pkg-cuotas-${pkg.id}`;
+      return `
+        <div class="pkg-historial-item estado-${pkg.estado}">
+          <div class="pkg-historial-header">
+            <div class="pkg-historial-title">${esc(pkg.nombre)}</div>
+            <span class="pkg-estado-badge ${est.cls}">${est.label}</span>
+          </div>
+          <div class="pkg-historial-meta">
+            ${fmtMoney(pkg.precio)} · ${pkg.sesiones} sesiones (${usadas} usadas, ${restantes} restantes)<br>
+            Inicio: ${String(pkg.fecha_inicio).slice(0, 10)} · Vence: ${String(pkg.vence_at || '').slice(0, 10)}<br>
+            ${pkg.tipo_pago === 'parcial'
+              ? `${pkg.num_cuotas} cuotas · cada ${pkg.dias_siguiente_cuota || 15} días`
+              : 'Pago total'}
+          </div>
+          ${(pkg.cuotas || []).length ? `
+            <button type="button" class="pkg-cuotas-toggle" data-toggle-cuotas="${cuotasId}">
+              <i class="fas fa-chevron-down"></i> Ver cuotas (${pkg.cuotas.filter((c) => c.pagado).length}/${pkg.cuotas.length} pagadas)
+            </button>
+            <div class="pkg-cuotas-collapsed" id="${cuotasId}">${renderCuotasPaquete(pkg, pid)}</div>
+          ` : ''}
+        </div>`;
+    }).join('')}</div>`;
   }
 
   function bindPaqueteEvents(pid, catalogo) {
@@ -216,8 +248,19 @@
     function refreshPreview() {
       const selected = catalogo.find((x) => String(x.id) === cat.value);
       const esParcial = tipo.value === 'parcial';
-      cuotas.disabled = !esParcial;
-      if (!esParcial) cuotas.value = '1';
+      if (esParcial) {
+        const maxCuotas = selected ? Math.max(2, Number(selected.sesiones) || 2) : 99;
+        cuotas.disabled = false;
+        cuotas.min = 2;
+        cuotas.max = maxCuotas;
+        if (Number(cuotas.value) < 2) cuotas.value = '2';
+        if (Number(cuotas.value) > maxCuotas) cuotas.value = String(maxCuotas);
+      } else {
+        cuotas.disabled = true;
+        cuotas.min = 1;
+        cuotas.max = 1;
+        cuotas.value = '1';
+      }
       preview.innerHTML = selected
         ? renderCuotasPreview(selected, tipo.value, cuotas.value, fecha.value)
         : '';
@@ -238,12 +281,22 @@
             method: 'PATCH',
             successMessage: 'Cuota marcada como pagada',
           });
-          const activo = (r.paquetes || []).find((x) => x.activo) || r.paquetes[0];
-          document.getElementById('paqueteActivoBox').innerHTML = renderPaqueteActivo(activo, patientId);
+          document.getElementById('paqueteHistorialBox').innerHTML = renderHistorialPaquetes(r.paquetes || [], patientId);
           bindPaqueteEvents(patientId, catalogo);
         } catch (e) {
           toast(e.message, 'danger');
         }
+      });
+    });
+
+    document.querySelectorAll('[data-toggle-cuotas]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const el = document.getElementById(btn.dataset.toggleCuotas);
+        if (!el) return;
+        const open = el.classList.toggle('open');
+        btn.innerHTML = open
+          ? `<i class="fas fa-chevron-up"></i> Ocultar cuotas`
+          : btn.innerHTML.replace('Ocultar cuotas', 'Ver cuotas').replace('fa-chevron-up', 'fa-chevron-down');
       });
     });
   }
@@ -261,13 +314,15 @@
     } finally {
       window.hideCrmLoader?.();
     }
-    const paqueteActivo = paquetesPac.find((x) => x.activo) || paquetesPac[0] || null;
+    const hoy = new Date().toISOString().slice(0, 10);
+    const paqueteActivo = paquetesPac.find((x) => x.estado === 'activo') || null;
+    const bloquearCompra = paqueteActivo?.estado === 'activo';
+    const fechaSugerida = hoy;
     const tsOpts   = terapeutasCache.map(t =>
       `<option value="${t.id}" ${p?.terapeuta_id==t.id?'selected':''}>${esc(fullName(t))}</option>`).join('');
     const catOpts = catalogo.length
       ? catalogo.map((c) => `<option value="${c.id}">${esc(c.nombre)} — ${c.sesiones} ses. — ${fmtMoney(c.precio)}</option>`).join('')
       : '<option value="">No hay paquetes activos</option>';
-    const hoy = new Date().toISOString().slice(0, 10);
 
     openModal(p ? 'Editar paciente' : 'Nuevo paciente', `
       <div class="form-row">
@@ -312,22 +367,28 @@
       </div>
       <div class="form-group"><label class="form-label">Motivo de consulta</label><textarea class="form-control" id="f_motivo" rows="2">${esc(p?.motivo_consulta||'')}</textarea></div>
       <div class="form-group">
-        <label class="form-label">Paquete adquirido</label>
-        <div id="paqueteActivoBox">${renderPaqueteActivo(paqueteActivo, p?.id)}</div>
+        <label class="form-label">Historial de paquetes ${paquetesPac.length ? `(${paquetesPac.length})` : ''}</label>
+        <div id="paqueteHistorialBox">${renderHistorialPaquetes(paquetesPac, p?.id)}</div>
       </div>
       <div class="form-group pkg-asignar-box">
-        <label class="form-label">Asignar paquete</label>
+        <label class="form-label">Adquirir nuevo paquete</label>
+        ${bloquearCompra ? `
+          <div class="pkg-compra-bloqueada">
+            <i class="fas fa-circle-info"></i>
+            No se puede adquirir otro paquete: <strong>${esc(paqueteActivo.nombre)}</strong> está activo con
+            <strong>${paqueteActivo.sesiones_restantes}</strong> sesión${paqueteActivo.sesiones_restantes !== 1 ? 'es' : ''} disponible${paqueteActivo.sesiones_restantes !== 1 ? 's' : ''}.
+          </div>` : `
         <select class="form-select" id="pkg_catalogo"><option value="">— Seleccionar paquete —</option>${catOpts}</select>
         <div class="form-row" style="margin-top:8px">
-          <div class="form-group"><label class="form-label">Fecha inicio</label><input type="date" class="form-control" id="pkg_fecha" value="${hoy}"></div>
+          <div class="form-group"><label class="form-label">Fecha inicio</label><input type="date" class="form-control" id="pkg_fecha" value="${fechaSugerida}"></div>
           <div class="form-group"><label class="form-label">Tipo de pago</label>
             <select class="form-select" id="pkg_tipo_pago"><option value="total">Total</option><option value="parcial">Parcial</option></select>
           </div>
           <div class="form-group"><label class="form-label">Cuotas</label>
-            <input type="number" min="2" class="form-control" id="pkg_cuotas" value="2" disabled></div>
+            <input type="number" min="1" max="1" class="form-control" id="pkg_cuotas" value="1" disabled></div>
         </div>
         <div id="pkg_cuotas_preview"></div>
-        <p style="font-size:11px;color:var(--text-muted);margin-top:6px">Al guardar el paciente se asignará el paquete seleccionado (reemplaza el paquete activo anterior).</p>
+        <p style="font-size:11px;color:var(--text-muted);margin-top:6px">El paquete seleccionado se activará al guardar.</p>`}
       </div>`, async () => {
       const body = {
         nombre:           document.getElementById('f_nombre').value,
@@ -350,15 +411,20 @@
       if (p) { await api(`/pacientes/${p.id}`, { method: 'PUT', body }); }
       else   { const r = await api('/pacientes', { method: 'POST', body }); pid = r.id; }
 
-      const catalogoId = document.getElementById('pkg_catalogo').value;
+      const catalogoId = document.getElementById('pkg_catalogo')?.value;
       if (catalogoId) {
+        const tipoPago = document.getElementById('pkg_tipo_pago').value;
+        const numCuotas = parseInt(document.getElementById('pkg_cuotas').value, 10);
+        if (tipoPago === 'parcial' && (!numCuotas || numCuotas < 2)) {
+          throw new Error('El pago parcial requiere al menos 2 cuotas');
+        }
         await api(`/pacientes/${pid}/paquetes-adquiridos`, {
           method: 'POST',
           body: {
             paquete_catalogo_id: catalogoId,
             fecha_inicio: document.getElementById('pkg_fecha').value,
-            tipo_pago: document.getElementById('pkg_tipo_pago').value,
-            num_cuotas: document.getElementById('pkg_cuotas').value,
+            tipo_pago: tipoPago,
+            num_cuotas: tipoPago === 'parcial' ? numCuotas : 1,
           },
         });
       }
@@ -366,12 +432,18 @@
       loadPacientes();
     }, { large: true, successMessage: p ? 'Paciente actualizado' : 'Paciente creado' });
 
-    bindPaqueteEvents(p?.id, catalogo);
+    if (!bloquearCompra) bindPaqueteEvents(p?.id, catalogo);
   }
 
   /* ── Detalle ────────────────────────────────────────── */
-  function showPacienteDetalle(p) {
+  async function showPacienteDetalle(p) {
     if (!p) return;
+    let paquetesPac = [];
+    try {
+      paquetesPac = await api(`/pacientes/${p.id}/paquetes-adquiridos`, { loaderMessage: 'Cargando historial…' });
+    } catch {
+      paquetesPac = [];
+    }
     openModal(fullName(p), `
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">
         <div><span style="color:var(--text-muted)">Email:</span> ${esc(p.email||'—')}</div>
@@ -382,11 +454,25 @@
         <div><span style="color:var(--text-muted)">Registro:</span> ${fmtDate(p.created_at)}</div>
       </div>
       ${p.motivo_consulta ? `<div style="margin-top:12px"><strong>Motivo:</strong><p style="margin-top:4px;font-size:13px">${esc(p.motivo_consulta)}</p></div>` : ''}
+      <div style="margin-top:14px">
+        <strong style="font-size:13px">Historial de paquetes</strong>
+        <div style="margin-top:8px">${renderHistorialPaquetes(paquetesPac, p.id)}</div>
+      </div>
       <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
-        <a class="btn btn-outline btn-sm" href="${window.__APP_BASE__}/historial"><i class="fas fa-file-medical"></i> Ver historial</a>
+        <a class="btn btn-outline btn-sm" href="${window.__APP_BASE__}/historial"><i class="fas fa-file-medical"></i> Ver historial clínico</a>
         <a class="btn btn-outline btn-sm" href="${window.__APP_BASE__}/agenda"><i class="fas fa-calendar"></i> Ver agenda</a>
       </div>`, null);
     document.getElementById('modalSave').style.display = 'none';
+    document.querySelectorAll('[data-toggle-cuotas]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const el = document.getElementById(btn.dataset.toggleCuotas);
+        if (!el) return;
+        const open = el.classList.toggle('open');
+        btn.innerHTML = open
+          ? `<i class="fas fa-chevron-up"></i> Ocultar cuotas`
+          : `<i class="fas fa-chevron-down"></i> Ver cuotas`;
+      });
+    });
   }
 
   /* ── Listeners ──────────────────────────────────────── */
