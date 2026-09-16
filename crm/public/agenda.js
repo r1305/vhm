@@ -374,10 +374,10 @@
       const tid = document.getElementById('agendaTerapeuta')?.value || '';
       const qs = new URLSearchParams();
       if (tid) qs.set('terapeuta_id', tid);
-      api(`/pacientes?${qs}`).then(ps => { pacientesCache = ps; }).catch(() => {});
+      api(`/pacientes?${qs}`, { loader: false }).then(ps => { pacientesCache = ps; }).catch(() => {});
     }
 
-    api('/terapeutas').then(ts => {
+    api('/terapeutas', { loader: false }).then(ts => {
       terapeutasCache = ts;
       const tbody = document.getElementById('cmBody');
       if (!tbody) return;

@@ -2,7 +2,7 @@
 (function () {
   'use strict';
 
-  const { api, toast, esc, fmtDate, badge, ESTADO_CITA } = window.CRM;
+  const { api, toast, esc, fmtDate, badge, ESTADO_CITA, showLoader, hideLoader } = window.CRM;
   const terapeutaId = window.__USER_ROL__ === 'terapeuta' ? window.__USER_ID__ : '';
 
   const COLORS = ['#176B87', '#237A68', '#A84F3E', '#287A5B', '#A66A13', '#B64A5A', '#3E6FA4', '#64B5CE'];
@@ -166,7 +166,8 @@
       const qs = new URLSearchParams({ desde, hasta });
       if (terapeutaId) qs.set('terapeuta_id', terapeutaId);
 
-      const d = await api(`/reportes/stats?${qs}`);
+      showLoader('Cargando reporte…');
+      const d = await api(`/reportes/stats?${qs}`, { loader: false });
       const k = d.kpis || {};
       const estados = d.citasPorEstado || [];
       const activas = sumEstados(estados, [...ACTIVOS]);
@@ -237,7 +238,7 @@
 
       const citasQs = new URLSearchParams({ desde, hasta });
       if (terapeutaId) citasQs.set('terapeuta_id', terapeutaId);
-      const citas = await api(`/citas?${citasQs}`);
+      const citas = await api(`/citas?${citasQs}`, { loader: false });
 
       document.getElementById('mrDetalle').innerHTML = citas.length
         ? `<p style="font-size:12px;color:var(--text-muted);margin-bottom:10px">${citas.length} cita${citas.length !== 1 ? 's' : ''} en el detalle</p>
@@ -253,6 +254,7 @@
         : '<div class="list-empty">Sin citas en este período</div>';
 
     } catch (err) { toast(err.message, 'danger'); }
+    finally { hideLoader(); }
   }
 
   document.querySelectorAll('[data-mr-preset]').forEach(btn =>

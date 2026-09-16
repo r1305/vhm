@@ -2,7 +2,7 @@
 (function () {
   'use strict';
 
-  const { api, toast, esc, openModal, closeModal, promptDialog, fmtTime } = window.CRM;
+  const { api, toast, esc, openModal, closeModal, promptDialog, fmtTime, showLoader, hideLoader } = window.CRM;
   const API_BASE = `${window.__APP_BASE__ || ''}/api`;
 
   let conversaciones = [];
@@ -119,8 +119,8 @@
     };
   }
 
-  async function fetchMensajes(id) {
-    const data = await api(`/whatsapp/conversaciones/${id}/mensajes?sync=1`);
+  async function fetchMensajes(id, { silent = false } = {}) {
+    const data = await api(`/whatsapp/conversaciones/${id}/mensajes?sync=1`, { loader: !silent });
     const parsed = parseMensajesResponse(data, id);
     if (parsed.conversacionId && parsed.conversacionId !== selectedId) {
       selectedId = parsed.conversacionId;
@@ -130,17 +130,17 @@
     return parsed.mensajes;
   }
 
-  async function loadConversaciones() {
+  async function loadConversaciones({ silent = false } = {}) {
     const prev = selectedId ? conversaciones.find(c => c.id === selectedId) : null;
-    conversaciones = await api('/whatsapp/conversaciones');
+    conversaciones = await api('/whatsapp/conversaciones', { loader: !silent });
     renderList(document.getElementById('waSearch').value.trim());
     if (selectedId) {
       const still = conversaciones.find(c => c.id === selectedId);
       if (still) {
         if (prev && still.no_leidos > (prev.no_leidos || 0)) {
-          fetchMensajes(selectedId).then(msgs => {
+          fetchMensajes(selectedId, { silent: true }).then(msgs => {
             renderMessages(msgs);
-            api(`/whatsapp/conversaciones/${selectedId}/leer`, { method: 'PATCH', body: {} }).catch(() => {});
+            api(`/whatsapp/conversaciones/${selectedId}/leer`, { method: 'PATCH', body: {}, loader: false }).catch(() => {});
           }).catch(() => {});
         }
         updateHeader(still);
@@ -176,7 +176,7 @@
 
     const msgs = await fetchMensajes(id);
     renderMessages(msgs);
-    await api(`/whatsapp/conversaciones/${id}/leer`, { method: 'PATCH', body: {} }).catch(() => {});
+    await api(`/whatsapp/conversaciones/${id}/leer`, { method: 'PATCH', body: {}, loader: false }).catch(() => {});
     c.no_leidos = 0;
     renderList(document.getElementById('waSearch').value.trim());
   }
@@ -231,9 +231,9 @@
 
   async function refreshAfterSend(res) {
     if (res?.conversacionId) selectedId = res.conversacionId;
-    const msgs = await fetchMensajes(selectedId);
+    const msgs = await fetchMensajes(selectedId, { silent: true });
     renderMessages(msgs);
-    await loadConversaciones();
+    await loadConversaciones({ silent: true });
   }
 
   async function sendMessage() {
@@ -252,7 +252,7 @@
       await refreshAfterSend(res);
     } catch (err) {
       toast(err.message, 'danger');
-      const msgs = await fetchMensajes(selectedId).catch(() => []);
+      const msgs = await fetchMensajes(selectedId, { silent: true }).catch(() => []);
       renderMessages(msgs);
     } finally {
       setComposeBusy(false);
@@ -269,6 +269,7 @@
     if (caption) form.append('caption', caption);
     if (duration != null) form.append('duration', String(duration));
 
+    showLoader('Enviando archivo…');
     try {
       const res = await fetch(`${API_BASE}/whatsapp/conversaciones/${selectedId}/mensajes/media`, {
         method: 'POST',
@@ -281,6 +282,7 @@
     } catch (err) {
       toast(err.message, 'danger');
     } finally {
+      hideLoader();
       setComposeBusy(false);
     }
   }
@@ -379,7 +381,7 @@
 
   async function checkStatus() {
     try {
-      const st = await api('/whatsapp/status');
+      const st = await api('/whatsapp/status', { loader: false });
       const banner = document.getElementById('waStatusBanner');
       if (!st.configured || !st.hasWebhookToken) {
         banner.style.display = 'block';
@@ -408,9 +410,9 @@
   loadConversaciones();
   checkStatus();
   pollTimer = setInterval(() => {
-    loadConversaciones().then(() => {
+    loadConversaciones({ silent: true }).then(() => {
       if (selectedId) {
-        fetchMensajes(selectedId).then(renderMessages).catch(() => {});
+        fetchMensajes(selectedId, { silent: true }).then(renderMessages).catch(() => {});
       }
     });
   }, 3000);

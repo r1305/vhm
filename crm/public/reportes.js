@@ -80,7 +80,7 @@
     const desde = document.getElementById('rptDesde').value || hoy;
     const hasta = document.getElementById('rptHasta').value || hoy;
     try {
-      const d = await api(`/reportes/stats?desde=${desde}&hasta=${hasta}`);
+      const d = await api(`/reportes/stats?desde=${desde}&hasta=${hasta}`, { loaderMessage: 'Cargando reportes…' });
       const k = d.kpis || {};
 
       document.getElementById('reporteKpis').innerHTML = `
