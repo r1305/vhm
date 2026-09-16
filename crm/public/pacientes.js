@@ -5,7 +5,7 @@
   'use strict';
 
   const { api, toast, esc, fmtDate, badge, fullName,
-          openModal, closeModal, ESTADO_PACIENTE, showLoader, hideLoader } = window.CRM;
+          openModal, closeModal, ESTADO_PACIENTE } = window.CRM;
 
   let terapeutasCache = [];
   let chipTerapeutaId = null;
@@ -50,7 +50,7 @@
       if (chipTerapeutaId) qs.set('terapeuta_id', chipTerapeutaId);
       if (filtroSinTel)   qs.set('sin_telefono', '1');
       if (filtroSinEmail) qs.set('sin_email', '1');
-      const data = await api(`/pacientes?${qs}`);
+      const data = await api(`/pacientes?${qs}`, { loaderMessage: 'Cargando pacientes…' });
       window.CRM.pacientesCache = data;
 
       document.getElementById('tablaPacientes').innerHTML = data.length
@@ -249,15 +249,17 @@
   }
 
   async function showPacienteForm(p = null) {
-    showLoader('Cargando datos…');
+    window.showCrmLoader?.('Cargando datos…');
     let catalogo = [];
     let paquetesPac = [];
     try {
       if (!terapeutasCache.length) terapeutasCache = await api('/terapeutas', { loader: false }).catch(() => []);
       catalogo = await api('/paquetes?activo=1', { loader: false }).catch(() => []);
-      paquetesPac = p ? await api(`/pacientes/${p.id}/paquetes-adquiridos`, { loader: false }).catch(() => []) : [];
+      paquetesPac = p
+        ? await api(`/pacientes/${p.id}/paquetes-adquiridos`, { loader: false }).catch(() => [])
+        : [];
     } finally {
-      hideLoader();
+      window.hideCrmLoader?.();
     }
     const paqueteActivo = paquetesPac.find((x) => x.activo) || paquetesPac[0] || null;
     const tsOpts   = terapeutasCache.map(t =>

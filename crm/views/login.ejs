@@ -30,7 +30,7 @@
       <%= error %>
     </div>
     <% } %>
-    <form method="POST" action="<%= BASE %>/login">
+    <form method="POST" action="<%= BASE %>/login" id="loginForm">
       <div class="form-group">
         <label class="form-label">Usuario</label>
         <input type="text" name="username" class="form-control" placeholder="usuario" autocomplete="username" required>
@@ -48,11 +48,38 @@
     </form>
   </div>
 </div>
-</body>
+
+<div class="crm-loader" id="crmLoader" aria-hidden="true">
+  <div class="crm-loader-box">
+    <div class="crm-loader-spinner" aria-hidden="true"></div>
+    <div class="crm-loader-text" id="crmLoaderText">Cargando…</div>
+  </div>
+</div>
+
 <script>
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('<%= BASE %>/sw.js').catch(() => {});
+    navigator.serviceWorker.register('<%= BASE %>/sw.js?v=<%= assetVersion %>').catch(() => {});
   }
+  (function () {
+    const loader = document.getElementById('crmLoader');
+    const loaderText = document.getElementById('crmLoaderText');
+    function showLoader(msg) {
+      if (!loader) return;
+      if (loaderText) loaderText.textContent = msg || 'Cargando…';
+      loader.classList.add('open');
+      loader.setAttribute('aria-hidden', 'false');
+      document.body.classList.add('crm-loading');
+    }
+    if (document.readyState !== 'complete') {
+      showLoader('Cargando…');
+      window.addEventListener('load', () => {
+        loader?.classList.remove('open');
+        loader?.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('crm-loading');
+      }, { once: true });
+    }
+    document.getElementById('loginForm')?.addEventListener('submit', () => showLoader('Ingresando…'));
+  })();
   document.getElementById('pw-toggle').addEventListener('click', function() {
     const inp = this.closest('.pw-wrap').querySelector('input');
     const show = inp.type === 'password';

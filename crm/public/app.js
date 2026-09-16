@@ -302,12 +302,12 @@
     _modalSuccessMessage = null;
   }
 
-  document.getElementById('modalClose').addEventListener('click', closeModal);
-  document.getElementById('modalCancel').addEventListener('click', closeModal);
-  document.getElementById('modalOverlay').addEventListener('click', e => {
+  document.getElementById('modalClose')?.addEventListener('click', closeModal);
+  document.getElementById('modalCancel')?.addEventListener('click', closeModal);
+  document.getElementById('modalOverlay')?.addEventListener('click', () => {
     // No cerrar al hacer click fuera del modal
   });
-  document.getElementById('modalSave').addEventListener('click', async () => {
+  document.getElementById('modalSave')?.addEventListener('click', async () => {
     if (!_modalSave) return;
     const btnSave   = document.getElementById('modalSave');
     const btnCancel = document.getElementById('modalCancel');
@@ -331,7 +331,7 @@
     }
   });
 
-  /* ── Exponer globals (antes de listeners para que módulos siempre tengan acceso) ── */
+  /* ── Exponer globals ─────────────────────────────── */
   window.CRM = {
     api, toast, esc, fmtDate, fmtTime, fmtDateTime, limaDateKey, CRM_TZ,
     fmtMoney, badge, fullName,
@@ -341,15 +341,31 @@
     estadoCitaOptionsHtml, estadoCitaSelectEntries,
     pacientesCache: [],
   };
+  window.showCrmLoader = showLoader;
+  window.hideCrmLoader = hideLoader;
+
+  /* ── Loader al cargar página / navegar ───────────── */
+  if (document.getElementById('crmLoader')) {
+    showLoader('Cargando…');
+    window.addEventListener('load', () => hideLoader(), { once: true });
+    document.querySelectorAll('a.nav-item[href]').forEach((link) => {
+      link.addEventListener('click', (e) => {
+        if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        if (link.target === '_blank') return;
+        showLoader('Cargando…');
+      });
+    });
+  }
 
   /* ── Tema ────────────────────────────────────────── */
   const themeBtn = document.getElementById('themeBtn');
   function updateThemeIcon() {
+    if (!themeBtn) return;
     const dark = document.documentElement.getAttribute('data-theme') === 'dark';
     themeBtn.innerHTML = `<i class="fas ${dark ? 'fa-sun' : 'fa-moon'}"></i>`;
   }
   updateThemeIcon();
-  themeBtn.addEventListener('click', () => {
+  themeBtn?.addEventListener('click', () => {
     const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
     document.documentElement.setAttribute('data-theme', next);
     localStorage.setItem('crm-theme', next);

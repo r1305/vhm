@@ -123,7 +123,7 @@
     if (!p) { showDetailEmpty(); return; }
     detail.innerHTML = '<div class="view-loading">Cargando citas…</div>';
     try {
-      const citas = await api(`/citas?paciente_id=${pacienteId}`);
+      const citas = await api(`/citas?paciente_id=${pacienteId}`, { loaderMessage: 'Cargando citas…' });
       const sesionesTotal = parseInt(p.sesiones_total || 0, 10);
       const sesionesConsumidas = citas.filter(c => c.estado === 'realizada' || c.estado === 'no_show').length;
       const total      = sesionesTotal;
@@ -180,7 +180,10 @@
       const qs = new URLSearchParams();
       const tid = document.getElementById('agendaTerapeuta')?.value;
       if (tid) qs.set('terapeuta_id', tid);
-      const [pacientes, citas] = await Promise.all([api(`/pacientes?${qs}`), api('/citas')]);
+      const [pacientes, citas] = await Promise.all([
+        api(`/pacientes?${qs}`, { loaderMessage: 'Cargando agenda…' }),
+        api('/citas', { loaderMessage: 'Cargando agenda…' }),
+      ]);
       pacientesCache = pacientes;
       window.CRM.pacientesCache = pacientes;
       citasCounts = {};

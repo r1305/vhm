@@ -159,7 +159,7 @@
 <script src="<%= BASE %>/app.js?v=<%= assetVersion %>"></script>
 <script>
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('<%= BASE %>/sw.js').catch(() => {});
+    navigator.serviceWorker.register('<%= BASE %>/sw.js?v=<%= assetVersion %>').catch(() => {});
   }
   (function () {
     let _deferredPrompt = null;

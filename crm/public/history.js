@@ -10,7 +10,7 @@
   async function loadHistorial() {
     if (!pacienteId) return;
     try {
-      const data = await api(`/historial/paciente/${pacienteId}`);
+      const data = await api(`/historial/paciente/${pacienteId}`, { loaderMessage: 'Cargando historial…' });
       document.getElementById('historialContent').innerHTML = data.length
         ? data.map(h => `
           <div class="note-card">

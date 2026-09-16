@@ -2,7 +2,7 @@
 (function () {
   'use strict';
 
-  const { api, toast, showLoader, hideLoader } = window.CRM;
+  const { api, toast } = window.CRM;
   const BASE = window.__APP_BASE__ || '';
 
   const DIAS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
@@ -32,8 +32,8 @@
     const tid = getTerId();
     try {
       const [disp, ters] = await Promise.all([
-        api(`/terapeutas/${tid}/disponibilidad`),
-        api('/terapeutas', { loader: false }),
+        api(`/terapeutas/${tid}/disponibilidad`, { loaderMessage: 'Cargando horario…' }),
+        api('/terapeutas', { loaderMessage: 'Cargando horario…' }),
       ]);
       dispActual = disp;
       const ter  = ters.find(t => t.id === tid);
@@ -156,7 +156,7 @@
 
     DIAS.forEach((_, i) => { if (estado[i]) syncDomToEstado(i); });
 
-    showLoader('Guardando horario…');
+    window.showCrmLoader?.('Guardando horario…');
     try {
       for (const d of dispActual) {
         await api(`/terapeutas/${tid}/disponibilidad/${d.id}`, { method: 'DELETE', loader: false });
@@ -177,7 +177,7 @@
     } catch (e) {
       toast(e.message, 'danger');
     } finally {
-      hideLoader();
+      window.hideCrmLoader?.();
       if (btn) btn.disabled = false;
     }
   }
