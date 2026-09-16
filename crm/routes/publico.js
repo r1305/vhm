@@ -1,6 +1,7 @@
 const { Router } = require('express');
 const pool = require('../lib/db');
 const { createMeetLink, isConnected } = require('../lib/googleMeet');
+const { evaluateBooking } = require('../lib/paquetesPaciente');
 const router = Router();
 
 const t   = (v, max=255) => v == null ? null : String(v).trim().slice(0,max) || null;
@@ -182,38 +183,33 @@ router.post('/:username/agendar', async (req, res) => {
     let paciente = null;
     if (email) {
       const [[row]] = await pool.execute(
-        `SELECT p.id, p.nombre,
-           COALESCE((SELECT SUM(ps.sesiones) FROM paciente_sesiones ps WHERE ps.paciente_id = p.id), 0)
-           - COALESCE((SELECT COUNT(*) FROM citas c WHERE c.paciente_id = p.id AND c.estado NOT IN ('cancelada','no_show')), 0)
-           AS sesiones_disponibles
-         FROM pacientes p WHERE p.email=? LIMIT 1`,
+        'SELECT p.id, p.nombre FROM pacientes p WHERE p.email=? LIMIT 1',
         [t(email, 150)]
       );
       paciente = row || null;
     }
     if (!paciente && telefono) {
       const [[row]] = await pool.execute(
-        `SELECT p.id, p.nombre,
-           COALESCE((SELECT SUM(ps.sesiones) FROM paciente_sesiones ps WHERE ps.paciente_id = p.id), 0)
-           - COALESCE((SELECT COUNT(*) FROM citas c WHERE c.paciente_id = p.id AND c.estado NOT IN ('cancelada','no_show')), 0)
-           AS sesiones_disponibles
-         FROM pacientes p WHERE p.telefono=? LIMIT 1`,
+        'SELECT p.id, p.nombre FROM pacientes p WHERE p.telefono=? LIMIT 1',
         [t(telefono, 30)]
       );
       paciente = row || null;
     }
 
     let pacienteId;
+    let pacientePaqueteId = null;
 
     if (paciente) {
-      // Paciente existente — verificar saldo real (sesiones compradas - citas activas)
-      if (paciente.sesiones_disponibles <= 0) {
+      const booking = await evaluateBooking(paciente.id);
+      if (!booking.ok) {
         return res.status(403).json({
-          error: 'No tienes sesiones disponibles para agendar. Contacta a tu terapeuta para adquirir más sesiones.',
-          codigo: 'SIN_SESIONES',
+          error: booking.mensaje,
+          codigo: booking.codigo,
+          cuota_numero: booking.cuota_numero || null,
         });
       }
       pacienteId = paciente.id;
+      pacientePaqueteId = booking.paciente_paquete_id || null;
     } else {
       // Paciente nuevo — crear como prospecto asignado al terapeuta de la URL
       const [r] = await pool.execute(
@@ -236,9 +232,9 @@ router.post('/:username/agendar', async (req, res) => {
     }
 
     const [rc] = await pool.execute(
-      `INSERT INTO citas (paciente_id, terapeuta_id, fecha, hora_inicio, hora_fin, modalidad, tipo, estado, meet_link)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 'pendiente', ?)`,
-      [pacienteId, ter.id, fecha, hora_inicio + ':00', hora_fin + ':00', modalidadVal, tipoCita, meet_link]
+      `INSERT INTO citas (paciente_id, terapeuta_id, fecha, hora_inicio, hora_fin, modalidad, tipo, estado, meet_link, paciente_paquete_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'pendiente', ?, ?)`,
+      [pacienteId, ter.id, fecha, hora_inicio + ':00', hora_fin + ':00', modalidadVal, tipoCita, meet_link, pacientePaqueteId]
     );
 
     res.status(201).json({ ok: true, cita_id: rc.insertId, meet_link });

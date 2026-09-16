@@ -17,6 +17,7 @@ const TITLES = {
   analitica:       'Analítica web',
   marketing:       'Email Marketing',
   integraciones:   'Integraciones',
+  paquetes:        'Paquetes',
   whatsapp:        'Central WhatsApp',
   asignacion:      'Asignación automática',
   calendario:      'Calendario',
@@ -306,6 +307,10 @@ router.get('/disponibilidad', requireSession, async (req, res) => {
 // ── TERAPEUTAS ───────────────────────────────────────────────────
 router.get('/terapeutas', requireSession, requireAdmin, async (req, res) => {
   render(res, 'terapeutas', { user: req.session.user, scripts: `<script src="${req.app.locals.BASE}/terapeutas.js"></script>` });
+});
+
+router.get('/paquetes', requireSession, requireAdmin, async (req, res) => {
+  render(res, 'paquetes', { user: req.session.user, scripts: `<script src="${req.app.locals.BASE}/paquetes.js"></script>` });
 });
 
 // ── REPORTES ─────────────────────────────────────────────────────

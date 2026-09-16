@@ -320,7 +320,7 @@
 
       goStep(4);
     } catch (e) {
-      mostrarError(e.message, e.codigo === 'SIN_SESIONES');
+      mostrarError(e.message, ['SIN_SESIONES', 'CUOTA_PENDIENTE', 'SIN_PAQUETE'].includes(e.codigo));
       btn.disabled = false;
       btn.innerHTML = 'Confirmar cita';
     }
