@@ -58,19 +58,144 @@
       .join('');
   }
 
+  /* ── Loader global ───────────────────────────────── */
+  let _loaderCount = 0;
+
+  function showLoader(message = 'Procesando…') {
+    const el = document.getElementById('crmLoader');
+    const text = document.getElementById('crmLoaderText');
+    if (!el) return;
+    _loaderCount += 1;
+    if (text) text.textContent = message;
+    el.classList.add('open');
+    el.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('crm-loading');
+  }
+
+  function hideLoader() {
+    const el = document.getElementById('crmLoader');
+    if (!el) return;
+    _loaderCount = Math.max(0, _loaderCount - 1);
+    if (_loaderCount === 0) {
+      el.classList.remove('open');
+      el.setAttribute('aria-hidden', 'true');
+      document.body.classList.remove('crm-loading');
+    }
+  }
+
+  function loaderMessageFor(method) {
+    if (method === 'DELETE') return 'Eliminando…';
+    if (method === 'POST') return 'Guardando…';
+    if (method === 'PUT' || method === 'PATCH') return 'Actualizando…';
+    return 'Procesando…';
+  }
+
+  /* ── Diálogos personalizados ─────────────────────── */
+  let _dialogResolve = null;
+
+  function closeDialog(result) {
+    const overlay = document.getElementById('crmDialogOverlay');
+    overlay?.classList.remove('open');
+    overlay?.setAttribute('aria-hidden', 'true');
+    const input = document.getElementById('crmDialogInput');
+    if (input) {
+      input.style.display = 'none';
+      input.value = '';
+    }
+    const resolve = _dialogResolve;
+    _dialogResolve = null;
+    if (resolve) resolve(result);
+  }
+
+  function confirmDialog({
+    title = '¿Confirmar acción?',
+    message = '',
+    confirmLabel = 'Confirmar',
+    cancelLabel = 'Cancelar',
+    danger = false,
+  } = {}) {
+    return new Promise((resolve) => {
+      _dialogResolve = resolve;
+      document.getElementById('crmDialogTitle').textContent = title;
+      document.getElementById('crmDialogBody').textContent = message;
+      const confirmBtn = document.getElementById('crmDialogConfirm');
+      confirmBtn.textContent = confirmLabel;
+      confirmBtn.className = danger ? 'btn btn-danger' : 'btn btn-primary';
+      document.getElementById('crmDialogCancel').textContent = cancelLabel;
+      const overlay = document.getElementById('crmDialogOverlay');
+      overlay.classList.add('open');
+      overlay.setAttribute('aria-hidden', 'false');
+      setTimeout(() => confirmBtn.focus(), 50);
+    });
+  }
+
+  function promptDialog({
+    title = 'Ingresa un valor',
+    message = '',
+    placeholder = '',
+    defaultValue = '',
+    confirmLabel = 'Aceptar',
+    cancelLabel = 'Cancelar',
+    inputType = 'text',
+  } = {}) {
+    return new Promise((resolve) => {
+      _dialogResolve = resolve;
+      document.getElementById('crmDialogTitle').textContent = title;
+      document.getElementById('crmDialogBody').textContent = message;
+      const input = document.getElementById('crmDialogInput');
+      input.type = inputType;
+      input.placeholder = placeholder;
+      input.value = defaultValue || '';
+      input.style.display = '';
+      const confirmBtn = document.getElementById('crmDialogConfirm');
+      confirmBtn.textContent = confirmLabel;
+      confirmBtn.className = 'btn btn-primary';
+      document.getElementById('crmDialogCancel').textContent = cancelLabel;
+      const overlay = document.getElementById('crmDialogOverlay');
+      overlay.classList.add('open');
+      overlay.setAttribute('aria-hidden', 'false');
+      setTimeout(() => input.focus(), 50);
+    });
+  }
+
+  document.getElementById('crmDialogCancel')?.addEventListener('click', () => closeDialog(null));
+  document.getElementById('crmDialogConfirm')?.addEventListener('click', () => {
+    const input = document.getElementById('crmDialogInput');
+    if (input && input.style.display !== 'none') closeDialog(input.value.trim() || null);
+    else closeDialog(true);
+  });
+  document.getElementById('crmDialogOverlay')?.addEventListener('click', (e) => {
+    if (e.target.id === 'crmDialogOverlay') closeDialog(null);
+  });
+  document.getElementById('crmDialogInput')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      closeDialog(e.target.value.trim() || null);
+    }
+  });
+
   /* ── API helper (usa cookie de sesión automáticamente) ── */
   async function api(path, opts = {}) {
-    const url = `${API}${path.startsWith('/') ? path : '/' + path}`;
-    const res = await fetch(url, {
-      ...opts,
-      credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: opts.body && typeof opts.body === 'object' ? JSON.stringify(opts.body) : opts.body,
-    });
-    if (res.status === 401) { window.location.href = `${BASE}/login`; throw new Error('Sesión expirada'); }
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || data.message || `Error ${res.status}`);
-    return data;
+    const method = (opts.method || 'GET').toUpperCase();
+    const useLoader = opts.loader !== false && method !== 'GET';
+    const loaderMsg = opts.loaderMessage || loaderMessageFor(method);
+    if (useLoader) showLoader(loaderMsg);
+    try {
+      const url = `${API}${path.startsWith('/') ? path : '/' + path}`;
+      const res = await fetch(url, {
+        ...opts,
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: opts.body && typeof opts.body === 'object' ? JSON.stringify(opts.body) : opts.body,
+      });
+      if (res.status === 401) { window.location.href = `${BASE}/login`; throw new Error('Sesión expirada'); }
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || data.message || `Error ${res.status}`);
+      if (opts.successMessage) toast(opts.successMessage, 'success');
+      return data;
+    } finally {
+      if (useLoader) hideLoader();
+    }
   }
 
   /* ── Toast ───────────────────────────────────────── */
@@ -146,9 +271,14 @@
 
   /* ── Modal ───────────────────────────────────────── */
   let _modalSave = null;
+  let _modalSuccessMessage = null;
+  let _modalSaveLabel = 'Guardar';
+  let _modalSaveClass = 'btn btn-primary';
 
-  function openModal(title, html, onSave, { large = false, saveLabel = 'Guardar', saveClass = 'btn btn-primary' } = {}) {
+  function openModal(title, html, onSave, { large = false, saveLabel = 'Guardar', saveClass = 'btn btn-primary', successMessage = null } = {}) {
     const btnSave = document.getElementById('modalSave');
+    _modalSaveLabel = saveLabel;
+    _modalSaveClass = saveClass;
     btnSave.style.display = onSave ? '' : 'none';
     btnSave.className = saveClass;
     btnSave.textContent = saveLabel;
@@ -157,6 +287,7 @@
     const modal = document.getElementById('modal');
     modal.classList.toggle('lg', large);
     _modalSave = onSave;
+    _modalSuccessMessage = successMessage;
     document.getElementById('modalOverlay').classList.add('open');
     setTimeout(() => modal.querySelector('input,select,textarea')?.focus(), 80);
   }
@@ -164,6 +295,7 @@
   function closeModal() {
     document.getElementById('modalOverlay').classList.remove('open');
     _modalSave = null;
+    _modalSuccessMessage = null;
   }
 
   document.getElementById('modalClose').addEventListener('click', closeModal);
@@ -178,17 +310,19 @@
     const btnClose  = document.getElementById('modalClose');
     const inputs    = document.getElementById('modalBody').querySelectorAll('input,select,textarea,button');
     btnSave.disabled = btnCancel.disabled = btnClose.disabled = true;
-    btnSave.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando…';
     inputs.forEach(el => el.disabled = true);
+    showLoader('Guardando…');
     try {
       await _modalSave();
+      if (_modalSuccessMessage) toast(_modalSuccessMessage, 'success');
       closeModal();
     } catch (err) {
       toast(err.message, 'danger');
     } finally {
+      hideLoader();
       btnSave.disabled = btnCancel.disabled = btnClose.disabled = false;
-      btnSave.className = 'btn btn-primary';
-      btnSave.textContent = 'Guardar';
+      btnSave.className = _modalSaveClass;
+      btnSave.textContent = _modalSaveLabel;
       inputs.forEach(el => el.disabled = false);
     }
   });
@@ -197,7 +331,8 @@
   window.CRM = {
     api, toast, esc, fmtDate, fmtTime, fmtDateTime, limaDateKey, CRM_TZ,
     fmtMoney, badge, fullName,
-    openModal, closeModal,
+    openModal, closeModal, showLoader, hideLoader,
+    confirmDialog, promptDialog,
     ESTADO_PACIENTE, ESTADO_LEAD, FUENTE_ICON, ESTADO_CITA,
     estadoCitaOptionsHtml, estadoCitaSelectEntries,
     pacientesCache: [],

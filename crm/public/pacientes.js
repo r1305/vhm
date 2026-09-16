@@ -234,11 +234,13 @@
         const cuotaId = btn.dataset.pagarCuota;
         const patientId = btn.dataset.pid;
         try {
-          const r = await api(`/pacientes/${patientId}/paquetes-adquiridos/cuotas/${cuotaId}/pagar`, { method: 'PATCH' });
+          const r = await api(`/pacientes/${patientId}/paquetes-adquiridos/cuotas/${cuotaId}/pagar`, {
+            method: 'PATCH',
+            successMessage: 'Cuota marcada como pagada',
+          });
           const activo = (r.paquetes || []).find((x) => x.activo) || r.paquetes[0];
           document.getElementById('paqueteActivoBox').innerHTML = renderPaqueteActivo(activo, patientId);
           bindPaqueteEvents(patientId, catalogo);
-          toast('Cuota marcada como pagada');
         } catch (e) {
           toast(e.message, 'danger');
         }
@@ -352,9 +354,8 @@
         });
       }
 
-      toast(p ? 'Paciente actualizado' : 'Paciente creado');
       loadPacientes();
-    }, { large: true });
+    }, { large: true, successMessage: p ? 'Paciente actualizado' : 'Paciente creado' });
 
     bindPaqueteEvents(p?.id, catalogo);
   }

@@ -2,7 +2,7 @@
 (function () {
   'use strict';
 
-  const { api, toast, esc, openModal, ESTADO_CITA, fullName } = window.CRM;
+  const { api, toast, esc, openModal, confirmDialog, ESTADO_CITA, fullName } = window.CRM;
 
   const DIAS_CORTO  = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
   const DIAS_LARGO  = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
@@ -413,10 +413,15 @@
       </div>` : ''}`, null);
     document.getElementById('modalSave').style.display = 'none';
     document.getElementById('btnEliminarBloqueo')?.addEventListener('click', async () => {
-      if (!confirm('¿Eliminar este bloqueo?')) return;
+      const ok = await confirmDialog({
+        title: 'Eliminar bloqueo',
+        message: '¿Eliminar este bloqueo del calendario?',
+        confirmLabel: 'Eliminar',
+        danger: true,
+      });
+      if (!ok) return;
       try {
-        await api(`/bloqueos/${b.id}`, { method: 'DELETE' });
-        toast('Bloqueo eliminado');
+        await api(`/bloqueos/${b.id}`, { method: 'DELETE', successMessage: 'Bloqueo eliminado' });
         document.getElementById('modalOverlay').classList.remove('open');
         loadCitas();
       } catch (e) { toast(e.message, 'danger'); }

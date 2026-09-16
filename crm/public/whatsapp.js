@@ -2,7 +2,7 @@
 (function () {
   'use strict';
 
-  const { api, toast, esc, openModal, closeModal, fmtTime } = window.CRM;
+  const { api, toast, esc, openModal, closeModal, promptDialog, fmtTime } = window.CRM;
   const API_BASE = `${window.__APP_BASE__ || ''}/api`;
 
   let conversaciones = [];
@@ -293,8 +293,16 @@
     const isImage = file.type.startsWith('image/');
     const isVideo = file.type.startsWith('video/');
     if (isImage || isVideo) {
-      const cap = window.prompt('Caption (opcional):', '') || '';
-      sendMedia(file, cap.trim());
+      promptDialog({
+        title: 'Caption (opcional)',
+        message: 'Texto que acompañará al archivo. Puedes dejarlo vacío.',
+        placeholder: 'Caption…',
+        confirmLabel: 'Enviar',
+        cancelLabel: 'Cancelar',
+      }).then((cap) => {
+        if (cap === null) return;
+        sendMedia(file, cap.trim());
+      });
       return;
     }
     sendMedia(file);

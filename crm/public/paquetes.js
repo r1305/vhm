@@ -73,9 +73,8 @@
       } else {
         await api('/paquetes', { method: 'POST', body });
       }
-      toast(p ? 'Paquete actualizado' : 'Paquete creado');
       loadPaquetes();
-    });
+    }, { successMessage: p ? 'Paquete actualizado' : 'Paquete creado' });
   }
 
   document.getElementById('btnNuevoPaquete')?.addEventListener('click', () => showForm());
