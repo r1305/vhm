@@ -12,7 +12,7 @@ function togglePwd(id, btn) {
 (function () {
   'use strict';
 
-  const { api, toast } = window.CRM;
+  const { api, toast, confirmDialog, promptDialog } = window.CRM;
 
   // Toast si viene de callback OAuth
   const qs = new URLSearchParams(location.search);
@@ -25,9 +25,14 @@ function togglePwd(id, btn) {
     location.href = url;
   });
   document.getElementById('btnGoogleDisconnect')?.addEventListener('click', async () => {
-    if (!confirm('¿Desconectar Google Meet?')) return;
-    await api('/integraciones/google', { method: 'DELETE' });
-    toast('Google desconectado');
+    const ok = await confirmDialog({
+      title: 'Desconectar Google Meet',
+      message: '¿Seguro que deseas desconectar la cuenta de Google Meet?',
+      confirmLabel: 'Desconectar',
+      danger: true,
+    });
+    if (!ok) return;
+    await api('/integraciones/google', { method: 'DELETE', successMessage: 'Google desconectado' });
     const badge = document.getElementById('google-status');
     if (badge) { badge.textContent = 'Sin conectar'; badge.className = 'badge badge-yellow'; }
     document.getElementById('btnGoogleDisconnect')?.remove();
@@ -106,7 +111,12 @@ function togglePwd(id, btn) {
   });
 
   document.getElementById('btnTestOpenwa')?.addEventListener('click', async () => {
-    const to = prompt('Número WhatsApp destino (ej: 51999999999):');
+    const to = await promptDialog({
+      title: 'Enviar prueba WhatsApp',
+      message: 'Ingresa el número de destino con código de país.',
+      placeholder: '51999999999',
+      confirmLabel: 'Enviar',
+    });
     if (!to) return;
     try {
       const r = await api('/whatsapp/test', { method:'POST', body: { to, message:'Prueba de WhatsApp desde VHM CRM ✅' } });
@@ -140,7 +150,12 @@ function togglePwd(id, btn) {
   document.getElementById('btnEjecutarCron')?.addEventListener('click', async () => {
     const message = document.getElementById('cron-mensaje-broadcast').value.trim();
     if (!message) { toast('Escribe el mensaje recordatorio antes de ejecutar', 'danger'); return; }
-    if (!confirm('¿Enviar el recordatorio a todos los terapeutas con rol Terapeuta y teléfono registrado?')) return;
+    const okCron = await confirmDialog({
+      title: 'Ejecutar recordatorio',
+      message: '¿Enviar el recordatorio a todos los terapeutas con rol Terapeuta y teléfono registrado?',
+      confirmLabel: 'Enviar ahora',
+    });
+    if (!okCron) return;
     const btn = document.getElementById('btnEjecutarCron');
     if (btn) { btn.disabled = true; btn.textContent = 'Ejecutando…'; }
     try {
@@ -169,15 +184,30 @@ function togglePwd(id, btn) {
     const terapeutas  = await api('/terapeutas').catch(() => []);
     const conTelefono = terapeutas.filter(t => t.activo && t.rol === 'terapeuta' && t.telefono && String(t.telefono).trim());
     if (!conTelefono.length) { toast('Ningún terapeuta con rol Terapeuta tiene teléfono registrado', 'danger'); return; }
-    if (!confirm(`¿Enviar este mensaje a ${conTelefono.length} terapeuta(s)?\n\n${message}`)) return;
+    const okBroadcast = await confirmDialog({
+      title: 'Enviar broadcast',
+      message: `¿Enviar este mensaje a ${conTelefono.length} terapeuta(s)?\n\n${message}`,
+      confirmLabel: 'Enviar',
+    });
+    if (!okBroadcast) return;
     try { const r = await api('/cron/broadcast', { method:'POST', body: { message } }); toast(`Enviando a ${r.enviados} terapeuta(s) ✅`); }
     catch (err) { toast('Error: '+err.message, 'danger'); }
   });
 
   document.getElementById('btnEnviarManual')?.addEventListener('click', async () => {
-    const to      = prompt('Número destino (ej: 51999999999):');
+    const to = await promptDialog({
+      title: 'WhatsApp manual',
+      message: 'Número destino con código de país.',
+      placeholder: '51999999999',
+      confirmLabel: 'Continuar',
+    });
     if (!to) return;
-    const message = prompt('Mensaje a enviar:');
+    const message = await promptDialog({
+      title: 'Mensaje',
+      message: 'Escribe el mensaje a enviar.',
+      placeholder: 'Tu mensaje…',
+      confirmLabel: 'Enviar',
+    });
     if (!message) return;
     try {
       const r = await api('/whatsapp/test', { method:'POST', body: { to, message } });

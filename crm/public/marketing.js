@@ -4,7 +4,7 @@
 (function () {
   'use strict';
 
-  const { api, toast, esc, fmtDate, openModal } = window.CRM;
+  const { api, toast, esc, fmtDate, openModal, confirmDialog } = window.CRM;
 
   const ESTADO_CAMP = {
     borrador:   { label: 'Borrador',   css: 'badge-gray'   },
@@ -52,16 +52,27 @@
       );
       document.querySelectorAll('[data-enviar]').forEach(btn =>
         btn.addEventListener('click', async () => {
-          if (!confirm('¿Enviar esta campaña? Esta acción no se puede deshacer.')) return;
+          const ok = await confirmDialog({
+            title: 'Enviar campaña',
+            message: '¿Enviar esta campaña? Esta acción no se puede deshacer.',
+            confirmLabel: 'Enviar',
+          });
+          if (!ok) return;
           try { const r = await api(`/marketing/campanas/${btn.dataset.enviar}/enviar`, { method:'POST' }); toast(`Enviando a ${r.total} suscriptores`); loadCampanas(); }
           catch (err) { toast(err.message, 'danger'); }
         })
       );
       document.querySelectorAll('[data-del]').forEach(btn =>
         btn.addEventListener('click', async () => {
-          if (!confirm('¿Eliminar campaña?')) return;
-          await api(`/marketing/campanas/${btn.dataset.del}`, { method:'DELETE' });
-          toast('Campaña eliminada'); loadCampanas();
+          const ok = await confirmDialog({
+            title: 'Eliminar campaña',
+            message: '¿Eliminar esta campaña?',
+            confirmLabel: 'Eliminar',
+            danger: true,
+          });
+          if (!ok) return;
+          await api(`/marketing/campanas/${btn.dataset.del}`, { method:'DELETE', successMessage: 'Campaña eliminada' });
+          loadCampanas();
         })
       );
     } catch (err) { toast(err.message, 'danger'); }

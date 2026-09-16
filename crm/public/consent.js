@@ -4,7 +4,7 @@
 (function () {
   'use strict';
 
-  const { api, toast, esc, fmtDate, fullName } = window.CRM;
+  const { api, toast, esc, fmtDate, fullName, confirmDialog } = window.CRM;
   let pacienteId = null;
 
   async function loadConsentimientos() {
@@ -35,10 +35,18 @@
         </div>`;
 
       document.getElementById('btnFirmarCons')?.addEventListener('click', async () => {
-        if (!confirm('¿Confirmar la firma digital del consentimiento?')) return;
-        await api(`/pacientes/${pacienteId}/consentimiento`, { method: 'POST',
-          body: { tipo: 'terapeutico', texto: 'Consentimiento informado firmado digitalmente desde el CRM.' } });
-        toast('Consentimiento registrado'); loadConsentimientos();
+        const ok = await confirmDialog({
+          title: 'Firmar consentimiento',
+          message: '¿Confirmar la firma digital del consentimiento informado?',
+          confirmLabel: 'Firmar',
+        });
+        if (!ok) return;
+        await api(`/pacientes/${pacienteId}/consentimiento`, {
+          method: 'POST',
+          body: { tipo: 'terapeutico', texto: 'Consentimiento informado firmado digitalmente desde el CRM.' },
+          successMessage: 'Consentimiento registrado',
+        });
+        loadConsentimientos();
       });
     } catch (err) { toast(err.message, 'danger'); }
   }

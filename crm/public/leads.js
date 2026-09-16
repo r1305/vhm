@@ -4,7 +4,7 @@
 (function () {
   'use strict';
 
-  const { api, toast, esc, fmtDate, badge, fullName, openModal, ESTADO_LEAD, FUENTE_ICON } = window.CRM;
+  const { api, toast, esc, fmtDate, badge, fullName, openModal, confirmDialog, ESTADO_LEAD, FUENTE_ICON } = window.CRM;
 
   async function loadLeads() {
     try {
@@ -42,7 +42,12 @@
       );
       document.querySelectorAll('[data-convertir]').forEach(btn =>
         btn.addEventListener('click', async () => {
-          if (!confirm('¿Convertir este lead en paciente?')) return;
+          const ok = await confirmDialog({
+            title: 'Convertir lead',
+            message: '¿Convertir este lead en paciente?',
+            confirmLabel: 'Convertir',
+          });
+          if (!ok) return;
           try {
             const r = await api(`/leads/${btn.dataset.convertir}/convertir`, { method: 'POST', body: {} });
             toast(`Lead convertido → Paciente #${r.paciente_id}`); loadLeads();

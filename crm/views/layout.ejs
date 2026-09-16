@@ -137,6 +137,25 @@
 
 <div id="toastContainer"></div>
 
+<div class="crm-loader" id="crmLoader" aria-hidden="true">
+  <div class="crm-loader-box">
+    <div class="crm-loader-spinner" aria-hidden="true"></div>
+    <div class="crm-loader-text" id="crmLoaderText">Procesando…</div>
+  </div>
+</div>
+
+<div class="crm-dialog-overlay" id="crmDialogOverlay" aria-hidden="true">
+  <div class="crm-dialog" role="dialog" aria-modal="true">
+    <div class="crm-dialog-title" id="crmDialogTitle">Confirmar</div>
+    <div class="crm-dialog-body" id="crmDialogBody"></div>
+    <input type="text" class="form-control crm-dialog-input" id="crmDialogInput" style="display:none">
+    <div class="crm-dialog-actions">
+      <button type="button" class="btn btn-outline" id="crmDialogCancel">Cancelar</button>
+      <button type="button" class="btn btn-primary" id="crmDialogConfirm">Confirmar</button>
+    </div>
+  </div>
+</div>
+
 <script src="<%= BASE %>/app.js?v=<%= assetVersion %>"></script>
 <script>
   if ('serviceWorker' in navigator) {

@@ -135,9 +135,8 @@
           body.password = body.username + '2026';
           await api('/terapeutas', { method: 'POST', body });
         }
-        toast(t ? 'Terapeuta actualizado' : 'Terapeuta creado');
         loadTerapeutas();
-      });
+      }, { successMessage: t ? 'Terapeuta actualizado' : 'Terapeuta creado' });
   }
 
   async function showHorario(ter) {
@@ -189,8 +188,8 @@
             method: 'POST', body: { dia_semana: i, hora_inicio: hi, hora_fin: hf },
           });
         }
-        toast('Horario guardado');
-      }
+      },
+      { successMessage: 'Horario guardado' }
     );
 
     document.getElementById('btnCopyLink')?.addEventListener('click', () => {

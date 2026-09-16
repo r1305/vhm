@@ -4,7 +4,7 @@
 (function () {
   'use strict';
 
-  const { api, toast, esc, fmtDate, openModal } = window.CRM;
+  const { api, toast, esc, fmtDate, openModal, confirmDialog } = window.CRM;
   let pacienteId = null;
 
   async function loadHistorial() {
@@ -26,9 +26,15 @@
 
       document.querySelectorAll('[data-del]').forEach(btn =>
         btn.addEventListener('click', async () => {
-          if (!confirm('¿Eliminar esta nota? No se puede deshacer.')) return;
-          await api(`/historial/${btn.dataset.del}`, { method: 'DELETE' });
-          toast('Nota eliminada'); loadHistorial();
+          const ok = await confirmDialog({
+            title: 'Eliminar nota',
+            message: '¿Eliminar esta nota clínica? No se puede deshacer.',
+            confirmLabel: 'Eliminar',
+            danger: true,
+          });
+          if (!ok) return;
+          await api(`/historial/${btn.dataset.del}`, { method: 'DELETE', successMessage: 'Nota eliminada' });
+          loadHistorial();
         })
       );
     } catch (err) { toast(err.message, 'danger'); }
