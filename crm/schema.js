@@ -198,17 +198,23 @@ async function ensureSchema() {
 
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS paquetes_catalogo (
-        id                INT AUTO_INCREMENT PRIMARY KEY,
-        nombre            VARCHAR(120) NOT NULL,
-        sesiones          INT NOT NULL DEFAULT 1,
-        validez_dias      INT NOT NULL DEFAULT 30,
-        accede_comunidad  TINYINT(1) NOT NULL DEFAULT 0,
-        precio            DECIMAL(10,2) NOT NULL DEFAULT 0,
-        activo            TINYINT(1) NOT NULL DEFAULT 1,
-        created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        id                    INT AUTO_INCREMENT PRIMARY KEY,
+        nombre                VARCHAR(120) NOT NULL,
+        sesiones              INT NOT NULL DEFAULT 1,
+        validez_dias          INT NOT NULL DEFAULT 30,
+        dias_siguiente_cuota  INT NOT NULL DEFAULT 15,
+        accede_comunidad      TINYINT(1) NOT NULL DEFAULT 0,
+        precio                DECIMAL(10,2) NOT NULL DEFAULT 0,
+        activo                TINYINT(1) NOT NULL DEFAULT 1,
+        created_at            TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at            TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
+    try {
+      await conn.execute(
+        'ALTER TABLE paquetes_catalogo ADD COLUMN dias_siguiente_cuota INT NOT NULL DEFAULT 15 AFTER validez_dias'
+      );
+    } catch (_) {}
 
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS paciente_paquetes (
@@ -217,10 +223,11 @@ async function ensureSchema() {
         paquete_catalogo_id INT NOT NULL,
         nombre              VARCHAR(120) NOT NULL,
         sesiones            INT NOT NULL,
-        validez_dias        INT NOT NULL,
-        accede_comunidad    TINYINT(1) NOT NULL DEFAULT 0,
-        precio              DECIMAL(10,2) NOT NULL,
-        fecha_inicio        DATE NOT NULL,
+        validez_dias          INT NOT NULL,
+        dias_siguiente_cuota  INT NOT NULL DEFAULT 15,
+        accede_comunidad      TINYINT(1) NOT NULL DEFAULT 0,
+        precio                DECIMAL(10,2) NOT NULL,
+        fecha_inicio          DATE NOT NULL,
         vence_at            DATE DEFAULT NULL,
         tipo_pago           ENUM('total','parcial') NOT NULL DEFAULT 'total',
         num_cuotas          INT NOT NULL DEFAULT 1,
@@ -232,6 +239,11 @@ async function ensureSchema() {
         KEY idx_pp_activo (activo)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
+    try {
+      await conn.execute(
+        'ALTER TABLE paciente_paquetes ADD COLUMN dias_siguiente_cuota INT NOT NULL DEFAULT 15 AFTER validez_dias'
+      );
+    } catch (_) {}
 
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS paciente_paquete_cuotas (

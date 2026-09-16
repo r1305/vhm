@@ -1,6 +1,7 @@
 const { Router } = require('express');
 const pool = require('../lib/db');
 const { auth, authAdmin } = require('../lib/auth');
+const { normalizeDiasSiguienteCuota } = require('../lib/cuotasPlan');
 
 const router = Router();
 const t = (v, max = 255) => (v == null ? null : String(v).trim().slice(0, max) || null);
@@ -23,6 +24,7 @@ router.get('/', auth, async (req, res) => {
       precio: Number(r.precio),
       sesiones: Number(r.sesiones),
       validez_dias: Number(r.validez_dias),
+      dias_siguiente_cuota: Number(r.dias_siguiente_cuota) || 15,
     })));
   } catch {
     res.status(500).json({ error: 'Error al listar paquetes' });
@@ -30,18 +32,20 @@ router.get('/', auth, async (req, res) => {
 });
 
 router.post('/', authAdmin, async (req, res) => {
-  const { nombre, sesiones, validez_dias, accede_comunidad, precio, activo } = req.body || {};
+  const { nombre, sesiones, validez_dias, dias_siguiente_cuota, accede_comunidad, precio, activo } = req.body || {};
   if (!t(nombre, 120)) return res.status(400).json({ error: 'El nombre es obligatorio' });
   const ses = Math.max(1, parseInt(sesiones, 10) || 1);
   const dias = Math.max(1, parseInt(validez_dias, 10) || 30);
+  const diasCuota = normalizeDiasSiguienteCuota(dias_siguiente_cuota);
   try {
     const [r] = await pool.execute(
-      `INSERT INTO paquetes_catalogo (nombre, sesiones, validez_dias, accede_comunidad, precio, activo)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO paquetes_catalogo (nombre, sesiones, validez_dias, dias_siguiente_cuota, accede_comunidad, precio, activo)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [
         t(nombre, 120),
         ses,
         dias,
+        diasCuota,
         accede_comunidad ? 1 : 0,
         num(precio, 0),
         activo === false || activo === 0 || activo === '0' ? 0 : 1,
@@ -56,17 +60,18 @@ router.post('/', authAdmin, async (req, res) => {
 router.put('/:id', authAdmin, async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (!id) return res.status(400).json({ error: 'ID inválido' });
-  const { nombre, sesiones, validez_dias, accede_comunidad, precio, activo } = req.body || {};
+  const { nombre, sesiones, validez_dias, dias_siguiente_cuota, accede_comunidad, precio, activo } = req.body || {};
   if (!t(nombre, 120)) return res.status(400).json({ error: 'El nombre es obligatorio' });
   try {
     await pool.execute(
       `UPDATE paquetes_catalogo
-       SET nombre = ?, sesiones = ?, validez_dias = ?, accede_comunidad = ?, precio = ?, activo = ?
+       SET nombre = ?, sesiones = ?, validez_dias = ?, dias_siguiente_cuota = ?, accede_comunidad = ?, precio = ?, activo = ?
        WHERE id = ?`,
       [
         t(nombre, 120),
         Math.max(1, parseInt(sesiones, 10) || 1),
         Math.max(1, parseInt(validez_dias, 10) || 30),
+        normalizeDiasSiguienteCuota(dias_siguiente_cuota),
         accede_comunidad ? 1 : 0,
         num(precio, 0),
         activo === false || activo === 0 || activo === '0' ? 0 : 1,

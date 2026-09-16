@@ -27,9 +27,34 @@
 .pkg-cuota-row.pagada { background: rgba(34, 197, 94, 0.08); border-color: rgba(34, 197, 94, 0.25); }
 .pkg-cuota-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
 .pkg-cuotas-preview { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.pkg-cuota-preview-summary { font-size: 12px; font-weight: 600; color: var(--primary); margin-bottom: 2px; }
 .pkg-cuota-preview-item { font-size: 12px; padding: 8px 10px; border: 1px dashed var(--border); border-radius: 8px; background: var(--surface); }
 .pkg-cuota-ses { display: block; font-size: 11px; color: var(--text-muted); margin-top: 2px; }
 .pkg-asignar-box { border-top: 1px solid var(--border); padding-top: 12px; }
+.pkg-compra-bloqueada { font-size: 13px; padding: 12px; border-radius: var(--radius-sm); background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.3); color: var(--text); line-height: 1.5; }
+.pkg-compra-bloqueada i { color: var(--warning, #f59e0b); margin-right: 6px; }
+
+.pkg-historial { display: flex; flex-direction: column; gap: 10px; max-height: 320px; overflow-y: auto; }
+.pkg-historial-item { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px; background: var(--surface); }
+.pkg-historial-item.estado-activo { border-color: var(--primary); background: rgba(99, 102, 241, 0.04); }
+.pkg-historial-item.estado-pendiente { border-color: var(--warning, #f59e0b); background: rgba(245, 158, 11, 0.05); }
+.pkg-historial-item.estado-vencido,
+.pkg-historial-item.estado-agotado,
+.pkg-historial-item.estado-inactivo,
+.pkg-historial-item.estado-reemplazado { opacity: 0.75; }
+.pkg-historial-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 6px; }
+.pkg-historial-title { font-weight: 700; font-size: 13px; }
+.pkg-historial-meta { font-size: 11px; color: var(--text-muted); line-height: 1.5; }
+.pkg-estado-badge { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; padding: 2px 8px; border-radius: 10px; white-space: nowrap; }
+.pkg-estado-badge.activo { background: var(--primary-light); color: var(--primary); }
+.pkg-estado-badge.pendiente { background: rgba(245, 158, 11, 0.15); color: var(--warning, #f59e0b); }
+.pkg-estado-badge.vencido,
+.pkg-estado-badge.agotado,
+.pkg-estado-badge.inactivo,
+.pkg-estado-badge.reemplazado { background: var(--bg); color: var(--text-muted); }
+.pkg-cuotas-toggle { font-size: 11px; color: var(--primary); cursor: pointer; border: none; background: none; padding: 4px 0; margin-top: 4px; }
+.pkg-cuotas-collapsed { display: none; margin-top: 8px; }
+.pkg-cuotas-collapsed.open { display: flex; flex-direction: column; gap: 6px; }
 
 @media (max-width: 768px) {
   .pac-grid { grid-template-columns: 1fr; gap: 12px; }

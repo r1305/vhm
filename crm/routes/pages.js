@@ -277,7 +277,7 @@ router.get('/pacientes', requireSession, async (req, res) => {
     const [terapeutas] = await db.execute('SELECT id, nombre, apellido FROM terapeutas WHERE activo=1 ORDER BY nombre');
     const [rows]       = await db.execute('SELECT terapeuta_id, COUNT(*) AS total FROM pacientes GROUP BY terapeuta_id');
     const conteo       = Object.fromEntries(rows.map(r => [r.terapeuta_id, r.total]));
-    render(res, 'pacientes', { user, terapeutas, conteo, scripts: `<script src="${req.app.locals.BASE}/pacientes.js"></script>` });
+    render(res, 'pacientes', { user, terapeutas, conteo, scripts: `<script src="${req.app.locals.BASE}/cuotasPlan.js"></script><script src="${req.app.locals.BASE}/pacientes.js"></script>` });
   } catch (err) { res.status(500).send(err.message); }
 });
 
