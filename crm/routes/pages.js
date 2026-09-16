@@ -134,7 +134,7 @@ router.post('/login', async (req, res) => {
     req.session.user = { id: user.id, nombre: user.nombre, apellido: user.apellido, username: user.username, rol: user.rol };
     res.redirect(`${BASE}/${getHomePath(req.session.user)}`);
   } catch (err) {
-    res.render('login', { BASE, error: err.message });
+    res.render('login', { BASE, error: err.message, assetVersion: req.app.locals.assetVersion });
   }
 });
 

@@ -2,7 +2,7 @@
 (function () {
   'use strict';
 
-  const { api, toast, esc, openModal, closeModal, promptDialog, fmtTime, showLoader, hideLoader } = window.CRM;
+  const { api, toast, esc, openModal, closeModal, promptDialog, fmtTime } = window.CRM;
   const API_BASE = `${window.__APP_BASE__ || ''}/api`;
 
   let conversaciones = [];
@@ -120,7 +120,10 @@
   }
 
   async function fetchMensajes(id, { silent = false } = {}) {
-    const data = await api(`/whatsapp/conversaciones/${id}/mensajes?sync=1`, { loader: !silent });
+    const data = await api(`/whatsapp/conversaciones/${id}/mensajes?sync=1`, {
+      loader: !silent,
+      loaderMessage: silent ? undefined : 'Cargando mensajes…',
+    });
     const parsed = parseMensajesResponse(data, id);
     if (parsed.conversacionId && parsed.conversacionId !== selectedId) {
       selectedId = parsed.conversacionId;
@@ -132,7 +135,10 @@
 
   async function loadConversaciones({ silent = false } = {}) {
     const prev = selectedId ? conversaciones.find(c => c.id === selectedId) : null;
-    conversaciones = await api('/whatsapp/conversaciones', { loader: !silent });
+    conversaciones = await api('/whatsapp/conversaciones', {
+      loader: !silent,
+      loaderMessage: silent ? undefined : 'Cargando conversaciones…',
+    });
     renderList(document.getElementById('waSearch').value.trim());
     if (selectedId) {
       const still = conversaciones.find(c => c.id === selectedId);
@@ -269,7 +275,7 @@
     if (caption) form.append('caption', caption);
     if (duration != null) form.append('duration', String(duration));
 
-    showLoader('Enviando archivo…');
+    window.showCrmLoader?.('Enviando archivo…');
     try {
       const res = await fetch(`${API_BASE}/whatsapp/conversaciones/${selectedId}/mensajes/media`, {
         method: 'POST',
@@ -282,7 +288,7 @@
     } catch (err) {
       toast(err.message, 'danger');
     } finally {
-      hideLoader();
+      window.hideCrmLoader?.();
       setComposeBusy(false);
     }
   }
