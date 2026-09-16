@@ -387,13 +387,12 @@
         if (!tid) throw new Error('Selecciona un terapeuta');
         body.terapeuta_id = tid;
       }
-      await api('/bloqueos', { method: 'POST', body });
+      await api('/bloqueos', { method: 'POST', body, loader: false });
       const [y,m,d] = desde.split('-').map(Number);
       cursor = new Date(y, m-1, d);
       cursor.setHours(0,0,0,0);
-      toast('Bloqueo creado');
       loadCitas();
-    });
+    }, { successMessage: 'Bloqueo creado' });
   }
 
   /* ── Detalle bloqueo ── */

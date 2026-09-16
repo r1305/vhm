@@ -62,9 +62,9 @@
           notas: document.getElementById('f_notas').value || null,
         };
         if (!body.paciente_id || !body.monto) throw new Error('Paciente y monto son requeridos');
-        await api('/pagos', { method: 'POST', body });
-        toast('Pago registrado'); loadPagos();
-      });
+        await api('/pagos', { method: 'POST', body, loader: false });
+        loadPagos();
+      }, { successMessage: 'Pago registrado' });
   }
 
   async function showNuevoPack() {
@@ -87,9 +87,9 @@
           vence_at: document.getElementById('f_vence').value || null,
         };
         if (!body.paciente_id || !body.monto_total) throw new Error('Paciente y monto requeridos');
-        await api('/pagos/packs', { method: 'POST', body });
-        toast('Pack creado'); loadPagos();
-      });
+        await api('/pagos/packs', { method: 'POST', body, loader: false });
+        loadPagos();
+      }, { successMessage: 'Pack creado' });
   }
 
   document.getElementById('pagosPacienteSelect').addEventListener('change', loadPagos);

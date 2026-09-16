@@ -70,8 +70,8 @@ function togglePwd(id, btn) {
         meta_access_token: document.getElementById('meta-access-token').value,
         meta_app_secret:   document.getElementById('meta-app-secret').value,
       };
-      await api('/config', { method:'POST', body });
-      toast('Configuración de Instagram guardada'); updateBadges(body);
+      await api('/config', { method:'POST', body, successMessage: 'Configuración de Instagram guardada' });
+      updateBadges(body);
     } catch (err) { toast(err.message, 'danger'); }
   });
 
@@ -81,8 +81,8 @@ function togglePwd(id, btn) {
         tiktok_app_secret:   document.getElementById('tiktok-app-secret').value,
         tiktok_verify_token: document.getElementById('tiktok-verify-token').value,
       };
-      await api('/config', { method:'POST', body });
-      toast('Configuración de TikTok guardada'); updateBadges(body);
+      await api('/config', { method:'POST', body, successMessage: 'Configuración de TikTok guardada' });
+      updateBadges(body);
     } catch (err) { toast(err.message, 'danger'); }
   });
 
@@ -90,8 +90,7 @@ function togglePwd(id, btn) {
     try {
       const texto = document.getElementById('widget-btn-texto').value.trim();
       if (!texto) { toast('El texto no puede estar vacío', 'danger'); return; }
-      await api('/config', { method:'POST', body: { widget_btn_texto: texto } });
-      toast('Texto del botón actualizado');
+      await api('/config', { method:'POST', body: { widget_btn_texto: texto }, successMessage: 'Texto del botón actualizado' });
     } catch (err) { toast(err.message, 'danger'); }
   });
 
@@ -103,10 +102,9 @@ function togglePwd(id, btn) {
         openwa_api_key:        document.getElementById('openwa-api-key').value.trim(),
         openwa_session:        document.getElementById('openwa-session').value.trim(),
         openwa_webhook_token:  document.getElementById('openwa-webhook-token').value.trim(),
-      }});
+      }, successMessage: 'Configuración WhatsApp guardada' });
       const el = document.getElementById('openwa-status');
       if (el) { el.textContent = url ? 'Configurado' : 'Sin configurar'; el.className = 'badge '+(url?'badge-green':'badge-yellow'); }
-      toast('Configuración WhatsApp guardada');
     } catch (err) { toast(err.message, 'danger'); }
   });
 
@@ -119,9 +117,12 @@ function togglePwd(id, btn) {
     });
     if (!to) return;
     try {
-      const r = await api('/whatsapp/test', { method:'POST', body: { to, message:'Prueba de WhatsApp desde VHM CRM ✅' } });
+      const r = await api('/whatsapp/test', {
+        method:'POST',
+        body: { to, message:'Prueba de WhatsApp desde VHM CRM ✅' },
+        successMessage: (data) => (data.skipped ? null : 'Mensaje enviado correctamente ✅'),
+      });
       if (r.skipped) toast('OpenWA no configurado — guarda los datos primero', 'danger');
-      else toast('Mensaje enviado correctamente ✅');
     } catch (err) { toast('Error: '+err.message, 'danger'); }
   });
 
@@ -138,8 +139,7 @@ function togglePwd(id, btn) {
         mensaje: document.getElementById('cron-mensaje-broadcast').value.trim(),
       };
       await api('/cron/config', { method:'POST', body });
-      // Releer desde servidor para confirmar lo que quedó guardado
-      const saved = await api('/cron/config');
+      const saved = await api('/cron/config', { loader: false });
       updateCronStatus(saved);
       document.getElementById('cron-enabled').checked = !!saved.enabled;
       document.getElementById('cron-mensaje-broadcast').value = saved.mensaje || '';
@@ -156,8 +156,6 @@ function togglePwd(id, btn) {
       confirmLabel: 'Enviar ahora',
     });
     if (!okCron) return;
-    const btn = document.getElementById('btnEjecutarCron');
-    if (btn) { btn.disabled = true; btn.textContent = 'Ejecutando…'; }
     try {
       await api('/cron/config', { method:'POST', body: {
         enabled: document.getElementById('cron-enabled').checked ? 1 : 0,
@@ -165,17 +163,20 @@ function togglePwd(id, btn) {
         minuto: Number(document.getElementById('cron-minuto').value),
         dias: [...document.querySelectorAll('.cron-dia:checked')].map(cb => cb.value).join(','),
         mensaje: message,
-      }});
-      const r = await api('/cron/ejecutar', { method:'POST' });
+      }, loader: false });
+      const r = await api('/cron/ejecutar', {
+        method:'POST',
+        successMessage: (data) => {
+          if (data.sinConfig || data.sinMensaje || data.errores?.length) return null;
+          if (data.enviados === 0 && data.omitidos === 0) return null;
+          return `Recordatorio enviado a ${data.enviados} terapeuta(s) ✅`;
+        },
+      });
       if (r.sinConfig) toast('OpenWA no configurado — guarda URL, API key y Session ID', 'danger');
       else if (r.sinMensaje) toast('Sin mensaje configurado', 'danger');
       else if (r.errores?.length) toast(`Enviados: ${r.enviados}. Errores: ${r.errores.length}`, 'danger');
       else if (r.enviados === 0 && r.omitidos === 0) toast('Ningún terapeuta activo con rol Terapeuta y teléfono', 'danger');
-      else toast(`Recordatorio enviado a ${r.enviados} terapeuta(s) ✅`);
     } catch (err) { toast(err.message, 'danger'); }
-    finally {
-      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-play"></i> Ejecutar ahora'; }
-    }
   });
 
   document.getElementById('btnBroadcast')?.addEventListener('click', async () => {
@@ -190,8 +191,13 @@ function togglePwd(id, btn) {
       confirmLabel: 'Enviar',
     });
     if (!okBroadcast) return;
-    try { const r = await api('/cron/broadcast', { method:'POST', body: { message } }); toast(`Enviando a ${r.enviados} terapeuta(s) ✅`); }
-    catch (err) { toast('Error: '+err.message, 'danger'); }
+    try {
+      await api('/cron/broadcast', {
+        method:'POST',
+        body: { message },
+        successMessage: (r) => `Enviando a ${r.enviados} terapeuta(s) ✅`,
+      });
+    } catch (err) { toast('Error: '+err.message, 'danger'); }
   });
 
   document.getElementById('btnEnviarManual')?.addEventListener('click', async () => {
@@ -210,9 +216,12 @@ function togglePwd(id, btn) {
     });
     if (!message) return;
     try {
-      const r = await api('/whatsapp/test', { method:'POST', body: { to, message } });
+      const r = await api('/whatsapp/test', {
+        method:'POST',
+        body: { to, message },
+        successMessage: (data) => (data.skipped ? null : 'Mensaje enviado ✅'),
+      });
       if (r.skipped) toast('OpenWA no configurado', 'danger');
-      else toast('Mensaje enviado ✅');
     } catch (err) { toast('Error: '+err.message, 'danger'); }
   });
 

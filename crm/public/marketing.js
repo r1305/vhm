@@ -58,7 +58,13 @@
             confirmLabel: 'Enviar',
           });
           if (!ok) return;
-          try { const r = await api(`/marketing/campanas/${btn.dataset.enviar}/enviar`, { method:'POST' }); toast(`Enviando a ${r.total} suscriptores`); loadCampanas(); }
+          try {
+            await api(`/marketing/campanas/${btn.dataset.enviar}/enviar`, {
+              method:'POST',
+              successMessage: (r) => `Enviando a ${r.total} suscriptores`,
+            });
+            loadCampanas();
+          }
           catch (err) { toast(err.message, 'danger'); }
         })
       );
@@ -95,10 +101,10 @@
           segmento: document.getElementById('f_segmento').value || null,
         };
         if (!body.nombre || !body.asunto || !body.cuerpo_html) throw new Error('Nombre, asunto y contenido son requeridos');
-        if (c) await api(`/marketing/campanas/${c.id}`, { method:'PUT', body });
-        else   await api('/marketing/campanas', { method:'POST', body });
-        toast(c ? 'Campaña actualizada' : 'Campaña creada'); loadCampanas();
-      }, { large: true });
+        if (c) await api(`/marketing/campanas/${c.id}`, { method:'PUT', body, loader: false });
+        else   await api('/marketing/campanas', { method:'POST', body, loader: false });
+        loadCampanas();
+      }, { large: true, successMessage: c ? 'Campaña actualizada' : 'Campaña creada' });
   }
 
   async function loadSuscriptores() {
@@ -117,8 +123,11 @@
 
       document.querySelectorAll('[data-del]').forEach(btn =>
         btn.addEventListener('click', async () => {
-          await api(`/marketing/suscriptores/${btn.dataset.del}`, { method:'DELETE' });
-          toast('Suscriptor desactivado'); loadSuscriptores();
+          await api(`/marketing/suscriptores/${btn.dataset.del}`, {
+            method:'DELETE',
+            successMessage: 'Suscriptor desactivado',
+          });
+          loadSuscriptores();
         })
       );
     } catch (err) { toast(err.message, 'danger'); }

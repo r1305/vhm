@@ -55,11 +55,15 @@
       async () => {
         const nota = document.getElementById('f_nota').value.trim();
         if (!nota) throw new Error('La nota no puede estar vacía');
-        await api(`/historial/paciente/${pacienteId}`, { method: 'POST', body: {
-          nota, tipo: document.getElementById('f_tipo').value, fecha: document.getElementById('f_fecha').value,
-        }});
-        toast('Nota guardada'); loadHistorial();
-      }, { large: true });
+        await api(`/historial/paciente/${pacienteId}`, {
+          method: 'POST',
+          body: {
+            nota, tipo: document.getElementById('f_tipo').value, fecha: document.getElementById('f_fecha').value,
+          },
+          loader: false,
+        });
+        loadHistorial();
+      }, { large: true, successMessage: 'Nota guardada' });
   }
 
   document.getElementById('historialPacienteSelect').addEventListener('change', e => {

@@ -191,7 +191,10 @@
       if (res.status === 401) { window.location.href = `${BASE}/login`; throw new Error('Sesión expirada'); }
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || data.message || `Error ${res.status}`);
-      if (opts.successMessage) toast(opts.successMessage, 'success');
+      if (opts.successMessage) {
+        const msg = typeof opts.successMessage === 'function' ? opts.successMessage(data) : opts.successMessage;
+        if (msg) toast(msg, 'success');
+      }
       return data;
     } finally {
       if (useLoader) hideLoader();

@@ -2,8 +2,7 @@
 (function () {
   'use strict';
 
-  const { toast } = window.CRM;
-  const BASE = window.__APP_BASE__;
+  const { api, toast } = window.CRM;
 
   const ITEMS = [
     { key: 'dashboard',       label: 'Dashboard',          icon: 'fa-gauge-high' },
@@ -26,8 +25,7 @@
   let userActivo = null;
 
   async function load() {
-    const res = await fetch(`${BASE}/api/menu-permisos`, { credentials: 'same-origin' });
-    const data = await res.json();
+    const data = await api('/menu-permisos', { loader: false });
     users = data.users || [];
     renderUserSelect();
     if (users.length) selectUser(users[0].id);
@@ -76,31 +74,23 @@
     if (!userActivo) return;
     const items = [...document.querySelectorAll('#permisosPanel input[data-item]:checked')]
       .map(el => el.dataset.item);
-    const res = await fetch(`${BASE}/api/menu-permisos`, {
+    const data = await api('/menu-permisos', {
       method: 'POST',
-      credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: userActivo.id, items }),
+      body: { userId: userActivo.id, items },
+      successMessage: 'Permisos guardados',
     });
-    if (!res.ok) throw new Error('Error al guardar');
-    const data = await res.json();
     userActivo.items = data.items || items;
-    toast('Permisos guardados');
   }
 
   async function copyFromRol() {
     if (!userActivo) return;
-    const res = await fetch(`${BASE}/api/menu-permisos/desde-rol`, {
+    const data = await api('/menu-permisos/desde-rol', {
       method: 'POST',
-      credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: userActivo.id }),
+      body: { userId: userActivo.id },
+      successMessage: 'Plantilla del rol aplicada',
     });
-    if (!res.ok) throw new Error('Error al copiar plantilla');
-    const data = await res.json();
     userActivo.items = data.items || [];
     render();
-    toast('Plantilla del rol aplicada');
   }
 
   document.getElementById('btnGuardarPermisos').addEventListener('click', async () => {
