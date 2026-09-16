@@ -140,7 +140,7 @@ function togglePwd(id, btn) {
   document.getElementById('btnEjecutarCron')?.addEventListener('click', async () => {
     const message = document.getElementById('cron-mensaje-broadcast').value.trim();
     if (!message) { toast('Escribe el mensaje recordatorio antes de ejecutar', 'danger'); return; }
-    if (!confirm('¿Enviar el recordatorio a todos los terapeutas ahora?')) return;
+    if (!confirm('¿Enviar el recordatorio a todos los terapeutas con rol Terapeuta y teléfono registrado?')) return;
     const btn = document.getElementById('btnEjecutarCron');
     if (btn) { btn.disabled = true; btn.textContent = 'Ejecutando…'; }
     try {
@@ -155,7 +155,7 @@ function togglePwd(id, btn) {
       if (r.sinConfig) toast('OpenWA no configurado — guarda URL, API key y Session ID', 'danger');
       else if (r.sinMensaje) toast('Sin mensaje configurado', 'danger');
       else if (r.errores?.length) toast(`Enviados: ${r.enviados}. Errores: ${r.errores.length}`, 'danger');
-      else if (r.enviados === 0 && r.omitidos === 0) toast('Ningún terapeuta activo con teléfono', 'danger');
+      else if (r.enviados === 0 && r.omitidos === 0) toast('Ningún terapeuta activo con rol Terapeuta y teléfono', 'danger');
       else toast(`Recordatorio enviado a ${r.enviados} terapeuta(s) ✅`);
     } catch (err) { toast(err.message, 'danger'); }
     finally {
@@ -167,8 +167,8 @@ function togglePwd(id, btn) {
     const message = document.getElementById('cron-mensaje-broadcast').value.trim();
     if (!message) { toast('Escribe un mensaje antes de enviar', 'danger'); return; }
     const terapeutas  = await api('/terapeutas').catch(() => []);
-    const conTelefono = terapeutas.filter(t => t.telefono && t.activo);
-    if (!conTelefono.length) { toast('Ningún terapeuta tiene teléfono registrado', 'danger'); return; }
+    const conTelefono = terapeutas.filter(t => t.activo && t.rol === 'terapeuta' && t.telefono && String(t.telefono).trim());
+    if (!conTelefono.length) { toast('Ningún terapeuta con rol Terapeuta tiene teléfono registrado', 'danger'); return; }
     if (!confirm(`¿Enviar este mensaje a ${conTelefono.length} terapeuta(s)?\n\n${message}`)) return;
     try { const r = await api('/cron/broadcast', { method:'POST', body: { message } }); toast(`Enviando a ${r.enviados} terapeuta(s) ✅`); }
     catch (err) { toast('Error: '+err.message, 'danger'); }

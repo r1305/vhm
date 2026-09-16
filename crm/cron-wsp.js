@@ -2,7 +2,7 @@
 /**
  * cron-wsp.js — Recordatorio WhatsApp a todos los terapeutas (openwa)
  *
- * Envía el mensaje guardado en cron_config a todos los terapeutas activos con teléfono.
+ * Envía el mensaje guardado en cron_config a terapeutas activos (rol terapeuta) con teléfono.
  * El horario y días los controla node-cron en app.js (America/Lima).
  * Anti-duplicado: máximo un envío automático por día (tabla cron_send_guard).
  *
@@ -69,11 +69,15 @@ async function sendBroadcastToTerapeutas(message) {
   const stats = { enviados: 0, omitidos: 0, errores: [] };
 
   const [terapeutas] = await pool.execute(
-    "SELECT nombre, telefono FROM terapeutas WHERE activo=1 AND telefono IS NOT NULL AND telefono != ''"
+    `SELECT nombre, telefono FROM terapeutas
+     WHERE activo = 1
+       AND rol = 'terapeuta'
+       AND telefono IS NOT NULL
+       AND TRIM(telefono) != ''`
   );
 
   if (!terapeutas.length) {
-    console.log('[cron-wsp] Ningún terapeuta activo con teléfono');
+    console.log('[cron-wsp] Ningún terapeuta activo con rol terapeuta y teléfono');
     return stats;
   }
 
