@@ -184,7 +184,7 @@ async function ensureSchema() {
     try { await conn.execute('ALTER TABLE pacientes DROP COLUMN fecha_inicio'); } catch (_) {}
     try { await conn.execute('ALTER TABLE pacientes DROP COLUMN sesiones'); } catch (_) {}
 
-    // Tabla de sesiones por paciente
+    // Tabla de sesiones por paciente (legacy)
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS paciente_sesiones (
         id           INT AUTO_INCREMENT PRIMARY KEY,
@@ -195,6 +195,62 @@ async function ensureSchema() {
         FOREIGN KEY (paciente_id) REFERENCES pacientes(id) ON DELETE CASCADE
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
+
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS paquetes_catalogo (
+        id                INT AUTO_INCREMENT PRIMARY KEY,
+        nombre            VARCHAR(120) NOT NULL,
+        sesiones          INT NOT NULL DEFAULT 1,
+        validez_dias      INT NOT NULL DEFAULT 30,
+        accede_comunidad  TINYINT(1) NOT NULL DEFAULT 0,
+        precio            DECIMAL(10,2) NOT NULL DEFAULT 0,
+        activo            TINYINT(1) NOT NULL DEFAULT 1,
+        created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS paciente_paquetes (
+        id                  INT AUTO_INCREMENT PRIMARY KEY,
+        paciente_id         INT NOT NULL,
+        paquete_catalogo_id INT NOT NULL,
+        nombre              VARCHAR(120) NOT NULL,
+        sesiones            INT NOT NULL,
+        validez_dias        INT NOT NULL,
+        accede_comunidad    TINYINT(1) NOT NULL DEFAULT 0,
+        precio              DECIMAL(10,2) NOT NULL,
+        fecha_inicio        DATE NOT NULL,
+        vence_at            DATE DEFAULT NULL,
+        tipo_pago           ENUM('total','parcial') NOT NULL DEFAULT 'total',
+        num_cuotas          INT NOT NULL DEFAULT 1,
+        activo              TINYINT(1) NOT NULL DEFAULT 1,
+        created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (paciente_id) REFERENCES pacientes(id) ON DELETE CASCADE,
+        FOREIGN KEY (paquete_catalogo_id) REFERENCES paquetes_catalogo(id) ON DELETE RESTRICT,
+        KEY idx_pp_paciente (paciente_id),
+        KEY idx_pp_activo (activo)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS paciente_paquete_cuotas (
+        id                  INT AUTO_INCREMENT PRIMARY KEY,
+        paciente_paquete_id INT NOT NULL,
+        numero              INT NOT NULL,
+        monto               DECIMAL(10,2) NOT NULL,
+        fecha_pago          DATE NOT NULL,
+        sesiones_inicio     INT NOT NULL,
+        sesiones_fin        INT NOT NULL,
+        pagado              TINYINT(1) NOT NULL DEFAULT 0,
+        pagado_at           TIMESTAMP NULL DEFAULT NULL,
+        created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (paciente_paquete_id) REFERENCES paciente_paquetes(id) ON DELETE CASCADE,
+        KEY idx_ppc_paquete (paciente_paquete_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
+    try { await conn.execute('ALTER TABLE citas ADD COLUMN paciente_paquete_id INT NULL'); } catch (_) {}
 
     // Config del cron de WhatsApp
     await conn.execute(`
@@ -530,6 +586,9 @@ async function ensureSchema() {
 
     for (const rol of ['superadmin', 'admin', 'recepcion'])
       await conn.execute('INSERT IGNORE INTO menu_permisos (rol, item) VALUES (?,?)', [rol, 'whatsapp']);
+
+    for (const rol of ['superadmin', 'admin', 'recepcion'])
+      await conn.execute('INSERT IGNORE INTO menu_permisos (rol, item) VALUES (?,?)', [rol, 'paquetes']);
 
     // Ocultar módulo de pagos (sin dinero en CRM por ahora)
     await conn.execute("DELETE FROM usuario_menu_permisos WHERE item = 'pagos'");

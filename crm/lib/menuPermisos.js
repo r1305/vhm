@@ -4,13 +4,13 @@ const pool = require('./db');
 const HIDDEN_MENU_ITEMS = ['pagos'];
 
 const ALL_MENU_ITEMS = [
-  'dashboard', 'agenda', 'calendario', 'pacientes', 'whatsapp', 'mi_reporte',
+  'dashboard', 'agenda', 'calendario', 'pacientes', 'paquetes', 'whatsapp', 'mi_reporte',
   'disponibilidad', 'historial', 'analitica', 'integraciones',
   'terapeutas', 'reportes', 'permisos_menu',
 ];
 
 const STAFF_DEFAULTS = [
-  'dashboard', 'agenda', 'calendario', 'disponibilidad', 'pacientes', 'whatsapp',
+  'dashboard', 'agenda', 'calendario', 'disponibilidad', 'pacientes', 'paquetes', 'whatsapp',
   'historial', 'analitica', 'integraciones', 'terapeutas', 'reportes',
 ];
 

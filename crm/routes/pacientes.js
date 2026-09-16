@@ -6,6 +6,11 @@ const router = Router();
 const t = (v, max = 255) => v == null ? null : String(v).trim().slice(0, max) || null;
 const id = (v) => { const n = parseInt(v, 10); return isFinite(n) && n > 0 ? n : null; };
 const tribuProvision = require('../lib/tribuProvision');
+const {
+  loadPacientePaquetes,
+  createPacientePaquete,
+  markCuotaPagada,
+} = require('../lib/paquetesPaciente');
 
 router.get('/conteo-por-terapeuta', auth, async (req, res) => {
   try {
@@ -27,8 +32,18 @@ router.get('/', auth, async (req, res) => {
     const sinEmail = req.query.sin_email    === '1';
     const of = ownerFilter(req, 'p');
     let sql = `SELECT p.*, t.nombre AS terapeuta_nombre,
-               COALESCE((SELECT SUM(ps.sesiones) FROM paciente_sesiones ps WHERE ps.paciente_id = p.id), 0) AS sesiones_total,
-               COALESCE((SELECT COUNT(*) FROM citas c WHERE c.paciente_id = p.id AND c.estado IN ('realizada','no_show')), 0) AS citas_confirmadas
+               COALESCE(
+                 (SELECT pp.sesiones FROM paciente_paquetes pp
+                  WHERE pp.paciente_id = p.id AND pp.activo = 1
+                  ORDER BY pp.id DESC LIMIT 1),
+                 (SELECT SUM(ps.sesiones) FROM paciente_sesiones ps WHERE ps.paciente_id = p.id),
+                 0
+               ) AS sesiones_total,
+               COALESCE((SELECT COUNT(*) FROM citas c
+                 WHERE c.paciente_id = p.id AND c.estado NOT IN ('cancelada','no_show')), 0) AS citas_confirmadas,
+               (SELECT pp.nombre FROM paciente_paquetes pp
+                 WHERE pp.paciente_id = p.id AND pp.activo = 1
+                 ORDER BY pp.id DESC LIMIT 1) AS paquete_nombre
                FROM pacientes p LEFT JOIN terapeutas t ON p.terapeuta_id = t.id WHERE 1=1`;
     const params = [];
     if (q) { sql += ' AND (p.nombre LIKE ? OR p.apellido LIKE ? OR p.email LIKE ? OR p.telefono LIKE ?)'; const l=`%${q}%`; params.push(l,l,l,l); }
@@ -126,7 +141,44 @@ router.put('/:pid', authAdmin, async (req, res) => {
   } catch { res.status(500).json({ error: 'Error al actualizar' }); }
 });
 
-// ── Sesiones por paciente ─────────────────────────────────────
+// ── Paquetes adquiridos por paciente ──────────────────────────
+router.get('/:pid/paquetes-adquiridos', auth, async (req, res) => {
+  const pid = id(req.params.pid);
+  if (!pid) return res.status(400).json({ error: 'ID inválido' });
+  try {
+    const paquetes = await loadPacientePaquetes(pid);
+    res.json(paquetes);
+  } catch {
+    res.status(500).json({ error: 'Error al cargar paquetes' });
+  }
+});
+
+router.post('/:pid/paquetes-adquiridos', authAdmin, async (req, res) => {
+  const pid = id(req.params.pid);
+  if (!pid) return res.status(400).json({ error: 'ID inválido' });
+  try {
+    const paqueteId = await createPacientePaquete(pid, req.body || {});
+    const paquetes = await loadPacientePaquetes(pid);
+    res.status(201).json({ id: paqueteId, paquetes });
+  } catch (err) {
+    res.status(400).json({ error: err.message || 'Error al asignar paquete' });
+  }
+});
+
+router.patch('/:pid/paquetes-adquiridos/cuotas/:cuotaId/pagar', authAdmin, async (req, res) => {
+  const pid = id(req.params.pid);
+  const cuotaId = id(req.params.cuotaId);
+  if (!pid || !cuotaId) return res.status(400).json({ error: 'ID inválido' });
+  try {
+    await markCuotaPagada(pid, cuotaId);
+    const paquetes = await loadPacientePaquetes(pid);
+    res.json({ ok: true, paquetes });
+  } catch (err) {
+    res.status(400).json({ error: err.message || 'Error al registrar pago' });
+  }
+});
+
+// ── Sesiones por paciente (legacy) ────────────────────────────
 router.get('/:pid/sesiones', auth, async (req, res) => {
   try {
     const [rows] = await pool.execute(

@@ -73,6 +73,7 @@
               ${p.email    ? `<span><i class="fas fa-envelope" style="width:12px"></i> ${esc(p.email)}</span>` : ''}
               ${p.telefono ? `<span><i class="fas fa-phone"   style="width:12px"></i> ${esc(p.telefono)}</span>` : ''}
               ${p.terapeuta_nombre ? `<span><i class="fas fa-user-md" style="width:12px"></i> ${esc(p.terapeuta_nombre)}</span>` : ''}
+              ${p.paquete_nombre ? `<span><i class="fas fa-box" style="width:12px"></i> ${esc(p.paquete_nombre)}</span>` : ''}
             </div>
             <div style="display:flex;gap:8px;margin-top:6px;font-size:12px">
               <span style="background:var(--primary-light);color:var(--primary);padding:2px 8px;border-radius:10px">
@@ -145,32 +146,117 @@
   }
 
   /* ── Formulario ─────────────────────────────────────── */
-  function sesionFila(sid, fecha, cant) {
-    return `<tr data-sid="${sid}" style="border-top:1px solid var(--border)">
-      <td style="padding:4px 6px"><input type="date" class="form-control ses-fecha" value="${esc(fecha)}" style="min-width:130px"></td>
-      <td style="padding:4px 6px"><input type="number" min="0" step="1" class="form-control ses-cant" value="${cant}" placeholder="0" style="max-width:90px"></td>
-      <td style="padding:4px 6px"><button type="button" class="btn-icon danger btn-del-sesion" title="Eliminar"><i class="fas fa-times"></i></button></td>
-    </tr>`;
+  function fmtMoney(n) {
+    return 'S/ ' + Number(n || 0).toFixed(2);
   }
 
-  function bindDelSesion() {
-    document.querySelectorAll('.btn-del-sesion').forEach(btn => {
-      btn.onclick = () => {
-        const fila = btn.closest('tr');
-        if (fila.dataset.sid) { fila.dataset.deleted = '1'; fila.style.opacity = '0.3'; btn.disabled = true; }
-        else fila.remove();
-      };
+  function renderCuotasPreview(catalogo, tipoPago, numCuotas, fechaInicio) {
+    if (!catalogo) return '';
+    const sesiones = Number(catalogo.sesiones) || 1;
+    const cuotas = tipoPago === 'parcial' ? Math.max(2, Number(numCuotas) || 2) : 1;
+    const precio = Number(catalogo.precio) || 0;
+    const per = Math.floor(sesiones / cuotas);
+    let extra = sesiones % cuotas;
+    let start = 1;
+    const montoBase = Math.floor((precio / cuotas) * 100) / 100;
+    let html = '<div class="pkg-cuotas-preview">';
+    for (let i = 0; i < cuotas; i++) {
+      const count = per + (extra > 0 ? 1 : 0);
+      if (extra > 0) extra -= 1;
+      const end = start + count - 1;
+      const fecha = addMonthsPreview(fechaInicio, i);
+      const monto = i === cuotas - 1
+        ? (precio - montoBase * (cuotas - 1)).toFixed(2)
+        : montoBase.toFixed(2);
+      html += `<div class="pkg-cuota-preview-item">
+        <strong>Cuota ${i + 1}</strong> · ${fmtMoney(monto)} · vence ${fecha}
+        <span class="pkg-cuota-ses">Sesiones ${start}–${end}</span>
+      </div>`;
+      start = end + 1;
+    }
+    html += '</div>';
+    return html;
+  }
+
+  function addMonthsPreview(dateStr, months) {
+    const d = new Date((dateStr || new Date().toISOString().slice(0, 10)) + 'T12:00:00');
+    d.setMonth(d.getMonth() + months);
+    return d.toISOString().slice(0, 10);
+  }
+
+  function renderPaqueteActivo(paquete, pid) {
+    if (!paquete) {
+      return '<p style="font-size:13px;color:var(--text-muted)">Sin paquete activo asignado.</p>';
+    }
+    const cuotasHtml = (paquete.cuotas || []).map((c) => `
+      <div class="pkg-cuota-row ${c.pagado ? 'pagada' : ''}">
+        <div>
+          <strong>Cuota ${c.numero}</strong> · ${fmtMoney(c.monto)}
+          <div class="pkg-cuota-meta">Vence: ${String(c.fecha_pago).slice(0, 10)} · Sesiones ${c.sesiones_inicio}–${c.sesiones_fin}</div>
+        </div>
+        ${c.pagado
+          ? '<span class="badge badge-green">Pagada</span>'
+          : `<button type="button" class="btn btn-outline btn-xs" data-pagar-cuota="${c.id}" data-pid="${pid}">Marcar pagada</button>`}
+      </div>`).join('');
+    return `
+      <div class="pkg-activo-card">
+        <div class="pkg-activo-title">${esc(paquete.nombre)}</div>
+        <div class="pkg-activo-meta">${paquete.sesiones} sesiones · ${paquete.tipo_pago === 'parcial' ? paquete.num_cuotas + ' cuotas' : 'Pago total'} · vence ${String(paquete.vence_at || '').slice(0, 10)}</div>
+        <div class="pkg-cuotas-list">${cuotasHtml}</div>
+      </div>`;
+  }
+
+  function bindPaqueteEvents(pid, catalogo) {
+    const tipo = document.getElementById('pkg_tipo_pago');
+    const cuotas = document.getElementById('pkg_cuotas');
+    const cat = document.getElementById('pkg_catalogo');
+    const fecha = document.getElementById('pkg_fecha');
+    const preview = document.getElementById('pkg_cuotas_preview');
+
+    function refreshPreview() {
+      const selected = catalogo.find((x) => String(x.id) === cat.value);
+      const esParcial = tipo.value === 'parcial';
+      cuotas.disabled = !esParcial;
+      if (!esParcial) cuotas.value = '1';
+      preview.innerHTML = selected
+        ? renderCuotasPreview(selected, tipo.value, cuotas.value, fecha.value)
+        : '';
+    }
+
+    tipo?.addEventListener('change', refreshPreview);
+    cuotas?.addEventListener('input', refreshPreview);
+    cat?.addEventListener('change', refreshPreview);
+    fecha?.addEventListener('change', refreshPreview);
+    refreshPreview();
+
+    document.querySelectorAll('[data-pagar-cuota]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const cuotaId = btn.dataset.pagarCuota;
+        const patientId = btn.dataset.pid;
+        try {
+          const r = await api(`/pacientes/${patientId}/paquetes-adquiridos/cuotas/${cuotaId}/pagar`, { method: 'PATCH' });
+          const activo = (r.paquetes || []).find((x) => x.activo) || r.paquetes[0];
+          document.getElementById('paqueteActivoBox').innerHTML = renderPaqueteActivo(activo, patientId);
+          bindPaqueteEvents(patientId, catalogo);
+          toast('Cuota marcada como pagada');
+        } catch (e) {
+          toast(e.message, 'danger');
+        }
+      });
     });
   }
 
   async function showPacienteForm(p = null) {
     if (!terapeutasCache.length) terapeutasCache = await api('/terapeutas').catch(() => []);
-    const sesiones = p ? await api(`/pacientes/${p.id}/sesiones`).catch(() => []) : [];
+    const catalogo = await api('/paquetes?activo=1').catch(() => []);
+    const paquetesPac = p ? await api(`/pacientes/${p.id}/paquetes-adquiridos`).catch(() => []) : [];
+    const paqueteActivo = paquetesPac.find((x) => x.activo) || paquetesPac[0] || null;
     const tsOpts   = terapeutasCache.map(t =>
       `<option value="${t.id}" ${p?.terapeuta_id==t.id?'selected':''}>${esc(fullName(t))}</option>`).join('');
-    const sesFilas = sesiones.length
-      ? sesiones.map(s => sesionFila(s.id, s.fecha_inicio ? String(s.fecha_inicio).slice(0,10) : '', s.sesiones)).join('')
-      : sesionFila('', '', '');
+    const catOpts = catalogo.length
+      ? catalogo.map((c) => `<option value="${c.id}">${esc(c.nombre)} — ${c.sesiones} ses. — ${fmtMoney(c.precio)}</option>`).join('')
+      : '<option value="">No hay paquetes activos</option>';
+    const hoy = new Date().toISOString().slice(0, 10);
 
     openModal(p ? 'Editar paciente' : 'Nuevo paciente', `
       <div class="form-row">
@@ -215,12 +301,22 @@
       </div>
       <div class="form-group"><label class="form-label">Motivo de consulta</label><textarea class="form-control" id="f_motivo" rows="2">${esc(p?.motivo_consulta||'')}</textarea></div>
       <div class="form-group">
-        <label class="form-label" style="margin-bottom:6px">Programa adquirido</label>
-        <table style="width:100%;border-collapse:collapse">
-          <thead><tr style="font-size:12px;color:var(--text-muted)"><th style="padding:4px 6px;text-align:left">Fecha inicio</th><th style="padding:4px 6px;text-align:left">Sesiones</th><th style="width:32px"></th></tr></thead>
-          <tbody id="sesionesBody">${sesFilas}</tbody>
-        </table>
-        <button type="button" class="btn btn-outline btn-sm" id="btnAddSesion" style="margin-top:6px"><i class="fas fa-plus"></i> Agregar fila</button>
+        <label class="form-label">Paquete adquirido</label>
+        <div id="paqueteActivoBox">${renderPaqueteActivo(paqueteActivo, p?.id)}</div>
+      </div>
+      <div class="form-group pkg-asignar-box">
+        <label class="form-label">Asignar paquete</label>
+        <select class="form-select" id="pkg_catalogo"><option value="">— Seleccionar paquete —</option>${catOpts}</select>
+        <div class="form-row" style="margin-top:8px">
+          <div class="form-group"><label class="form-label">Fecha inicio</label><input type="date" class="form-control" id="pkg_fecha" value="${hoy}"></div>
+          <div class="form-group"><label class="form-label">Tipo de pago</label>
+            <select class="form-select" id="pkg_tipo_pago"><option value="total">Total</option><option value="parcial">Parcial</option></select>
+          </div>
+          <div class="form-group"><label class="form-label">Cuotas</label>
+            <input type="number" min="2" class="form-control" id="pkg_cuotas" value="2" disabled></div>
+        </div>
+        <div id="pkg_cuotas_preview"></div>
+        <p style="font-size:11px;color:var(--text-muted);margin-top:6px">Al guardar el paciente se asignará el paquete seleccionado (reemplaza el paquete activo anterior).</p>
       </div>`, async () => {
       const body = {
         nombre:           document.getElementById('f_nombre').value,
@@ -242,27 +338,25 @@
       let pid = p?.id;
       if (p) { await api(`/pacientes/${p.id}`, { method: 'PUT', body }); }
       else   { const r = await api('/pacientes', { method: 'POST', body }); pid = r.id; }
-      for (const fila of document.querySelectorAll('#sesionesBody tr[data-sid]')) {
-        const sid   = fila.dataset.sid;
-        const fecha = fila.querySelector('.ses-fecha').value || null;
-        const cant  = parseInt(fila.querySelector('.ses-cant').value, 10) || 0;
-        if (fila.dataset.deleted === '1') {
-          if (sid) await api(`/pacientes/${pid}/sesiones/${sid}`, { method: 'DELETE' }).catch(() => {});
-        } else if (sid) {
-          await api(`/pacientes/${pid}/sesiones/${sid}`, { method: 'PUT', body: { fecha_inicio: fecha, sesiones: cant } }).catch(() => {});
-        } else {
-          await api(`/pacientes/${pid}/sesiones`, { method: 'POST', body: { fecha_inicio: fecha, sesiones: cant } }).catch(() => {});
-        }
+
+      const catalogoId = document.getElementById('pkg_catalogo').value;
+      if (catalogoId) {
+        await api(`/pacientes/${pid}/paquetes-adquiridos`, {
+          method: 'POST',
+          body: {
+            paquete_catalogo_id: catalogoId,
+            fecha_inicio: document.getElementById('pkg_fecha').value,
+            tipo_pago: document.getElementById('pkg_tipo_pago').value,
+            num_cuotas: document.getElementById('pkg_cuotas').value,
+          },
+        });
       }
+
       toast(p ? 'Paciente actualizado' : 'Paciente creado');
       loadPacientes();
     }, { large: true });
 
-    document.getElementById('btnAddSesion')?.addEventListener('click', () => {
-      document.getElementById('sesionesBody').insertAdjacentHTML('beforeend', sesionFila('', '', ''));
-      bindDelSesion();
-    });
-    bindDelSesion();
+    bindPaqueteEvents(p?.id, catalogo);
   }
 
   /* ── Detalle ────────────────────────────────────────── */

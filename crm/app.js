@@ -94,6 +94,7 @@ router.post('/api/track/evento', require('./routes/tracker'));
 router.use('/api/auth',       require('./routes/auth'));
 router.use('/api/terapeutas', require('./routes/terapeutas'));
 router.use('/api/pacientes',  require('./routes/pacientes'));
+router.use('/api/paquetes',   require('./routes/paquetes'));
 router.use('/api/citas',      citasRouter);
 router.use('/api/bloqueos',    require('./routes/bloqueos'));
 router.use('/api/publico',     require('./routes/publico'));
