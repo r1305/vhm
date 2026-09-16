@@ -84,6 +84,7 @@
   }
 
   function loaderMessageFor(method) {
+    if (method === 'GET') return 'Cargando…';
     if (method === 'DELETE') return 'Eliminando…';
     if (method === 'POST') return 'Guardando…';
     if (method === 'PUT' || method === 'PATCH') return 'Actualizando…';
@@ -177,7 +178,7 @@
   /* ── API helper (usa cookie de sesión automáticamente) ── */
   async function api(path, opts = {}) {
     const method = (opts.method || 'GET').toUpperCase();
-    const useLoader = opts.loader !== false && method !== 'GET';
+    const useLoader = opts.loader !== false;
     const loaderMsg = opts.loaderMessage || loaderMessageFor(method);
     if (useLoader) showLoader(loaderMsg);
     try {

@@ -5,7 +5,7 @@
   'use strict';
 
   const { api, toast, esc, fmtDate, badge, fullName,
-          openModal, closeModal, ESTADO_PACIENTE } = window.CRM;
+          openModal, closeModal, ESTADO_PACIENTE, showLoader, hideLoader } = window.CRM;
 
   let terapeutasCache = [];
   let chipTerapeutaId = null;
@@ -249,9 +249,16 @@
   }
 
   async function showPacienteForm(p = null) {
-    if (!terapeutasCache.length) terapeutasCache = await api('/terapeutas').catch(() => []);
-    const catalogo = await api('/paquetes?activo=1').catch(() => []);
-    const paquetesPac = p ? await api(`/pacientes/${p.id}/paquetes-adquiridos`).catch(() => []) : [];
+    showLoader('Cargando datos…');
+    let catalogo = [];
+    let paquetesPac = [];
+    try {
+      if (!terapeutasCache.length) terapeutasCache = await api('/terapeutas', { loader: false }).catch(() => []);
+      catalogo = await api('/paquetes?activo=1', { loader: false }).catch(() => []);
+      paquetesPac = p ? await api(`/pacientes/${p.id}/paquetes-adquiridos`, { loader: false }).catch(() => []) : [];
+    } finally {
+      hideLoader();
+    }
     const paqueteActivo = paquetesPac.find((x) => x.activo) || paquetesPac[0] || null;
     const tsOpts   = terapeutasCache.map(t =>
       `<option value="${t.id}" ${p?.terapeuta_id==t.id?'selected':''}>${esc(fullName(t))}</option>`).join('');

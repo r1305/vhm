@@ -2,7 +2,7 @@
 (function () {
   'use strict';
 
-  const { api, toast, esc, openModal, confirmDialog, ESTADO_CITA, fullName } = window.CRM;
+  const { api, toast, esc, openModal, confirmDialog, ESTADO_CITA, fullName, showLoader, hideLoader } = window.CRM;
 
   const DIAS_CORTO  = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
   const DIAS_LARGO  = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
@@ -71,6 +71,7 @@
 
   /* ── Cargar citas y bloqueos ── */
   async function loadCitas() {
+    showLoader('Cargando calendario…');
     try {
       const { desde, hasta } = rangoActual();
       const desdeStr = isoDate(desde);
@@ -91,20 +92,21 @@
       else if (window.__USER_ROL__ === 'terapeuta') qsB.set('terapeuta_id', window.__USER_ID__);
 
       [citasCache, bloqueosCache] = await Promise.all([
-        api(`/citas?${qs}`),
-        api(`/bloqueos?${qsB}`),
+        api(`/citas?${qs}`, { loader: false }),
+        api(`/bloqueos?${qsB}`, { loader: false }),
       ]);
 
       if (vista === 'semana' && desde.getMonth() !== hasta.getMonth()) {
         const qs2 = new URLSearchParams(qs);
         qs2.set('mes', `${hasta.getFullYear()}-${String(hasta.getMonth()+1).padStart(2,'0')}`);
-        const extra = await api(`/citas?${qs2}`);
+        const extra = await api(`/citas?${qs2}`, { loader: false });
         const ids = new Set(citasCache.map(c => c.id));
         extra.forEach(c => { if (!ids.has(c.id)) citasCache.push(c); });
       }
 
       render();
     } catch (err) { toast(err.message, 'danger'); }
+    finally { hideLoader(); }
   }
 
   /* ── Título ── */
@@ -480,8 +482,8 @@
   document.getElementById('calTerapeuta')?.addEventListener('change', loadCitas);
 
   /* ── Init: cargar terapeutas para el modal de bloqueo ── */
-  api('/terapeutas').then(ts => { terapeutasCache = ts; }).catch(() => {});
-  api('/pacientes').then(ps => { window.CRM.pacientesCache = ps; }).catch(() => {});
+  api('/terapeutas', { loader: false }).then(ts => { terapeutasCache = ts; }).catch(() => {});
+  api('/pacientes', { loader: false }).then(ps => { window.CRM.pacientesCache = ps; }).catch(() => {});
   loadCitas();
 
 })();

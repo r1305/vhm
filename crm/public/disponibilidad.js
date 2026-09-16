@@ -31,8 +31,11 @@
   async function load() {
     const tid = getTerId();
     try {
-      dispActual = await api(`/terapeutas/${tid}/disponibilidad`);
-      const ters = await api('/terapeutas');
+      const [disp, ters] = await Promise.all([
+        api(`/terapeutas/${tid}/disponibilidad`),
+        api('/terapeutas', { loader: false }),
+      ]);
+      dispActual = disp;
       const ter  = ters.find(t => t.id === tid);
       username   = ter?.username || '';
       estado = estadoInicial();

@@ -342,7 +342,7 @@
     }, 0);
 
     if (!esTerapeuta) {
-      api('/terapeutas').then(ts => {
+      api('/terapeutas', { loader: false }).then(ts => {
         const sel = document.getElementById('f_terapeuta_id');
         if (!sel) return;
         sel.innerHTML = ts.map(t => `<option value="${t.id}">${esc(fullName(t))}</option>`).join('');

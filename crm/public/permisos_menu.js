@@ -25,7 +25,7 @@
   let userActivo = null;
 
   async function load() {
-    const data = await api('/menu-permisos', { loader: false });
+    const data = await api('/menu-permisos');
     users = data.users || [];
     renderUserSelect();
     if (users.length) selectUser(users[0].id);

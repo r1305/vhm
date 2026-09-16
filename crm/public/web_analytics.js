@@ -73,7 +73,7 @@
     const desde = document.getElementById('anaDesde').value || hoy;
     const hasta = document.getElementById('anaHasta').value || hoy;
     try {
-      const d = await api(`/track/stats?desde=${desde}&hasta=${hasta}`);
+      const d = await api(`/track/stats?desde=${desde}&hasta=${hasta}`, { loaderMessage: 'Cargando analítica…' });
       const k = d.kpis || {};
       document.getElementById('anaKpis').innerHTML = `
         <div class="kpi-card accent"><div class="kpi-label">Sesiones</div><div class="kpi-value">${k.total_sesiones||0}</div><div class="kpi-sub">${k.visitantes_unicos||0} visitantes únicos</div></div>
