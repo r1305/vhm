@@ -29,8 +29,11 @@
       document.querySelectorAll('[data-notif]').forEach(btn =>
         btn.addEventListener('click', async () => {
           try {
-            await api(`/reportes/lista-espera/${btn.dataset.notif}/notificar`, { method: 'POST' });
-            toast('Notificación enviada'); loadEspera();
+            await api(`/reportes/lista-espera/${btn.dataset.notif}/notificar`, {
+              method: 'POST',
+              successMessage: 'Notificación enviada',
+            });
+            loadEspera();
           } catch (err) { toast(err.message, 'danger'); }
         })
       );
@@ -60,9 +63,9 @@
           especialidad: document.getElementById('f_especialidad').value || null,
         };
         if (!body.paciente_id) throw new Error('Selecciona un paciente');
-        await api('/reportes/lista-espera', { method: 'POST', body });
-        toast('Agregado a lista de espera'); loadEspera();
-      });
+        await api('/reportes/lista-espera', { method: 'POST', body, loader: false });
+        loadEspera();
+      }, { successMessage: 'Agregado a lista de espera' });
   }
 
   document.getElementById('btnNuevoEspera').addEventListener('click', showNuevoEspera);

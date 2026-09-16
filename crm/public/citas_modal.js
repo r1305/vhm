@@ -145,10 +145,9 @@
         <p style="font-size:15px;margin-bottom:8px">¿Eliminar esta cita?</p>
         <p style="font-size:13px;color:var(--text-muted)">Esta acción no se puede deshacer.</p>
       </div>`, async () => {
-      await api(`/citas/${citaId}`, { method: 'DELETE' });
-      toast('Cita eliminada');
+      await api(`/citas/${citaId}`, { method: 'DELETE', loader: false });
       if (onSuccess) await onSuccess();
-    }, { saveLabel: 'Eliminar', saveClass: 'btn btn-danger' });
+    }, { saveLabel: 'Eliminar', saveClass: 'btn btn-danger', successMessage: 'Cita eliminada' });
   }
 
   function showEditarCita(cita, onSuccess) {
@@ -213,12 +212,19 @@
 
       closeModal();
       setTimeout(() => {
+        const hadMeet = !!cita.meet_link;
         openModal('Confirmar cambios', diffTableHtml(diff), async () => {
-          const r = await api(`/citas/${cita.id}`, { method: 'PUT', body: updated });
+          const r = await api(`/citas/${cita.id}`, {
+            method: 'PUT',
+            body: updated,
+            loader: false,
+            successMessage: (data) => (data.meet_link && !hadMeet
+              ? 'Cita actualizada — link de Meet generado ✅'
+              : 'Cita actualizada'),
+          });
           if (r.meet_link) cita.meet_link = r.meet_link;
-          toast(r.meet_link && !cita.meet_link ? 'Cita actualizada — link de Meet generado ✅' : 'Cita actualizada');
           if (onSuccess) await onSuccess();
-        }, { saveLabel: 'Confirmar cambios' });
+        }, { saveLabel: 'Confirmar cambios', successMessage: null });
       }, 80);
     }, { saveLabel: 'Revisar cambios' });
 
@@ -322,10 +328,9 @@
       };
       if (!body.paciente_id || !body.terapeuta_id || !body.fecha)
         throw new Error('Completa todos los campos requeridos');
-      await api('/citas', { method: 'POST', body });
-      toast('Cita creada');
+      await api('/citas', { method: 'POST', body, loader: false });
       if (onSuccess) await onSuccess(body);
-    });
+    }, { successMessage: 'Cita creada' });
 
     setTimeout(() => {
       bindHoraFinAuto();
@@ -356,16 +361,21 @@
     container.querySelectorAll('[data-send-rec]').forEach(btn =>
       btn.addEventListener('click', async () => {
         try {
-          await api(`/citas/${btn.dataset.sendRec}/recordatorio`, { method: 'POST' });
-          toast('Recordatorio enviado');
+          await api(`/citas/${btn.dataset.sendRec}/recordatorio`, {
+            method: 'POST',
+            successMessage: 'Recordatorio enviado',
+          });
         } catch (e) { toast(e.message, 'danger'); }
       })
     );
     container.querySelectorAll('[data-confirmar]').forEach(btn =>
       btn.addEventListener('click', async () => {
         try {
-          await api(`/citas/${btn.dataset.confirmar}/estado`, { method: 'PATCH', body: { estado: 'realizada' } });
-          toast('Sesión marcada como realizada');
+          await api(`/citas/${btn.dataset.confirmar}/estado`, {
+            method: 'PATCH',
+            body: { estado: 'realizada' },
+            successMessage: 'Sesión marcada como realizada',
+          });
           if (onRefresh) await onRefresh();
         } catch (e) { toast(e.message, 'danger'); }
       })
@@ -379,10 +389,13 @@
           </div>`, async () => {
           const motivo = document.getElementById('f_motivo_cancelacion').value.trim();
           if (!motivo) throw new Error('Debes ingresar un motivo');
-          await api(`/citas/${btn.dataset.cancelar}/estado`, { method: 'PATCH', body: { estado: 'cancelada', notas: motivo } });
-          toast('Sesión cancelada');
+          await api(`/citas/${btn.dataset.cancelar}/estado`, {
+            method: 'PATCH',
+            body: { estado: 'cancelada', notas: motivo },
+            loader: false,
+          });
           if (onRefresh) await onRefresh();
-        });
+        }, { successMessage: 'Sesión cancelada' });
       })
     );
     container.querySelectorAll('[data-eliminar]').forEach(btn =>

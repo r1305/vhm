@@ -102,11 +102,21 @@
         <button class="btn btn-outline btn-sm" id="btnProcesarRec"><i class="fas fa-bell"></i> Procesar recordatorios</button>
         <button class="btn btn-outline btn-sm" id="btnFollowUp"><i class="fas fa-envelope"></i> Follow-up inactivos</button>`;
       document.getElementById('btnProcesarRec')?.addEventListener('click', async () => {
-        try { const r = await api('/reportes/procesar-recordatorios', { method:'POST' }); toast(`${r.enviados} recordatorios enviados`); }
+        try {
+          await api('/reportes/procesar-recordatorios', {
+            method:'POST',
+            successMessage: (r) => `${r.enviados} recordatorios enviados`,
+          });
+        }
         catch (err) { toast(err.message, 'danger'); }
       });
       document.getElementById('btnFollowUp')?.addEventListener('click', async () => {
-        try { const r = await api('/reportes/followup-inactivos', { method:'POST' }); toast(`${r.enviados} follow-ups enviados`); }
+        try {
+          await api('/reportes/followup-inactivos', {
+            method:'POST',
+            successMessage: (r) => `${r.enviados} follow-ups enviados`,
+          });
+        }
         catch (err) { toast(err.message, 'danger'); }
       });
     } catch (err) { toast(err.message, 'danger'); }

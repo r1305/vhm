@@ -2,7 +2,7 @@
 (function () {
   'use strict';
 
-  const { api, toast } = window.CRM;
+  const { api, toast, showLoader, hideLoader } = window.CRM;
   const BASE = window.__APP_BASE__ || '';
 
   const DIAS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
@@ -149,22 +149,23 @@
   async function guardar() {
     const tid = getTerId();
     const btn = document.getElementById('btnGuardarDisp');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando…';
+    if (btn) btn.disabled = true;
 
-    // Sincronizar todo el DOM al estado antes de guardar
     DIAS.forEach((_, i) => { if (estado[i]) syncDomToEstado(i); });
 
+    showLoader('Guardando horario…');
     try {
       for (const d of dispActual) {
-        await api(`/terapeutas/${tid}/disponibilidad/${d.id}`, { method: 'DELETE' });
+        await api(`/terapeutas/${tid}/disponibilidad/${d.id}`, { method: 'DELETE', loader: false });
       }
       for (let i = 0; i < 7; i++) {
         if (!estado[i]) continue;
         for (const r of estado[i]) {
           if (!r.hi || !r.hf || r.hf <= r.hi) { toast(`Horario inválido para ${DIAS[i]}`, 'danger'); continue; }
           await api(`/terapeutas/${tid}/disponibilidad`, {
-            method: 'POST', body: { dia_semana: i, hora_inicio: r.hi, hora_fin: r.hf },
+            method: 'POST',
+            body: { dia_semana: i, hora_inicio: r.hi, hora_fin: r.hf },
+            loader: false,
           });
         }
       }
@@ -173,8 +174,8 @@
     } catch (e) {
       toast(e.message, 'danger');
     } finally {
-      btn.disabled = false;
-      btn.innerHTML = '<i class="fas fa-save"></i> Guardar horario';
+      hideLoader();
+      if (btn) btn.disabled = false;
     }
   }
 

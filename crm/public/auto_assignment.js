@@ -21,8 +21,11 @@
 
       document.querySelectorAll('[data-del]').forEach(btn =>
         btn.addEventListener('click', async () => {
-          await api(`/leads/reglas/${btn.dataset.del}`, { method:'DELETE' });
-          toast('Regla eliminada'); loadReglas();
+          await api(`/leads/reglas/${btn.dataset.del}`, {
+            method:'DELETE',
+            successMessage: 'Regla eliminada',
+          });
+          loadReglas();
         })
       );
     } catch (err) { toast(err.message, 'danger'); }
@@ -52,9 +55,9 @@
           prioridad:    document.getElementById('f_prioridad').value || 1,
         };
         if (!body.keyword || !body.terapeuta_id) throw new Error('Keyword y terapeuta son requeridos');
-        await api('/leads/reglas', { method:'POST', body });
-        toast('Regla creada'); loadReglas();
-      });
+        await api('/leads/reglas', { method:'POST', body, loader: false });
+        loadReglas();
+      }, { successMessage: 'Regla creada' });
   }
 
   document.getElementById('btnNuevaRegla').addEventListener('click', showNuevaRegla);

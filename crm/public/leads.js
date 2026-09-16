@@ -49,8 +49,12 @@
           });
           if (!ok) return;
           try {
-            const r = await api(`/leads/${btn.dataset.convertir}/convertir`, { method: 'POST', body: {} });
-            toast(`Lead convertido → Paciente #${r.paciente_id}`); loadLeads();
+            await api(`/leads/${btn.dataset.convertir}/convertir`, {
+              method: 'POST',
+              body: {},
+              successMessage: (r) => `Lead convertido → Paciente #${r.paciente_id}`,
+            });
+            loadLeads();
           } catch (err) { toast(err.message, 'danger'); }
         })
       );
@@ -69,9 +73,13 @@
             `<option value="${k}" ${k===actual?'selected':''}>${v.label}</option>`).join('')}
         </select>
       </div>`, async () => {
-      await api(`/leads/${id}/estado`, { method: 'PATCH', body: { estado: document.getElementById('f_estado_lead').value } });
-      toast('Estado actualizado'); loadLeads();
-    });
+      await api(`/leads/${id}/estado`, {
+        method: 'PATCH',
+        body: { estado: document.getElementById('f_estado_lead').value },
+        loader: false,
+      });
+      loadLeads();
+    }, { successMessage: 'Estado actualizado' });
   }
 
   function showLeadForm(l = null) {
@@ -108,10 +116,10 @@
           fuente_detalle: document.getElementById('f_fuente_detalle').value,
           mensaje: document.getElementById('f_mensaje').value,
         };
-        if (l) await api(`/leads/${l.id}`, { method: 'PUT', body });
-        else   await api('/leads', { method: 'POST', body });
-        toast(l ? 'Lead actualizado' : 'Lead creado'); loadLeads();
-      });
+        if (l) await api(`/leads/${l.id}`, { method: 'PUT', body, loader: false });
+        else   await api('/leads', { method: 'POST', body, loader: false });
+        loadLeads();
+      }, { successMessage: l ? 'Lead actualizado' : 'Lead creado' });
   }
 
   document.getElementById('filtroLeadEstado').addEventListener('change', loadLeads);
