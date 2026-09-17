@@ -28,10 +28,10 @@ body {
   background: color-mix(in srgb, var(--surface) 92%, transparent) !important;
   border-bottom-color: var(--line) !important;
 }
-.site-nav .logo { -webkit-text-fill-color: unset !important; color: var(--primary) !important; background: none !important; }
-[data-theme="dark"] .site-nav .logo { color: var(--accent-dark) !important; }
-.site-nav .links a { color: var(--text-secondary) !important; }
-.site-nav .links a:hover { color: var(--link) !important; }
+.site-nav .logo,
+.site-nav .tribu-brand { -webkit-text-fill-color: unset !important; color: var(--primary) !important; background: none !important; }
+[data-theme="dark"] .site-nav .logo,
+[data-theme="dark"] .site-nav .tribu-brand { color: var(--accent-dark) !important; }
 
 .hero {
   background: linear-gradient(180deg, var(--surface) 0%, var(--bg) 100%) !important;
@@ -146,11 +146,6 @@ footer a { color: var(--link) !important; }
 }
 .user-menu-divider {
   background: var(--border) !important;
-}
-@media (max-width: 768px) {
-  .site-nav .links {
-    background: var(--surface) !important;
-  }
 }
 
 /* Tabs La Tribu — contraste en claro y oscuro */

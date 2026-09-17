@@ -139,9 +139,9 @@
         <div class="card-body" style="padding:20px">
           <p style="font-size:.85rem;color:var(--text-muted);margin-bottom:16px">Estos textos aparecen en la pestaña <strong>Camino Interior</strong> de La Tribu.</p>
           <div class="form-group">
-            <label>Video de bienvenida <span class="optional">(opcional)</span></label>
+            <label>Video de bienvenida (VSL) <span class="optional">(opcional)</span></label>
             <input type="text" id="landing-video-url" placeholder="/media/tribu-hero.mp4" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text)">
-            <p style="font-size:.78rem;color:var(--text-muted);margin-top:6px">Sube el MP4 a <code>media/tribu-hero.mp4</code> y escribe <strong>/media/tribu-hero.mp4</strong>. Opcional: imagen portada en <code>media/tribu-hero-poster.jpg</code> (JPG/PNG).</p>
+            <p style="font-size:.78rem;color:var(--text-muted);margin-top:6px">Si dejas este campo vacío, el VSL no se muestra en <strong>/latribu</strong>. Con URL (p. ej. <strong>/media/tribu-hero.mp4</strong> o enlace de Drive) aparece arriba de los textos en Camino Interior. Portada opcional: <code>media/tribu-hero-poster.jpg</code>.</p>
           </div>
           <div class="form-group">
             <label>Texto introductorio <span class="optional">(empieza con "Cada masterclass...")</span></label>
@@ -211,7 +211,7 @@
           <div class="form-group">
             <label>Mensaje para el usuario</label>
             <input type="text" id="acc-mensaje" placeholder="Ingresa la contraseña para acceder a La Tribu" maxlength="500">
-            <div class="field-hint">Se muestra en la pantalla de acceso del landing.</div>
+            <div class="field-hint">Se muestra si el acceso por contraseña está activo en La Tribu (no en el sitio principal).</div>
           </div>
 
           <button type="button" class="btn btn-primary" id="btn-acc-guardar">💾 Guardar</button>
