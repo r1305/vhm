@@ -22,12 +22,15 @@ router.get('/', auth, async (req, res) => {
       return res.status(403).json({ error: 'Sin acceso' });
     }
     const filter = listFilterForRole(req.user.rol);
+    const soloClinicos = req.query.clinicos === '1' || req.query.rol === 'terapeuta';
+    const clinicoSql = soloClinicos ? " AND t.rol = 'terapeuta'" : '';
     const [rows] = await pool.execute(`
       SELECT t.id, t.nombre, t.apellido, t.username, t.email, t.telefono, t.rol, t.especialidad, t.activo,
+             t.presencial_habilitado,
              MAX(p.installed_at) AS pwa_installed_at
       FROM terapeutas t
       LEFT JOIN pwa_installs p ON p.user_id = t.id
-      WHERE 1=1 ${filter.sql}
+      WHERE 1=1 ${filter.sql}${clinicoSql}
       GROUP BY t.id
       ORDER BY t.nombre
     `, filter.params);
@@ -116,6 +119,26 @@ router.delete('/:id/disponibilidad/:did', auth, async (req, res) => {
     return res.status(403).json({ error: 'Sin acceso' });
   await pool.execute('DELETE FROM disponibilidad WHERE id=? AND terapeuta_id=?', [req.params.did, id]);
   res.json({ ok: true });
+});
+
+router.patch('/:id/presencial', auth, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!id) return res.status(400).json({ error: 'ID inválido' });
+  if (req.user.rol === 'terapeuta' && req.user.id !== id) {
+    return res.status(403).json({ error: 'Sin acceso' });
+  }
+  const habilitado = req.body?.presencial_habilitado !== false
+    && req.body?.presencial_habilitado !== 0
+    && req.body?.presencial_habilitado !== '0';
+  try {
+    await pool.execute(
+      'UPDATE terapeutas SET presencial_habilitado = ? WHERE id = ?',
+      [habilitado ? 1 : 0, id]
+    );
+    res.json({ ok: true, presencial_habilitado: habilitado });
+  } catch {
+    res.status(500).json({ error: 'Error al actualizar modalidad presencial' });
+  }
 });
 
 module.exports = router;

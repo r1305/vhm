@@ -102,7 +102,7 @@ router.post('/api/pwa/install', async (req, res) => {
 router.get('/agendar/:username', async (req, res) => {
   try {
     const [[terapeuta]] = await db.execute(
-      'SELECT id, nombre, apellido, username, especialidad FROM terapeutas WHERE username=? AND activo=1',
+      'SELECT id, nombre, apellido, username, especialidad, presencial_habilitado FROM terapeutas WHERE username=? AND activo=1',
       [req.params.username]
     );
     if (!terapeuta) return res.status(404).send('Terapeuta no encontrado');
@@ -253,7 +253,7 @@ router.get('/dashboard', requireSession, (req, res, next) => {
 router.get('/calendario', requireSession, async (req, res) => {
   const user = req.session.user;
   try {
-    const [terapeutas] = await db.execute('SELECT id, nombre, apellido FROM terapeutas WHERE activo=1 ORDER BY nombre');
+    const [terapeutas] = await db.execute("SELECT id, nombre, apellido FROM terapeutas WHERE activo=1 AND rol='terapeuta' ORDER BY nombre");
     render(res, 'calendario', { user, terapeutas, scripts: `<script src="${req.app.locals.BASE}/citas_modal.js"></script><script src="${req.app.locals.BASE}/calendario.js"></script>` });
   } catch (err) { res.status(500).send(err.message); }
 });
@@ -262,7 +262,7 @@ router.get('/calendario', requireSession, async (req, res) => {
 router.get('/agenda', requireSession, async (req, res) => {
   const user = req.session.user;
   try {
-    const [terapeutas] = await db.execute('SELECT id, nombre, apellido FROM terapeutas WHERE activo=1 ORDER BY nombre');
+    const [terapeutas] = await db.execute("SELECT id, nombre, apellido FROM terapeutas WHERE activo=1 AND rol='terapeuta' ORDER BY nombre");
     const qs = user.rol === 'terapeuta' ? 'WHERE terapeuta_id = ?' : 'WHERE 1';
     const params = user.rol === 'terapeuta' ? [user.id] : [];
     const [pacientes] = await db.execute(`SELECT id, nombre, apellido FROM pacientes ${qs} ORDER BY nombre`, params);
@@ -274,7 +274,7 @@ router.get('/agenda', requireSession, async (req, res) => {
 router.get('/pacientes', requireSession, async (req, res) => {
   const user = req.session.user;
   try {
-    const [terapeutas] = await db.execute('SELECT id, nombre, apellido FROM terapeutas WHERE activo=1 ORDER BY nombre');
+    const [terapeutas] = await db.execute("SELECT id, nombre, apellido FROM terapeutas WHERE activo=1 AND rol='terapeuta' ORDER BY nombre");
     const [rows]       = await db.execute('SELECT terapeuta_id, COUNT(*) AS total FROM pacientes GROUP BY terapeuta_id');
     const conteo       = Object.fromEntries(rows.map(r => [r.terapeuta_id, r.total]));
     render(res, 'pacientes', { user, terapeutas, conteo, scripts: `<script src="${req.app.locals.BASE}/cuotasPlan.js"></script><script src="${req.app.locals.BASE}/pacientes.js"></script>` });
@@ -298,7 +298,7 @@ router.get('/disponibilidad', requireSession, async (req, res) => {
   try {
     const isAdmin = isStaffAdmin(user.rol);
     const [terapeutas] = isAdmin
-      ? await db.execute('SELECT id, nombre, apellido, username FROM terapeutas WHERE activo=1 ORDER BY nombre')
+      ? await db.execute("SELECT id, nombre, apellido, username FROM terapeutas WHERE activo=1 AND rol='terapeuta' ORDER BY nombre")
       : [[{ id: user.id, nombre: user.nombre, apellido: user.apellido, username: user.username }]];
     render(res, 'disponibilidad', { user, terapeutas, scripts: `<script src="${req.app.locals.BASE}/disponibilidad.js"></script>` });
   } catch (err) { res.status(500).send(err.message); }

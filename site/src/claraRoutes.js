@@ -1,5 +1,10 @@
 const express = require('express');
+const jwt = require('jsonwebtoken');
+const pool = require('./db');
+const { JWT_SECRET } = require('./auth');
+
 const router = express.Router();
+const TRIBU_JWT_SECRET = JWT_SECRET + '_tribu';
 
 // Chat embebido "Clara" (Opción B). Solo se activa si existe OPENAI_API_KEY.
 // La key se lee de variables de entorno y nunca se registra ni se expone.
@@ -16,6 +21,53 @@ const SYSTEM_PROMPT = process.env.CLARA_SYSTEM_PROMPT || [
 
 function chatHabilitado() {
   return !!process.env.OPENAI_API_KEY;
+}
+
+async function syncSubscriptionAccess(userId) {
+  await pool.execute(
+    `UPDATE tribu_suscripciones
+     SET activo = 0, auto_renovacion = 0
+     WHERE tribu_user_id = ? AND activo = 1 AND fecha_fin < CURDATE()`,
+    [userId]
+  );
+  const [[row]] = await pool.execute(
+    `SELECT COUNT(*) AS total
+     FROM tribu_suscripciones
+     WHERE tribu_user_id = ? AND activo = 1 AND fecha_fin >= CURDATE()`,
+    [userId]
+  );
+  const subscribed = (row?.total || 0) > 0;
+  await pool.execute(
+    'UPDATE tribu_users SET is_suscribed = ? WHERE id = ?',
+    [subscribed ? 1 : 0, userId]
+  );
+  return subscribed;
+}
+
+async function getTribuUserId(req) {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) return null;
+  try {
+    const payload = jwt.verify(token, TRIBU_JWT_SECRET);
+    if (!payload.tribu) return null;
+    return payload.id;
+  } catch {
+    return null;
+  }
+}
+
+async function requireActiveSubscription(req, res) {
+  const userId = await getTribuUserId(req);
+  if (!userId) {
+    res.status(401).json({ error: 'Debes iniciar sesión.' });
+    return null;
+  }
+  const subscribed = await syncSubscriptionAccess(userId);
+  if (!subscribed) {
+    res.status(403).json({ error: 'Clara está disponible solo para miembros con suscripción activa.' });
+    return null;
+  }
+  return userId;
 }
 
 // Rate limiter en memoria: max 15 mensajes por IP en 5 minutos
@@ -41,14 +93,22 @@ setInterval(() => {
   }
 }, 5 * 60 * 1000).unref();
 
-router.get('/config', (req, res) => {
-  res.json({ enabled: chatHabilitado(), nombre: 'Clara', titulo: 'Tu Guía 24/7' });
+router.get('/config', async (req, res) => {
+  const base = { nombre: 'Clara', titulo: 'Tu Guía 24/7' };
+  const userId = await getTribuUserId(req);
+  if (!userId) return res.json({ ...base, enabled: false });
+  const subscribed = await syncSubscriptionAccess(userId);
+  if (!subscribed) return res.json({ ...base, enabled: false });
+  res.json({ ...base, enabled: chatHabilitado() });
 });
 
 // SECURITY-REVIEW: realiza una llamada HTTP externa a la API de OpenAI con
 // contenido provisto por el usuario. La API key proviene de variables de
 // entorno, se sanea/limita la entrada y los detalles de error no se exponen.
 router.post('/chat', async (req, res) => {
+  const userId = await requireActiveSubscription(req, res);
+  if (!userId) return;
+
   if (!chatHabilitado()) {
     return res.status(503).json({ error: 'El chat con IA aún no está disponible. Vuelve pronto.' });
   }

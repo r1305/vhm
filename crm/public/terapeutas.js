@@ -34,6 +34,7 @@
   }
 
   const DIAS_SEMANA = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  const ROLE_ORDER = ['superadmin', 'admin', 'recepcion', 'terapeuta'];
 
   const btnNuevo = document.getElementById('btnNuevoTerapeuta');
   if (btnNuevo) {
@@ -42,40 +43,93 @@
       : '<i class="fas fa-plus"></i> Nuevo terapeuta';
   }
 
+  function renderTerCard(t) {
+    return `
+      <div class="ter-card">
+        <div class="ter-card-top">
+          <div class="ter-avatar">${(t.nombre?.[0]||'').toUpperCase()}</div>
+          <div style="display:flex;gap:4px;align-items:center">
+            ${t.pwa_installed_at ? `<i class="fas fa-mobile-screen" title="PWA instalada el ${fmtDate(t.pwa_installed_at)}" style="color:var(--primary);font-size:13px"></i>` : ''}
+            <button class="btn-icon" data-edit="${t.id}" title="Editar"><i class="fas fa-pen"></i></button>
+          </div>
+        </div>
+        <div class="ter-card-name">${esc(fullName(t))}</div>
+        <div class="ter-card-meta">
+          <span><i class="fas fa-user" style="width:12px"></i> ${esc(t.username||'—')}</span>
+          ${t.telefono ? `<span><i class="fas fa-mobile-alt" style="width:12px"></i> ${esc(t.telefono)}</span>` : ''}
+        </div>
+        <div class="ter-card-footer">
+          ${t.activo ? '<span class="badge badge-green">Activo</span>' : '<span class="badge badge-gray">Inactivo</span>'}
+          ${t.rol === 'terapeuta' ? `<button class="btn btn-outline btn-sm" data-horario="${t.id}" style="margin-left:auto;font-size:11px">
+            <i class="fas fa-clock"></i> Horario
+          </button>` : ''}
+        </div>
+      </div>`;
+  }
+
+  function groupByRol(data) {
+    const groups = {};
+    data.forEach((t) => {
+      const rol = t.rol || 'terapeuta';
+      if (!groups[rol]) groups[rol] = [];
+      groups[rol].push(t);
+    });
+    return groups;
+  }
+
+  function bindTerapeutaActions(data) {
+    document.querySelectorAll('[data-edit]').forEach(btn =>
+      btn.addEventListener('click', () => showTerapeutaForm(data.find(t => t.id == btn.dataset.edit)))
+    );
+    document.querySelectorAll('[data-horario]').forEach(btn =>
+      btn.addEventListener('click', () => showHorario(data.find(t => t.id == btn.dataset.horario)))
+    );
+    document.querySelectorAll('[data-role-toggle]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const rol = btn.dataset.roleToggle;
+        const body = document.getElementById(`ter-role-body-${rol}`);
+        if (!body) return;
+        const open = body.classList.toggle('open');
+        btn.classList.toggle('open', open);
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      });
+    });
+  }
+
   async function loadTerapeutas() {
     try {
       const data = await api('/terapeutas');
-      document.getElementById('tablaTerapeutas').innerHTML = data.length
-        ? `<div class="ter-grid">${data.map(t => `
-          <div class="ter-card">
-            <div class="ter-card-top">
-              <div class="ter-avatar">${(t.nombre?.[0]||'').toUpperCase()}</div>
-              <div style="display:flex;gap:4px;align-items:center">
-                ${t.pwa_installed_at ? `<i class="fas fa-mobile-screen" title="PWA instalada el ${fmtDate(t.pwa_installed_at)}" style="color:var(--primary);font-size:13px"></i>` : ''}
-                <button class="btn-icon" data-edit="${t.id}" title="Editar"><i class="fas fa-pen"></i></button>
-              </div>
-            </div>
-            <div class="ter-card-name">${esc(fullName(t))}</div>
-            <div class="ter-card-meta">
-              <span><i class="fas fa-user" style="width:12px"></i> ${esc(t.username||'—')}</span>
-              <span><i class="fas fa-tag" style="width:12px"></i> ${esc(ROLE_LABELS[t.rol] || t.rol)}</span>
-              ${t.telefono ? `<span><i class="fas fa-mobile-alt" style="width:12px"></i> ${esc(t.telefono)}</span>` : ''}
-            </div>
-            <div class="ter-card-footer">
-              ${t.activo ? '<span class="badge badge-green">Activo</span>' : '<span class="badge badge-gray">Inactivo</span>'}
-              <button class="btn btn-outline btn-sm" data-horario="${t.id}" style="margin-left:auto;font-size:11px">
-                <i class="fas fa-clock"></i> Horario
-              </button>
-            </div>
-          </div>`).join('')}</div>`
-        : '<div class="list-empty">Sin terapeutas registrados</div>';
+      const el = document.getElementById('tablaTerapeutas');
+      if (!data.length) {
+        el.innerHTML = '<div class="list-empty">Sin usuarios registrados</div>';
+        return;
+      }
 
-      document.querySelectorAll('[data-edit]').forEach(btn =>
-        btn.addEventListener('click', () => showTerapeutaForm(data.find(t => t.id == btn.dataset.edit)))
-      );
-      document.querySelectorAll('[data-horario]').forEach(btn =>
-        btn.addEventListener('click', () => showHorario(data.find(t => t.id == btn.dataset.horario)))
-      );
+      const groups = groupByRol(data);
+      const roles = [
+        ...ROLE_ORDER.filter((r) => groups[r]?.length),
+        ...Object.keys(groups).filter((r) => !ROLE_ORDER.includes(r)),
+      ];
+
+      el.innerHTML = `<div class="ter-role-list">${roles.map((rol) => {
+        const users = groups[rol];
+        const label = ROLE_LABELS[rol] || rol;
+        return `
+          <div class="ter-role-group">
+            <button type="button" class="ter-role-header open" data-role-toggle="${rol}" aria-expanded="true">
+              <span class="ter-role-header-left">
+                <i class="fas fa-chevron-right ter-role-chevron"></i>
+                <span class="ter-role-title">${esc(label)}</span>
+              </span>
+              <span class="ter-role-count">${users.length} usuario${users.length !== 1 ? 's' : ''}</span>
+            </button>
+            <div class="ter-role-body open" id="ter-role-body-${rol}">
+              <div class="ter-grid">${users.map(renderTerCard).join('')}</div>
+            </div>
+          </div>`;
+      }).join('')}</div>`;
+
+      bindTerapeutaActions(data);
     } catch (err) { toast(err.message, 'danger'); }
   }
 

@@ -306,7 +306,7 @@
     let catalogo = [];
     let paquetesPac = [];
     try {
-      if (!terapeutasCache.length) terapeutasCache = await api('/terapeutas', { loader: false }).catch(() => []);
+      if (!terapeutasCache.length) terapeutasCache = await api('/terapeutas?clinicos=1', { loader: false }).catch(() => []);
       catalogo = await api('/paquetes?activo=1', { loader: false }).catch(() => []);
       paquetesPac = p
         ? await api(`/pacientes/${p.id}/paquetes-adquiridos`, { loader: false }).catch(() => [])

@@ -54,7 +54,7 @@ router.get('/:username/buscar-paciente', async (req, res) => {
 router.get('/:username/slots', async (req, res) => {
   try {
     const [[ter]] = await pool.execute(
-      'SELECT id, nombre, apellido, especialidad FROM terapeutas WHERE username=? AND activo=1',
+      'SELECT id, nombre, apellido, especialidad, presencial_habilitado FROM terapeutas WHERE username=? AND activo=1',
       [req.params.username]
     );
     if (!ter) return res.status(404).json({ error: 'Terapeuta no encontrado' });
@@ -151,7 +151,14 @@ router.get('/:username/slots', async (req, res) => {
       cur.setDate(cur.getDate()+1);
     }
 
-    res.json({ terapeuta: ter, dias, tz: TZ });
+    res.json({
+      terapeuta: {
+        ...ter,
+        presencial_habilitado: !!ter.presencial_habilitado,
+      },
+      dias,
+      tz: TZ,
+    });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -159,14 +166,18 @@ router.get('/:username/slots', async (req, res) => {
 router.post('/:username/agendar', async (req, res) => {
   try {
     const [[ter]] = await pool.execute(
-      'SELECT id FROM terapeutas WHERE username=? AND activo=1',
+      'SELECT id, presencial_habilitado FROM terapeutas WHERE username=? AND activo=1',
       [req.params.username]
     );
     if (!ter) return res.status(404).json({ error: 'Terapeuta no encontrado' });
 
     const { nombre, apellido, email, telefono, fecha, hora_inicio, motivo, modalidad } = req.body || {};
     if (!nombre || !fecha || !hora_inicio) return res.status(400).json({ error: 'nombre, fecha y hora_inicio requeridos' });
-    const modalidadVal = ['presencial','videollamada','telefono'].includes(modalidad) ? modalidad : 'presencial';
+    const presencialOk = !!ter.presencial_habilitado;
+    let modalidadVal = ['presencial', 'videollamada', 'telefono'].includes(modalidad) ? modalidad : 'videollamada';
+    if (modalidadVal === 'presencial' && !presencialOk) {
+      return res.status(400).json({ error: 'Este terapeuta no ofrece atención presencial' });
+    }
 
     // Verificar que el slot sigue libre
     const [[ocupado]] = await pool.execute(
