@@ -380,7 +380,7 @@
       api(`/pacientes?${qs}`, { loader: false }).then(ps => { pacientesCache = ps; }).catch(() => {});
     }
 
-    api('/terapeutas', { loader: false }).then(ts => {
+    api('/terapeutas?clinicos=1', { loader: false }).then(ts => {
       terapeutasCache = ts;
       const tbody = document.getElementById('cmBody');
       if (!tbody) return;

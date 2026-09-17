@@ -4,6 +4,7 @@
 
   const BASE     = window.__APP_BASE__ || '';
   const USERNAME = window.__TER_USERNAME__;
+  let presencialHabilitado = window.__TER_PRESENCIAL__ !== false;
   const MESES    = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
                     'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
   const DIAS     = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
@@ -63,6 +64,16 @@
     return slotEnLocal(fechaStr, horaStr)
       .toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
   }
+
+  function aplicarModalidadTerapeuta(habilitado) {
+    presencialHabilitado = habilitado !== false;
+    const presLabel = document.getElementById('agModalidadPresencial');
+    const videoInput = document.querySelector('input[name="ag_modalidad"][value="videollamada"]');
+    if (presLabel) presLabel.style.display = presencialHabilitado ? '' : 'none';
+    if (videoInput) videoInput.checked = true;
+  }
+
+  aplicarModalidadTerapeuta(presencialHabilitado);
 
   const hoy = new Date(); hoy.setHours(0,0,0,0);
   let cursor   = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
@@ -179,6 +190,7 @@
     try {
       const data = await api(`/api/publico/${USERNAME}/slots?mes=${mes}`);
       slotsData = data.dias;
+      if (data.terapeuta) aplicarModalidadTerapeuta(data.terapeuta.presencial_habilitado);
       renderCal();
     } catch (e) {
       document.getElementById('agCal').innerHTML = `<div class="ag-error">${e.message}</div>`;
@@ -286,7 +298,7 @@
     const telefono = syncTelefono();
     const email    = document.getElementById('ag_email').value.trim();
     const motivo   = document.getElementById('ag_motivo').value.trim();
-    const modalidad = document.querySelector('input[name="ag_modalidad"]:checked')?.value || 'presencial';
+    const modalidad = document.querySelector('input[name="ag_modalidad"]:checked')?.value || 'videollamada';
     const errEl    = document.getElementById('agErrorMsg');
 
     if (!telefono) { mostrarError('El teléfono es obligatorio'); return; }
@@ -365,7 +377,7 @@
     nombreEl.classList.add('ag-field-readonly');
     apellidoEl.classList.add('ag-field-readonly');
     document.getElementById('agLookupStatus').innerHTML = '';
-    document.querySelector('input[name="ag_modalidad"][value="presencial"]').checked = true;
+    aplicarModalidadTerapeuta(presencialHabilitado);
     goStep(1);
     loadMes();
   });

@@ -335,7 +335,7 @@
   async function showNuevoBloqueo(fecha) {
     const esAdmin = window.__USER_ROL__ !== 'terapeuta';
     if (esAdmin && !terapeutasCache.length) {
-      try { terapeutasCache = await api('/terapeutas'); }
+      try { terapeutasCache = await api('/terapeutas?clinicos=1'); }
       catch (e) { toast('No se pudieron cargar los terapeutas', 'danger'); return; }
     }
     const terOpts = terapeutasCache.map(t =>
@@ -480,7 +480,7 @@
   document.getElementById('calTerapeuta')?.addEventListener('change', loadCitas);
 
   /* ── Init: cargar terapeutas para el modal de bloqueo ── */
-  api('/terapeutas', { loader: false }).then(ts => { terapeutasCache = ts; }).catch(() => {});
+  api('/terapeutas?clinicos=1', { loader: false }).then(ts => { terapeutasCache = ts; }).catch(() => {});
   api('/pacientes', { loader: false }).then(ps => { window.CRM.pacientesCache = ps; }).catch(() => {});
   loadCitas();
 

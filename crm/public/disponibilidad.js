@@ -14,6 +14,7 @@
 
   let dispActual = [];
   let username   = '';
+  let presencialHabilitado = true;
 
   // Estado local: { [dia]: [{hi, hf}, ...] }
   let estado = {};
@@ -33,11 +34,12 @@
     try {
       const [disp, ters] = await Promise.all([
         api(`/terapeutas/${tid}/disponibilidad`, { loaderMessage: 'Cargando horario…' }),
-        api('/terapeutas', { loaderMessage: 'Cargando horario…' }),
+        api('/terapeutas?clinicos=1', { loaderMessage: 'Cargando horario…' }),
       ]);
       dispActual = disp;
       const ter  = ters.find(t => t.id === tid);
       username   = ter?.username || '';
+      presencialHabilitado = ter?.presencial_habilitado !== 0 && ter?.presencial_habilitado !== false;
       estado = estadoInicial();
       render();
       updateLink();
@@ -72,7 +74,42 @@
       </div>`;
   }
 
+  function renderModalidadSwitch() {
+    const box = document.getElementById('dispModalidadBox');
+    if (!box) return;
+    box.innerHTML = `
+      <div class="disp-modalidad-box">
+        <div class="disp-modalidad-info">
+          <div class="disp-modalidad-title">Atención presencial</div>
+          <div class="disp-modalidad-desc">Si está deshabilitada, los pacientes solo verán videollamada al agendar.</div>
+        </div>
+        <label class="disp-switch" title="Habilitar atención presencial">
+          <input type="checkbox" id="dispPresencial" ${presencialHabilitado ? 'checked' : ''}>
+          <span class="disp-switch-track"></span>
+        </label>
+      </div>`;
+    document.getElementById('dispPresencial')?.addEventListener('change', guardarPresencial);
+  }
+
+  async function guardarPresencial() {
+    const tid = getTerId();
+    const input = document.getElementById('dispPresencial');
+    const habilitado = !!input?.checked;
+    try {
+      const r = await api(`/terapeutas/${tid}/presencial`, {
+        method: 'PATCH',
+        body: { presencial_habilitado: habilitado },
+        successMessage: habilitado ? 'Atención presencial habilitada' : 'Atención presencial deshabilitada',
+      });
+      presencialHabilitado = !!r.presencial_habilitado;
+    } catch (e) {
+      toast(e.message, 'danger');
+      if (input) input.checked = presencialHabilitado;
+    }
+  }
+
   function render() {
+    renderModalidadSwitch();
     const html = DIAS.map((_, i) => renderDia(i)).join('');
 
     document.getElementById('dispGrid').innerHTML = `

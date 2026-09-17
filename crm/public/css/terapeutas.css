@@ -1,4 +1,28 @@
 /* ── Terapeutas ─────────────── */
+.ter-role-list { display: flex; flex-direction: column; gap: 12px; }
+.ter-role-group { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); overflow: hidden; }
+.ter-role-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border: none;
+  background: var(--bg);
+  cursor: pointer;
+  text-align: left;
+  transition: background .15s;
+}
+.ter-role-header:hover { background: var(--primary-light, rgba(99, 102, 241, 0.06)); }
+.ter-role-header-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.ter-role-chevron { font-size: 11px; color: var(--text-muted); transition: transform .2s; }
+.ter-role-header.open .ter-role-chevron { transform: rotate(90deg); }
+.ter-role-title { font-size: 14px; font-weight: 700; color: var(--text); }
+.ter-role-count { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+.ter-role-body { display: none; padding: 14px 16px 16px; border-top: 1px solid var(--border); }
+.ter-role-body.open { display: block; }
+
 .ter-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 16px; }
 .ter-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; gap: 10px; }
 .ter-card-top { display: flex; justify-content: space-between; align-items: center; }

@@ -24,14 +24,14 @@ body {
   background: var(--bg) !important;
 }
 
-nav {
+.site-nav {
   background: color-mix(in srgb, var(--surface) 92%, transparent) !important;
   border-bottom-color: var(--line) !important;
 }
-nav .logo { -webkit-text-fill-color: unset !important; color: var(--primary) !important; background: none !important; }
-[data-theme="dark"] nav .logo { color: var(--accent-dark) !important; }
-nav .links a { color: var(--text-secondary) !important; }
-nav .links a:hover { color: var(--link) !important; }
+.site-nav .logo { -webkit-text-fill-color: unset !important; color: var(--primary) !important; background: none !important; }
+[data-theme="dark"] .site-nav .logo { color: var(--accent-dark) !important; }
+.site-nav .links a { color: var(--text-secondary) !important; }
+.site-nav .links a:hover { color: var(--link) !important; }
 
 .hero {
   background: linear-gradient(180deg, var(--surface) 0%, var(--bg) 100%) !important;
@@ -99,3 +99,210 @@ footer {
 }
 footer a { color: var(--link) !important; }
 [data-theme="dark"] footer a { color: var(--accent-dark) !important; }
+
+/* Menú "Mi cuenta" — contraste en claro y oscuro */
+.user-menu-panel {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+  box-shadow: var(--shadow-card) !important;
+}
+[data-theme="dark"] .user-menu-panel {
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45) !important;
+}
+.user-menu-btn {
+  background: var(--primary-soft) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+.user-menu-btn:hover,
+.user-menu.open .user-menu-btn {
+  background: var(--surface-raised) !important;
+  border-color: var(--border) !important;
+}
+.user-menu-name,
+.user-menu-head-name,
+.user-menu-item {
+  color: var(--text) !important;
+}
+.user-menu-sub,
+.user-menu-chevron,
+.user-menu-head-email {
+  color: var(--text-secondary) !important;
+}
+.user-menu-item:hover,
+.user-menu-item:focus-visible {
+  background: var(--primary-soft) !important;
+}
+.user-menu-item.danger {
+  color: var(--danger) !important;
+}
+.user-menu-item.danger:hover,
+.user-menu-item.danger:focus-visible {
+  background: var(--danger-bg) !important;
+}
+.user-menu-head {
+  border-bottom-color: var(--border) !important;
+}
+.user-menu-divider {
+  background: var(--border) !important;
+}
+@media (max-width: 768px) {
+  .site-nav .links {
+    background: var(--surface) !important;
+  }
+}
+
+/* Tabs La Tribu — contraste en claro y oscuro */
+.tribu-tab {
+  background: var(--surface-subtle) !important;
+  color: var(--text-secondary) !important;
+  border-color: var(--border) !important;
+}
+.tribu-tab:hover {
+  background: var(--surface-raised) !important;
+  color: var(--text) !important;
+}
+.tribu-tab.active {
+  background: var(--surface) !important;
+  color: var(--primary-hover) !important;
+  border-color: var(--border) !important;
+}
+[data-theme="dark"] .tribu-tab.active {
+  color: var(--accent-dark) !important;
+  box-shadow: none !important;
+}
+
+/* Modal de pago y facturación */
+#pagoOverlay .pago-box,
+#pagoOverlay .auth-box {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+#pagoOverlay .auth-title,
+#pagoOverlay .pago-section-title,
+#pagoOverlay .pago-price-amount,
+#pagoOverlay .pago-toggle-text strong,
+#pagoOverlay .pago-saved-label {
+  color: var(--text) !important;
+}
+#pagoOverlay .pago-section,
+#pagoOverlay .pago-section-pay,
+#pagoOverlay .pago-saved-wrap,
+#pagoOverlay .pago-price-chip {
+  background: var(--surface-subtle) !important;
+  border-color: var(--border) !important;
+}
+#pagoOverlay .culqi-embed {
+  background: transparent !important;
+  border: none !important;
+  overflow: hidden !important;
+  border-radius: 12px !important;
+}
+#pagoOverlay .culqi-embed iframe {
+  border-radius: 12px !important;
+}
+
+/* Modal de evento del calendario */
+.evt-close {
+  background: var(--surface-raised) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+.evt-close:hover {
+  background: var(--primary-soft) !important;
+  color: var(--primary-hover) !important;
+}
+[data-theme="dark"] .evt-close:hover {
+  color: var(--accent-dark) !important;
+}
+
+/* Loader de página */
+.tribu-page-loader {
+  background: rgba(14, 23, 20, 0.42) !important;
+}
+[data-theme="dark"] .tribu-page-loader {
+  background: rgba(14, 23, 20, 0.72) !important;
+}
+.tribu-page-loader-box {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+  box-shadow: var(--shadow-card) !important;
+}
+[data-theme="dark"] .tribu-page-loader-box {
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45) !important;
+}
+.tribu-page-loader-box p {
+  color: var(--text-secondary) !important;
+}
+.tribu-spinner {
+  border-color: var(--primary-soft) !important;
+  border-top-color: var(--primary) !important;
+}
+[data-theme="dark"] .tribu-spinner {
+  border-top-color: var(--accent-dark) !important;
+}
+
+/* Zona Mi cuenta */
+.tribu-account-zone {
+  background: linear-gradient(180deg, var(--surface-subtle) 0%, var(--bg) 240px) !important;
+  border-top-color: var(--border) !important;
+}
+.tribu-account-eyebrow {
+  color: var(--text-secondary) !important;
+}
+.tribu-account-title {
+  color: var(--text) !important;
+}
+.tribu-account-tabs {
+  border-bottom-color: var(--border) !important;
+}
+.tribu-account-tab {
+  color: var(--text-secondary) !important;
+  border-color: var(--border) !important;
+}
+.tribu-account-tab:hover:not(.active) {
+  background: var(--primary-soft) !important;
+  color: var(--text) !important;
+}
+.tribu-account-tab.active {
+  background: var(--primary) !important;
+  color: var(--on-primary) !important;
+}
+#pagoOverlay .pago-field input,
+#pagoOverlay .pago-field select,
+#pagoOverlay .profile-field input,
+#pagoOverlay .profile-field select,
+.auth-field input,
+.profile-field input {
+  background: var(--surface) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+#pagoOverlay .pago-field label,
+#pagoOverlay .profile-field label,
+#pagoOverlay .pago-pay-lead,
+#pagoOverlay .pago-help,
+#pagoOverlay .pago-trust,
+#pagoOverlay .pago-price-period,
+#pagoOverlay .pago-saved-title,
+.pago-toggle-text small {
+  color: var(--text-secondary) !important;
+}
+#pagoOverlay .pago-field input:focus,
+#pagoOverlay .pago-field select:focus,
+#pagoOverlay .profile-field input:focus,
+.auth-field input:focus {
+  background: var(--primary-soft) !important;
+  box-shadow: var(--focus-ring) !important;
+}
+#pagoOverlay .pago-saved-option {
+  background: var(--surface-subtle) !important;
+  border-color: var(--border) !important;
+}
+#pagoOverlay .pago-saved-option:hover,
+#pagoOverlay .pago-saved-option.selected {
+  background: var(--primary-soft) !important;
+}

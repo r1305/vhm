@@ -43,21 +43,21 @@
     a { text-decoration: none; }
     ::selection { background: rgba(168,79,62,.22); }
 
-    /* NAV */
-    nav {
+    /* NAV principal del sitio (no confundir con .tribu-account-tabs) */
+    .site-nav {
       position: fixed; top: 0; width: 100%; padding: 14px 22px;
       display: flex; justify-content: space-between; align-items: center;
       z-index: 100; background: rgba(255,255,255,.92); backdrop-filter: blur(12px);
       border-bottom: 1px solid var(--line);
     }
-    nav .logo {
+    .site-nav .logo {
       font-family: 'Fraunces', serif; font-weight: 700; font-size: 1.4rem; letter-spacing: 1px;
       background: var(--grad-warm); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
     }
-    nav .links { display: flex; flex-wrap: wrap; gap: 4px 22px; align-items: center; }
-    nav .links a { color: var(--muted); font-size: .9rem; font-weight: 700; transition: color .2s; }
-    nav .links a:hover { color: var(--txt); }
-    nav .menu-toggle { display: none; background: none; border: none; color: var(--purple); font-size: 1.6rem; cursor: pointer; }
+    .site-nav .links { display: flex; flex-wrap: wrap; gap: 4px 22px; align-items: center; }
+    .site-nav .links a { color: var(--muted); font-size: .9rem; font-weight: 700; transition: color .2s; }
+    .site-nav .links a:hover { color: var(--txt); }
+    .site-nav .menu-toggle { display: none; background: none; border: none; color: var(--purple); font-size: 1.6rem; cursor: pointer; }
 
     /* HERO */
     .hero {
@@ -209,16 +209,65 @@
     .tribu-tab {
       flex: 1; max-width: 220px; padding: 14px 20px; border: none; border-radius: 14px 14px 0 0;
       font-family: inherit; font-weight: 800; font-size: .95rem; cursor: pointer;
-      background: rgba(255,255,255,.85); color: var(--muted); border: 1px solid var(--line); border-bottom: none;
+      background: var(--surface-subtle, var(--tribu-100, #F7ECE9));
+      color: var(--text-secondary, var(--muted));
+      border: 1px solid var(--line); border-bottom: none;
       transition: background .2s, color .2s;
+    }
+    .tribu-tab:hover {
+      background: var(--surface-raised, #F0E0DA);
+      color: var(--text, var(--txt));
     }
     .tribu-tab.active {
       background: var(--panel); color: var(--tribu-700, #8F4234);
-      border-color: rgba(168,79,62,.35);
+      border-color: var(--line);
       box-shadow: 0 -4px 20px -8px rgba(168,79,62,.12);
     }
     .tribu-panel { display: none; }
     .tribu-panel.active { display: block; }
+    .tribu-account-zone {
+      background: linear-gradient(180deg, var(--surface-subtle, var(--tribu-100, #F7ECE9)) 0%, var(--bg) 240px);
+      border-top: 1px solid var(--line);
+      margin-top: -6px;
+      padding: 8px 0 0;
+    }
+    .tribu-account-zone[hidden] { display: none !important; }
+    .tribu-account-inner { max-width: 760px; margin: 0 auto; padding: 0 22px 48px; }
+    .tribu-account-header { padding: 24px 0 18px; }
+    .tribu-account-eyebrow {
+      font-size: .72rem; letter-spacing: .14em; text-transform: uppercase; font-weight: 800;
+      color: var(--text-secondary, var(--muted)); margin: 0 0 6px;
+    }
+    .tribu-account-title {
+      font-family: 'Fraunces', serif; font-size: 1.75rem; font-weight: 700;
+      color: var(--text, var(--txt)); margin: 0; line-height: 1.15;
+    }
+    .tribu-account-tabs {
+      display: flex; flex-wrap: wrap; gap: 8px;
+      padding-bottom: 22px; margin-bottom: 24px;
+      border-bottom: 1px solid var(--line);
+    }
+    .tribu-account-tab {
+      padding: 10px 18px; border-radius: 999px; border: 1px solid var(--line);
+      background: transparent; color: var(--text-secondary, var(--muted));
+      font-family: inherit; font-weight: 700; font-size: .88rem;
+      cursor: pointer; white-space: nowrap; transition: background .15s, color .15s, border-color .15s;
+    }
+    .tribu-account-tab:hover:not(.active) {
+      background: var(--primary-soft, var(--tribu-100, #F7ECE9));
+      color: var(--text, var(--txt));
+    }
+    .tribu-account-tab.active {
+      background: var(--primary, var(--tribu-600, #A84F3E));
+      border-color: transparent; color: var(--on-primary, #fff);
+      box-shadow: 0 8px 22px -10px rgba(168,79,62,.55);
+    }
+    .tribu-account-panel { display: none; }
+    .tribu-account-panel.active { display: block; }
+    .tribu-account-zone .profile-wrap,
+    .tribu-account-zone .subs-wrap,
+    .tribu-account-zone .cards-wrap { max-width: none; margin: 0; padding: 0 0 8px; }
+    .tribu-account-zone .account-back { margin-bottom: 16px; }
     .camino-intro { max-width: 1160px; margin: 0 auto; padding: 28px 22px 0; }
     .camino-intro .intro, .camino-intro .pact { text-align: center; }
 
@@ -278,26 +327,39 @@
     .evt-row .evt-val { color: var(--txt); }
     .evt-link { color: var(--tribu-600, #A84F3E); font-weight: 700; word-break: break-all; text-decoration: underline; text-underline-offset: 3px; }
     .evt-link:hover { color: var(--tribu-700, #8F4234); }
-    .evt-close { position: absolute; top: 16px; right: 18px; background: #fff; color: var(--txt); border: 1px solid var(--line); width: 36px; height: 36px; border-radius: 50%; cursor: pointer; font-size: 1.3rem; line-height: 1; }
-    .evt-close:hover { background: var(--tribu-100, #F7ECE9); color: var(--tribu-700, #8F4234); }
+    .evt-close {
+      position: absolute; top: 16px; right: 18px;
+      background: var(--surface-subtle, var(--tribu-100, #F7ECE9));
+      color: var(--text, var(--txt));
+      border: 1px solid var(--line);
+      width: 36px; height: 36px; border-radius: 50%;
+      cursor: pointer; font-size: 1.3rem; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+      transition: background .15s, color .15s, border-color .15s;
+    }
+    .evt-close:hover {
+      background: var(--primary-soft, var(--tribu-100, #F7ECE9));
+      color: var(--primary-hover, var(--tribu-700, #8F4234));
+      border-color: rgba(168,79,62,.45);
+    }
 
     @media (max-width: 768px) {
       .hero { padding: 112px 16px 56px; }
       .hero h1 { font-size: 2.1rem; }
       .hero .intro, .hero .pact { font-size: .92rem; padding: 0 4px; }
-      nav { padding: 12px 14px; }
-      nav .logo { font-size: 1.25rem; }
+      .site-nav { padding: 12px 14px; }
+      .site-nav .logo { font-size: 1.25rem; }
       .cat-title { font-size: 1.5rem; }
-      nav .links { display: none; flex-direction: column; align-items: stretch; position: absolute; top: 100%; left: 0; right: 0; background: rgba(246,248,247,.97); padding: 18px; gap: 14px; border-bottom: 1px solid var(--line); }
-      nav .links.open { display: flex; }
-      nav .links a { font-size: 1.05rem; padding: 4px 0; }
-      nav .menu-toggle { display: block; min-width: 44px; min-height: 44px; }
+      .site-nav .links { display: none; flex-direction: column; align-items: stretch; position: absolute; top: 100%; left: 0; right: 0; background: var(--panel); padding: 18px; gap: 14px; border-bottom: 1px solid var(--line); }
+      .site-nav .links.open { display: flex; }
+      .site-nav .links a { font-size: 1.05rem; padding: 4px 0; }
+      .site-nav .menu-toggle { display: block; min-width: 44px; min-height: 44px; }
       .user-menu { width: 100%; }
       .user-menu-btn { width: 100%; justify-content: flex-start; padding: 10px 14px 10px 10px; border-radius: 14px; min-height: 48px; }
       .user-menu-name { max-width: none; }
       .user-menu-panel {
         position: static; width: 100%; min-width: 0; margin-top: 8px;
-        box-shadow: none; border-radius: 14px; background: rgba(246,248,247,.55);
+        box-shadow: none; border-radius: 14px;
       }
       .user-menu-item { min-height: 44px; }
       .user-menu-chevron { margin-left: auto; }
@@ -319,6 +381,11 @@
       .cat-desc { font-size: .9rem; margin-bottom: 16px; }
       .card-body h3 { font-size: 1.05rem; }
       .tribu-form-grid-2 { grid-template-columns: 1fr; gap: 0; }
+      .tribu-account-inner { padding: 0 16px 40px; }
+      .tribu-account-title { font-size: 1.45rem; }
+      .tribu-account-tabs { gap: 6px; overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+      .tribu-account-tabs::-webkit-scrollbar { display: none; }
+      .tribu-account-tab { font-size: .82rem; padding: 10px 14px; }
       .profile-wrap, .subs-wrap, .cards-wrap { padding: 22px 16px 40px; }
       .profile-head { flex-direction: column; align-items: flex-start; }
       .profile-card { padding: 18px; border-radius: 16px; }
@@ -402,11 +469,11 @@
     .user-menu-btn {
       display: flex; align-items: center; gap: 10px; max-width: 100%;
       padding: 5px 12px 5px 5px; border-radius: 999px;
-      border: 1px solid rgba(168,79,62,.4); background: rgba(168,79,62,.1);
-      cursor: pointer; color: inherit; font-family: inherit; transition: border-color .2s, background .2s;
+      border: 1px solid var(--line); background: var(--tribu-100, #F7ECE9);
+      cursor: pointer; color: var(--txt); font-family: inherit; transition: border-color .2s, background .2s;
     }
     .user-menu-btn:hover, .user-menu.open .user-menu-btn {
-      border-color: rgba(168,79,62,.55); background: rgba(168,79,62,.18);
+      border-color: rgba(168,79,62,.55); background: var(--surface-raised, #F0E0DA);
     }
     .user-menu-avatar { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; flex-shrink: 0; border: 1px solid rgba(168,79,62,.35); }
     .user-menu-avatar-ph {
@@ -421,13 +488,13 @@
     .user-menu.open .user-menu-chevron { transform: rotate(180deg); }
     .user-menu-panel {
       display: none; position: absolute; top: calc(100% + 10px); right: 0; min-width: 260px;
-      background: rgba(255,255,255,.98); border: 1px solid rgba(168,79,62,.35); border-radius: 16px;
-      padding: 8px; box-shadow: 0 24px 60px rgba(0,0,0,.5); backdrop-filter: blur(12px);
+      background: var(--panel); border: 1px solid var(--line); border-radius: 16px;
+      padding: 8px; box-shadow: 0 16px 48px rgba(14, 23, 20, 0.14); backdrop-filter: blur(12px);
     }
     .user-menu.open .user-menu-panel { display: block; animation: menuIn .18s ease; }
     @keyframes menuIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
     .user-menu-head {
-      padding: 10px 12px 12px; border-bottom: 1px solid rgba(168,79,62,.18); margin-bottom: 6px;
+      padding: 10px 12px 12px; border-bottom: 1px solid var(--line); margin-bottom: 6px;
     }
     .user-menu-head-name { font-weight: 800; color: var(--txt); font-size: .92rem; }
     .user-menu-head-email { font-size: .78rem; color: var(--muted); margin-top: 2px; word-break: break-all; }
@@ -437,11 +504,11 @@
       font-family: inherit; font-weight: 700; font-size: .9rem; border-radius: 10px;
       cursor: pointer; text-align: left; transition: background .15s;
     }
-    .user-menu-item:hover, .user-menu-item:focus-visible { background: rgba(168,79,62,.16); outline: none; }
+    .user-menu-item:hover, .user-menu-item:focus-visible { background: var(--tribu-100, #F7ECE9); outline: none; }
     .user-menu-item .mi { width: 1.35rem; text-align: center; flex-shrink: 0; }
-    .user-menu-item.danger { color: #fb7185; }
-    .user-menu-item.danger:hover { background: rgba(251,113,133,.12); }
-    .user-menu-divider { height: 1px; background: rgba(168,79,62,.16); margin: 6px 4px; }
+    .user-menu-item.danger { color: var(--danger, #B64A5A); }
+    .user-menu-item.danger:hover { background: var(--danger-bg, #FCECEF); }
+    .user-menu-divider { height: 1px; background: var(--line); margin: 6px 4px; }
     .auth-overlay { display: none; position: fixed; inset: 0; background: rgba(12,18,16,.48); backdrop-filter: blur(6px); z-index: 2000; padding: 20px; align-items: center; justify-content: center; }
     .auth-overlay.show { display: flex; }
     #pagoOverlay { overflow-y: auto; overscroll-behavior: contain; align-items: center; padding: 16px; }
@@ -458,7 +525,7 @@
     #pagoOverlay .pago-price-chip {
       display: inline-flex; align-items: baseline; gap: 6px; flex-wrap: wrap; justify-content: center;
       padding: 10px 18px; border-radius: 999px;
-      background: rgba(168,79,62,.12); border: 1px solid rgba(168,79,62,.28);
+      background: var(--primary-soft, var(--tribu-100, #F7ECE9)); border: 1px solid var(--line);
     }
     #pagoOverlay .pago-price-amount {
       font-size: 1.45rem; font-weight: 800; color: var(--txt); line-height: 1;
@@ -476,10 +543,9 @@
     #pagoOverlay .pago-info-icon { flex-shrink: 0; font-size: .95rem; line-height: 1.2; }
     #pagoOverlay .pago-section {
       padding: 16px; border-radius: 16px;
-      background: #FAFBFA; border: 1px solid var(--line);
+      background: var(--surface-subtle, var(--tribu-100, #F7ECE9)); border: 1px solid var(--line);
     }
-    #pagoOverlay .pago-section-card,
-    #pagoOverlay .pago-section-pay {
+    #pagoOverlay .pago-section-card {
       padding: 0; background: transparent; border: none; box-shadow: none;
     }
     #pagoOverlay .pago-pay-lead {
@@ -500,19 +566,19 @@
       color: var(--teal); font-size: .68rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase;
     }
     #pagoOverlay .pago-field label {
-      display: block; font-size: .74rem; font-weight: 800; color: var(--muted);
+      display: block; font-size: .74rem; font-weight: 800; color: var(--text-secondary, var(--muted));
       margin-bottom: 6px; text-transform: uppercase; letter-spacing: .04em;
     }
     #pagoOverlay .pago-field input,
     #pagoOverlay .pago-field select {
       width: 100%; padding: 11px 12px; border-radius: 11px;
-      border: 1px solid var(--line); background: #fff; color: var(--txt);
+      border: 1px solid var(--line); background: var(--surface, var(--panel)); color: var(--text, var(--txt));
       font-size: .92rem; font-family: inherit; transition: border-color .2s, background .2s, box-shadow .2s;
     }
     #pagoOverlay .pago-field input:focus,
     #pagoOverlay .pago-field select:focus {
       outline: none; border-color: rgba(168,79,62,.55);
-      background: rgba(168,79,62,.08); box-shadow: 0 0 0 3px rgba(168,79,62,.12);
+      background: var(--primary-soft, rgba(168,79,62,.08)); box-shadow: var(--focus-ring, 0 0 0 3px rgba(168,79,62,.12));
     }
     #pagoOverlay .pago-doc-grid { display: grid; grid-template-columns: 118px 1fr; gap: 10px; }
     #pagoOverlay .pago-doc-grid .pago-field { margin: 0; }
@@ -535,11 +601,11 @@
       border: 2px solid rgba(168,79,62,.22); border-top-color: #A84F3E;
       animation: tribuSpin .8s linear infinite;
     }
-    #pagoOverlay .profile-field label { font-size: .74rem; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+    #pagoOverlay .profile-field label { font-size: .74rem; font-weight: 800; color: var(--text-secondary, var(--muted)); text-transform: uppercase; letter-spacing: .04em; }
     #pagoOverlay .profile-field input,
     #pagoOverlay .profile-field select {
       width: 100%; padding: 11px 12px; border-radius: 11px;
-      border: 1px solid var(--line); background: #fff; color: var(--txt);
+      border: 1px solid var(--line); background: var(--surface, var(--panel)); color: var(--text, var(--txt));
       font-size: .92rem; font-family: inherit;
     }
     #pagoOverlay .pago-help { font-size: .74rem; color: var(--muted); line-height: 1.4; margin-top: 6px; }
@@ -553,21 +619,33 @@
     .auth-box .auth-close:hover { background: var(--pink); color: #fff; }
     .auth-field { margin-bottom: 14px; }
     .auth-field label { display: block; font-size: .8rem; font-weight: 700; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .5px; }
-    .auth-field input { width: 100%; padding: 12px 14px; background: #fff; border: 1px solid var(--line); border-radius: 12px; color: var(--txt); font-size: .95rem; font-family: inherit; transition: border-color .2s; }
-    .auth-field input:focus { outline: none; border-color: var(--purple); background: rgba(168,79,62,.08); }
+    .auth-field input { width: 100%; padding: 12px 14px; background: var(--surface, var(--panel)); border: 1px solid var(--line); border-radius: 12px; color: var(--text, var(--txt)); font-size: .95rem; font-family: inherit; transition: border-color .2s; }
+    .auth-field input:focus { outline: none; border-color: var(--purple); background: var(--primary-soft, rgba(168,79,62,.08)); box-shadow: var(--focus-ring); }
     .auth-field input::placeholder { color: rgba(101,113,108,.55); }
     .auth-btn { width: 100%; padding: 13px; margin-top: 6px; background: var(--grad-warm); border: none; border-radius: 12px; color: #fff; font-size: 1rem; font-weight: 800; font-family: inherit; cursor: pointer; transition: opacity .2s, transform .15s; }
     .auth-btn:hover:not(:disabled) { opacity: .9; transform: translateY(-1px); }
     .auth-btn:disabled { opacity: .5; cursor: not-allowed; }
-    .culqi-embed { margin-top: 0; border-radius: 14px; overflow: hidden; line-height: 0; isolation: isolate; }
+    .culqi-embed {
+      margin-top: 0; border-radius: 14px; overflow: hidden;
+      line-height: 0; isolation: isolate;
+      -webkit-mask-image: -webkit-radial-gradient(white, black);
+    }
     .culqi-embed:empty { display: none; }
-    #pagoOverlay .culqi-embed {
-      background: #FAFBFA;
+    #pagoOverlay .pago-section-pay {
+      padding: 16px; border-radius: 16px;
+      background: var(--surface-subtle, var(--tribu-100, #F7ECE9));
       border: 1px solid var(--line);
+    }
+    #pagoOverlay .culqi-embed {
+      background: transparent;
+      border: none;
+      border-radius: 12px;
     }
     #pagoOverlay .culqi-embed iframe {
       width: 100% !important; border: 0 !important; display: block !important;
-      overflow: hidden !important; background: #FAFBFA !important; border-radius: 0 !important;
+      overflow: hidden !important;
+      background: transparent !important;
+      border-radius: 12px !important;
     }
     .auth-error { color: #fb7185; font-size: .83rem; font-weight: 700; margin-top: 10px; text-align: center; min-height: 20px; }
     .auth-footer { text-align: center; margin-top: 18px; font-size: .85rem; color: var(--muted); }
@@ -589,21 +667,27 @@
     .tribu-page-loader {
       position: fixed; inset: 0; z-index: 12000;
       display: none; align-items: center; justify-content: center;
-      background: rgba(246,248,247,.72); backdrop-filter: blur(4px);
+      background: rgba(14, 23, 20, 0.42); backdrop-filter: blur(6px);
     }
     .tribu-page-loader.show { display: flex; }
     .tribu-page-loader-box {
-      text-align: center; color: var(--txt); padding: 28px 32px; border-radius: 18px;
-      background: rgba(255,255,255,.98); border: 1px solid var(--line);
+      text-align: center; color: var(--text, var(--txt));
+      padding: 28px 32px; border-radius: 18px;
+      background: var(--surface, var(--panel));
+      border: 1px solid var(--line);
       min-width: 220px; box-shadow: var(--shadow-card, 0 12px 40px rgba(22,32,28,.1));
     }
     .tribu-spinner {
       width: 42px; height: 42px; margin: 0 auto 14px; border-radius: 50%;
-      border: 3px solid rgba(168,79,62,.25); border-top-color: #A84F3E;
+      border: 3px solid var(--primary-soft, rgba(168,79,62,.25));
+      border-top-color: var(--primary, #A84F3E);
       animation: tribuSpin .8s linear infinite;
     }
     @keyframes tribuSpin { to { transform: rotate(360deg); } }
-    .tribu-page-loader-box p { margin: 0; color: var(--muted); font-size: .92rem; font-weight: 700; }
+    .tribu-page-loader-box p {
+      margin: 0; color: var(--text-secondary, var(--muted));
+      font-size: .92rem; font-weight: 700; line-height: 1.4;
+    }
     .plan-card { background: rgba(168,79,62,.07); border: 1px solid rgba(168,79,62,.3); border-radius: 16px; padding: 20px 22px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; transition: border-color .2s, background .2s; }
     .plan-card:hover { border-color: rgba(168,79,62,.55); background: rgba(168,79,62,.12); }
     .plan-info { flex: 1; }
@@ -620,7 +704,7 @@
     .profile-avatar-ph { display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: 800; color: #fff; }
     .profile-field { margin-bottom: 14px; }
     .profile-field label { display: block; font-size: .82rem; font-weight: 800; color: var(--muted); margin-bottom: 6px; }
-    .profile-field input { width: 100%; padding: 11px 12px; border-radius: 10px; border: 1px solid var(--line); background: #fff; color: var(--txt); font-family: inherit; }
+    .profile-field input { width: 100%; padding: 11px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface, var(--panel)); color: var(--text, var(--txt)); font-family: inherit; }
     .profile-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
     .profile-btn { padding: 11px 20px; border-radius: 30px; border: none; font-weight: 800; font-family: inherit; cursor: pointer; }
     .profile-btn-primary { background: var(--grad-warm); color: #fff; }
@@ -738,11 +822,11 @@
     .pago-saved-options { display: flex; flex-direction: column; gap: 8px; }
     .pago-saved-option {
       display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px;
-      border: 1px solid rgba(168,79,62,.22); background: rgba(255,255,255,.02);
+      border: 1px solid var(--line); background: var(--surface-subtle, var(--tribu-100, #F7ECE9));
       cursor: pointer; transition: border-color .15s, background .15s;
     }
     .pago-saved-option:hover, .pago-saved-option.selected {
-      border-color: rgba(168,79,62,.5); background: rgba(168,79,62,.12);
+      border-color: rgba(168,79,62,.5); background: var(--primary-soft, rgba(168,79,62,.12));
     }
     .pago-saved-option input { accent-color: #A84F3E; }
     .pago-saved-label { font-size: .84rem; color: var(--txt); font-weight: 700; }
@@ -835,9 +919,9 @@
 </head>
 <body>
 
-<nav>
+<nav class="site-nav" aria-label="Navegación principal">
   <a href="." class="logo">VHM</a>
-  <button class="menu-toggle" onclick="document.querySelector('.links').classList.toggle('open')">☰</button>
+  <button class="menu-toggle" onclick="document.querySelector('.site-nav .links').classList.toggle('open')">☰</button>
   <div class="links">
     <a href=".">Inicio</a>
     <a href="latribu">La Tribu</a>
@@ -851,6 +935,7 @@
   <h1>La <span>Tribu</span></h1>
 </header>
 
+<section id="tribuContentShell">
 <div class="tribu-tabs-wrap">
   <div class="tribu-tabs">
     <button type="button" class="tribu-tab active" data-tab="camino" onclick="switchTribuTab('camino')">Camino Interior</button>
@@ -879,15 +964,29 @@
     <div class="cal-empty" id="calLoading">Cargando eventos...</div>
   </div>
 </div>
+</section>
 
-<div id="tabPerfil" class="tribu-panel">
+<section id="tribuAccountShell" class="tribu-account-zone" hidden>
+  <div class="tribu-account-inner">
+    <header class="tribu-account-header">
+      <button type="button" class="account-back" onclick="switchTribuTab('camino')">← Volver a La Tribu</button>
+      <p class="tribu-account-eyebrow">Mi cuenta</p>
+      <h2 class="tribu-account-title" id="tribuAccountTitle">Mi perfil</h2>
+    </header>
+    <div class="tribu-account-tabs" role="navigation" aria-label="Secciones de tu cuenta">
+      <button type="button" class="tribu-account-tab active" data-tab="perfil" onclick="switchTribuTab('perfil')">Mi perfil</button>
+      <button type="button" class="tribu-account-tab" data-tab="suscripciones" onclick="switchTribuTab('suscripciones')">Suscripciones</button>
+      <button type="button" class="tribu-account-tab" data-tab="tarjetas" onclick="switchTribuTab('tarjetas')">Mis tarjetas</button>
+    </div>
+    <div class="tribu-account-body">
+
+<div id="tabPerfil" class="tribu-account-panel">
   <div class="profile-wrap">
-    <button type="button" class="account-back" onclick="switchTribuTab('camino')">← Volver al contenido</button>
     <div class="profile-card">
       <div class="profile-head">
         <div id="profileAvatarWrap"></div>
         <div>
-          <div style="font-family:'Fraunces',serif;font-size:1.35rem;color:var(--txt,#16201C)" id="profileHeading">Mi perfil</div>
+          <div style="font-family:'Fraunces',serif;font-size:1.35rem;color:var(--txt,#16201C)" id="profileHeading">Tu perfil</div>
           <div style="color:var(--muted);font-size:.88rem;margin-top:4px">Actualiza tus datos de contacto</div>
         </div>
       </div>
@@ -911,11 +1010,9 @@
   </div>
 </div>
 
-<div id="tabSuscripciones" class="tribu-panel">
+<div id="tabSuscripciones" class="tribu-account-panel">
   <div class="subs-wrap">
-    <button type="button" class="account-back" onclick="switchTribuTab('camino')">← Volver al contenido</button>
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px">
-      <h2 style="font-family:'Fraunces',serif;font-size:1.4rem;color:var(--txt,#16201C)">Mis suscripciones</h2>
+    <div style="display:flex;justify-content:flex-end;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px">
       <button type="button" class="profile-btn profile-btn-primary" onclick="abrirModalPlanes()">Ver planes</button>
     </div>
     <div id="subsRenewalPanel" class="subs-renewal-panel" style="display:none"></div>
@@ -923,14 +1020,16 @@
   </div>
 </div>
 
-<div id="tabTarjetas" class="tribu-panel">
+<div id="tabTarjetas" class="tribu-account-panel">
   <div class="cards-wrap">
-    <button type="button" class="account-back" onclick="switchTribuTab('camino')">← Volver al contenido</button>
-    <h2 style="font-family:'Fraunces',serif;font-size:1.4rem;color:var(--txt,#16201C);margin-bottom:4px">Mis tarjetas</h2>
     <p class="cards-lead">Tarjetas que guardaste al pagar con renovación automática. Se almacenan de forma segura en Culqi para cobros y autorenovación.</p>
     <div id="cardsLista"><div class="subs-empty">Cargando...</div></div>
   </div>
 </div>
+
+    </div>
+  </div>
+</section>
 
 <!-- MODAL REPRODUCTOR -->
 <div class="player-overlay" id="playerOverlay">
@@ -1194,6 +1293,20 @@ function tieneSuscripcion() {
   return !!(tribuUser && suscripcionVigente(tribuUser.suscripcion_activa));
 }
 
+function syncClaraWidget() {
+  if (typeof window.ClaraChat === 'undefined') return;
+  if (tieneSuscripcion()) {
+    window.ClaraChat.init({
+      getAuthHeaders: function () {
+        const t = getToken();
+        return t ? { Authorization: 'Bearer ' + t } : {};
+      }
+    });
+  } else {
+    window.ClaraChat.destroy();
+  }
+}
+
 let pageLoaderDepth = 0;
 function showPageLoader(message) {
   pageLoaderDepth++;
@@ -1248,14 +1361,15 @@ function renderNavAuth() {
     closeUserMenu();
     area.innerHTML = '<button type="button" class="nav-login-link" onclick="abrirLogin()">Iniciar sesión</button>';
     if (document.getElementById('tabPerfil')?.classList.contains('active') ||
-        document.getElementById('tabSuscripciones')?.classList.contains('active')) {
+        document.getElementById('tabSuscripciones')?.classList.contains('active') ||
+        document.getElementById('tabTarjetas')?.classList.contains('active')) {
       switchTribuTab('camino');
     }
   }
 }
 
 function closeMobileNav() {
-  document.querySelector('nav .links')?.classList.remove('open');
+  document.querySelector('.site-nav .links')?.classList.remove('open');
 }
 
 function closeUserMenu() {
@@ -1278,7 +1392,38 @@ function toggleUserMenu(e) {
   }
 }
 
+const TRIBU_ACCOUNT_TABS = ['perfil', 'suscripciones', 'tarjetas'];
+const TRIBU_ACCOUNT_TITLES = {
+  perfil: 'Mi perfil',
+  suscripciones: 'Mis suscripciones',
+  tarjetas: 'Mis tarjetas',
+};
+
+function isTribuAccountTab(tab) {
+  return TRIBU_ACCOUNT_TABS.includes(tab);
+}
+
+function updateTribuShells(tab) {
+  const contentShell = document.getElementById('tribuContentShell');
+  const accountShell = document.getElementById('tribuAccountShell');
+  const inAccount = isTribuAccountTab(tab);
+  if (contentShell) contentShell.hidden = inAccount;
+  if (accountShell) accountShell.hidden = !inAccount;
+  if (inAccount) {
+    const titleEl = document.getElementById('tribuAccountTitle');
+    if (titleEl) titleEl.textContent = TRIBU_ACCOUNT_TITLES[tab] || 'Mi cuenta';
+    document.querySelectorAll('.tribu-account-tab').forEach(function (b) {
+      b.classList.toggle('active', b.dataset.tab === tab);
+    });
+  }
+}
+
 function scrollToContenidoTribu() {
+  const accountShell = document.getElementById('tribuAccountShell');
+  if (accountShell && !accountShell.hidden) {
+    accountShell.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
   document.querySelector('.tribu-tabs-wrap')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
@@ -1703,7 +1848,7 @@ async function marcarTarjetaDefault(cardId) {
 
 async function verificarSesion() {
   const token = getToken();
-  if (!token) { tribuUser = null; renderNavAuth(); return; }
+  if (!token) { tribuUser = null; renderNavAuth(); syncClaraWidget(); return; }
   tribuUser = normalizarSuscripcionUsuario(getStoredUser());
   renderNavAuth();
   try {
@@ -1721,6 +1866,7 @@ async function verificarSesion() {
   }
   renderNavAuth();
   if (tribuUser && !tieneSuscripcion()) clearStaleLockUi();
+  syncClaraWidget();
 }
 
 function abrirLogin() { abrirAuth("authLogin"); }
@@ -1840,7 +1986,7 @@ async function doCambiarPasswordTemp() {
   finally { btn.disabled = false; btn.textContent = 'Guardar contrasena'; }
 }
 
-function doLogout() { clearToken(); tribuUser = null; renderNavAuth(); cargar(); }
+function doLogout() { clearToken(); tribuUser = null; renderNavAuth(); syncClaraWidget(); cargar(); }
 
 document.getElementById('authOverlay').addEventListener('click', e => { if (e.target.id === 'authOverlay') cerrarAuth(); });
 document.getElementById('authOverlay').addEventListener('keydown', e => {
@@ -2153,6 +2299,119 @@ async function loadPagoDocFromProfile() {
 
 let culqiCheckoutInstance = null;
 
+function culqiCssVar(name, fallback) {
+  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return v || fallback;
+}
+
+function buildCulqiAppearance() {
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const bg = culqiCssVar('--surface-subtle', dark ? '#47322C' : '#F7ECE9');
+  const surface = culqiCssVar('--surface', dark ? '#3C2924' : '#FFFFFF');
+  const text = culqiCssVar('--text', dark ? '#F5EBE8' : '#0E1714');
+  const textSecondary = culqiCssVar('--text-secondary', dark ? '#D4B5AB' : '#6B4A42');
+  const primary = culqiCssVar('--primary', '#A84F3E');
+  const accent = culqiCssVar('--accent-dark', dark ? '#E58B78' : '#8F4234');
+  const border = dark ? 'rgba(229, 139, 120, 0.35)' : 'rgba(168, 79, 62, 0.22)';
+  const inputFocusBg = culqiCssVar('--surface-raised', dark ? '#523B34' : '#FFFFFF');
+
+  return {
+    theme: 'default',
+    hiddenCulqiLogo: true,
+    hiddenBanner: true,
+    hiddenBannerContent: true,
+    hiddenToolBarAmount: true,
+    hiddenEmail: true,
+    menuType: 'select',
+    buttonCardPayText: 'Pagar ahora',
+    defaultStyle: {
+      bannerColor: bg,
+      buttonBackground: primary,
+      menuColor: textSecondary,
+      linksColor: primary,
+      buttonTextColor: '#ffffff',
+      priceColor: accent,
+    },
+    variables: {
+      fontFamily: 'Inter, system-ui, sans-serif',
+      fontWeightNormal: '600',
+      borderRadius: '12px',
+      colorBackground: bg,
+      colorPrimary: primary,
+      colorPrimaryText: '#ffffff',
+      colorText: text,
+      colorTextSecondary: textSecondary,
+      colorTextPlaceholder: textSecondary,
+      colorIconTab: accent,
+    },
+    rules: {
+      '.Culqi-Main-Container': {
+        background: bg,
+        padding: '4px 2px 6px',
+        minHeight: '0',
+        borderRadius: '12px',
+        overflow: 'hidden',
+      },
+      '.Culqi-Main-Method': {
+        background: bg,
+        padding: '0',
+        color: text,
+        borderRadius: '12px',
+        overflow: 'hidden',
+      },
+      '.Culqi-Toolbar-Price': { display: 'none' },
+      '.Culqi-Menu': { display: 'none' },
+      '.Culqi-Footer': { display: 'none' },
+      '.Culqi-Footer-Secure': { display: 'none' },
+      '.Culqi-Secure-Purchase': { display: 'none' },
+      '.Culqi-Toolbar-Footer': { display: 'none' },
+      '.Culqi-Logo-PCI': { display: 'none' },
+      '.Culqi-Logo-Visa': { display: 'none' },
+      '.Culqi-Label': {
+        color: textSecondary,
+        fontSize: '13px',
+        fontWeight: '700',
+        marginBottom: '6px',
+      },
+      '.Culqi-Input': {
+        border: '1px solid ' + border,
+        background: surface,
+        color: text,
+        borderRadius: '12px',
+        padding: '13px 14px',
+        fontSize: '15px',
+      },
+      '.Culqi-Input:focus': {
+        border: '1px solid rgba(168,79,62,.65)',
+        boxShadow: '0 0 0 3px rgba(168,79,62,.16)',
+        background: inputFocusBg,
+        color: text,
+      },
+      '.Culqi-Input.input-valid': {
+        border: '1px solid rgba(43,146,125,.45)',
+        background: inputFocusBg,
+        color: text,
+      },
+      '.Culqi-Input-Icon': { color: primary },
+      '.Culqi-Button': {
+        background: 'linear-gradient(135deg, #A84F3E 0%, #8F4234 100%)',
+        borderRadius: '12px',
+        fontWeight: '800',
+        fontSize: '15px',
+        padding: '14px 16px',
+        marginTop: '14px',
+        boxShadow: '0 10px 28px rgba(168,79,62,.28)',
+      },
+      '.Culqi-Button:disabled, .Culqi-Button[disabled]': { opacity: '0.55', boxShadow: 'none' },
+      '.Culqi-message-error': {
+        background: dark ? 'rgba(182, 74, 90, 0.2)' : 'rgba(251,113,133,.12)',
+        color: dark ? '#F8B4C0' : '#B64A5A',
+        borderRadius: '10px',
+      },
+    },
+  };
+}
+
 function destruirCulqiCheckout() {
   if (window._culqiEmbedTimer) {
     clearInterval(window._culqiEmbedTimer);
@@ -2171,6 +2430,8 @@ function destruirCulqiCheckout() {
     container.innerHTML = '';
     container.style.height = '';
     container.style.minHeight = '';
+    container.style.overflow = '';
+    container.style.borderRadius = '';
   }
 }
 
@@ -2204,7 +2465,8 @@ function ajustarCulqiEmbed() {
   iframe.style.maxHeight = 'none';
   container.style.height = h + 'px';
   container.style.minHeight = h + 'px';
-  container.style.overflow = 'visible';
+  container.style.overflow = 'hidden';
+  container.style.borderRadius = '12px';
   return true;
 }
 
@@ -2296,97 +2558,7 @@ async function montarCulqiCheckout(suscripcion_id, monto) {
         paymentMethods,
         paymentMethodsSort: Object.keys(paymentMethods),
       },
-      appearance: {
-        theme: 'default',
-        hiddenCulqiLogo: true,
-        hiddenBanner: true,
-        hiddenBannerContent: true,
-        hiddenToolBarAmount: true,
-        hiddenEmail: true,
-        menuType: 'select',
-        buttonCardPayText: 'Pagar ahora',
-        defaultStyle: {
-          bannerColor: '#FAFBFA',
-          buttonBackground: '#A84F3E',
-          menuColor: '#65716C',
-          linksColor: '#A84F3E',
-          buttonTextColor: '#ffffff',
-          priceColor: '#8F4234',
-        },
-        variables: {
-          fontFamily: 'Inter, system-ui, sans-serif',
-          fontWeightNormal: '600',
-          borderRadius: '12px',
-          colorBackground: '#FAFBFA',
-          colorPrimary: '#A84F3E',
-          colorPrimaryText: '#ffffff',
-          colorText: '#16201C',
-          colorTextSecondary: '#65716C',
-          colorTextPlaceholder: '#65716C',
-          colorIconTab: '#A84F3E',
-        },
-        rules: {
-          '.Culqi-Main-Container': {
-            background: '#FAFBFA',
-            padding: '12px 14px 8px',
-            minHeight: '0',
-            borderRadius: '0',
-          },
-          '.Culqi-Main-Method': {
-            background: '#FAFBFA',
-            padding: '0',
-            color: '#16201C',
-          },
-          '.Culqi-Toolbar-Price': { display: 'none' },
-          '.Culqi-Menu': { display: 'none' },
-          '.Culqi-Footer': { display: 'none' },
-          '.Culqi-Footer-Secure': { display: 'none' },
-          '.Culqi-Secure-Purchase': { display: 'none' },
-          '.Culqi-Toolbar-Footer': { display: 'none' },
-          '.Culqi-Logo-PCI': { display: 'none' },
-          '.Culqi-Logo-Visa': { display: 'none' },
-          '.Culqi-Label': {
-            color: '#65716C',
-            fontSize: '13px',
-            fontWeight: '700',
-            marginBottom: '6px',
-          },
-          '.Culqi-Input': {
-            border: '1px solid #DEE6E2',
-            background: '#ffffff',
-            color: '#16201C',
-            borderRadius: '12px',
-            padding: '13px 14px',
-            fontSize: '15px',
-          },
-          '.Culqi-Input:focus': {
-            border: '1px solid rgba(168,79,62,.65)',
-            boxShadow: '0 0 0 3px rgba(168,79,62,.16)',
-            background: '#ffffff',
-          },
-          '.Culqi-Input.input-valid': {
-            border: '1px solid rgba(43,146,125,.45)',
-            background: '#ffffff',
-            color: '#16201C',
-          },
-          '.Culqi-Input-Icon': { color: '#A84F3E' },
-          '.Culqi-Button': {
-            background: 'linear-gradient(135deg, #A84F3E 0%, #8F4234 100%)',
-            borderRadius: '12px',
-            fontWeight: '800',
-            fontSize: '15px',
-            padding: '14px 16px',
-            marginTop: '14px',
-            boxShadow: '0 10px 28px rgba(168,79,62,.28)',
-          },
-          '.Culqi-Button:disabled, .Culqi-Button[disabled]': { opacity: '0.55', boxShadow: 'none' },
-          '.Culqi-message-error': {
-            background: 'rgba(251,113,133,.12)',
-            color: '#fda4af',
-            borderRadius: '10px',
-          },
-        },
-      },
+      appearance: buildCulqiAppearance(),
     };
 
     culqiCheckoutInstance = new CulqiCheckout(cfg.public_key, config);
@@ -2593,10 +2765,11 @@ async function afterAuthSuccess() {
 }
 
 async function switchTribuTab(tab) {
-  if ((tab === 'perfil' || tab === 'suscripciones' || tab === 'tarjetas') && !tribuUser) {
+  if (isTribuAccountTab(tab) && !tribuUser) {
     abrirLoginAuth();
     tab = 'camino';
   }
+  updateTribuShells(tab);
   document.querySelectorAll('.tribu-tab').forEach(b => {
     b.classList.toggle('active', (tab === 'camino' || tab === 'calendario') && b.dataset.tab === tab);
   });
@@ -2852,6 +3025,7 @@ async function cargar() {
   } catch (e) {
     document.getElementById('contenido').innerHTML = '<div class="empty">No se pudieron cargar los recursos.</div>';
   }
+  syncClaraWidget();
 }
 
 async function abrirVideo(id) {
