@@ -1,17 +1,13 @@
 (function (global) {
   const NAV_META = {
-    reclamos: { href: 'reclamos.html', icon: '📋', label: 'Reclamos', section: 'principal' },
-    testimonios: { href: 'testimonios.html', icon: '⭐', label: 'Testimonios', section: 'principal' },
-    videos: { href: 'videos.html', icon: '🎬', label: 'La Tribu', section: 'principal' },
-    'tribu-users': { href: 'tribu-users.html', icon: '🫂', label: 'Usuarios Tribu', section: 'principal' },
-    plantillas: { href: 'plantillas.html', icon: '📝', label: 'Plantillas', section: 'principal' },
-    encuestas: { href: 'encuestas.html', icon: '📊', label: 'Encuestas', section: 'principal' },
-    usuarios: { href: 'usuarios.html', icon: '👥', label: 'Administradores', section: 'config' },
-    config: { href: 'config.html', icon: '⚙️', label: 'Ajustes', section: 'config' },
-    accesos: { href: 'accesos.html', icon: '🔐', label: 'Accesos', section: 'config' },
+    reclamos:   { href: 'reclamos.html',   icon: '📋', label: 'Reclamos',        section: 'principal' },
+    testimonios: { href: 'testimonios.html', icon: '⭐', label: 'Testimonios',     section: 'principal' },
+    usuarios:   { href: 'usuarios.html',   icon: '👥', label: 'Administradores', section: 'config' },
+    config:     { href: 'config.html',     icon: '⚙️', label: 'Ajustes',         section: 'config' },
+    accesos:    { href: 'accesos.html',    icon: '🔐', label: 'Accesos',         section: 'config' },
   };
 
-  const NAV_ORDER = ['reclamos', 'testimonios', 'videos', 'tribu-users', 'plantillas', 'encuestas', 'usuarios', 'config', 'accesos'];
+  const NAV_ORDER = ['reclamos', 'testimonios', 'usuarios', 'config', 'accesos'];
 
   function logoSrc() {
     return AdminApi.asset('logo_vhm.jpeg');
