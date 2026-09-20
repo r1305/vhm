@@ -1,18 +1,20 @@
 #!/bin/bash
-# Limpia workers lsnode huérfanos de site/, crm/ y openwa/ en cPanel/Passenger.
+# Limpia workers lsnode huérfanos de site/, crm/, latribu/, luma/ y openwa/ en cPanel/Passenger.
 # Uso: bash site/scripts/cpanel-clean-workers.sh [opciones]
 #
 # Opciones:
-#   -d, --dry-run     Solo muestra qué procesos se matarían
-#   -v, --verbose     Muestra detalle de cada proceso
-#   -f, --force       Usa SIGKILL (-9) si SIGTERM no bastó
-#   --site-only       Solo limpia site
-#   --crm-only        Solo limpia crm
-#   --openwa-only     Solo limpia openwa
-#   -h, --help        Ayuda
+#   -d, --dry-run      Solo muestra qué procesos se matarían
+#   -v, --verbose      Muestra detalle de cada proceso
+#   -f, --force        Usa SIGKILL (-9) si SIGTERM no bastó
+#   --site-only        Solo limpia site
+#   --crm-only         Solo limpia crm
+#   --latribu-only     Solo limpia latribu
+#   --luma-only        Solo limpia luma
+#   --openwa-only      Solo limpia openwa
+#   -h, --help         Ayuda
 #
 # Variables opcionales:
-#   VHM_SITE_DIR, VHM_CRM_DIR, VHM_OPENWA_DIR   Rutas absolutas
+#   VHM_SITE_DIR, VHM_CRM_DIR, VHM_LATRIBU_DIR, VHM_LUMA_DIR, VHM_OPENWA_DIR
 #   VHM_LSUSER                                  Usuario cPanel (default: $USER)
 
 set -e
@@ -21,6 +23,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SITE_DIR="${VHM_SITE_DIR:-$(cd "$SCRIPT_DIR/.." && pwd)}"
 REPO_ROOT="$(cd "$SITE_DIR/.." && pwd)"
 CRM_DIR="${VHM_CRM_DIR:-$REPO_ROOT/crm}"
+LATRIBU_DIR="${VHM_LATRIBU_DIR:-$REPO_ROOT/latribu}"
 LUMA_DIR="${VHM_LUMA_DIR:-$REPO_ROOT/luma}"
 OPENWA_DIR="${VHM_OPENWA_DIR:-$REPO_ROOT/openwa}"
 LSUSER="${VHM_LSUSER:-${USER:-}}"
@@ -30,6 +33,7 @@ VERBOSE=0
 FORCE=0
 CLEAN_SITE=1
 CLEAN_CRM=1
+CLEAN_LATRIBU=1
 CLEAN_LUMA=1
 CLEAN_OPENWA=1
 
@@ -42,10 +46,11 @@ while [ $# -gt 0 ]; do
     -d|--dry-run) DRY_RUN=1 ;;
     -v|--verbose) VERBOSE=1 ;;
     -f|--force) FORCE=1 ;;
-    --site-only) CLEAN_CRM=0; CLEAN_LUMA=0; CLEAN_OPENWA=0 ;;
-    --crm-only) CLEAN_SITE=0; CLEAN_LUMA=0; CLEAN_OPENWA=0 ;;
-    --luma-only) CLEAN_SITE=0; CLEAN_CRM=0; CLEAN_OPENWA=0 ;;
-    --openwa-only) CLEAN_SITE=0; CLEAN_CRM=0; CLEAN_LUMA=0 ;;
+    --site-only)    CLEAN_CRM=0; CLEAN_LATRIBU=0; CLEAN_LUMA=0; CLEAN_OPENWA=0 ;;
+    --crm-only)     CLEAN_SITE=0; CLEAN_LATRIBU=0; CLEAN_LUMA=0; CLEAN_OPENWA=0 ;;
+    --latribu-only) CLEAN_SITE=0; CLEAN_CRM=0; CLEAN_LUMA=0; CLEAN_OPENWA=0 ;;
+    --luma-only)    CLEAN_SITE=0; CLEAN_CRM=0; CLEAN_LATRIBU=0; CLEAN_OPENWA=0 ;;
+    --openwa-only)  CLEAN_SITE=0; CLEAN_CRM=0; CLEAN_LATRIBU=0; CLEAN_LUMA=0 ;;
     -h|--help) usage; exit 0 ;;
     *) echo "Opción desconocida: $1" >&2; usage; exit 1 ;;
   esac
@@ -147,10 +152,11 @@ kill_orphan_builds() {
 }
 
 echo "==> Usuario: ${LSUSER:-?}"
-echo "==> Site:   $SITE_DIR"
-[ -d "$CRM_DIR" ] && echo "==> CRM:    $CRM_DIR"
-[ -d "$LUMA_DIR" ] && echo "==> Luma:   $LUMA_DIR"
-[ -d "$OPENWA_DIR" ] && echo "==> OpenWA: $OPENWA_DIR"
+echo "==> Site:    $SITE_DIR"
+[ -d "$CRM_DIR" ]     && echo "==> CRM:     $CRM_DIR"
+[ -d "$LATRIBU_DIR" ] && echo "==> Latribu: $LATRIBU_DIR"
+[ -d "$LUMA_DIR" ]    && echo "==> Luma:    $LUMA_DIR"
+[ -d "$OPENWA_DIR" ]  && echo "==> OpenWA:  $OPENWA_DIR"
 
 status=0
 
@@ -160,6 +166,10 @@ fi
 
 if [ "$CLEAN_CRM" -eq 1 ] && [ -d "$CRM_DIR" ]; then
   kill_pattern "crm" "$CRM_DIR" || status=1
+fi
+
+if [ "$CLEAN_LATRIBU" -eq 1 ] && [ -d "$LATRIBU_DIR" ]; then
+  kill_pattern "latribu" "$LATRIBU_DIR" || status=1
 fi
 
 if [ "$CLEAN_LUMA" -eq 1 ] && [ -d "$LUMA_DIR" ]; then

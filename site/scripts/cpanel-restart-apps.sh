@@ -81,7 +81,6 @@ for root in "${APP_ROOTS[@]}"; do
 done
 
 echo ""
-# Solo limpiar workers de las apps que se van a reiniciar
 CLEAN_FLAGS=()
 for name in "${APP_NAMES[@]}"; do
   CLEAN_FLAGS+=("--${name}-only")
