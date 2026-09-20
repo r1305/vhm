@@ -1,0 +1,309 @@
+/* VHM Sistema visual digital v1.0 — Septiembre 2026
+   Fuente: sistema_visual_vhm_web_apps.pdf
+   Sin paleta “Base compartida”: cada producto define light/dark completo. */
+
+/* —— Semánticos + geometría + tipografía (checklist PDF) —— */
+:root {
+  --success: #287A5B;
+  --success-bg: #E9F6EF;
+  --warning: #A66A13;
+  --warning-bg: #FFF4E1;
+  --danger: #B64A5A;
+  --danger-bg: #FCECEF;
+  --info: #3E6FA4;
+  --info-bg: #EBF3FB;
+
+  --radius-field: 10px;
+  --radius-button: 12px;
+  --radius-card: 14px;
+  --radius-modal: 20px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --control-min-h: 44px;
+  --control-min-h-agenda: 48px;
+  --disabled-opacity: 0.48;
+
+  --font-ui: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-size-body: 16px;
+  --line-height-body: 1.5;
+  --font-size-help: 14px;
+  --line-height-help: 1.43;
+}
+
+/* —— CRM administrativo (PDF §03) —— */
+:root,
+[data-product="crm"] {
+  --primary: #176B87;
+  --primary-hover: #12566D;
+  --primary-soft: #EAF2F5;
+  --accent-dark: #64B5CE;
+  --accent-dark-tint: #182A31;
+  --on-primary: #FFFFFF;
+  --on-accent: #0E1714;
+  --link: #176B87;
+
+  --bg: #EAF2F5;
+  --surface: #FFFFFF;
+  --surface-subtle: #EAF2F5;
+  --surface-raised: #DFECF1;
+  --border: rgba(23, 107, 135, 0.18);
+  --text: #0E1714;
+  --text-secondary: #3D5A67;
+  --text-tertiary: #5A7482;
+  --text-muted: #3D5A67;
+  --selection: rgba(23, 107, 135, 0.14);
+  --shadow-card: 0 8px 24px rgba(23, 107, 135, 0.06);
+  --focus-ring: 0 0 0 3px rgba(23, 107, 135, 0.22);
+}
+
+[data-theme="dark"][data-product="crm"],
+[data-product="crm"][data-theme="dark"] {
+  --primary: #176B87;
+  --primary-hover: #12566D;
+  --primary-soft: rgba(23, 107, 135, 0.16);
+  --accent-dark: #64B5CE;
+  --accent-dark-tint: #182A31;
+  --on-primary: #FFFFFF;
+  --on-accent: #0E1714;
+  --link: #64B5CE;
+
+  --bg: #182A31;
+  --surface: #1E3340;
+  --surface-subtle: #243B4A;
+  --surface-raised: #2A4555;
+  --border: rgba(100, 181, 206, 0.22);
+  --text: #E8F2F6;
+  --text-secondary: #A8C4D0;
+  --text-tertiary: #7A9AAD;
+  --text-muted: #A8C4D0;
+  --selection: rgba(100, 181, 206, 0.2);
+  --shadow-card: none;
+  --focus-ring: 0 0 0 3px rgba(100, 181, 206, 0.28);
+}
+
+/* —— Tribu (PDF §04) —— */
+[data-product="tribu"] {
+  --primary: #A84F3E;
+  --primary-hover: #8F4234;
+  --primary-soft: #F7ECE9;
+  --accent-dark: #E58B78;
+  --accent-dark-tint: #31211E;
+  --on-primary: #FFFFFF;
+  --on-accent: #0E1714;
+  --link: #A84F3E;
+
+  --bg: #F7ECE9;
+  --surface: #FFFFFF;
+  --surface-subtle: #F7ECE9;
+  --surface-raised: #F0E0DA;
+  --border: rgba(168, 79, 62, 0.18);
+  --text: #0E1714;
+  --text-secondary: #6B4A42;
+  --text-tertiary: #8A655C;
+  --text-muted: #6B4A42;
+  --selection: rgba(168, 79, 62, 0.14);
+  --shadow-card: 0 8px 24px rgba(168, 79, 62, 0.06);
+  --focus-ring: 0 0 0 3px rgba(168, 79, 62, 0.22);
+}
+
+[data-theme="dark"][data-product="tribu"],
+[data-product="tribu"][data-theme="dark"] {
+  --primary: #A84F3E;
+  --primary-hover: #8F4234;
+  --primary-soft: rgba(168, 79, 62, 0.16);
+  --accent-dark: #E58B78;
+  --accent-dark-tint: #31211E;
+  --on-primary: #FFFFFF;
+  --on-accent: #0E1714;
+  --link: #E58B78;
+
+  --bg: #31211E;
+  --surface: #3C2924;
+  --surface-subtle: #47322C;
+  --surface-raised: #523B34;
+  --border: rgba(229, 139, 120, 0.22);
+  --text: #F5EBE8;
+  --text-secondary: #D4B5AB;
+  --text-tertiary: #B89588;
+  --text-muted: #D4B5AB;
+  --selection: rgba(229, 139, 120, 0.2);
+  --shadow-card: none;
+  --focus-ring: 0 0 0 3px rgba(229, 139, 120, 0.28);
+}
+
+/* —— Agenda clínica (PDF §05) —— */
+[data-product="agenda"] {
+  --primary: #237A68;
+  --primary-hover: #1C6254;
+  --primary-soft: #EAF4F1;
+  --accent-dark: #61BFA9;
+  --accent-dark-tint: #1B2D28;
+  --on-primary: #FFFFFF;
+  --on-accent: #0E1714;
+  --link: #237A68;
+
+  --bg: #EAF4F1;
+  --surface: #FFFFFF;
+  --surface-subtle: #EAF4F1;
+  --surface-raised: #DFEDE8;
+  --border: rgba(35, 122, 104, 0.18);
+  --text: #0E1714;
+  --text-secondary: #3D5F56;
+  --text-tertiary: #5A7D72;
+  --text-muted: #3D5F56;
+  --selection: rgba(35, 122, 104, 0.14);
+  --shadow-card: 0 8px 24px rgba(35, 122, 104, 0.06);
+  --focus-ring: 0 0 0 3px rgba(35, 122, 104, 0.22);
+}
+
+[data-theme="dark"][data-product="agenda"],
+[data-product="agenda"][data-theme="dark"] {
+  --primary: #237A68;
+  --primary-hover: #1C6254;
+  --primary-soft: rgba(35, 122, 104, 0.16);
+  --accent-dark: #61BFA9;
+  --accent-dark-tint: #1B2D28;
+  --on-primary: #FFFFFF;
+  --on-accent: #0E1714;
+  --link: #61BFA9;
+
+  --bg: #1B2D28;
+  --surface: #223832;
+  --surface-subtle: #2A443C;
+  --surface-raised: #325046;
+  --border: rgba(97, 191, 169, 0.22);
+  --text: #E8F4F0;
+  --text-secondary: #A8CEC4;
+  --text-tertiary: #7AADA1;
+  --text-muted: #A8CEC4;
+  --selection: rgba(97, 191, 169, 0.2);
+  --shadow-card: none;
+  --focus-ring: 0 0 0 3px rgba(97, 191, 169, 0.28);
+}
+
+/* Alias legacy */
+:root,
+[data-product="crm"] {
+  --vhm-600: var(--primary);
+  --vhm-700: var(--primary-hover);
+  --vhm-100: var(--primary-soft);
+  --vhm-active-text: var(--link);
+  --crm-600: #176B87;
+  --crm-700: #12566D;
+  --crm-100: #EAF2F5;
+}
+[data-product="tribu"] {
+  --vhm-600: var(--primary);
+  --vhm-700: var(--primary-hover);
+  --vhm-100: var(--primary-soft);
+  --vhm-active-text: var(--link);
+  --tribu-600: #A84F3E;
+  --tribu-700: #8F4234;
+  --tribu-100: #F7ECE9;
+}
+[data-product="agenda"] {
+  --vhm-600: var(--primary);
+  --vhm-700: var(--primary-hover);
+  --vhm-100: var(--primary-soft);
+  --vhm-active-text: var(--link);
+}
+
+/* —— Base tipográfica y componentes (checklist PDF) —— */
+body {
+  font-family: var(--font-ui);
+  background: var(--bg);
+  color: var(--text);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+[data-product="crm"] body,
+body[data-product="crm"] {
+  font-variant-numeric: tabular-nums;
+}
+
+::selection {
+  background: var(--selection);
+}
+
+.btn-primary {
+  min-height: var(--control-min-h);
+  padding: 0 18px;
+  border: 0;
+  border-radius: var(--radius-button);
+  background: var(--primary);
+  color: var(--on-primary);
+  font-weight: 600;
+  font-size: var(--font-size-body);
+  transition: background 0.16s ease, transform 0.16s ease, opacity 0.16s ease;
+}
+.btn-primary:hover { background: var(--primary-hover); }
+.btn-primary:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.btn-primary:active { transform: scale(0.985); }
+.btn-primary:disabled {
+  opacity: var(--disabled-opacity);
+  cursor: not-allowed;
+  transform: none;
+}
+
+[data-product="agenda"] .btn-primary,
+[data-theme="dark"] .btn-primary {
+  min-height: var(--control-min-h-agenda);
+}
+
+.input {
+  min-height: var(--control-min-h);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-field);
+  background: var(--surface);
+  color: var(--text);
+  padding: 0 14px;
+  font-size: var(--font-size-body);
+  font-weight: 500;
+}
+.input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: var(--focus-ring);
+}
+.input:disabled {
+  opacity: var(--disabled-opacity);
+  cursor: not-allowed;
+}
+
+[data-product="agenda"] .input {
+  min-height: var(--control-min-h-agenda);
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+
+[data-theme="dark"] .card {
+  box-shadow: none;
+}
+
+a {
+  color: var(--link);
+}
+
+[data-theme="dark"] a:not(.btn-primary) {
+  color: var(--accent-dark);
+}
+
+.help-text {
+  font-size: var(--font-size-help);
+  line-height: var(--line-height-help);
+  color: var(--text-secondary);
+}

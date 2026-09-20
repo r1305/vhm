@@ -1,0 +1,303 @@
+/* La Tribu — tokens por producto (PDF §04), sin base compartida */
+@import url('vhm-design-tokens-v1.css');
+
+:root,
+[data-product="tribu"] {
+  --violet: var(--primary);
+  --purple: var(--primary);
+  --pink: var(--primary-hover);
+  --coral: var(--primary-hover);
+  --panel: var(--surface);
+  --line: var(--border);
+  --txt: var(--text);
+  --muted: var(--text-secondary);
+  --tribu-600: var(--primary);
+  --tribu-700: var(--primary-hover);
+  --tribu-100: var(--primary-soft);
+  --grad-warm: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
+  --grad-cool: linear-gradient(135deg, var(--primary) 0%, #237A68 55%, #176B87 100%);
+}
+
+body {
+  font-family: var(--font-ui) !important;
+  color: var(--txt) !important;
+  background: var(--bg) !important;
+}
+
+.site-nav {
+  background: color-mix(in srgb, var(--surface) 92%, transparent) !important;
+  border-bottom-color: var(--line) !important;
+}
+.site-nav .logo,
+.site-nav .tribu-brand { -webkit-text-fill-color: unset !important; color: var(--primary) !important; background: none !important; }
+[data-theme="dark"] .site-nav .logo,
+[data-theme="dark"] .site-nav .tribu-brand { color: var(--accent-dark) !important; }
+
+.hero {
+  background: linear-gradient(180deg, var(--surface) 0%, var(--bg) 100%) !important;
+}
+.hero h1 { color: var(--txt) !important; }
+.hero h1 span { -webkit-text-fill-color: unset !important; color: var(--primary) !important; background: none !important; }
+[data-theme="dark"] .hero h1 span { color: var(--accent-dark) !important; }
+
+.pill, .hero .eyebrow {
+  color: var(--primary-hover) !important;
+  background: var(--primary-soft) !important;
+  border-color: var(--border) !important;
+}
+[data-theme="dark"] .pill,
+[data-theme="dark"] .hero .eyebrow {
+  color: var(--accent-dark) !important;
+}
+.pill:hover { background: var(--surface-raised) !important; }
+
+.card, .cat-accordion, .auth-box, .player-box, .plan-card, .profile-card {
+  background: var(--panel) !important;
+  border-color: var(--line) !important;
+  box-shadow: var(--shadow-card);
+}
+[data-theme="dark"] .card,
+[data-theme="dark"] .cat-accordion,
+[data-theme="dark"] .auth-box,
+[data-theme="dark"] .player-box,
+[data-theme="dark"] .plan-card,
+[data-theme="dark"] .profile-card {
+  box-shadow: none !important;
+}
+
+.btn-primary, .auth-btn, .lock-btn-primary, .plan-adquirir, .profile-btn-primary {
+  background: var(--primary) !important;
+  color: var(--on-primary) !important;
+  min-height: var(--control-min-h) !important;
+  border-radius: var(--radius-button) !important;
+}
+.btn-primary:hover, .auth-btn:hover, .plan-adquirir:hover {
+  background: var(--primary-hover) !important;
+}
+
+.auth-overlay, .player-overlay, .evt-overlay {
+  background: rgba(14, 23, 20, 0.42) !important;
+}
+[data-theme="dark"] .auth-overlay,
+[data-theme="dark"] .player-overlay,
+[data-theme="dark"] .evt-overlay {
+  background: rgba(14, 23, 20, 0.72) !important;
+}
+
+input:focus, textarea:focus, select:focus {
+  border-color: var(--primary) !important;
+  box-shadow: var(--focus-ring) !important;
+}
+[data-theme="dark"] input:focus,
+[data-theme="dark"] textarea:focus,
+[data-theme="dark"] select:focus {
+  border-color: var(--accent-dark) !important;
+}
+
+footer {
+  background: var(--surface) !important;
+}
+footer a { color: var(--link) !important; }
+[data-theme="dark"] footer a { color: var(--accent-dark) !important; }
+
+/* Menú "Mi cuenta" — contraste en claro y oscuro */
+.user-menu-panel {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+  box-shadow: var(--shadow-card) !important;
+}
+[data-theme="dark"] .user-menu-panel {
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45) !important;
+}
+.user-menu-btn {
+  background: var(--primary-soft) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+.user-menu-btn:hover,
+.user-menu.open .user-menu-btn {
+  background: var(--surface-raised) !important;
+  border-color: var(--border) !important;
+}
+.user-menu-name,
+.user-menu-head-name,
+.user-menu-item {
+  color: var(--text) !important;
+}
+.user-menu-sub,
+.user-menu-chevron,
+.user-menu-head-email {
+  color: var(--text-secondary) !important;
+}
+.user-menu-item:hover,
+.user-menu-item:focus-visible {
+  background: var(--primary-soft) !important;
+}
+.user-menu-item.danger {
+  color: var(--danger) !important;
+}
+.user-menu-item.danger:hover,
+.user-menu-item.danger:focus-visible {
+  background: var(--danger-bg) !important;
+}
+.user-menu-head {
+  border-bottom-color: var(--border) !important;
+}
+.user-menu-divider {
+  background: var(--border) !important;
+}
+
+/* Tabs La Tribu — contraste en claro y oscuro */
+.tribu-tab {
+  background: var(--surface-subtle) !important;
+  color: var(--text-secondary) !important;
+  border-color: var(--border) !important;
+}
+.tribu-tab:hover {
+  background: var(--surface-raised) !important;
+  color: var(--text) !important;
+}
+.tribu-tab.active {
+  background: var(--surface) !important;
+  color: var(--primary-hover) !important;
+  border-color: var(--border) !important;
+}
+[data-theme="dark"] .tribu-tab.active {
+  color: var(--accent-dark) !important;
+  box-shadow: none !important;
+}
+
+/* Modal de pago y facturación */
+#pagoOverlay .pago-box,
+#pagoOverlay .auth-box {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+#pagoOverlay .auth-title,
+#pagoOverlay .pago-section-title,
+#pagoOverlay .pago-price-amount,
+#pagoOverlay .pago-toggle-text strong,
+#pagoOverlay .pago-saved-label {
+  color: var(--text) !important;
+}
+#pagoOverlay .pago-section,
+#pagoOverlay .pago-section-pay,
+#pagoOverlay .pago-saved-wrap,
+#pagoOverlay .pago-price-chip {
+  background: var(--surface-subtle) !important;
+  border-color: var(--border) !important;
+}
+#pagoOverlay .culqi-embed {
+  background: transparent !important;
+  border: none !important;
+  overflow: hidden !important;
+  border-radius: 12px !important;
+}
+#pagoOverlay .culqi-embed iframe {
+  border-radius: 12px !important;
+}
+
+/* Modal de evento del calendario */
+.evt-close {
+  background: var(--surface-raised) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+.evt-close:hover {
+  background: var(--primary-soft) !important;
+  color: var(--primary-hover) !important;
+}
+[data-theme="dark"] .evt-close:hover {
+  color: var(--accent-dark) !important;
+}
+
+/* Loader de página */
+.tribu-page-loader {
+  background: rgba(14, 23, 20, 0.42) !important;
+}
+[data-theme="dark"] .tribu-page-loader {
+  background: rgba(14, 23, 20, 0.72) !important;
+}
+.tribu-page-loader-box {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+  box-shadow: var(--shadow-card) !important;
+}
+[data-theme="dark"] .tribu-page-loader-box {
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45) !important;
+}
+.tribu-page-loader-box p {
+  color: var(--text-secondary) !important;
+}
+.tribu-spinner {
+  border-color: var(--primary-soft) !important;
+  border-top-color: var(--primary) !important;
+}
+[data-theme="dark"] .tribu-spinner {
+  border-top-color: var(--accent-dark) !important;
+}
+
+/* Zona Mi cuenta */
+.tribu-account-zone {
+  background: linear-gradient(180deg, var(--surface-subtle) 0%, var(--bg) 240px) !important;
+  border-top-color: var(--border) !important;
+}
+.tribu-account-eyebrow {
+  color: var(--text-secondary) !important;
+}
+.tribu-account-title {
+  color: var(--text) !important;
+}
+.tribu-account-tabs {
+  border-bottom-color: var(--border) !important;
+}
+.tribu-account-tab {
+  color: var(--text-secondary) !important;
+  border-color: var(--border) !important;
+}
+.tribu-account-tab:hover:not(.active) {
+  background: var(--primary-soft) !important;
+  color: var(--text) !important;
+}
+.tribu-account-tab.active {
+  background: var(--primary) !important;
+  color: var(--on-primary) !important;
+}
+#pagoOverlay .pago-field input,
+#pagoOverlay .pago-field select,
+#pagoOverlay .profile-field input,
+#pagoOverlay .profile-field select,
+.auth-field input,
+.profile-field input {
+  background: var(--surface) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+#pagoOverlay .pago-field label,
+#pagoOverlay .profile-field label,
+#pagoOverlay .pago-pay-lead,
+#pagoOverlay .pago-help,
+#pagoOverlay .pago-trust,
+#pagoOverlay .pago-price-period,
+#pagoOverlay .pago-saved-title,
+.pago-toggle-text small {
+  color: var(--text-secondary) !important;
+}
+#pagoOverlay .pago-field input:focus,
+#pagoOverlay .pago-field select:focus,
+#pagoOverlay .profile-field input:focus,
+.auth-field input:focus {
+  background: var(--primary-soft) !important;
+  box-shadow: var(--focus-ring) !important;
+}
+#pagoOverlay .pago-saved-option {
+  background: var(--surface-subtle) !important;
+  border-color: var(--border) !important;
+}
+#pagoOverlay .pago-saved-option:hover,
+#pagoOverlay .pago-saved-option.selected {
+  background: var(--primary-soft) !important;
+}
