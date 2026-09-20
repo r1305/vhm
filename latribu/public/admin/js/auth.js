@@ -65,7 +65,7 @@
 
   function requireSuperAdmin() {
     if (!requireAuth()) return false;
-    if (!isSuperAdmin()) { global.location.href = 'videos.html'; return false; }
+    if (!isSuperAdmin()) { global.location.href = AdminLayout.firstAllowedHref(); return false; }
     return true;
   }
 

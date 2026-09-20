@@ -1,7 +1,7 @@
 (function () {
   AdminAuth.loadTheme();
   if (AdminAuth.state.token) {
-    location.href = 'reclamos.html';
+    location.href = AdminLayout.firstAllowedHref();
     return;
   }
 
@@ -27,7 +27,7 @@
     errEl.style.display = 'none';
     try {
       await AdminAuth.login(u, p);
-      location.href = 'reclamos.html';
+      location.href = AdminLayout.firstAllowedHref();
     } catch (e) {
       errEl.textContent = e.message;
       errEl.style.display = 'block';
