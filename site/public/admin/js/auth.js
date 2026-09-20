@@ -96,7 +96,7 @@
   function requireSuperAdmin() {
     if (!requireAuth()) return false;
     if (!isSuperAdmin()) {
-      global.location.href = 'reclamos.html';
+      global.location.href = AdminLayout.firstAllowedHref();
       return false;
     }
     return true;
