@@ -12,7 +12,6 @@ const configEmailRoutes = require('./configEmailRoutes');
 const configPixelRoutes = require('./configPixelRoutes');
 const configWhatsappRoutes = require('./configWhatsappRoutes');
 const testimoniosRoutes = require('./testimoniosRoutes');
-const videosRoutes = require('./videosRoutes');
 const claraRoutes = require('./claraRoutes');
 const eventosRoutes = require('./eventosRoutes');
 const configFacebookVerificationRoutes = require('./configFacebookVerificationRoutes');
@@ -124,13 +123,12 @@ app.use((req, res, next) => {
   }
   // Validate CSRF on state-changing methods (skip public POST endpoints)
   if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {
-    const publicPostPaths = ['/api/reclamos', '/api/clara/chat', '/api/auth/login', '/api/tribu-access/verificar', '/api/tribu-auth/login', '/api/tribu-auth/registro', '/api/tribu-auth/recuperar', '/api/tribu-auth/reset-password', '/api/tribu-auth/cambiar-password-temp', '/api/tribu-pagos/webhook', '/api/tribu-pagos/procesar-pago', '/api/tribu-pagos/cron-renovaciones'];
-    const isPublicEncuestaPost = req.method === 'POST' && /^\/api\/encuestas\/public\/[^/]+\/responder$/.test(req.path);
+    const publicPostPaths = ['/api/reclamos', '/api/clara/chat', '/api/auth/login'];
+    const isPublicEncuestaPost = false;
     const isPublicPost = req.method === 'POST' && publicPostPaths.some(p => req.path === p);
-    const isPublicCronRenovaciones = req.method === 'GET' && req.path === '/api/tribu-pagos/cron-renovaciones';
-    const isPublicVideoAction = req.method === 'POST' && req.path.startsWith('/api/videos/') && (req.path.endsWith('/vista') || req.path.endsWith('/like'));
-    const isTribuBearer = req.headers.authorization?.startsWith('Bearer ') &&
-      (req.path.startsWith('/api/tribu-auth/') || req.path.startsWith('/api/tribu-pagos/'));
+    const isPublicCronRenovaciones = false;
+    const isPublicVideoAction = false;
+    const isTribuBearer = false;
     if (!isPublicPost && !isPublicEncuestaPost && !isPublicVideoAction && !isPublicCronRenovaciones && !isTribuBearer) {
       const headerToken = req.headers['x-csrf-token'] || req.headers['csrf-token'];
       const cookieToken = req.cookies?.csrf_token;
@@ -144,54 +142,6 @@ app.use((req, res, next) => {
 
 let initPromise = null;
 
-function programarCronRenovaciones() {
-  if (process.env.TRIBU_RENOVACION_CRON_ENABLED !== '1') return;
-  const { runRenovacionesSuscripciones } = require('./tribuRenovaciones');
-
-  const HOUR_MS = 60 * 60 * 1000;
-  const timer = setInterval(async () => {
-    try {
-      const result = await runRenovacionesSuscripciones();
-      if (result.processed > 0) {
-        console.log(`[vhm] Renovaciones La Tribu: ${result.processed} procesadas`);
-      }
-    } catch (e) {
-      console.error('[vhm] Error en cron renovaciones La Tribu:', e.message);
-    }
-  }, HOUR_MS);
-  if (typeof timer.unref === 'function') timer.unref();
-}
-
-function programarCronTribu() {
-  if (process.env.TRIBU_CRON_ENABLED !== '1') return;
-  const { renovarPassword: renovarTribuPassword } = require('./tribuAccessRoutes');
-
-  function msHastaProximoMiercoles12() {
-    const ahora = new Date();
-    const objetivo = new Date(ahora);
-    const diasHasta = (3 - ahora.getDay() + 7) % 7 || 7;
-    objetivo.setDate(ahora.getDate() + diasHasta);
-    objetivo.setHours(12, 0, 0, 0);
-    return objetivo - ahora;
-  }
-
-  function programar() {
-    const ms = msHastaProximoMiercoles12();
-    const timer = setTimeout(async () => {
-      try {
-        await renovarTribuPassword();
-        console.log('[vhm] Contraseña de La Tribu renovada automáticamente');
-      } catch (e) {
-        console.error('[vhm] Error al renovar contraseña de La Tribu:', e.message);
-      }
-      programar();
-    }, ms);
-    if (typeof timer.unref === 'function') timer.unref();
-  }
-
-  programar();
-}
-
 function initAppOnce() {
   if (!initPromise) {
     initPromise = (async () => {
@@ -200,8 +150,6 @@ function initAppOnce() {
       } catch (err) {
         console.error('[vhm] No se pudo asegurar el esquema:', err.message);
       }
-      programarCronTribu();
-      programarCronRenovaciones();
     })();
   }
   return initPromise;
@@ -237,13 +185,9 @@ const ADMIN_PAGES = [
   'login.html',
   'reclamos.html',
   'testimonios.html',
-  'videos.html',
-  'tribu-users.html',
   'usuarios.html',
   'config.html',
   'accesos.html',
-  'plantillas.html',
-  'encuestas.html',
   'index.html',
 ];
 
@@ -378,11 +322,11 @@ app.get('/reclamo', (req, res) => {
 });
 
 app.get('/latribu', (req, res) => {
-  sendPublicHtml(res, 'videos.html');
+  res.redirect(301, 'https://vhm.com.pe/latribu');
 });
 
 app.get('/encuesta/:slug', (req, res) => {
-  sendPublicHtml(res, 'encuesta.html');
+  res.redirect(301, 'https://vhm.com.pe/latribu/encuesta/' + req.params.slug);
 });
 
 // Compatibilidad: rutas anteriores redirigen a La Tribu.
@@ -434,26 +378,15 @@ app.use('/api/auth', authRoutes);
 app.use('/api/reclamos', reclamosRoutes);
 app.use('/api/usuarios', usuariosRoutes);
 app.use('/api/accesos', require('./accesosRoutes'));
-app.use('/api/plantillas', require('./plantillasRoutes'));
 app.use('/api/config-email', configEmailRoutes);
 app.use('/api/config-pixel', configPixelRoutes);
 app.use('/api/config-whatsapp', configWhatsappRoutes);
 app.use('/api/config-redes', require('./configRedesRoutes'));
 app.use('/api/hero-image', require('./heroImageRoutes'));
 app.use('/api/testimonios', testimoniosRoutes);
-app.use('/api/encuestas', require('./encuestasRoutes'));
-app.use('/api/videos', videosRoutes);
 app.use('/api/clara', claraRoutes);
 app.use('/api/eventos', eventosRoutes);
 app.use('/api/config-facebook-verification', configFacebookVerificationRoutes);
-app.use('/api/suscripciones', require('./suscripcionesRoutes'));
-app.use('/api/config-culqi', require('./configCulqiRoutes'));
-const { router: tribuAccessRouter } = require('./tribuAccessRoutes');
-app.use('/api/tribu-access', tribuAccessRouter);
-app.use('/api/tribu-users', require('./tribuUsersRoutes'));
-const { router: tribuAuthRouter } = require('./tribuAuthRoutes');
-app.use('/api/tribu-auth', tribuAuthRouter);
-app.use('/api/tribu-pagos', require('./tribuPagosRoutes'));
 
 // Error handler global
 app.use((err, req, res, next) => {
