@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ajustes - La Tribu Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/admin.css">
+  <script src="js/base.js"></script>
+</head>
+<body>
+  <div id="admin-root"><div id="page-main" style="display:none">
+    <div class="section-header">
+      <div><h2>⚙️ Ajustes</h2><p>Configuración general de La Tribu</p></div>
+    </div>
+
+    <div class="sub-tabs">
+      <button type="button" data-tab="suscripciones" class="active">💳 Suscripciones</button>
+      <button type="button" data-tab="culqi">🏦 Culqi</button>
+      <button type="button" data-tab="pixel">📊 Pixel</button>
+      <button type="button" data-tab="whatsapp">💬 WhatsApp</button>
+      <button type="button" data-tab="redes">🌐 Redes</button>
+    </div>
+
+    <!-- SUSCRIPCIONES -->
+    <div data-panel="suscripciones">
+      <div class="config-section">
+        <h3>💳 Planes de Suscripción</h3>
+        <div class="form-group" style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+          <label style="margin:0">Suscripciones activas</label>
+          <label class="switch"><input type="checkbox" id="sus-activo"><span class="slider"></span></label>
+        </div>
+        <div class="form-group" style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+          <label style="margin:0">Visible en landing</label>
+          <label class="switch"><input type="checkbox" id="sus-visible"><span class="slider"></span></label>
+        </div>
+        <button type="button" class="btn btn-outline btn-sm" id="btn-sus-cfg-guardar">💾 Guardar config</button>
+        <hr style="margin:20px 0;border-color:var(--border-color)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <h4 style="font-size:.95rem;font-weight:600">Planes</h4>
+          <button type="button" class="btn btn-primary btn-sm" id="btn-nuevo-plan">+ Nuevo plan</button>
+        </div>
+        <div class="card"><div class="card-body">
+          <table><thead><tr><th>Nombre</th><th>Precio</th><th>Vigencia</th><th>Descripción</th><th>Acciones</th></tr></thead>
+          <tbody id="sus-tbody"></tbody></table>
+        </div></div>
+      </div>
+    </div>
+
+    <!-- CULQI -->
+    <div data-panel="culqi" style="display:none">
+      <div class="config-section" style="max-width:560px">
+        <h3>🏦 Culqi — Pasarela de Pagos</h3>
+        <div class="form-group" style="display:flex;align-items:center;gap:12px">
+          <label style="margin:0">Activo</label>
+          <label class="switch"><input type="checkbox" id="culqi-activo"><span class="slider"></span></label>
+        </div>
+        <div class="form-group">
+          <label>Modo</label>
+          <select id="culqi-modo">
+            <option value="sandbox">🧪 Sandbox (pruebas)</option>
+            <option value="produccion">🚀 Producción</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Public Key</label><input type="text" id="culqi-pk" placeholder="pk_test_..."></div>
+        <div class="form-group"><label>Secret Key</label><input type="password" id="culqi-sk" placeholder="sk_test_..."></div>
+        <button type="button" class="btn btn-primary" id="btn-culqi-guardar">💾 Guardar</button>
+        <div class="msg-box" id="culqi-msg"></div>
+      </div>
+    </div>
+
+    <!-- PIXEL -->
+    <div data-panel="pixel" style="display:none">
+      <div class="config-section" style="max-width:480px">
+        <h3>📊 Facebook Pixel</h3>
+        <div class="form-group" style="display:flex;align-items:center;gap:12px">
+          <label style="margin:0">Activo</label>
+          <label class="switch"><input type="checkbox" id="pixel-activo"><span class="slider"></span></label>
+        </div>
+        <div class="form-group"><label>Pixel ID</label><input type="text" id="pixel-id" placeholder="123456789012345"></div>
+        <button type="button" class="btn btn-primary" id="btn-pixel-guardar">💾 Guardar</button>
+        <div class="msg-box" id="pixel-msg"></div>
+      </div>
+    </div>
+
+    <!-- WHATSAPP -->
+    <div data-panel="whatsapp" style="display:none">
+      <div class="config-section" style="max-width:480px">
+        <h3>💬 WhatsApp</h3>
+        <div class="form-group" style="display:flex;align-items:center;gap:12px">
+          <label style="margin:0">Activo</label>
+          <label class="switch"><input type="checkbox" id="wa-activo"><span class="slider"></span></label>
+        </div>
+        <div class="form-group"><label>Número (con código de país)</label><input type="text" id="wa-numero" placeholder="51999999999"></div>
+        <div class="form-group"><label>Mensaje predeterminado</label><textarea id="wa-mensaje" rows="3" placeholder="Hola, me interesa..."></textarea></div>
+        <button type="button" class="btn btn-primary" id="btn-wa-guardar">💾 Guardar</button>
+        <div class="msg-box" id="wa-msg"></div>
+      </div>
+    </div>
+
+    <!-- REDES -->
+    <div data-panel="redes" style="display:none">
+      <div class="config-section" style="max-width:480px">
+        <h3>🌐 Redes Sociales</h3>
+        <div class="form-group"><label>Instagram</label><input type="url" id="red-instagram" placeholder="https://instagram.com/..."></div>
+        <div class="form-group"><label>Facebook</label><input type="url" id="red-facebook" placeholder="https://facebook.com/..."></div>
+        <div class="form-group"><label>YouTube</label><input type="url" id="red-youtube" placeholder="https://youtube.com/..."></div>
+        <div class="form-group"><label>TikTok</label><input type="url" id="red-tiktok" placeholder="https://tiktok.com/..."></div>
+        <button type="button" class="btn btn-primary" id="btn-redes-guardar">💾 Guardar</button>
+        <div class="msg-box" id="redes-msg"></div>
+      </div>
+    </div>
+
+    <!-- MODAL PLAN -->
+    <div class="modal-overlay" id="modal-plan">
+      <div class="modal">
+        <div class="modal-header">
+          <h3 id="modal-plan-title">💳 Nuevo Plan</h3>
+          <button type="button" class="modal-close" data-modal-close="modal-plan">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group"><label>Nombre</label><input type="text" id="pf-nombre" placeholder="Plan Base"></div>
+          <div class="form-group"><label>Precio (S/)</label><input type="number" id="pf-precio" placeholder="39.90" step="0.01" min="0"></div>
+          <div class="form-group"><label>Vigencia (días)</label><input type="number" id="pf-vigencia" placeholder="30" min="1" value="30"></div>
+          <div class="form-group"><label>Descripción</label><textarea id="pf-descripcion" rows="2" placeholder="Acceso completo..."></textarea></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" data-modal-close="modal-plan">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="btn-guardar-plan">💾 Guardar</button>
+        </div>
+      </div>
+    </div>
+  </div></div>
+
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/toast.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/layout.js"></script>
+  <script src="js/config.js"></script>
+</body>
+</html>

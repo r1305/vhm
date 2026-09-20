@@ -1,0 +1,251 @@
+/*
+ * Widget de chat "Clara · Tu Guía 24/7" para VHM (solo La Tribu con suscripción activa).
+ *
+ * Modo A: burbuja flotante que abre el GPT de Clara en ventana emergente.
+ * Modo B: chat embebido vía /api/clara/chat si el backend tiene OPENAI_API_KEY.
+ *
+ * No se monta automáticamente: la página debe llamar ClaraChat.init() / destroy().
+ */
+(function () {
+  'use strict';
+
+  var API = (window.__APP_BASE__ || '') + '/api';
+  var CLARA_URL = 'https://chatgpt.com/g/g-68fbdd94f4908191bf4bc65b8e92d540-clara-tu-guia-24-7-by-ps-guillermo';
+
+  var configCargada = false;
+  var modoApi = false;
+  var mensajes = [];
+  var getAuthHeaders = function () { return {}; };
+  var mounted = false;
+  var style, launcher, panel, body, footMount, closeBtn;
+
+  function el(tag, attrs, html) {
+    var n = document.createElement(tag);
+    if (attrs) Object.keys(attrs).forEach(function (k) { n.setAttribute(k, attrs[k]); });
+    if (html != null) n.innerHTML = html;
+    return n;
+  }
+
+  var css = '' +
+    '.clara-launcher{position:fixed;bottom:100px;right:24px;width:62px;height:62px;border-radius:50%;border:none;cursor:pointer;z-index:9998;' +
+    'background:linear-gradient(135deg,#A84F3E 0%,#8F4234 55%,#E58B78 100%);box-shadow:0 10px 30px -8px rgba(168,79,62,.7);' +
+    'display:flex;align-items:center;justify-content:center;transition:transform .2s, box-shadow .2s;animation:claraPulse 2.6s ease-in-out infinite;}' +
+    '.clara-launcher:hover{transform:scale(1.08);box-shadow:0 14px 36px -8px rgba(168,79,62,.85);}' +
+    '.clara-launcher svg{width:30px;height:30px;}' +
+    '.clara-launcher .clara-badge{position:absolute;top:-2px;right:-2px;width:16px;height:16px;border-radius:50%;background:#2dd4bf;border:2px solid #07070d;}' +
+    '@keyframes claraPulse{0%,100%{box-shadow:0 10px 30px -8px rgba(168,79,62,.7),0 0 0 0 rgba(168,79,62,.45);}50%{box-shadow:0 10px 30px -8px rgba(168,79,62,.7),0 0 0 12px rgba(168,79,62,0);}}' +
+    '.clara-panel{position:fixed;bottom:174px;right:24px;width:370px;max-width:calc(100vw - 32px);height:560px;max-height:calc(100vh - 200px);' +
+    'background:#FFFFFF;border:1px solid #D9E1DE;border-radius:20px;z-index:9999;overflow:hidden;display:none;flex-direction:column;' +
+    'box-shadow:0 20px 60px rgba(24,33,30,.12);font-family:Inter,system-ui,sans-serif;color:#18211E;}' +
+    '.clara-panel.open{display:flex;animation:claraIn .25s ease;}' +
+    '@keyframes claraIn{from{opacity:0;transform:translateY(16px) scale(.98);}to{opacity:1;transform:none;}}' +
+    '.clara-head{padding:16px 16px;display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,#A84F3E,#8F4234 60%,#E58B78);position:relative;}' +
+    '.clara-head img{width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,.6);background:#fff;}' +
+    '.clara-head .clara-h-name{font-weight:800;font-size:1.02rem;color:#fff;line-height:1.1;}' +
+    '.clara-head .clara-h-sub{font-size:.76rem;color:rgba(255,255,255,.9);display:flex;align-items:center;gap:6px;margin-top:3px;}' +
+    '.clara-head .clara-dot{width:8px;height:8px;border-radius:50%;background:#34d399;box-shadow:0 0 0 3px rgba(52,211,153,.3);}' +
+    '.clara-head .clara-close{position:absolute;top:12px;right:12px;background:rgba(0,0,0,.2);border:none;color:#fff;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:1.2rem;line-height:1;}' +
+    '.clara-head .clara-close:hover{background:rgba(0,0,0,.4);}' +
+    '.clara-body{flex:1;overflow-y:auto;padding:18px 16px;display:flex;flex-direction:column;gap:12px;background:#F7F8F7;}' +
+    '.clara-msg{max-width:84%;padding:11px 14px;border-radius:16px;font-size:.92rem;line-height:1.5;white-space:pre-wrap;word-wrap:break-word;}' +
+    '.clara-msg.bot{align-self:flex-start;background:#FFFFFF;border:1px solid #D9E1DE;border-bottom-left-radius:5px;color:#18211E;}' +
+    '.clara-msg.user{align-self:flex-end;background:linear-gradient(135deg,#A84F3E,#8F4234);border-bottom-right-radius:5px;color:#fff;}' +
+    '.clara-typing{align-self:flex-start;display:flex;gap:5px;padding:12px 14px;background:#FFFFFF;border:1px solid #D9E1DE;border-radius:16px;border-bottom-left-radius:5px;}' +
+    '.clara-typing span{width:7px;height:7px;border-radius:50%;background:#A84F3E;animation:claraBlink 1.2s infinite;}' +
+    '.clara-typing span:nth-child(2){animation-delay:.2s;}.clara-typing span:nth-child(3){animation-delay:.4s;}' +
+    '@keyframes claraBlink{0%,60%,100%{opacity:.3;}30%{opacity:1;}}' +
+    '.clara-cta{margin-top:6px;padding:14px;border-radius:16px;background:#F7ECE9;border:1px solid #D9E1DE;}' +
+    '.clara-cta p{font-size:.85rem;color:#52615C;line-height:1.5;margin-bottom:12px;}' +
+    '.clara-open-btn{display:block;width:100%;padding:13px;border:none;border-radius:12px;cursor:pointer;font-weight:800;font-size:.95rem;color:#fff;' +
+    'background:linear-gradient(135deg,#A84F3E,#8F4234 60%,#E58B78);box-shadow:0 8px 22px -8px rgba(168,79,62,.7);transition:transform .15s;}' +
+    '.clara-open-btn:hover{transform:translateY(-2px);}' +
+    '.clara-note{font-size:.72rem;color:#7a738f;margin-top:10px;text-align:center;line-height:1.4;}' +
+    '.clara-foot{padding:12px;border-top:1px solid #D9E1DE;display:flex;gap:8px;background:#FFFFFF;}' +
+    '.clara-foot textarea{flex:1;resize:none;max-height:96px;min-height:44px;padding:11px 12px;border-radius:12px;border:1px solid #D9E1DE;' +
+    'background:#FFFFFF;color:#18211E;font-family:inherit;font-size:.9rem;outline:none;}' +
+    '.clara-foot textarea:focus{border-color:#8F4234;}' +
+    '.clara-send{width:44px;height:44px;flex:none;border:none;border-radius:12px;cursor:pointer;color:#fff;font-size:1.1rem;' +
+    'background:linear-gradient(135deg,#A84F3E,#8F4234);display:flex;align-items:center;justify-content:center;}' +
+    '.clara-send:disabled{opacity:.5;cursor:default;}' +
+    '.clara-disclaimer{font-size:.68rem;color:#6B7874;text-align:center;padding:0 12px 10px;background:#FFFFFF;}' +
+    '@media (max-width:768px){' +
+    '.clara-launcher{bottom:calc(78px + env(safe-area-inset-bottom,0px));right:calc(16px + env(safe-area-inset-right,0px));width:52px;height:52px;}' +
+    '.clara-launcher svg{width:26px;height:26px;}' +
+    '.clara-panel{right:12px;left:12px;width:auto;bottom:calc(142px + env(safe-area-inset-bottom,0px));height:min(520px,calc(100dvh - 168px));max-height:none;}' +
+    '}' +
+    '@media (max-width:768px){html:not(.tribu-has-wa) .clara-launcher{bottom:calc(18px + env(safe-area-inset-bottom,0px));}}' +
+    '@media (max-width:768px){html:not(.tribu-has-wa) .clara-panel{bottom:calc(82px + env(safe-area-inset-bottom,0px));}}';
+
+  function addMsg(text, who) {
+    var m = el('div', { 'class': 'clara-msg ' + who });
+    m.textContent = text;
+    body.appendChild(m);
+    body.scrollTop = body.scrollHeight;
+    return m;
+  }
+
+  function abrirPopup() {
+    var w = 440, h = 760;
+    var left = Math.max(0, (window.screen.width || 1280) - w - 30);
+    var top = Math.max(0, ((window.screen.height || 800) - h) / 2);
+    var feats = 'width=' + w + ',height=' + h + ',left=' + left + ',top=' + top +
+      ',menubar=no,toolbar=no,location=yes,status=no,resizable=yes,scrollbars=yes';
+    window.open(CLARA_URL, 'ClaraChat', feats);
+  }
+
+  function renderModoPopup() {
+    body.innerHTML = '';
+    addMsg('Hola, soy Clara, tu guía de acompañamiento emocional. Estoy aquí para escucharte y orientarte, las 24 horas. 💜', 'bot');
+    var cta = el('div', { 'class': 'clara-cta' });
+    cta.innerHTML =
+      '<p>Pulsa el botón para abrir tu conversación con Clara en una ventana de chat segura.</p>' +
+      '<button class="clara-open-btn" type="button">Abrir chat con Clara</button>' +
+      '<div class="clara-note">Se abrirá una ventana de chat. Si es tu primera vez, puede pedirte iniciar sesión en ChatGPT.</div>';
+    body.appendChild(cta);
+    cta.querySelector('.clara-open-btn').addEventListener('click', abrirPopup);
+    footMount.innerHTML = '';
+  }
+
+  function renderModoApi() {
+    body.innerHTML = '';
+    mensajes = [];
+    addMsg('Hola, soy Clara, tu guía de acompañamiento emocional. ¿Cómo te sientes hoy? Cuéntame en qué puedo ayudarte. 💜', 'bot');
+    footMount.innerHTML =
+      '<div class="clara-foot">' +
+        '<textarea id="claraInput" rows="1" placeholder="Escribe tu mensaje..." maxlength="2000"></textarea>' +
+        '<button class="clara-send" id="claraSend" aria-label="Enviar">&#10148;</button>' +
+      '</div>' +
+      '<div class="clara-disclaimer">Clara es una IA de acompañamiento y no sustituye atención psicológica profesional.</div>';
+
+    var input = footMount.querySelector('#claraInput');
+    var sendBtn = footMount.querySelector('#claraSend');
+
+    function autosize() { input.style.height = 'auto'; input.style.height = Math.min(input.scrollHeight, 96) + 'px'; }
+    input.addEventListener('input', autosize);
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar(); }
+    });
+    sendBtn.addEventListener('click', enviar);
+
+    function enviar() {
+      var texto = input.value.trim();
+      if (!texto) return;
+      input.value = ''; autosize();
+      addMsg(texto, 'user');
+      mensajes.push({ role: 'user', content: texto });
+      sendBtn.disabled = true; input.disabled = true;
+
+      var typing = el('div', { 'class': 'clara-typing' }, '<span></span><span></span><span></span>');
+      body.appendChild(typing); body.scrollTop = body.scrollHeight;
+
+      var headers = Object.assign({ 'Content-Type': 'application/json' }, getAuthHeaders());
+      fetch(API + '/clara/chat', {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify({ mensajes: mensajes })
+      }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+        .then(function (res) {
+          typing.remove();
+          if (res.ok && res.d.respuesta) {
+            addMsg(res.d.respuesta, 'bot');
+            mensajes.push({ role: 'assistant', content: res.d.respuesta });
+          } else {
+            addMsg(res.d.error || 'Lo siento, ahora mismo no puedo responder. Intenta de nuevo en un momento.', 'bot');
+          }
+        }).catch(function () {
+          typing.remove();
+          addMsg('Hubo un problema de conexión. Por favor, inténtalo de nuevo.', 'bot');
+        }).then(function () {
+          sendBtn.disabled = false; input.disabled = false; input.focus();
+        });
+    }
+    setTimeout(function () { input.focus(); }, 50);
+  }
+
+  function asegurarConfig() {
+    if (configCargada) return Promise.resolve();
+    var headers = getAuthHeaders();
+    return fetch(API + '/clara/config', { headers: headers }).then(function (r) { return r.json(); })
+      .then(function (cfg) { modoApi = !!(cfg && cfg.enabled); })
+      .catch(function () { modoApi = false; })
+      .then(function () { configCargada = true; });
+  }
+
+  function abrir() {
+    if (!mounted) return;
+    panel.classList.add('open');
+    launcher.style.display = 'none';
+    asegurarConfig().then(function () {
+      if (!body.dataset.rendered) {
+        if (modoApi) renderModoApi(); else renderModoPopup();
+        body.dataset.rendered = '1';
+      }
+    });
+  }
+
+  function cerrar() {
+    if (!mounted) return;
+    panel.classList.remove('open');
+    launcher.style.display = 'flex';
+  }
+
+  function mountDom() {
+    if (mounted) return;
+
+    style = el('style');
+    style.textContent = css;
+    document.head.appendChild(style);
+
+    launcher = el('button', { 'class': 'clara-launcher', 'aria-label': 'Abrir chat con Clara', 'title': 'Chatea con Clara' });
+    launcher.innerHTML = '<span class="clara-badge"></span>' +
+      '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+      '<path d="M12 3C7.03 3 3 6.58 3 11c0 1.94.78 3.71 2.08 5.08-.14 1.2-.6 2.3-1.32 3.2-.2.25-.02.62.3.6 1.6-.12 3.06-.6 4.27-1.36.83.25 1.72.38 2.67.38 4.97 0 9-3.58 9-8s-4.03-8-9-8z" fill="#fff"/>' +
+      '<circle cx="8.5" cy="11" r="1.2" fill="#A84F3E"/><circle cx="12" cy="11" r="1.2" fill="#8F4234"/><circle cx="15.5" cy="11" r="1.2" fill="#E58B78"/></svg>';
+
+    panel = el('div', { 'class': 'clara-panel', 'role': 'dialog', 'aria-label': 'Chat con Clara' });
+    panel.innerHTML =
+      '<div class="clara-head">' +
+        '<img src="logo_vhm.jpeg" alt="Clara">' +
+        '<div>' +
+          '<div class="clara-h-name">Clara</div>' +
+          '<div class="clara-h-sub"><span class="clara-dot"></span> Tu Guía 24/7 · by Ps. Guillermo</div>' +
+        '</div>' +
+        '<button class="clara-close" aria-label="Cerrar">&times;</button>' +
+      '</div>' +
+      '<div class="clara-body" id="claraBody"></div>' +
+      '<div id="claraFootMount"></div>';
+
+    document.body.appendChild(launcher);
+    document.body.appendChild(panel);
+
+    body = panel.querySelector('#claraBody');
+    footMount = panel.querySelector('#claraFootMount');
+    closeBtn = panel.querySelector('.clara-close');
+
+    launcher.addEventListener('click', abrir);
+    closeBtn.addEventListener('click', cerrar);
+    mounted = true;
+  }
+
+  function destroy() {
+    if (!mounted) return;
+    cerrar();
+    if (launcher) launcher.remove();
+    if (panel) panel.remove();
+    if (style) style.remove();
+    launcher = panel = style = body = footMount = closeBtn = null;
+    mounted = false;
+    configCargada = false;
+    modoApi = false;
+    mensajes = [];
+  }
+
+  function init(opts) {
+    opts = opts || {};
+    if (typeof opts.getAuthHeaders === 'function') getAuthHeaders = opts.getAuthHeaders;
+    mountDom();
+    launcher.style.display = 'flex';
+  }
+
+  window.ClaraChat = { init: init, destroy: destroy };
+})();

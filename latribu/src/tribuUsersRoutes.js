@@ -1,0 +1,68 @@
+const { Router } = require('express');
+const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
+const pool = require('./db');
+const { authMiddleware } = require('./auth');
+
+const router = Router();
+router.use(authMiddleware);
+
+function requireAdmin(req, res, next) {
+  if (req.user && (req.user.rol === 'SUPER_ADMIN' || req.user.rol === 'ADMIN')) return next();
+  return res.status(403).json({ error: 'Acceso restringido' });
+}
+
+router.get('/', async (req, res) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = [10, 20, 30, 40, 50].includes(parseInt(req.query.limit)) ? parseInt(req.query.limit) : 10;
+    const offset = (page - 1) * limit;
+    const q = (req.query.q || '').trim();
+
+    let where = '1=1';
+    const params = [];
+    if (q) {
+      where += ' AND (nombre LIKE ? OR apellido LIKE ? OR email LIKE ? OR telefono LIKE ?)';
+      const like = `%${q}%`;
+      params.push(like, like, like, like);
+    }
+
+    const [[{ total }]] = await pool.query(`SELECT COUNT(*) AS total FROM tribu_users WHERE ${where}`, params);
+    const [rows] = await pool.query(
+      `SELECT id, nombre, apellido, email, telefono, estado, is_suscribed, psw_temp, created_at
+       FROM tribu_users WHERE ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+      [...params, limit, offset]
+    );
+    res.json({ data: rows, total, page, totalPages: Math.max(1, Math.ceil(total / limit)) });
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Error al obtener usuarios tribu' }); }
+});
+
+router.post('/regenerar-passwords-temp', requireAdmin, async (req, res) => {
+  try {
+    const [rows] = await pool.execute(
+      "SELECT id FROM tribu_users WHERE psw_temp = 1 AND (password_plain IS NULL OR password_plain = '')"
+    );
+    if (!rows.length) return res.json({ message: 'No hay usuarios que necesiten regeneración', updated: 0 });
+
+    let updated = 0;
+    for (const { id } of rows) {
+      const plain = crypto.randomBytes(4).toString('hex').toUpperCase();
+      const hash = await bcrypt.hash(plain, 10);
+      await pool.execute('UPDATE tribu_users SET password = ?, password_plain = ? WHERE id = ?', [hash, plain, id]);
+      updated++;
+    }
+    res.json({ message: `Contraseñas regeneradas para ${updated} usuario(s)`, updated });
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Error al regenerar contraseñas' }); }
+});
+
+router.get('/:id/password-temp', requireAdmin, async (req, res) => {
+  try {
+    const [rows] = await pool.execute(
+      'SELECT password_plain FROM tribu_users WHERE id = ? AND psw_temp = 1 LIMIT 1', [req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'No hay contraseña temporal para este usuario' });
+    res.json({ password: rows[0].password_plain || null });
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Error al obtener contraseña' }); }
+});
+
+module.exports = router;
