@@ -1,66 +1,71 @@
 const pool = require('./db');
 
-/** Módulos ocultos temporalmente (no aparecen en menú ni permisos) */
 const HIDDEN_MENU_ITEMS = ['pagos'];
 
-const ALL_MENU_ITEMS = [
-  'dashboard', 'agenda', 'calendario', 'pacientes', 'paquetes', 'whatsapp', 'mi_reporte',
-  'disponibilidad', 'historial', 'encuestas', 'analitica', 'integraciones',
-  'terapeutas', 'reportes', 'permisos_menu',
-];
-
-const STAFF_DEFAULTS = [
-  'dashboard', 'agenda', 'calendario', 'disponibilidad', 'pacientes', 'paquetes', 'whatsapp',
-  'historial', 'encuestas', 'analitica', 'integraciones', 'terapeutas', 'reportes',
-];
-
-function stripHiddenItems(items) {
-  for (const hidden of HIDDEN_MENU_ITEMS) items.delete(hidden);
-  return items;
+async function getCatalog() {
+  const [rows] = await pool.execute(
+    `SELECT id, clave, label, icon, orden FROM crm_menu_items
+     WHERE clave NOT IN (${HIDDEN_MENU_ITEMS.map(() => '?').join(',')})
+     ORDER BY orden ASC`,
+    HIDDEN_MENU_ITEMS
+  );
+  return rows;
 }
 
-const DEFAULTS_BY_ROL = {
-  superadmin: ALL_MENU_ITEMS,
-  admin: STAFF_DEFAULTS,
-  recepcion: STAFF_DEFAULTS,
-  terapeuta: ['agenda', 'calendario', 'disponibilidad', 'pacientes', 'historial', 'mi_reporte'],
-};
+async function getAllClaves() {
+  const catalog = await getCatalog();
+  return catalog.map(c => c.clave);
+}
 
-function sanitizeItems(items) {
-  if (!Array.isArray(items)) return [];
-  return [...new Set(items.filter(i => ALL_MENU_ITEMS.includes(i)))];
+function sanitizeItems(claves, catalogClaves) {
+  if (!Array.isArray(claves)) return [];
+  const allowed = new Set(catalogClaves);
+  return [...new Set(claves.filter(i => allowed.has(i)))];
 }
 
 async function getMenuPermisosForUser(userId, rol) {
+  const catalog = await getCatalog();
+  const allClaves = catalog.map(c => c.clave);
+
+  if (rol === 'superadmin') return new Set(allClaves);
+
   const [rows] = await pool.execute(
-    'SELECT item FROM usuario_menu_permisos WHERE terapeuta_id = ?',
+    `SELECT m.clave FROM crm_usuario_menu_accesos a
+     INNER JOIN crm_menu_items m ON m.id = a.menu_id
+     WHERE a.terapeuta_id = ? ORDER BY m.orden ASC`,
     [userId]
   );
   if (rows.length) {
-    const items = new Set(rows.map(r => r.item));
-    if (rol === 'superadmin') {
-      items.add('permisos_menu');
-    } else {
-      items.delete('permisos_menu');
-    }
-    return stripHiddenItems(items);
+    const items = new Set(rows.map(r => r.clave));
+    items.delete('permisos_menu');
+    for (const h of HIDDEN_MENU_ITEMS) items.delete(h);
+    return items;
   }
-  return stripHiddenItems(new Set(DEFAULTS_BY_ROL[rol] || DEFAULTS_BY_ROL.terapeuta));
+  // fallback: permisos del rol desde menu_permisos
+  const [rolRows] = await pool.execute('SELECT item FROM menu_permisos WHERE rol = ?', [rol]);
+  const items = new Set(rolRows.map(r => r.item).filter(i => allClaves.includes(i)));
+  items.delete('permisos_menu');
+  for (const h of HIDDEN_MENU_ITEMS) items.delete(h);
+  return items;
 }
 
-async function setMenuPermisosForUser(userId, items, rol) {
-  let safe = sanitizeItems(items).filter(i => !HIDDEN_MENU_ITEMS.includes(i));
+async function setMenuPermisosForUser(userId, claves, rol) {
+  const catalog = await getCatalog();
+  const allClaves = catalog.map(c => c.clave);
+  let safe = sanitizeItems(claves, allClaves).filter(i => !HIDDEN_MENU_ITEMS.includes(i));
   if (rol === 'superadmin') {
     if (!safe.includes('permisos_menu')) safe.push('permisos_menu');
   } else {
     safe = safe.filter(i => i !== 'permisos_menu');
   }
 
-  await pool.execute('DELETE FROM usuario_menu_permisos WHERE terapeuta_id = ?', [userId]);
-  for (const item of safe) {
+  await pool.execute('DELETE FROM crm_usuario_menu_accesos WHERE terapeuta_id = ?', [userId]);
+  for (const clave of safe) {
+    const item = catalog.find(c => c.clave === clave);
+    if (!item) continue;
     await pool.execute(
-      'INSERT IGNORE INTO usuario_menu_permisos (terapeuta_id, item) VALUES (?, ?)',
-      [userId, item]
+      'INSERT IGNORE INTO crm_usuario_menu_accesos (terapeuta_id, menu_id) VALUES (?, ?)',
+      [userId, item.id]
     );
   }
   return safe;
@@ -68,57 +73,43 @@ async function setMenuPermisosForUser(userId, items, rol) {
 
 async function seedMenuPermisosFromRol(userId, rol) {
   const [existing] = await pool.execute(
-    'SELECT item FROM usuario_menu_permisos WHERE terapeuta_id = ? LIMIT 1',
-    [userId]
+    'SELECT menu_id FROM crm_usuario_menu_accesos WHERE terapeuta_id = ? LIMIT 1', [userId]
   );
   if (existing.length) return;
-
-  const items = DEFAULTS_BY_ROL[rol] || DEFAULTS_BY_ROL.terapeuta;
-  for (const item of items) {
-    await pool.execute(
-      'INSERT IGNORE INTO usuario_menu_permisos (terapeuta_id, item) VALUES (?, ?)',
-      [userId, item]
-    );
-  }
+  const [rolRows] = await pool.execute('SELECT item FROM menu_permisos WHERE rol = ?', [rol]);
+  await setMenuPermisosForUser(userId, rolRows.map(r => r.item), rol);
 }
 
 async function copyMenuPermisosFromRolTemplate(userId, rol) {
-  const [roleRows] = await pool.execute('SELECT item FROM menu_permisos WHERE rol = ?', [rol]);
-  const items = roleRows.length
-    ? roleRows.map(r => r.item)
-    : (DEFAULTS_BY_ROL[rol] || DEFAULTS_BY_ROL.terapeuta);
-  return setMenuPermisosForUser(userId, items, rol);
+  const [rolRows] = await pool.execute('SELECT item FROM menu_permisos WHERE rol = ?', [rol]);
+  return setMenuPermisosForUser(userId, rolRows.map(r => r.item), rol);
 }
 
 async function listUsersWithPermisos() {
   const [users] = await pool.execute(
-    `SELECT id, nombre, apellido, username, rol, activo
-     FROM terapeutas
-     ORDER BY activo DESC, nombre, apellido`
+    'SELECT id, nombre, apellido, username, rol, activo FROM terapeutas ORDER BY activo DESC, nombre, apellido'
   );
   const [permRows] = await pool.execute(
-    'SELECT terapeuta_id, item FROM usuario_menu_permisos ORDER BY terapeuta_id, item'
+    `SELECT a.terapeuta_id, m.clave FROM crm_usuario_menu_accesos a
+     INNER JOIN crm_menu_items m ON m.id = a.menu_id
+     ORDER BY a.terapeuta_id, m.orden`
   );
   const byUser = {};
   for (const r of permRows) {
     if (!byUser[r.terapeuta_id]) byUser[r.terapeuta_id] = [];
-    byUser[r.terapeuta_id].push(r.item);
+    byUser[r.terapeuta_id].push(r.clave);
   }
   return users.map(u => ({
-    id: u.id,
-    nombre: u.nombre,
-    apellido: u.apellido,
-    username: u.username,
-    rol: u.rol,
-    activo: u.activo,
+    id: u.id, nombre: u.nombre, apellido: u.apellido,
+    username: u.username, rol: u.rol, activo: u.activo,
     items: byUser[u.id] || [],
   }));
 }
 
 module.exports = {
-  ALL_MENU_ITEMS,
   HIDDEN_MENU_ITEMS,
-  DEFAULTS_BY_ROL,
+  getCatalog,
+  getAllClaves,
   getMenuPermisosForUser,
   setMenuPermisosForUser,
   seedMenuPermisosFromRol,

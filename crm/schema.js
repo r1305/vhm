@@ -732,6 +732,57 @@ async function ensureSchema() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
 
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS crm_menu_items (
+        id    INT AUTO_INCREMENT PRIMARY KEY,
+        clave VARCHAR(80) NOT NULL UNIQUE,
+        label VARCHAR(120) NOT NULL,
+        icon  VARCHAR(80) NOT NULL DEFAULT 'fa-circle',
+        orden INT NOT NULL DEFAULT 0
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS crm_usuario_menu_accesos (
+        terapeuta_id INT NOT NULL,
+        menu_id      INT NOT NULL,
+        PRIMARY KEY (terapeuta_id, menu_id),
+        KEY idx_cuma_menu (menu_id),
+        FOREIGN KEY (terapeuta_id) REFERENCES terapeutas(id) ON DELETE CASCADE,
+        FOREIGN KEY (menu_id)      REFERENCES crm_menu_items(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
+    // Seed catálogo de items
+    const CATALOG_ITEMS = [
+      ['dashboard','Dashboard','fa-gauge-high',1],
+      ['agenda','Agenda','fa-calendar-days',2],
+      ['calendario','Calendario','fa-calendar-week',3],
+      ['pacientes','Pacientes','fa-users',4],
+      ['paquetes','Paquetes','fa-box',5],
+      ['whatsapp','Central WhatsApp','fa-whatsapp',6],
+      ['mi_reporte','Mi reporte','fa-chart-bar',7],
+      ['disponibilidad','Disponibilidad','fa-clock',8],
+      ['historial','Historial clínico','fa-file-medical',9],
+      ['encuestas','Encuestas','fa-poll',10],
+      ['leads','Leads','fa-funnel-dollar',11],
+      ['analitica','Analítica web','fa-chart-line',12],
+      ['marketing','Email Marketing','fa-envelope',13],
+      ['asignacion','Asignación automática','fa-shuffle',14],
+      ['consentimientos','Consentimientos','fa-file-signature',15],
+      ['espera','Lista de espera','fa-hourglass-half',16],
+      ['integraciones','Integraciones','fa-plug',17],
+      ['terapeutas','Usuarios','fa-user-md',18],
+      ['reportes','Reportes','fa-chart-bar',19],
+      ['permisos_menu','Permisos de menú','fa-shield-halved',20],
+    ];
+    for (const [clave, label, icon, orden] of CATALOG_ITEMS) {
+      await conn.execute(
+        'INSERT INTO crm_menu_items (clave,label,icon,orden) VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE label=VALUES(label),icon=VALUES(icon),orden=VALUES(orden)',
+        [clave, label, icon, orden]
+      );
+    }
+
     console.log('[crm] Schema OK');
   } finally {
     conn.release();
