@@ -38,34 +38,34 @@
       <div class="nav-section">Principal</div>
       <% } %>
       <% if (menuPermisos.has('dashboard')) { %>
-      <a class="nav-item <%= view === 'dashboard'  ? 'active' : '' %>" href="<%= BASE %>/dashboard"><i class="fas fa-gauge-high"></i> Dashboard</a>
+      <a class="nav-item <%= view === 'dashboard'  ? 'active' : '' %>" href="<%= BASE %>/dashboard"><i class="fas fa-gauge-high"></i><span> Dashboard</span></a>
       <% } %>
       <% if (menuPermisos.has('agenda')) { %>
-      <a class="nav-item <%= view === 'agenda'     ? 'active' : '' %>" href="<%= BASE %>/agenda"><i class="fas fa-calendar-days"></i> Agenda</a>
+      <a class="nav-item <%= view === 'agenda'     ? 'active' : '' %>" href="<%= BASE %>/agenda"><i class="fas fa-calendar-days"></i><span> Agenda</span></a>
       <% } %>
       <% if (menuPermisos.has('calendario')) { %>
-      <a class="nav-item <%= view === 'calendario' ? 'active' : '' %>" href="<%= BASE %>/calendario"><i class="fas fa-calendar-week"></i> Calendario</a>
+      <a class="nav-item <%= view === 'calendario' ? 'active' : '' %>" href="<%= BASE %>/calendario"><i class="fas fa-calendar-week"></i><span> Calendario</span></a>
       <% } %>
       <% if (menuPermisos.has('pacientes')) { %>
-      <a class="nav-item <%= view === 'pacientes'  ? 'active' : '' %>" href="<%= BASE %>/pacientes"><i class="fas fa-users"></i> Pacientes</a>
+      <a class="nav-item <%= view === 'pacientes'  ? 'active' : '' %>" href="<%= BASE %>/pacientes"><i class="fas fa-users"></i><span> Pacientes</span></a>
       <% } %>
       <% if (menuPermisos.has('whatsapp')) { %>
-      <a class="nav-item <%= view === 'whatsapp'   ? 'active' : '' %>" href="<%= BASE %>/whatsapp"><i class="fab fa-whatsapp"></i> WhatsApp</a>
+      <a class="nav-item <%= view === 'whatsapp'   ? 'active' : '' %>" href="<%= BASE %>/whatsapp"><i class="fab fa-whatsapp"></i><span> WhatsApp</span></a>
       <% } %>
       <% if (menuPermisos.has('mi_reporte')) { %>
-      <a class="nav-item <%= view === 'mi_reporte'     ? 'active' : '' %>" href="<%= BASE %>/mi-reporte"><i class="fas fa-chart-bar"></i> Mi reporte</a>
+      <a class="nav-item <%= view === 'mi_reporte'     ? 'active' : '' %>" href="<%= BASE %>/mi-reporte"><i class="fas fa-chart-bar"></i><span> Mi reporte</span></a>
       <% } %>
       <% if (menuPermisos.has('disponibilidad')) { %>
-      <a class="nav-item <%= view === 'disponibilidad' ? 'active' : '' %>" href="<%= BASE %>/disponibilidad"><i class="fas fa-clock"></i> Disponibilidad</a>
+      <a class="nav-item <%= view === 'disponibilidad' ? 'active' : '' %>" href="<%= BASE %>/disponibilidad"><i class="fas fa-clock"></i><span> Disponibilidad</span></a>
       <% } %>
 
 
       <% if (menuPermisos.has('historial')) { %>
       <div class="nav-section">Clínico</div>
-      <a class="nav-item <%= view === 'historial' ? 'active' : '' %>" href="<%= BASE %>/historial"><i class="fas fa-file-medical"></i> Historial</a>
+      <a class="nav-item <%= view === 'historial' ? 'active' : '' %>" href="<%= BASE %>/historial"><i class="fas fa-file-medical"></i><span> Historial</span></a>
       <% } %>
       <% if (menuPermisos.has('encuestas')) { %>
-      <a class="nav-item <%= view === 'encuestas' ? 'active' : '' %>" href="<%= BASE %>/encuestas"><i class="fas fa-poll"></i> Encuestas</a>
+      <a class="nav-item <%= view === 'encuestas' ? 'active' : '' %>" href="<%= BASE %>/encuestas"><i class="fas fa-poll"></i><span> Encuestas</span></a>
       <% } %>
 
       <% const adminItems = ['analitica','integraciones','paquetes','terapeutas','reportes','permisos_menu']; %>
@@ -73,24 +73,24 @@
       <div class="nav-section">Administración</div>
       <% } %>
       <% if (menuPermisos.has('analitica')) { %>
-      <a class="nav-item <%= view === 'analitica'    ? 'active' : '' %>" href="<%= BASE %>/analitica"><i class="fas fa-chart-line"></i> Analítica web</a>
+      <a class="nav-item <%= view === 'analitica'    ? 'active' : '' %>" href="<%= BASE %>/analitica"><i class="fas fa-chart-line"></i><span> Analítica web</span></a>
       <% } %>
 
 
       <% if (menuPermisos.has('integraciones')) { %>
-      <a class="nav-item <%= view === 'integraciones'? 'active' : '' %>" href="<%= BASE %>/integraciones"><i class="fas fa-plug"></i> Integraciones</a>
+      <a class="nav-item <%= view === 'integraciones'? 'active' : '' %>" href="<%= BASE %>/integraciones"><i class="fas fa-plug"></i><span> Integraciones</span></a>
       <% } %>
       <% if (menuPermisos.has('paquetes')) { %>
-      <a class="nav-item <%= view === 'paquetes'    ? 'active' : '' %>" href="<%= BASE %>/paquetes"><i class="fas fa-box"></i> Paquetes</a>
+      <a class="nav-item <%= view === 'paquetes'    ? 'active' : '' %>" href="<%= BASE %>/paquetes"><i class="fas fa-box"></i><span> Paquetes</span></a>
       <% } %>
       <% if (menuPermisos.has('terapeutas')) { %>
-      <a class="nav-item <%= view === 'terapeutas'   ? 'active' : '' %>" href="<%= BASE %>/terapeutas"><i class="fas fa-user-md"></i> Usuarios</a>
+      <a class="nav-item <%= view === 'terapeutas'   ? 'active' : '' %>" href="<%= BASE %>/terapeutas"><i class="fas fa-user-md"></i><span> Usuarios</span></a>
       <% } %>
       <% if (menuPermisos.has('reportes')) { %>
-      <a class="nav-item <%= view === 'reportes'     ? 'active' : '' %>" href="<%= BASE %>/reportes"><i class="fas fa-chart-bar"></i> Reportes</a>
+      <a class="nav-item <%= view === 'reportes'     ? 'active' : '' %>" href="<%= BASE %>/reportes"><i class="fas fa-chart-bar"></i><span> Reportes</span></a>
       <% } %>
       <% if (menuPermisos.has('permisos_menu')) { %>
-      <a class="nav-item <%= view === 'permisos_menu'? 'active' : '' %>" href="<%= BASE %>/permisos-menu"><i class="fas fa-shield-halved"></i> Permisos de menú</a>
+      <a class="nav-item <%= view === 'permisos_menu'? 'active' : '' %>" href="<%= BASE %>/permisos-menu"><i class="fas fa-shield-halved"></i><span> Permisos de menú</span></a>
       <% } %>
     </nav>
     <div class="sidebar-footer">

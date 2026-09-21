@@ -14,7 +14,7 @@
 body { font-family: var(--font-ui); background: var(--bg); color: var(--text); font-size: var(--font-size-body); line-height: var(--line-height-body); -webkit-font-smoothing: antialiased; font-variant-numeric: tabular-nums; }
 
 .crm-app { display: flex; min-height: 100vh; }
-.crm-sidebar { width: var(--sidebar-w); background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 200; transition: transform .25s ease; }
+.crm-sidebar { width: var(--sidebar-w); background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 200; transition: transform .25s ease, width .25s ease; overflow: hidden; }
 .sidebar-brand { display: flex; align-items: center; gap: 10px; padding: 18px 16px; border-bottom: 1px solid var(--border); font-weight: 700; font-size: 15px; color: var(--primary); }
 [data-theme="dark"] .sidebar-brand { color: var(--accent-dark); }
 .sidebar-logo { width: 32px; height: 32px; background: var(--primary); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--on-primary); font-size: 14px; flex-shrink: 0; }
@@ -33,7 +33,7 @@ body { font-family: var(--font-ui); background: var(--bg); color: var(--text); f
 .user-name { font-weight: 600; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .user-role { font-size: 10px; color: var(--text-muted); text-transform: capitalize; }
 
-.crm-main { flex: 1; margin-left: var(--sidebar-w); min-width: 0; display: flex; flex-direction: column; }
+.crm-main { flex: 1; margin-left: var(--sidebar-w); min-width: 0; display: flex; flex-direction: column; transition: margin-left .25s ease; }
 .crm-topbar { height: 56px; padding: 0 20px; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 100; }
 .page-title { font-size: 1.05rem; font-weight: 700; flex: 1; color: var(--text); }
 .crm-content { padding: 20px; flex: 1; }
