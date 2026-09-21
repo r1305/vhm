@@ -3,6 +3,7 @@ const pool = require('../lib/db');
 const { auth, ownerFilter } = require('../lib/auth');
 const { sendRecordatorioCita } = require('../lib/mailer');
 const { createMeetLink, isConnected } = require('../lib/googleMeet');
+const { getActivePacientePaquete } = require('../lib/paquetesPaciente');
 
 const router = Router();
 const t = (v, max = 255) => v == null ? null : String(v).trim().slice(0, max) || null;
@@ -72,10 +73,12 @@ router.post('/', auth, async (req, res) => {
         fecha, horaInicio: hora_inicio, horaFin: hora_fin,
       }).catch(e => { console.error('[meet]', e.message); return null; });
     }
+    const paqueteActivo = await getActivePacientePaquete(pid(paciente_id)).catch(() => null);
+    const pacientePaqueteId = paqueteActivo?.id || null;
     const [r] = await pool.execute(
-      `INSERT INTO citas (paciente_id,terapeuta_id,fecha,hora_inicio,hora_fin,modalidad,tipo,estado,notas,meet_link)
-       VALUES (?,?,?,?,?,?,?,?,?,?)`,
-      [pid(paciente_id), pid(terapeuta_id), fecha, hora_inicio, hora_fin, modalidad, tipo, estado, t(notas,2000), meet_link]
+      `INSERT INTO citas (paciente_id,terapeuta_id,fecha,hora_inicio,hora_fin,modalidad,tipo,estado,notas,meet_link,paciente_paquete_id)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+      [pid(paciente_id), pid(terapeuta_id), fecha, hora_inicio, hora_fin, modalidad, tipo, estado, t(notas,2000), meet_link, pacientePaqueteId]
     );
     await pool.execute(
       `UPDATE pacientes SET estado='confirmado' WHERE id=? AND estado='prospecto'`,
