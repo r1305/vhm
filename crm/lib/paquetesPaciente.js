@@ -196,7 +196,8 @@ async function createPacientePaquete(pacienteId, payload) {
   const venceAt = addDays(fechaInicio, parseInt(cat.validez_dias, 10) || 30);
   const precio = Number(cat.precio) || 0;
   const sesiones = parseInt(cat.sesiones, 10) || 1;
-  const diasSiguienteCuota = normalizeDiasSiguienteCuota(cat.dias_siguiente_cuota);
+  const descuento = Math.max(0, Number(payload.descuento) || 0);
+  const precioNeto = Math.max(0, precio - descuento);
 
   const conn = await pool.getConnection();
   try {
@@ -215,7 +216,7 @@ async function createPacientePaquete(pacienteId, payload) {
         cat.validez_dias,
         diasSiguienteCuota,
         cat.accede_comunidad ? 1 : 0,
-        precio,
+        precioNeto,
         fechaInicio,
         venceAt,
         tipoPago,
@@ -226,7 +227,7 @@ async function createPacientePaquete(pacienteId, payload) {
 
     const pacientePaqueteId = ins.insertId;
     const cuotasPlan = buildCuotasPlan({
-      precio,
+      precio: precioNeto,
       sesiones,
       diasSiguienteCuota,
       fechaInicio,

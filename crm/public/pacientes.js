@@ -150,10 +150,11 @@
     return 'S/ ' + Number(n || 0).toFixed(2);
   }
 
-  function renderCuotasPreview(catalogo, tipoPago, numCuotas, fechaInicio) {
+  function renderCuotasPreview(catalogo, tipoPago, numCuotas, fechaInicio, descuento) {
     if (!catalogo || !window.CuotasPlan) return '';
+    const precioNeto = Math.max(0, Number(catalogo.precio) - (Number(descuento) || 0));
     const plan = window.CuotasPlan.buildCuotasPlan({
-      precio: catalogo.precio,
+      precio: precioNeto,
       sesiones: catalogo.sesiones,
       diasSiguienteCuota: catalogo.dias_siguiente_cuota,
       fechaInicio,
@@ -163,8 +164,9 @@
     if (!plan.length) return '';
     const totalPrecio = plan.reduce((sum, c) => sum + Number(c.monto), 0);
     const diasCuota = window.CuotasPlan.normalizeDiasSiguienteCuota(catalogo.dias_siguiente_cuota);
+    const descuentoNum = Number(descuento) || 0;
     let html = `<div class="pkg-cuotas-preview">
-      <div class="pkg-cuota-preview-summary">${plan.length} cuota${plan.length > 1 ? 's' : ''} · Total ${fmtMoney(totalPrecio)}${tipoPago === 'parcial' ? ` · cada ${diasCuota} días` : ''}</div>`;
+      <div class="pkg-cuota-preview-summary">${plan.length} cuota${plan.length > 1 ? 's' : ''} · ${descuentoNum > 0 ? `<span style="text-decoration:line-through;color:var(--text-muted);margin-right:4px">${fmtMoney(catalogo.precio)}</span>` : ''}Total ${fmtMoney(totalPrecio)}${tipoPago === 'parcial' ? ` · cada ${diasCuota} días` : ''}</div>`;
     for (const cuota of plan) {
       const sesLabel = cuota.sesiones_inicio === cuota.sesiones_fin
         ? `Sesión ${cuota.sesiones_inicio}`
@@ -245,9 +247,17 @@
     const fecha = document.getElementById('pkg_fecha');
     const preview = document.getElementById('pkg_cuotas_preview');
 
+    const descuento = document.getElementById('pkg_descuento');
+
     function refreshPreview() {
       const selected = catalogo.find((x) => String(x.id) === cat.value);
       const esParcial = tipo.value === 'parcial';
+      const descVal = Number(descuento?.value) || 0;
+      if (selected && descuento) {
+        const neto = Math.max(0, Number(selected.precio) - descVal);
+        const netoEl = document.getElementById('pkg_precio_neto');
+        if (netoEl) netoEl.textContent = descVal > 0 ? `Ingreso neto: ${fmtMoney(neto)}` : '';
+      }
       if (esParcial) {
         const maxCuotas = selected ? Math.max(2, Number(selected.sesiones) || 2) : 99;
         cuotas.disabled = false;
@@ -262,7 +272,7 @@
         cuotas.value = '1';
       }
       preview.innerHTML = selected
-        ? renderCuotasPreview(selected, tipo.value, cuotas.value, fecha.value)
+        ? renderCuotasPreview(selected, tipo.value, cuotas.value, fecha.value, descuento?.value)
         : '';
     }
 
@@ -270,6 +280,7 @@
     cuotas?.addEventListener('input', refreshPreview);
     cat?.addEventListener('change', refreshPreview);
     fecha?.addEventListener('change', refreshPreview);
+    descuento?.addEventListener('input', refreshPreview);
     refreshPreview();
 
     document.querySelectorAll('[data-pagar-cuota]').forEach((btn) => {
@@ -386,6 +397,10 @@
           </div>
           <div class="form-group"><label class="form-label">Cuotas</label>
             <input type="number" min="1" max="1" class="form-control" id="pkg_cuotas" value="1" disabled></div>
+          <div class="form-group"><label class="form-label">Descuento (S/)</label>
+            <input type="number" min="0" step="0.01" class="form-control" id="pkg_descuento" value="0" placeholder="0.00">
+            <span id="pkg_precio_neto" style="font-size:11px;color:var(--primary);margin-top:3px;display:block;font-weight:600"></span>
+          </div>
         </div>
         <div id="pkg_cuotas_preview"></div>
         <p style="font-size:11px;color:var(--text-muted);margin-top:6px">El paquete seleccionado se activará al guardar.</p>`}
@@ -415,6 +430,7 @@
       if (catalogoId) {
         const tipoPago = document.getElementById('pkg_tipo_pago').value;
         const numCuotas = parseInt(document.getElementById('pkg_cuotas').value, 10);
+        const descuento = Number(document.getElementById('pkg_descuento')?.value) || 0;
         if (tipoPago === 'parcial' && (!numCuotas || numCuotas < 2)) {
           throw new Error('El pago parcial requiere al menos 2 cuotas');
         }
@@ -425,6 +441,7 @@
             fecha_inicio: document.getElementById('pkg_fecha').value,
             tipo_pago: tipoPago,
             num_cuotas: tipoPago === 'parcial' ? numCuotas : 1,
+            descuento,
           },
         });
       }
