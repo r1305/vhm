@@ -159,6 +159,32 @@ router.put('/:pid', authAdmin, async (req, res) => {
   } catch { res.status(500).json({ error: 'Error al actualizar' }); }
 });
 
+// ── Resumen de sesiones (legacy + paquetes) ──────────
+router.get('/:pid/sesiones-resumen', auth, async (req, res) => {
+  const pid = id(req.params.pid);
+  if (!pid) return res.status(400).json({ error: 'ID inválido' });
+  try {
+    // Sesiones legacy registradas
+    const [[legacy]] = await pool.execute(
+      'SELECT COALESCE(SUM(sesiones), 0) AS total FROM paciente_sesiones WHERE paciente_id = ?',
+      [pid]
+    );
+    // Citas tomadas (no canceladas/no_show) sin paciente_paquete_id (legacy)
+    const [[citasLegacy]] = await pool.execute(
+      `SELECT COUNT(*) AS total FROM citas
+       WHERE paciente_id = ? AND paciente_paquete_id IS NULL AND estado NOT IN ('cancelada','no_show')`,
+      [pid]
+    );
+    const sesionesLegacy = Number(legacy.total) || 0;
+    const citasLegacyUsadas = Number(citasLegacy.total) || 0;
+    res.json({
+      sesiones_registradas: sesionesLegacy,
+      citas_tomadas: citasLegacyUsadas,
+      pendientes: Math.max(0, sesionesLegacy - citasLegacyUsadas),
+    });
+  } catch { res.status(500).json({ error: 'Error' }); }
+});
+
 // ── Paquetes adquiridos por paciente ──────────────────────────
 router.get('/:pid/paquetes-adquiridos', auth, async (req, res) => {
   const pid = id(req.params.pid);
