@@ -209,6 +209,32 @@ router.post('/:pid/paquetes-adquiridos', authAdmin, async (req, res) => {
   }
 });
 
+router.patch('/:pid/paquetes-adquiridos/:pkgId', authAdmin, async (req, res) => {
+  const pid = id(req.params.pid);
+  const pkgId = id(req.params.pkgId);
+  if (!pid || !pkgId) return res.status(400).json({ error: 'ID inválido' });
+  const { nombre, fecha_inicio, sesiones, precio } = req.body || {};
+  try {
+    const [[pkg]] = await pool.execute(
+      'SELECT id FROM paciente_paquetes WHERE id = ? AND paciente_id = ?', [pkgId, pid]
+    );
+    if (!pkg) return res.status(404).json({ error: 'Paquete no encontrado' });
+    const fields = [];
+    const vals = [];
+    if (nombre != null)       { fields.push('nombre = ?');       vals.push(t(nombre, 200)); }
+    if (fecha_inicio != null) { fields.push('fecha_inicio = ?'); vals.push(fecha_inicio); }
+    if (sesiones != null)     { fields.push('sesiones = ?');     vals.push(Math.max(1, parseInt(sesiones, 10) || 1)); }
+    if (precio != null)       { fields.push('precio = ?');       vals.push(Math.max(0, Number(precio) || 0)); }
+    if (!fields.length) return res.status(400).json({ error: 'Nada que actualizar' });
+    vals.push(pkgId);
+    await pool.execute(`UPDATE paciente_paquetes SET ${fields.join(', ')} WHERE id = ?`, vals);
+    const paquetes = await loadPacientePaquetes(pid);
+    res.json({ ok: true, paquetes });
+  } catch (err) {
+    res.status(500).json({ error: err.message || 'Error al actualizar paquete' });
+  }
+});
+
 router.patch('/:pid/paquetes-adquiridos/cuotas/:cuotaId/pagar', authAdmin, async (req, res) => {
   const pid = id(req.params.pid);
   const cuotaId = id(req.params.cuotaId);

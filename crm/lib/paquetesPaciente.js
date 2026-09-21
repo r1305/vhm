@@ -145,10 +145,25 @@ async function loadPacientePaquetes(pacienteId) {
     `SELECT * FROM paciente_paquetes WHERE paciente_id = ? ORDER BY fecha_inicio DESC, id DESC`,
     [pacienteId]
   );
+  // Citas generales del paciente (legacy, sin paciente_paquete_id)
+  const [[legacyRow]] = await pool.execute(
+    `SELECT COUNT(*) AS total FROM citas
+     WHERE paciente_id = ? AND paciente_paquete_id IS NULL AND estado NOT IN ('cancelada','no_show')`,
+    [pacienteId]
+  );
+  const citasLegacy = Number(legacyRow?.total) || 0;
+  let citasLegacyAsignadas = 0;
+
   const result = [];
   for (const row of rows) {
     const cuotas = await loadCuotas(row.id);
-    const sesionesUsadas = await countCitasActivasForPaquete(row.id);
+    let sesionesUsadas = await countCitasActivasForPaquete(row.id);
+    // Fallback legacy: si el paquete no tiene citas vinculadas, usar citas generales
+    if (sesionesUsadas === 0 && citasLegacy > 0) {
+      const disponiblesLegacy = Math.max(0, citasLegacy - citasLegacyAsignadas);
+      sesionesUsadas = Math.min(row.sesiones, disponiblesLegacy);
+      citasLegacyAsignadas += sesionesUsadas;
+    }
     const activo = !!row.activo;
     result.push({
       ...row,
