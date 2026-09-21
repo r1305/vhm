@@ -669,6 +669,69 @@ async function ensureSchema() {
       await conn.execute('DELETE FROM wa_conversaciones WHERE id = ?', [lidRow.id]);
     }
 
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS crm_encuestas (
+        id          INT AUTO_INCREMENT PRIMARY KEY,
+        titulo      VARCHAR(255) NOT NULL,
+        descripcion TEXT NULL,
+        slug        VARCHAR(64) NOT NULL,
+        activa      TINYINT(1) NOT NULL DEFAULT 1,
+        creado_por  INT NULL,
+        created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at  DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY uq_crm_enc_slug (slug),
+        KEY idx_crm_enc_activa (activa)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS crm_encuesta_preguntas (
+        id          INT AUTO_INCREMENT PRIMARY KEY,
+        encuesta_id INT NOT NULL,
+        texto       VARCHAR(500) NOT NULL,
+        tipo        ENUM('single','multiple','text') NOT NULL DEFAULT 'single',
+        orden       INT NOT NULL DEFAULT 0,
+        obligatoria TINYINT(1) NOT NULL DEFAULT 1,
+        KEY idx_crm_ep_enc (encuesta_id),
+        CONSTRAINT fk_crm_ep_enc FOREIGN KEY (encuesta_id) REFERENCES crm_encuestas(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS crm_encuesta_opciones (
+        id          INT AUTO_INCREMENT PRIMARY KEY,
+        pregunta_id INT NOT NULL,
+        texto       VARCHAR(255) NOT NULL,
+        orden       INT NOT NULL DEFAULT 0,
+        KEY idx_crm_eo_preg (pregunta_id),
+        CONSTRAINT fk_crm_eo_preg FOREIGN KEY (pregunta_id) REFERENCES crm_encuesta_preguntas(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS crm_encuesta_respuestas (
+        id          INT AUTO_INCREMENT PRIMARY KEY,
+        encuesta_id INT NOT NULL,
+        created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+        KEY idx_crm_er_enc (encuesta_id),
+        CONSTRAINT fk_crm_er_enc FOREIGN KEY (encuesta_id) REFERENCES crm_encuestas(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS crm_encuesta_respuesta_detalle (
+        id              INT AUTO_INCREMENT PRIMARY KEY,
+        respuesta_id    INT NOT NULL,
+        pregunta_id     INT NOT NULL,
+        opcion_id       INT NULL,
+        texto_respuesta TEXT NULL,
+        KEY idx_crm_erd_resp (respuesta_id),
+        CONSTRAINT fk_crm_erd_resp FOREIGN KEY (respuesta_id) REFERENCES crm_encuesta_respuestas(id) ON DELETE CASCADE,
+        CONSTRAINT fk_crm_erd_preg FOREIGN KEY (pregunta_id)  REFERENCES crm_encuesta_preguntas(id)  ON DELETE CASCADE,
+        CONSTRAINT fk_crm_erd_opc  FOREIGN KEY (opcion_id)    REFERENCES crm_encuesta_opciones(id)   ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
     console.log('[crm] Schema OK');
   } finally {
     conn.release();

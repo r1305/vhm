@@ -106,6 +106,7 @@ router.use('/api/marketing',  require('./routes/marketing'));
 router.use('/api/config',        require('./routes/config'));
 router.use('/api/integraciones', require('./routes/integraciones'));
 router.use('/api/whatsapp',      require('./routes/whatsapp'));
+router.use('/api/encuestas', require('./routes/encuestas'));
 router.use('/api/track',      require('./routes/tracker'));
 
 // Cron config

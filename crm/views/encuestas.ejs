@@ -1,0 +1,58 @@
+<div class="view-toolbar">
+  <div></div>
+  <button class="btn btn-primary btn-sm" id="btnNuevaEncuesta"><i class="fas fa-plus"></i> Nueva encuesta</button>
+</div>
+
+<div class="card">
+  <div id="encListContainer">
+    <div class="empty-state"><i class="fas fa-spinner fa-spin"></i> Cargando…</div>
+  </div>
+</div>
+
+<!-- Modal encuesta -->
+<div class="crm-panel-overlay" id="encModal" style="display:none">
+  <div class="crm-panel enc-panel">
+    <div class="crm-panel-header">
+      <span id="encModalTitle">Nueva encuesta</span>
+      <button class="btn-icon" id="encModalClose"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="crm-panel-body">
+      <div class="form-group">
+        <label>Título *</label>
+        <input type="text" class="form-control" id="encTitulo" placeholder="Ej. Satisfacción del evento">
+      </div>
+      <div class="form-group">
+        <label>Descripción (opcional)</label>
+        <textarea class="form-control" id="encDesc" rows="2" placeholder="Texto introductorio"></textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group" id="encLinkGroup" style="display:none">
+          <label>Enlace para compartir</label>
+          <div class="enc-link-box">
+            <input type="text" class="form-control" id="encLinkPreview" readonly>
+            <button type="button" class="btn btn-outline btn-sm" id="btnCopyLink"><i class="fas fa-copy"></i></button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Estado</label>
+          <select class="form-select" id="encActiva">
+            <option value="1">🟢 Activa</option>
+            <option value="0">🔴 Inactiva</option>
+          </select>
+        </div>
+      </div>
+      <p id="encLinkHint" class="enc-hint">Al guardar se generará un enlace único.</p>
+      <div class="form-group">
+        <label>Preguntas</label>
+        <div id="preguntasEditor"></div>
+        <button type="button" class="btn btn-outline btn-sm" id="btnAddPregunta" style="margin-top:8px">
+          <i class="fas fa-plus"></i> Agregar pregunta
+        </button>
+      </div>
+    </div>
+    <div class="crm-panel-footer">
+      <button class="btn btn-outline" id="encModalCancel">Cancelar</button>
+      <button class="btn btn-primary" id="btnGuardarEnc"><i class="fas fa-save"></i> Guardar</button>
+    </div>
+  </div>
+</div>
