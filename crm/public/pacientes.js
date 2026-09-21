@@ -556,6 +556,9 @@
         <a class="btn btn-outline btn-sm" href="${window.__APP_BASE__}/agenda"><i class="fas fa-calendar"></i> Ver agenda</a>
       </div>`, null);
     document.getElementById('modalSave').style.display = 'none';
+    const modalBody = document.getElementById('modalBody');
+    if (modalBody) modalBody._paquetesData = paquetesPac;
+
     document.querySelectorAll('[data-toggle-cuotas]').forEach((btn) => {
       btn.addEventListener('click', () => {
         const el = document.getElementById(btn.dataset.toggleCuotas);
@@ -564,6 +567,37 @@
         btn.innerHTML = open
           ? `<i class="fas fa-chevron-up"></i> Ocultar cuotas`
           : `<i class="fas fa-chevron-down"></i> Ver cuotas`;
+      });
+    });
+
+    document.querySelectorAll('[data-editar-pkg]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const pkgId = btn.dataset.editarPkg;
+        const patientId = btn.dataset.pid;
+        const pkgData = paquetesPac.find((x) => String(x.id) === String(pkgId));
+        openModal('Editar paquete asignado', `
+          <div class="form-group"><label class="form-label">Nombre</label>
+            <input class="form-control" id="epkg_nombre" value="${esc(pkgData?.nombre || '')}"></div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Fecha inicio</label>
+              <input type="date" class="form-control" id="epkg_fecha" value="${pkgData?.fecha_inicio ? String(pkgData.fecha_inicio).slice(0,10) : ''}"></div>
+            <div class="form-group"><label class="form-label">Sesiones</label>
+              <input type="number" min="1" class="form-control" id="epkg_sesiones" value="${pkgData?.sesiones || ''}"></div>
+            <div class="form-group"><label class="form-label">Precio (S/)</label>
+              <input type="number" min="0" step="0.01" class="form-control" id="epkg_precio" value="${pkgData?.precio ?? ''}"></div>
+          </div>`, async () => {
+          await api(`/pacientes/${patientId}/paquetes-adquiridos/${pkgId}`, {
+            method: 'PATCH',
+            body: {
+              nombre:       document.getElementById('epkg_nombre').value.trim(),
+              fecha_inicio: document.getElementById('epkg_fecha').value,
+              sesiones:     Number(document.getElementById('epkg_sesiones').value),
+              precio:       Number(document.getElementById('epkg_precio').value),
+            },
+          });
+          closeModal();
+          showPacienteDetalle(p);
+        }, { successMessage: 'Paquete actualizado' });
       });
     });
   }
