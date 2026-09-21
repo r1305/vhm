@@ -363,10 +363,9 @@ router.get('/permisos-menu', requireSession, requireSuperAdmin, async (req, res)
 });
 
 router.get('/api/menu-permisos/catalogo', requireSession, requireSuperAdmin, async (req, res) => {
-  const [rows] = await db.execute(
-    'SELECT DISTINCT item FROM menu_permisos ORDER BY item ASC'
-  );
-  res.json({ items: rows.map(r => r.item) });
+  const { getCatalog } = require('../lib/menuPermisos');
+  const catalog = await getCatalog();
+  res.json({ items: catalog });
 });
 
 router.get('/api/menu-permisos', requireSession, requireSuperAdmin, async (req, res) => {
