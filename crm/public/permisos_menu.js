@@ -4,30 +4,40 @@
 
   const { api, toast } = window.CRM;
 
-  const ITEMS = [
-    { key: 'dashboard',       label: 'Dashboard',          icon: 'fa-gauge-high' },
-    { key: 'agenda',          label: 'Agenda',             icon: 'fa-calendar-days' },
-    { key: 'calendario',      label: 'Calendario',         icon: 'fa-calendar-week' },
-    { key: 'pacientes',       label: 'Pacientes',          icon: 'fa-users' },
-    { key: 'paquetes',        label: 'Paquetes',           icon: 'fa-box' },
-    { key: 'whatsapp',        label: 'Central WhatsApp',   icon: 'fa-whatsapp' },
-    { key: 'mi_reporte',      label: 'Mi reporte',         icon: 'fa-chart-bar' },
-    { key: 'disponibilidad',  label: 'Disponibilidad',     icon: 'fa-clock' },
-    { key: 'historial',       label: 'Historial clínico',  icon: 'fa-file-medical' },
-    { key: 'encuestas',       label: 'Encuestas',          icon: 'fa-poll' },
-    { key: 'analitica',       label: 'Analítica web',      icon: 'fa-chart-line' },
-    { key: 'integraciones',   label: 'Integraciones',      icon: 'fa-plug' },
-    { key: 'terapeutas',      label: 'Usuarios',           icon: 'fa-user-md' },
-    { key: 'reportes',        label: 'Reportes',           icon: 'fa-chart-bar' },
-    { key: 'permisos_menu',   label: 'Permisos de menú',   icon: 'fa-shield-halved' },
-  ];
+  const ICON_MAP = {
+    dashboard: 'fa-gauge-high', agenda: 'fa-calendar-days', calendario: 'fa-calendar-week',
+    pacientes: 'fa-users', paquetes: 'fa-box', whatsapp: 'fa-whatsapp',
+    mi_reporte: 'fa-chart-bar', disponibilidad: 'fa-clock', historial: 'fa-file-medical',
+    encuestas: 'fa-poll', analitica: 'fa-chart-line', integraciones: 'fa-plug',
+    terapeutas: 'fa-user-md', reportes: 'fa-chart-bar', permisos_menu: 'fa-shield-halved',
+    leads: 'fa-funnel-dollar', marketing: 'fa-envelope', asignacion: 'fa-shuffle',
+    consentimientos: 'fa-file-signature', espera: 'fa-hourglass-half',
+  };
+  const LABEL_MAP = {
+    dashboard: 'Dashboard', agenda: 'Agenda', calendario: 'Calendario',
+    pacientes: 'Pacientes', paquetes: 'Paquetes', whatsapp: 'Central WhatsApp',
+    mi_reporte: 'Mi reporte', disponibilidad: 'Disponibilidad', historial: 'Historial clínico',
+    encuestas: 'Encuestas', analitica: 'Analítica web', integraciones: 'Integraciones',
+    terapeutas: 'Usuarios', reportes: 'Reportes', permisos_menu: 'Permisos de menú',
+    leads: 'Leads', marketing: 'Email Marketing', asignacion: 'Asignación automática',
+    consentimientos: 'Consentimientos', espera: 'Lista de espera',
+  };
 
+  let ITEMS = [];
   let users = [];
   let userActivo = null;
 
   async function load() {
-    const data = await api('/menu-permisos');
-    users = data.users || [];
+    const [catalogData, usersData] = await Promise.all([
+      api('/menu-permisos/catalogo'),
+      api('/menu-permisos'),
+    ]);
+    ITEMS = (catalogData.items || []).map(key => ({
+      key,
+      label: LABEL_MAP[key] || key,
+      icon: ICON_MAP[key] || 'fa-circle',
+    }));
+    users = usersData.users || [];
     renderUserSelect();
     if (users.length) selectUser(users[0].id);
   }
