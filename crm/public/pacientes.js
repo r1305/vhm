@@ -254,42 +254,42 @@
     const cat = document.getElementById('pkg_catalogo');
     const fecha = document.getElementById('pkg_fecha');
     const preview = document.getElementById('pkg_cuotas_preview');
-
     const descuento = document.getElementById('pkg_descuento');
 
-    function refreshPreview() {
-      const selected = catalogo.find((x) => String(x.id) === cat.value);
-      const esParcial = tipo.value === 'parcial';
-      const descVal = Number(descuento?.value) || 0;
-      if (selected && descuento) {
-        const neto = Math.max(0, Number(selected.precio) - descVal);
-        const netoEl = document.getElementById('pkg_precio_neto');
-        if (netoEl) netoEl.textContent = descVal > 0 ? `Ingreso neto: ${fmtMoney(neto)}` : '';
+    if (cat) {
+      function refreshPreview() {
+        const selected = catalogo.find((x) => String(x.id) === cat.value);
+        const esParcial = tipo.value === 'parcial';
+        const descVal = Number(descuento?.value) || 0;
+        if (selected && descuento) {
+          const neto = Math.max(0, Number(selected.precio) - descVal);
+          const netoEl = document.getElementById('pkg_precio_neto');
+          if (netoEl) netoEl.textContent = descVal > 0 ? `Ingreso neto: ${fmtMoney(neto)}` : '';
+        }
+        if (esParcial) {
+          const maxCuotas = selected ? Math.max(2, Number(selected.sesiones) || 2) : 99;
+          cuotas.disabled = false;
+          cuotas.min = 2;
+          cuotas.max = maxCuotas;
+          if (Number(cuotas.value) < 2) cuotas.value = '2';
+          if (Number(cuotas.value) > maxCuotas) cuotas.value = String(maxCuotas);
+        } else {
+          cuotas.disabled = true;
+          cuotas.min = 1;
+          cuotas.max = 1;
+          cuotas.value = '1';
+        }
+        preview.innerHTML = selected
+          ? renderCuotasPreview(selected, tipo.value, cuotas.value, fecha.value, descuento?.value)
+          : '';
       }
-      if (esParcial) {
-        const maxCuotas = selected ? Math.max(2, Number(selected.sesiones) || 2) : 99;
-        cuotas.disabled = false;
-        cuotas.min = 2;
-        cuotas.max = maxCuotas;
-        if (Number(cuotas.value) < 2) cuotas.value = '2';
-        if (Number(cuotas.value) > maxCuotas) cuotas.value = String(maxCuotas);
-      } else {
-        cuotas.disabled = true;
-        cuotas.min = 1;
-        cuotas.max = 1;
-        cuotas.value = '1';
-      }
-      preview.innerHTML = selected
-        ? renderCuotasPreview(selected, tipo.value, cuotas.value, fecha.value, descuento?.value)
-        : '';
+      tipo?.addEventListener('change', refreshPreview);
+      cuotas?.addEventListener('input', refreshPreview);
+      cat.addEventListener('change', refreshPreview);
+      fecha?.addEventListener('change', refreshPreview);
+      descuento?.addEventListener('input', refreshPreview);
+      refreshPreview();
     }
-
-    tipo?.addEventListener('change', refreshPreview);
-    cuotas?.addEventListener('input', refreshPreview);
-    cat?.addEventListener('change', refreshPreview);
-    fecha?.addEventListener('change', refreshPreview);
-    descuento?.addEventListener('input', refreshPreview);
-    refreshPreview();
 
     document.querySelectorAll('[data-pagar-cuota]').forEach((btn) => {
       btn.addEventListener('click', async () => {
