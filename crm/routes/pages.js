@@ -5,6 +5,7 @@ const { getHomePath } = require('../lib/crmNav');
 const { isStaffAdmin, isSuperAdmin } = require('../lib/roles');
 
 const TITLES = {
+  encuestas:       'Encuestas',
   dashboard:       'Dashboard',
   agenda:          'Agenda',
   pacientes:       'Pacientes',
@@ -110,6 +111,12 @@ router.get('/agendar/:username', async (req, res) => {
   } catch (err) { res.status(500).send(err.message); }
 });
 
+// Encuesta pública
+router.get('/encuesta/:slug', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.render('encuesta_publica', { BASE: req.app.locals.BASE, slug: req.params.slug });
+});
+
 // ── LOGIN ────────────────────────────────────────────────────────
 router.get('/login', (req, res) => {
   if (req.session?.user) return res.redirect(`${req.app.locals.BASE}/${getHomePath(req.session.user)}`);
@@ -145,6 +152,10 @@ router.post('/logout', (req, res) => {
 // ── MI REPORTE (terapeutas) ──────────────────────────────────────
 router.get('/mi-reporte', requireSession, (req, res) => {
   render(res, 'mi_reporte', { user: req.session.user, scripts: `<script src="${req.app.locals.BASE}/mi_reporte.js"></script>` });
+});
+
+router.get('/encuestas', requireSession, async (req, res) => {
+  render(res, 'encuestas', { user: req.session.user, scripts: `<script src="${req.app.locals.BASE}/encuestas.js?v=${req.app.locals.assetVersion}"></script>` });
 });
 
 // ── DASHBOARD ────────────────────────────────────────────────────

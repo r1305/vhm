@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Encuesta — VHM CRM</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>window.__APP_BASE__ = '<%- BASE %>'; window.__ENC_SLUG__ = '<%- slug %>';</script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Inter, sans-serif; background: #f5f5f5; color: #1a1a1a; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px 16px; }
+    .enc-card { background: #fff; border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,.1); max-width: 600px; width: 100%; padding: 32px; }
+    h1 { font-size: 1.4rem; font-weight: 700; margin-bottom: 8px; }
+    .enc-desc { color: #555; font-size: .9rem; margin-bottom: 24px; line-height: 1.5; }
+    .pregunta { margin-bottom: 22px; }
+    .pregunta-texto { font-weight: 600; font-size: .95rem; margin-bottom: 10px; }
+    .pregunta-texto .req { color: #e53e3e; margin-left: 3px; }
+    .opcion { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 6px; cursor: pointer; transition: border-color .15s, background .15s; }
+    .opcion:hover { border-color: #176B87; background: #f0f9ff; }
+    .opcion input { accent-color: #176B87; width: 16px; height: 16px; flex-shrink: 0; }
+    .opcion label { cursor: pointer; font-size: .9rem; }
+    textarea.form-control { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-family: inherit; font-size: .9rem; resize: vertical; min-height: 80px; }
+    textarea.form-control:focus { outline: none; border-color: #176B87; }
+    .btn-submit { width: 100%; padding: 13px; background: #176B87; color: #fff; border: none; border-radius: 10px; font-size: 1rem; font-weight: 600; cursor: pointer; margin-top: 8px; transition: background .15s; }
+    .btn-submit:hover { background: #125a72; }
+    .btn-submit:disabled { opacity: .6; cursor: not-allowed; }
+    .msg { text-align: center; padding: 32px 0; }
+    .msg h2 { font-size: 1.3rem; margin-bottom: 8px; }
+    .msg p { color: #555; font-size: .9rem; }
+    .error-msg { color: #e53e3e; font-size: .85rem; margin-top: 6px; }
+  </style>
+</head>
+<body>
+<div class="enc-card" id="encCard">
+  <div id="encContent"><p style="text-align:center;color:#888">Cargando encuesta…</p></div>
+</div>
+<script>
+(function () {
+  const BASE = window.__APP_BASE__ || '';
+  const slug = window.__ENC_SLUG__ || '';
+  const content = document.getElementById('encContent');
+
+  fetch(BASE + '/api/encuestas/public/' + slug)
+    .then(r => r.json())
+    .then(enc => {
+      if (enc.error) { content.innerHTML = '<div class="msg"><h2>😕</h2><p>' + enc.error + '</p></div>'; return; }
+      let html = '<h1>' + esc(enc.titulo) + '</h1>';
+      if (enc.descripcion) html += '<p class="enc-desc">' + esc(enc.descripcion) + '</p>';
+      enc.preguntas.forEach((p, i) => {
+        html += '<div class="pregunta" data-id="' + p.id + '" data-tipo="' + p.tipo + '" data-oblig="' + p.obligatoria + '">';
+        html += '<div class="pregunta-texto">' + (i + 1) + '. ' + esc(p.texto) + (p.obligatoria ? '<span class="req">*</span>' : '') + '</div>';
+        if (p.tipo === 'text') {
+          html += '<textarea class="form-control" placeholder="Tu respuesta…"></textarea>';
+        } else {
+          const inputType = p.tipo === 'multiple' ? 'checkbox' : 'radio';
+          p.opciones.forEach(o => {
+            html += '<div class="opcion"><input type="' + inputType + '" name="p' + p.id + '" id="o' + o.id + '" value="' + o.id + '"><label for="o' + o.id + '">' + esc(o.texto) + '</label></div>';
+          });
+        }
+        html += '<div class="error-msg" id="err-' + p.id + '" style="display:none"></div></div>';
+      });
+      html += '<button class="btn-submit" id="btnEnviar">Enviar respuestas</button>';
+      content.innerHTML = html;
+
+      document.getElementById('btnEnviar').addEventListener('click', async () => {
+        const btn = document.getElementById('btnEnviar');
+        let valid = true;
+        const respuestas = [];
+        enc.preguntas.forEach(p => {
+          const errEl = document.getElementById('err-' + p.id);
+          errEl.style.display = 'none';
+          const wrap = document.querySelector('.pregunta[data-id="' + p.id + '"]');
+          if (p.tipo === 'text') {
+            const texto = wrap.querySelector('textarea').value.trim();
+            if (p.obligatoria && !texto) { errEl.textContent = 'Este campo es obligatorio'; errEl.style.display = ''; valid = false; return; }
+            respuestas.push({ pregunta_id: p.id, texto });
+          } else {
+            const checked = [...wrap.querySelectorAll('input:checked')].map(i => parseInt(i.value));
+            if (p.obligatoria && !checked.length) { errEl.textContent = 'Selecciona al menos una opción'; errEl.style.display = ''; valid = false; return; }
+            respuestas.push({ pregunta_id: p.id, opcion_ids: checked });
+          }
+        });
+        if (!valid) return;
+        btn.disabled = true; btn.textContent = 'Enviando…';
+        try {
+          const res = await fetch(BASE + '/api/encuestas/public/' + slug + '/responder', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ respuestas }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Error al enviar');
+          content.innerHTML = '<div class="msg"><h2>🎉 ¡Gracias!</h2><p>' + esc(data.message || '¡Respuesta registrada!') + '</p></div>';
+        } catch (e) { btn.disabled = false; btn.textContent = 'Enviar respuestas'; alert(e.message); }
+      });
+    })
+    .catch(() => { content.innerHTML = '<div class="msg"><h2>Error</h2><p>No se pudo cargar la encuesta.</p></div>'; });
+
+  function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+})();
+</script>
+</body>
+</html>
