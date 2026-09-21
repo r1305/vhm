@@ -44,6 +44,14 @@ router.get('/', auth, async (req, res) => {
                (SELECT COUNT(*) FROM citas c
                 WHERE c.paciente_id = p.id
                   AND c.estado IN ('realizada','no_show')
+                  AND DATE(c.fecha) >= COALESCE(
+                    (SELECT pp.fecha_inicio FROM paciente_paquetes pp
+                     WHERE pp.paciente_id = p.id AND pp.activo = 1
+                       AND pp.fecha_inicio <= CURDATE()
+                       AND (pp.vence_at IS NULL OR pp.vence_at >= CURDATE())
+                     ORDER BY pp.fecha_inicio ASC, pp.id ASC LIMIT 1),
+                    '1900-01-01'
+                  )
                ) AS citas_confirmadas,
                (SELECT pp.nombre FROM paciente_paquetes pp
                  WHERE pp.paciente_id = p.id AND pp.activo = 1
