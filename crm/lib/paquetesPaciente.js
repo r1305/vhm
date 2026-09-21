@@ -209,6 +209,7 @@ async function createPacientePaquete(pacienteId, payload) {
 
   const fechaInicio = payload.fecha_inicio || todayStr();
   const nuevoActivo = 1;
+  const diasSiguienteCuota = normalizeDiasSiguienteCuota(cat.dias_siguiente_cuota);
 
   const venceAt = addDays(fechaInicio, parseInt(cat.validez_dias, 10) || 30);
   const precio = Number(cat.precio) || 0;
