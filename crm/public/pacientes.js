@@ -196,16 +196,21 @@
   };
 
   function renderCuotasPaquete(paquete, pid) {
-    return (paquete.cuotas || []).map((c) => `
+    return (paquete.cuotas || []).map((c) => {
+      const sesLabel = (c.sesiones_inicio != null && c.sesiones_fin != null)
+        ? (c.sesiones_inicio === c.sesiones_fin ? `Sesión ${c.sesiones_inicio}` : `Sesiones ${c.sesiones_inicio}–${c.sesiones_fin}`) + ` (${c.sesiones_fin - c.sesiones_inicio + 1} ses.)`
+        : '';
+      return `
       <div class="pkg-cuota-row ${c.pagado ? 'pagada' : ''}">
         <div>
           <strong>Cuota ${c.numero}</strong> · ${fmtMoney(c.monto)}
-          <div class="pkg-cuota-meta">Pago: ${String(c.fecha_pago).slice(0, 10)} · ${c.sesiones_inicio === c.sesiones_fin ? `Sesión ${c.sesiones_inicio}` : `Sesiones ${c.sesiones_inicio}–${c.sesiones_fin}`} (${c.sesiones_fin - c.sesiones_inicio + 1} ses.)</div>
+          <div class="pkg-cuota-meta">Pago: ${String(c.fecha_pago || '').slice(0, 10)}${sesLabel ? ` · ${sesLabel}` : ''}</div>
         </div>
         ${c.pagado
           ? '<span class="badge badge-green">Pagada</span>'
           : `<button type="button" class="btn btn-outline btn-xs" data-pagar-cuota="${c.id}" data-pid="${pid}">Marcar pagada</button>`}
-      </div>`).join('');
+      </div>`;
+    }).join('');
   }
 
   function renderHistorialPaquetes(paquetes, pid) {
@@ -221,7 +226,10 @@
         <div class="pkg-historial-item estado-${pkg.estado}">
           <div class="pkg-historial-header">
             <div class="pkg-historial-title">${esc(pkg.nombre)}</div>
-            <span class="pkg-estado-badge ${est.cls}">${est.label}</span>
+            <div style="display:flex;gap:6px;align-items:center">
+              <span class="pkg-estado-badge ${est.cls}">${est.label}</span>
+              <button type="button" class="btn btn-outline btn-xs" data-editar-pkg="${pkg.id}" data-pid="${pid}" title="Editar paquete"><i class="fas fa-pen"></i></button>
+            </div>
           </div>
           <div class="pkg-historial-meta">
             ${fmtMoney(pkg.precio)} · ${pkg.sesiones} sesiones (${usadas} usadas, ${restantes} restantes)<br>
@@ -310,6 +318,51 @@
           : btn.innerHTML.replace('Ocultar cuotas', 'Ver cuotas').replace('fa-chevron-up', 'fa-chevron-down');
       });
     });
+
+    document.querySelectorAll('[data-editar-pkg]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const pkgId = btn.dataset.editarPkg;
+        const patientId = btn.dataset.pid;
+        const pkg = (arguments[0] === pid ? catalogo : []).find ? null : null; // se busca en paquetesPac
+        // Buscar el paquete en el DOM renderizado
+        const histBox = document.getElementById('paqueteHistorialBox');
+        const allPkgs = histBox?._paquetesData || [];
+        const pkgData = allPkgs.find((x) => String(x.id) === String(pkgId));
+        openModal('Editar paquete asignado', `
+          <div class="form-group"><label class="form-label">Nombre</label>
+            <input class="form-control" id="epkg_nombre" value="${esc(pkgData?.nombre || '')}"></div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Fecha inicio</label>
+              <input type="date" class="form-control" id="epkg_fecha" value="${pkgData?.fecha_inicio ? String(pkgData.fecha_inicio).slice(0,10) : ''}"></div>
+            <div class="form-group"><label class="form-label">Sesiones</label>
+              <input type="number" min="1" class="form-control" id="epkg_sesiones" value="${pkgData?.sesiones || ''}"></div>
+            <div class="form-group"><label class="form-label">Precio (S/)</label>
+              <input type="number" min="0" step="0.01" class="form-control" id="epkg_precio" value="${pkgData?.precio ?? ''}"></div>
+          </div>`, async () => {
+          await api(`/pacientes/${patientId}/paquetes-adquiridos/${pkgId}`, {
+            method: 'PATCH',
+            body: {
+              nombre:       document.getElementById('epkg_nombre').value.trim(),
+              fecha_inicio: document.getElementById('epkg_fecha').value,
+              sesiones:     Number(document.getElementById('epkg_sesiones').value),
+              precio:       Number(document.getElementById('epkg_precio').value),
+            },
+          });
+          // Recargar historial
+          const r = await api(`/pacientes/${patientId}/paquetes-adquiridos`, { loader: false });
+          const box = document.getElementById('paqueteHistorialBox');
+          if (box) {
+            box.innerHTML = renderHistorialPaquetes(r, patientId);
+            box._paquetesData = r;
+            bindPaqueteEvents(patientId, catalogo);
+          }
+        }, { successMessage: 'Paquete actualizado' });
+      });
+    });
+
+    // Guardar referencia de paquetes en el DOM para el editor
+    const histBox = document.getElementById('paqueteHistorialBox');
+    if (histBox) histBox._paquetesData = window._lastPaquetesPac || [];
   }
 
   async function showPacienteForm(p = null) {
@@ -339,6 +392,7 @@
       ? catalogo.map((c) => `<option value="${c.id}">${esc(c.nombre)} — ${c.sesiones} ses. — ${fmtMoney(c.precio)}</option>`).join('')
       : '<option value="">No hay paquetes activos</option>';
 
+    window._lastPaquetesPac = paquetesPac;
     openModal(p ? 'Editar paciente' : 'Nuevo paciente', `
       <div class="form-row">
         <div class="form-group"><label class="form-label">Nombre *</label><input class="form-control" id="f_nombre" value="${esc(p?.nombre||'')}"></div>
@@ -466,6 +520,12 @@
     }, { large: true, successMessage: p ? 'Paciente actualizado' : 'Paciente creado' });
 
     if (!bloquearCompra) bindPaqueteEvents(p?.id, catalogo);
+    // Guardar referencia inicial de paquetes en el DOM
+    const histBoxInit = document.getElementById('paqueteHistorialBox');
+    if (histBoxInit) {
+      histBoxInit._paquetesData = paquetesPac;
+      if (bloquearCompra) bindPaqueteEvents(p?.id, catalogo);
+    }
   }
 
   /* ── Detalle ────────────────────────────────────────── */
