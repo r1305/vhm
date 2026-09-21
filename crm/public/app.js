@@ -372,31 +372,43 @@
     updateThemeIcon();
   });
 
-  /* ── Sidebar mobile ──────────────────────────────── */
-  const sidebarToggle = document.getElementById('sidebarToggle');
+  /* ── Sidebar toggle ──────────────────────────────── */
+  const sidebarToggle   = document.getElementById('sidebarToggle');
   const sidebarBackdrop = document.getElementById('sidebarBackdrop');
-  const sidebar       = document.getElementById('sidebar');
+  const sidebar         = document.getElementById('sidebar');
+  const crmApp          = document.querySelector('.crm-app');
+
+  // Restaurar estado collapsed en desktop
+  if (window.innerWidth > 768 && localStorage.getItem('crm-sidebar') === 'collapsed') {
+    crmApp?.classList.add('sidebar-collapsed');
+  }
+
+  function isDesktop() { return window.innerWidth > 768; }
 
   function closeSidebar() {
     sidebar?.classList.remove('open');
     sidebarBackdrop?.classList.remove('open');
   }
 
-  function openSidebar() {
-    sidebar?.classList.add('open');
-    sidebarBackdrop?.classList.add('open');
-  }
-
   sidebarToggle?.addEventListener('click', () => {
-    if (sidebar?.classList.contains('open')) closeSidebar();
-    else openSidebar();
+    if (isDesktop()) {
+      const collapsed = crmApp?.classList.toggle('sidebar-collapsed');
+      localStorage.setItem('crm-sidebar', collapsed ? 'collapsed' : 'expanded');
+    } else {
+      if (sidebar?.classList.contains('open')) closeSidebar();
+      else {
+        sidebar?.classList.add('open');
+        sidebarBackdrop?.classList.add('open');
+      }
+    }
   });
+
   sidebarBackdrop?.addEventListener('click', closeSidebar);
   sidebar?.querySelectorAll('.nav-item').forEach(link =>
-    link.addEventListener('click', closeSidebar)
+    link.addEventListener('click', () => { if (!isDesktop()) closeSidebar(); })
   );
   window.addEventListener('resize', () => {
-    if (window.innerWidth >= 769) closeSidebar();
+    if (isDesktop()) closeSidebar();
   });
 
 })();
