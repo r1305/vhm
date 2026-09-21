@@ -41,28 +41,9 @@ router.get('/', auth, async (req, res) => {
                  (SELECT SUM(ps.sesiones) FROM paciente_sesiones ps WHERE ps.paciente_id = p.id),
                  0
                ) AS sesiones_total,
-               (
-                 SELECT COUNT(*) FROM citas c
-                 WHERE c.paciente_id = p.id
-                   AND c.estado NOT IN ('cancelada','no_show')
-                   AND (
-                     c.paciente_paquete_id = (
-                       SELECT pp.id FROM paciente_paquetes pp
-                       WHERE pp.paciente_id = p.id AND pp.activo = 1
-                         AND pp.fecha_inicio <= CURDATE()
-                         AND (pp.vence_at IS NULL OR pp.vence_at >= CURDATE())
-                       ORDER BY pp.fecha_inicio ASC, pp.id ASC LIMIT 1
-                     )
-                     OR (
-                       c.paciente_paquete_id IS NULL
-                       AND NOT EXISTS (
-                         SELECT 1 FROM paciente_paquetes pp
-                         WHERE pp.paciente_id = p.id AND pp.activo = 1
-                           AND pp.fecha_inicio <= CURDATE()
-                           AND (pp.vence_at IS NULL OR pp.vence_at >= CURDATE())
-                       )
-                     )
-                   )
+               (SELECT COUNT(*) FROM citas c
+                WHERE c.paciente_id = p.id
+                  AND c.estado IN ('realizada','no_show')
                ) AS citas_confirmadas,
                (SELECT pp.nombre FROM paciente_paquetes pp
                  WHERE pp.paciente_id = p.id AND pp.activo = 1
@@ -177,10 +158,10 @@ router.get('/:pid/sesiones-resumen', auth, async (req, res) => {
       'SELECT COALESCE(SUM(sesiones), 0) AS total FROM paciente_sesiones WHERE paciente_id = ?',
       [pid]
     );
-    // Citas tomadas (no canceladas/no_show) sin paciente_paquete_id (legacy)
+    // Citas usadas (realizadas + no_show) sin paciente_paquete_id (legacy)
     const [[citasLegacy]] = await pool.execute(
       `SELECT COUNT(*) AS total FROM citas
-       WHERE paciente_id = ? AND paciente_paquete_id IS NULL AND estado NOT IN ('cancelada','no_show')`,
+       WHERE paciente_id = ? AND paciente_paquete_id IS NULL AND estado IN ('realizada','no_show')`,
       [pid]
     );
     const sesionesLegacy = Number(legacy.total) || 0;

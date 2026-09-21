@@ -53,7 +53,7 @@ function computePackageEstado(paquete, hoy, citasUsadas) {
 async function countCitasActivas(pacienteId) {
   const [[row]] = await pool.execute(
     `SELECT COUNT(*) AS total FROM citas
-     WHERE paciente_id = ? AND estado NOT IN ('cancelada','no_show')`,
+     WHERE paciente_id = ? AND estado IN ('realizada','no_show')`,
     [pacienteId]
   );
   return row?.total || 0;
@@ -62,7 +62,7 @@ async function countCitasActivas(pacienteId) {
 async function countCitasActivasForPaquete(pacientePaqueteId) {
   const [[row]] = await pool.execute(
     `SELECT COUNT(*) AS total FROM citas
-     WHERE paciente_paquete_id = ? AND estado NOT IN ('cancelada','no_show')`,
+     WHERE paciente_paquete_id = ? AND estado IN ('realizada','no_show')`,
     [pacientePaqueteId]
   );
   return row?.total || 0;
