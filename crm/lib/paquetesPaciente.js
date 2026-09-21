@@ -50,20 +50,22 @@ function computePackageEstado(paquete, hoy, citasUsadas) {
   return 'inactivo';
 }
 
-async function countCitasActivas(pacienteId) {
+async function countCitasActivas(pacienteId, desdeDate = null) {
   const [[row]] = await pool.execute(
     `SELECT COUNT(*) AS total FROM citas
-     WHERE paciente_id = ? AND estado IN ('realizada','no_show')`,
-    [pacienteId]
+     WHERE paciente_id = ? AND estado IN ('realizada','no_show')
+     ${desdeDate ? 'AND DATE(fecha) >= ?' : ''}`,
+    desdeDate ? [pacienteId, desdeDate] : [pacienteId]
   );
   return row?.total || 0;
 }
 
-async function countCitasActivasForPaquete(pacientePaqueteId) {
+async function countCitasActivasForPaquete(pacientePaqueteId, desdeDate = null) {
   const [[row]] = await pool.execute(
     `SELECT COUNT(*) AS total FROM citas
-     WHERE paciente_paquete_id = ? AND estado IN ('realizada','no_show')`,
-    [pacientePaqueteId]
+     WHERE paciente_paquete_id = ? AND estado IN ('realizada','no_show')
+     ${desdeDate ? 'AND DATE(fecha) >= ?' : ''}`,
+    desdeDate ? [pacientePaqueteId, desdeDate] : [pacientePaqueteId]
   );
   return row?.total || 0;
 }
@@ -77,7 +79,7 @@ async function syncPackageLifecycle(pacienteId) {
 
   for (const pkg of packages) {
     if (!pkg.activo) continue;
-    const citas = await countCitasActivasForPaquete(pkg.id);
+    const citas = await countCitasActivasForPaquete(pkg.id, dateStr(pkg.fecha_inicio));
     const exhausted = citas >= pkg.sesiones;
     const expired = isPackageExpired(pkg, hoy);
     if (expired || exhausted) {
@@ -97,7 +99,7 @@ async function syncPackageLifecycle(pacienteId) {
       if (pkg.activo) continue;
       if (isPackageNotStarted(pkg, hoy)) continue;
       if (isPackageExpired(pkg, hoy)) continue;
-      const citas = await countCitasActivasForPaquete(pkg.id);
+      const citas = await countCitasActivasForPaquete(pkg.id, dateStr(pkg.fecha_inicio));
       if (citas >= pkg.sesiones) continue;
       await pool.execute('UPDATE paciente_paquetes SET activo = 1 WHERE id = ?', [pkg.id]);
       pkg.activo = 1;
@@ -118,7 +120,7 @@ async function getActivePacientePaquete(pacienteId) {
   );
   if (!row) return null;
   if (isPackageExpired(row, hoy) || isPackageNotStarted(row, hoy)) return null;
-  const citas = await countCitasActivasForPaquete(row.id);
+  const citas = await countCitasActivasForPaquete(row.id, dateStr(row.fecha_inicio));
   if (citas >= row.sesiones) return null;
   return row;
 }
@@ -157,7 +159,7 @@ async function loadPacientePaquetes(pacienteId) {
   const result = [];
   for (const row of rows) {
     const cuotas = await loadCuotas(row.id);
-    let sesionesUsadas = await countCitasActivasForPaquete(row.id);
+    let sesionesUsadas = await countCitasActivasForPaquete(row.id, dateStr(row.fecha_inicio));
     // Fallback legacy: si el paquete no tiene citas vinculadas, usar citas generales
     if (sesionesUsadas === 0 && citasLegacy > 0) {
       const disponiblesLegacy = Math.max(0, citasLegacy - citasLegacyAsignadas);
@@ -198,7 +200,7 @@ async function createPacientePaquete(pacienteId, payload) {
   await syncPackageLifecycle(pacienteId);
   const activePkg = await getActivePacientePaquete(pacienteId);
   if (activePkg) {
-    const citasUsadas = await countCitasActivasForPaquete(activePkg.id);
+    const citasUsadas = await countCitasActivasForPaquete(activePkg.id, dateStr(activePkg.fecha_inicio));
     const restantes = activePkg.sesiones - citasUsadas;
     throw new Error(
       `El paciente ya tiene el paquete "${activePkg.nombre}" activo con ${restantes} sesión${restantes !== 1 ? 'es' : ''} disponible${restantes !== 1 ? 's' : ''}. Debe agotar o vencer ese paquete antes de adquirir otro.`
@@ -300,7 +302,7 @@ async function evaluateBooking(pacienteId) {
     const paquete = await getActivePacientePaquete(pacienteId);
     if (!paquete) break;
 
-    const citasActivas = await countCitasActivasForPaquete(paquete.id);
+    const citasActivas = await countCitasActivasForPaquete(paquete.id, dateStr(paquete.fecha_inicio));
     const nextSessionNum = citasActivas + 1;
 
     if (nextSessionNum > paquete.sesiones) {
@@ -364,7 +366,7 @@ async function evaluateBooking(pacienteId) {
 async function getSesionesResumen(pacienteId) {
   const paquete = await getActivePacientePaquete(pacienteId);
   if (paquete) {
-    const citasActivas = await countCitasActivasForPaquete(paquete.id);
+    const citasActivas = await countCitasActivasForPaquete(paquete.id, dateStr(paquete.fecha_inicio));
     return {
       sesiones_total: paquete.sesiones,
       citas_confirmadas: citasActivas,
