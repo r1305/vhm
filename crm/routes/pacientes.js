@@ -41,20 +41,28 @@ router.get('/', auth, async (req, res) => {
                  (SELECT SUM(ps.sesiones) FROM paciente_sesiones ps WHERE ps.paciente_id = p.id),
                  0
                ) AS sesiones_total,
-               COALESCE(
-                 (SELECT COUNT(*) FROM citas c
-                  WHERE c.paciente_id = p.id
-                    AND c.paciente_paquete_id = (
-                      SELECT pp.id FROM paciente_paquetes pp
-                      WHERE pp.paciente_id = p.id AND pp.activo = 1
-                        AND pp.fecha_inicio <= CURDATE()
-                        AND (pp.vence_at IS NULL OR pp.vence_at >= CURDATE())
-                      ORDER BY pp.fecha_inicio ASC, pp.id ASC LIMIT 1
-                    )
-                    AND c.estado NOT IN ('cancelada','no_show')),
-                 (SELECT COUNT(*) FROM citas c
-                  WHERE c.paciente_id = p.id AND c.estado NOT IN ('cancelada','no_show')),
-                 0
+               (
+                 SELECT COUNT(*) FROM citas c
+                 WHERE c.paciente_id = p.id
+                   AND c.estado NOT IN ('cancelada','no_show')
+                   AND (
+                     c.paciente_paquete_id = (
+                       SELECT pp.id FROM paciente_paquetes pp
+                       WHERE pp.paciente_id = p.id AND pp.activo = 1
+                         AND pp.fecha_inicio <= CURDATE()
+                         AND (pp.vence_at IS NULL OR pp.vence_at >= CURDATE())
+                       ORDER BY pp.fecha_inicio ASC, pp.id ASC LIMIT 1
+                     )
+                     OR (
+                       c.paciente_paquete_id IS NULL
+                       AND NOT EXISTS (
+                         SELECT 1 FROM paciente_paquetes pp
+                         WHERE pp.paciente_id = p.id AND pp.activo = 1
+                           AND pp.fecha_inicio <= CURDATE()
+                           AND (pp.vence_at IS NULL OR pp.vence_at >= CURDATE())
+                       )
+                     )
+                   )
                ) AS citas_confirmadas,
                (SELECT pp.nombre FROM paciente_paquetes pp
                  WHERE pp.paciente_id = p.id AND pp.activo = 1
