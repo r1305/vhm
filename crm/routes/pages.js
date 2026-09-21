@@ -362,6 +362,13 @@ router.get('/permisos-menu', requireSession, requireSuperAdmin, async (req, res)
   render(res, 'permisos_menu', { user: req.session.user, scripts: `<script src="${req.app.locals.BASE}/permisos_menu.js"></script>` });
 });
 
+router.get('/api/menu-permisos/catalogo', requireSession, requireSuperAdmin, async (req, res) => {
+  const [rows] = await db.execute(
+    'SELECT DISTINCT item FROM menu_permisos ORDER BY item ASC'
+  );
+  res.json({ items: rows.map(r => r.item) });
+});
+
 router.get('/api/menu-permisos', requireSession, requireSuperAdmin, async (req, res) => {
   const { listUsersWithPermisos } = require('../lib/menuPermisos');
   const users = await listUsersWithPermisos();
