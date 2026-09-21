@@ -4,44 +4,6 @@
 
   const { api, toast } = window.CRM;
 
-  const ICON_MAP = {
-    dashboard: 'fa-gauge-high', agenda: 'fa-calendar-days', calendario: 'fa-calendar-week',
-    pacientes: 'fa-users', paquetes: 'fa-box', whatsapp: 'fa-whatsapp',
-    mi_reporte: 'fa-chart-bar', disponibilidad: 'fa-clock', historial: 'fa-file-medical',
-    encuestas: 'fa-poll', analitica: 'fa-chart-line', integraciones: 'fa-plug',
-    terapeutas: 'fa-user-md', reportes: 'fa-chart-bar', permisos_menu: 'fa-shield-halved',
-    leads: 'fa-funnel-dollar', marketing: 'fa-envelope', asignacion: 'fa-shuffle',
-    consentimientos: 'fa-file-signature', espera: 'fa-hourglass-half',
-  };
-  const LABEL_MAP = {
-    dashboard: 'Dashboard', agenda: 'Agenda', calendario: 'Calendario',
-    pacientes: 'Pacientes', paquetes: 'Paquetes', whatsapp: 'Central WhatsApp',
-    mi_reporte: 'Mi reporte', disponibilidad: 'Disponibilidad', historial: 'Historial clínico',
-    encuestas: 'Encuestas', analitica: 'Analítica web', integraciones: 'Integraciones',
-    terapeutas: 'Usuarios', reportes: 'Reportes', permisos_menu: 'Permisos de menú',
-    leads: 'Leads', marketing: 'Email Marketing', asignacion: 'Asignación automática',
-    consentimientos: 'Consentimientos', espera: 'Lista de espera',
-  };
-
-  const ICON_MAP = {
-    dashboard: 'fa-gauge-high', agenda: 'fa-calendar-days', calendario: 'fa-calendar-week',
-    pacientes: 'fa-users', paquetes: 'fa-box', whatsapp: 'fa-whatsapp',
-    mi_reporte: 'fa-chart-bar', disponibilidad: 'fa-clock', historial: 'fa-file-medical',
-    encuestas: 'fa-poll', analitica: 'fa-chart-line', integraciones: 'fa-plug',
-    terapeutas: 'fa-user-md', reportes: 'fa-chart-bar', permisos_menu: 'fa-shield-halved',
-    leads: 'fa-funnel-dollar', marketing: 'fa-envelope', asignacion: 'fa-shuffle',
-    consentimientos: 'fa-file-signature', espera: 'fa-hourglass-half',
-  };
-  const LABEL_MAP = {
-    dashboard: 'Dashboard', agenda: 'Agenda', calendario: 'Calendario',
-    pacientes: 'Pacientes', paquetes: 'Paquetes', whatsapp: 'Central WhatsApp',
-    mi_reporte: 'Mi reporte', disponibilidad: 'Disponibilidad', historial: 'Historial clínico',
-    encuestas: 'Encuestas', analitica: 'Analítica web', integraciones: 'Integraciones',
-    terapeutas: 'Usuarios', reportes: 'Reportes', permisos_menu: 'Permisos de menú',
-    leads: 'Leads', marketing: 'Email Marketing', asignacion: 'Asignación automática',
-    consentimientos: 'Consentimientos', espera: 'Lista de espera',
-  };
-
   let ITEMS = [];
   let users = [];
   let userActivo = null;
