@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/vhm-design-tokens-v1.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@2/dist/quill.snow.css">
   <style>
     :root {
       --bg-body: var(--bg);
@@ -317,6 +318,22 @@
     .toast .toast-close:hover { opacity: 1; }
     @keyframes toastIn { from { opacity:0; transform:translateX(100%); } to { opacity:1; transform:translateX(0); } }
 
+    /* QUILL EDITOR */
+    .ql-toolbar.ql-snow { border: 2px solid var(--border-strong); border-bottom: none; border-radius: 10px 10px 0 0; background: var(--bg-hover); padding: 6px 8px; }
+    .ql-container.ql-snow { border: 2px solid var(--border-strong); border-top: none; border-radius: 0 0 10px 10px; background: var(--bg-input); font-size: .9rem; }
+    .ql-editor { min-height: 110px; color: var(--text-primary); line-height: 1.6; }
+    .ql-editor.ql-blank::before { color: var(--text-muted); font-style: normal; }
+    .ql-snow .ql-stroke { stroke: var(--text-secondary); }
+    .ql-snow .ql-fill { fill: var(--text-secondary); }
+    .ql-snow .ql-picker { color: var(--text-secondary); }
+    .ql-snow .ql-picker-options { background: var(--bg-elevated); border: 1px solid var(--border-strong); border-radius: 8px; }
+    .ql-snow .ql-tooltip { background: var(--bg-elevated); border: 1px solid var(--border-strong); color: var(--text-primary); border-radius: 8px; box-shadow: var(--shadow-modal); }
+    .ql-snow .ql-tooltip input[type=text] { background: var(--bg-input); border: 1px solid var(--border-strong); color: var(--text-primary); border-radius: 6px; }
+    .ql-snow button:hover .ql-stroke, .ql-snow .ql-active .ql-stroke { stroke: var(--color-primary); }
+    .ql-snow button:hover .ql-fill, .ql-snow .ql-active .ql-fill { fill: var(--color-primary); }
+    /* Emoji picker panel */
+    .ql-emoji-panel { background: var(--bg-elevated) !important; border: 1px solid var(--border-strong) !important; border-radius: 10px !important; box-shadow: var(--shadow-modal) !important; }
+
     /* RESPONSIVE */
     @media(max-width:1024px) {
       .sidebar { transform: translateX(-100%); }
@@ -401,7 +418,10 @@
     <div class="modal-body">
       <div class="evento-form-grid">
         <div class="form-group span-2"><label>Nombre *</label><input type="text" id="ef-nombre" placeholder="Nombre del evento"></div>
-        <div class="form-group span-2"><label>Descripción <span class="optional">(opcional)</span></label><textarea id="ef-descripcion" rows="2" placeholder="Descripción breve..."></textarea></div>
+        <div class="form-group span-2">
+          <label>Descripción <span class="optional">(opcional)</span></label>
+          <div id="ef-descripcion-editor" style="background:var(--bg-input)"></div>
+        </div>
         <div class="form-group"><label>Fecha *</label><input type="date" id="ef-fecha"></div>
         <div class="form-group"><label>Capacidad <span class="optional">(opc.)</span></label><input type="number" id="ef-capacidad" placeholder="50" min="1"></div>
         <div class="form-group"><label>Hora inicio *</label><input type="time" id="ef-hora_inicio"></div>
@@ -511,6 +531,7 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/quill@2/dist/quill.js"></script>
 <script>document.write('<script src="'+(window.__APP_BASE__||'').replace(/\/+$/,'')+'/admin/js/luma.js"><\/script>');</script>
 </body>
 </html>

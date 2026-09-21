@@ -362,6 +362,75 @@
   let eventoItemsDraft = [];
   let eventoImagenUrl = '';
 
+  // ── QUILL EDITOR ──────────────────────────────────────────────────────────
+  let quillDesc = null;
+  (function initQuill() {
+    if (!window.Quill) return;
+    const EMOJI = [
+      '😀','😂','😍','🥰','😎','🤔','😢','😡','👍','👎','🙏','🎉','🔥','❤️','✅','⚠️',
+      '📅','📍','🕐','🎤','🎶','🌟','💪','🚀','📢','💬','📝','🎁','🌈','☀️','🌙','⭐',
+      '🏃','🧘','💃','🤝','👏','🫶','💡','📌','🔔','📣','🎯','🏆','🥇','🎊','🎈','🌺'
+    ];
+
+    // Botón emoji personalizado
+    const EmojiBtn = Quill.import('ui/button');
+    const Toolbar = Quill.import('modules/toolbar');
+
+    quillDesc = new Quill('#ef-descripcion-editor', {
+      theme: 'snow',
+      placeholder: 'Descripción del evento...',
+      modules: {
+        toolbar: [
+          [{ header: [1, 2, 3, false] }],
+          ['bold', 'italic', 'underline', 'strike'],
+          [{ color: [] }, { background: [] }],
+          [{ list: 'ordered' }, { list: 'bullet' }],
+          ['link'],
+          ['clean'],
+          ['emoji'],
+        ],
+        keyboard: { bindings: {} },
+      },
+    });
+
+    // Agregar handler del botón emoji
+    const toolbar = quillDesc.getModule('toolbar');
+    toolbar.addHandler('emoji', function () {
+      const existing = document.getElementById('ql-emoji-panel');
+      if (existing) { existing.remove(); return; }
+      const panel = document.createElement('div');
+      panel.id = 'ql-emoji-panel';
+      panel.style.cssText = 'position:absolute;z-index:9999;background:var(--bg-elevated);border:1px solid var(--border-strong);border-radius:10px;padding:10px;display:flex;flex-wrap:wrap;gap:4px;max-width:280px;box-shadow:0 8px 24px rgba(0,0,0,.4)';
+      EMOJI.forEach(em => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = em;
+        btn.style.cssText = 'font-size:1.3rem;background:none;border:none;cursor:pointer;padding:3px;border-radius:6px;line-height:1';
+        btn.addEventListener('mouseenter', () => { btn.style.background = 'var(--bg-hover)'; });
+        btn.addEventListener('mouseleave', () => { btn.style.background = 'none'; });
+        btn.addEventListener('click', () => {
+          const range = quillDesc.getSelection(true);
+          quillDesc.insertText(range.index, em);
+          quillDesc.setSelection(range.index + em.length);
+          panel.remove();
+        });
+        panel.appendChild(btn);
+      });
+      // Posicionar bajo el botón emoji de la toolbar
+      const emojiToolBtn = document.querySelector('#ef-descripcion-editor').previousElementSibling.querySelector('.ql-emoji');
+      const rect = emojiToolBtn ? emojiToolBtn.getBoundingClientRect() : { bottom: 0, left: 0 };
+      panel.style.top = (rect.bottom + window.scrollY + 4) + 'px';
+      panel.style.left = Math.min(rect.left + window.scrollX, window.innerWidth - 300) + 'px';
+      document.body.appendChild(panel);
+      const close = (e) => { if (!panel.contains(e.target)) { panel.remove(); document.removeEventListener('click', close); } };
+      setTimeout(() => document.addEventListener('click', close), 0);
+    });
+
+    // Ícono del botón emoji en la toolbar
+    const emojiBtn = document.querySelector('#ef-descripcion-editor').previousElementSibling.querySelector('.ql-emoji');
+    if (emojiBtn) emojiBtn.innerHTML = '😊';
+  })();
+
   function setEventoImagenPreview(url) {
     eventoImagenUrl = url || '';
     const preview = document.getElementById('ef-imagen-preview');
@@ -456,7 +525,7 @@
     }
     document.getElementById('modal-evento-title').textContent = e ? '✏️ Editar Evento' : '📅 Nuevo Evento';
     document.getElementById('ef-nombre').value = e?.nombre || '';
-    document.getElementById('ef-descripcion').value = e?.descripcion || '';
+    if (quillDesc) quillDesc.root.innerHTML = e?.descripcion || '';
     document.getElementById('ef-fecha').value = e?.fecha ? e.fecha.split('T')[0] : '';
     document.getElementById('ef-hora_inicio').value = fmtHora(e?.hora_inicio);
     document.getElementById('ef-hora_fin').value = fmtHora(e?.hora_fin);
@@ -539,7 +608,7 @@
       .filter(item => item.nombre);
     const body = {
       nombre: document.getElementById('ef-nombre').value,
-      descripcion: document.getElementById('ef-descripcion').value,
+      descripcion: quillDesc ? quillDesc.root.innerHTML.replace(/<p><br><\/p>$/, '').trim() || null : null,
       fecha: document.getElementById('ef-fecha').value,
       hora_inicio: document.getElementById('ef-hora_inicio').value,
       hora_fin: document.getElementById('ef-hora_fin').value,

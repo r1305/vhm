@@ -4,8 +4,10 @@
   border-radius: var(--radius);
   background: var(--bg-card);
   padding: 16px;
+  position: relative;
 }
-.pkg-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 8px; }
-.pkg-card-name { font-weight: 700; font-size: 1rem; }
+.pkg-card-top { display: flex; justify-content: flex-start; align-items: flex-start; margin-bottom: 8px; }
+.pkg-card-top-actions { display: flex; gap: 4px; position: absolute; top: 10px; right: 10px; }
+.pkg-card-name { font-weight: 700; font-size: 1rem; padding-right: 60px; }
 .pkg-card-meta { font-size: 12px; color: var(--text-muted); display: flex; flex-direction: column; gap: 4px; }
 .pkg-card-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; }

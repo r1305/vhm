@@ -1,7 +1,8 @@
 (function () {
   'use strict';
 
-  const { api, toast, esc, openModal } = window.CRM;
+  const { api, toast, esc, openModal, confirmDialog } = window.CRM;
+  const isSuperAdmin = window.__USER_ROL__ === 'superadmin';
 
   async function loadPaquetes() {
     try {
@@ -15,7 +16,10 @@
         <div class="pkg-card">
           <div class="pkg-card-top">
             <div class="pkg-card-name">${esc(p.nombre)}</div>
-            <button class="btn-icon" data-edit="${p.id}" title="Editar"><i class="fas fa-pen"></i></button>
+            <div class="pkg-card-top-actions">
+              <button class="btn-icon" data-edit="${p.id}" title="Editar"><i class="fas fa-pen"></i></button>
+              ${isSuperAdmin ? `<button class="btn-icon btn-icon-danger" data-delete="${p.id}" data-name="${esc(p.nombre)}" title="Eliminar"><i class="fas fa-trash"></i></button>` : ''}
+            </div>
           </div>
           <div class="pkg-card-meta">
             <span><i class="fas fa-calendar-check"></i> ${p.sesiones} sesiones</span>
@@ -31,6 +35,24 @@
 
       document.querySelectorAll('[data-edit]').forEach((btn) => {
         btn.addEventListener('click', () => showForm(data.find((x) => x.id == btn.dataset.edit)));
+      });
+      document.querySelectorAll('[data-delete]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const ok = await confirmDialog({
+            title: 'Eliminar paquete',
+            message: `¿Eliminar "${btn.dataset.name}"? Si tiene pacientes asignados se desactivará en lugar de eliminarse.`,
+            confirmLabel: 'Eliminar',
+            danger: true,
+          });
+          if (!ok) return;
+          try {
+            const res = await api(`/paquetes/${btn.dataset.delete}`, { method: 'DELETE' });
+            toast(res.deactivated ? 'Paquete desactivado (tiene pacientes asignados)' : 'Paquete eliminado', 'success');
+            loadPaquetes();
+          } catch (err) {
+            toast(err.message, 'danger');
+          }
+        });
       });
     } catch (err) {
       toast(err.message, 'danger');
