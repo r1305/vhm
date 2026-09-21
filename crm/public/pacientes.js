@@ -316,12 +316,16 @@
     window.showCrmLoader?.('Cargando datos…');
     let catalogo = [];
     let paquetesPac = [];
+    let sesResumen = null;
     try {
       if (!terapeutasCache.length) terapeutasCache = await api('/terapeutas?clinicos=1', { loader: false }).catch(() => []);
       catalogo = await api('/paquetes?activo=1', { loader: false }).catch(() => []);
-      paquetesPac = p
-        ? await api(`/pacientes/${p.id}/paquetes-adquiridos`, { loader: false }).catch(() => [])
-        : [];
+      if (p) {
+        [paquetesPac, sesResumen] = await Promise.all([
+          api(`/pacientes/${p.id}/paquetes-adquiridos`, { loader: false }).catch(() => []),
+          api(`/pacientes/${p.id}/sesiones-resumen`, { loader: false }).catch(() => null),
+        ]);
+      }
     } finally {
       window.hideCrmLoader?.();
     }
@@ -379,6 +383,18 @@
       <div class="form-group"><label class="form-label">Motivo de consulta</label><textarea class="form-control" id="f_motivo" rows="2">${esc(p?.motivo_consulta||'')}</textarea></div>
       <div class="form-group">
         <label class="form-label">Historial de paquetes ${paquetesPac.length ? `(${paquetesPac.length})` : ''}</label>
+        ${sesResumen && sesResumen.sesiones_registradas > 0 ? `
+          <div style="display:flex;gap:8px;margin-bottom:8px;font-size:12px;flex-wrap:wrap">
+            <span style="background:var(--primary-light,rgba(23,107,135,.15));color:var(--primary);padding:3px 10px;border-radius:10px">
+              <i class="fas fa-layer-group"></i> Sesiones registradas: <strong>${sesResumen.sesiones_registradas}</strong>
+            </span>
+            <span style="background:var(--success-light,rgba(34,197,94,.12));color:var(--success,#22c55e);padding:3px 10px;border-radius:10px">
+              <i class="fas fa-check-circle"></i> Tomadas: <strong>${sesResumen.citas_tomadas}</strong>
+            </span>
+            <span style="background:${sesResumen.pendientes > 0 ? 'var(--warning-light,rgba(245,158,11,.12))' : 'var(--success-light,rgba(34,197,94,.12))'};color:${sesResumen.pendientes > 0 ? 'var(--warning,#f59e0b)' : 'var(--success,#22c55e)'};padding:3px 10px;border-radius:10px">
+              <i class="fas fa-hourglass-half"></i> Pendientes: <strong>${sesResumen.pendientes}</strong>
+            </span>
+          </div>` : ''}
         <div id="paqueteHistorialBox">${renderHistorialPaquetes(paquetesPac, p?.id)}</div>
       </div>
       <div class="form-group pkg-asignar-box">
