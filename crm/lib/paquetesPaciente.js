@@ -147,29 +147,24 @@ async function loadPacientePaquetes(pacienteId) {
     `SELECT * FROM paciente_paquetes WHERE paciente_id = ? ORDER BY fecha_inicio DESC, id DESC`,
     [pacienteId]
   );
-  // Citas legacy (sin paciente_paquete_id), ordenadas por fecha para asignar al paquete más antiguo primero
-  const [[legacyRow]] = await pool.execute(
-    `SELECT COUNT(*) AS total FROM citas
-     WHERE paciente_id = ? AND paciente_paquete_id IS NULL AND estado IN ('realizada','no_show')`,
-    [pacienteId]
-  );
-  const citasLegacy = Number(legacyRow?.total) || 0;
-  let citasLegacyAsignadas = 0;
-
-  // Calcular sesiones_usadas para cada paquete en orden ASC (más antiguo primero) para asignar legacy correctamente
+  // Calcular sesiones_usadas para cada paquete en orden ASC (más antiguo primero)
   const rowsAsc = [...rows].sort((a, b) => {
     const da = dateStr(a.fecha_inicio), db = dateStr(b.fecha_inicio);
     return da < db ? -1 : da > db ? 1 : a.id - b.id;
   });
   const usadasMap = {};
   for (const row of rowsAsc) {
-    let sesionesUsadas = await countCitasActivasForPaquete(row.id, dateStr(row.fecha_inicio));
-    if (sesionesUsadas === 0 && citasLegacy > citasLegacyAsignadas) {
-      const disponiblesLegacy = citasLegacy - citasLegacyAsignadas;
-      sesionesUsadas = Math.min(row.sesiones, disponiblesLegacy);
-      citasLegacyAsignadas += sesionesUsadas;
-    }
-    usadasMap[row.id] = sesionesUsadas;
+    // Citas vinculadas directamente + citas legacy desde fecha_inicio del paquete
+    const vinculadas = await countCitasActivasForPaquete(row.id, dateStr(row.fecha_inicio));
+    const [[legacyRow]] = await pool.execute(
+      `SELECT COUNT(*) AS total FROM citas
+       WHERE paciente_id = ? AND paciente_paquete_id IS NULL
+         AND estado IN ('realizada','no_show')
+         AND DATE(fecha) >= DATE(?)`,
+      [pacienteId, dateStr(row.fecha_inicio)]
+    );
+    const legacyDesde = Number(legacyRow?.total) || 0;
+    usadasMap[row.id] = vinculadas + legacyDesde;
   }
 
   const result = [];
