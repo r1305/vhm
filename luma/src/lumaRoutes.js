@@ -51,8 +51,6 @@ function validarImagenUrl(str) {
 }
 
 function etiquetaItem(item) {
-  const disp = Number(item.disponible ?? item.cantidad);
-  if (Number(item.cantidad) > 1) return `${item.nombre} x${disp}`;
   return item.nombre;
 }
 
