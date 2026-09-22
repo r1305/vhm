@@ -161,12 +161,20 @@ router.get('/:pid/sesiones-resumen', auth, async (req, res) => {
   const pid = id(req.params.pid);
   if (!pid) return res.status(400).json({ error: 'ID inválido' });
   try {
-    // Sesiones legacy registradas
+    const paquetes = await loadPacientePaquetes(pid);
+    const activo = paquetes.find((p) => p.estado === 'activo') || null;
+    if (activo) {
+      return res.json({
+        sesiones_registradas: activo.sesiones,
+        citas_tomadas: activo.sesiones_usadas,
+        pendientes: activo.sesiones_restantes,
+      });
+    }
+    // Fallback legacy
     const [[legacy]] = await pool.execute(
       'SELECT COALESCE(SUM(sesiones), 0) AS total FROM paciente_sesiones WHERE paciente_id = ?',
       [pid]
     );
-    // Citas usadas (realizadas + no_show) sin paciente_paquete_id (legacy)
     const [[citasLegacy]] = await pool.execute(
       `SELECT COUNT(*) AS total FROM citas
        WHERE paciente_id = ? AND paciente_paquete_id IS NULL AND estado IN ('realizada','no_show')`,
