@@ -24,10 +24,21 @@ if (typeof PhusionPassenger !== 'undefined') {
   });
   shell.listen('passenger');
 } else if (require.main === module) {
-  const PORT = process.env.PORT || 3002;
-  shell.listen(PORT, () => {
-    console.log(`[luma] http://localhost:${PORT}${MOUNT_PATH}/`);
-  });
+  const net = require('net');
+  const BASE_PORT = parseInt(process.env.PORT || '3002', 10);
+  function tryListen(port) {
+    const tester = net.createServer();
+    tester.once('error', () => tryListen(port + 1));
+    tester.once('listening', () => {
+      tester.close(() => {
+        shell.listen(port, () => {
+          console.log(`[luma] http://localhost:${port}${MOUNT_PATH}/`);
+        });
+      });
+    });
+    tester.listen(port);
+  }
+  tryListen(BASE_PORT);
 }
 
 module.exports = shell;
