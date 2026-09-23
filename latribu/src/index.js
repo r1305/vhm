@@ -199,6 +199,9 @@ app.get(['/admin', '/admin/'], (req, res) => {
 
 // Public pages
 app.get('/', (req, res) => sendPublicHtml(res, 'index.html'));
+app.get('/perfil', (req, res) => sendPublicHtml(res, 'perfil.html'));
+app.get('/suscripciones', (req, res) => sendPublicHtml(res, 'suscripciones.html'));
+app.get('/tarjetas', (req, res) => sendPublicHtml(res, 'tarjetas.html'));
 app.get('/encuesta/:slug', (req, res) => sendPublicHtml(res, 'encuesta.html'));
 
 // Static files

@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="es" data-product="tribu">
+<head>
+  <meta charset="UTF-8">
+  <script>(function(){var t=localStorage.getItem('tribu-theme');if(t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme:dark)').matches))document.documentElement.setAttribute('data-theme','dark');})();</script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Suscripciones — La Tribu</title>
+  <script src="__app_base__.js"></script>
+  <link rel="icon" type="image/jpeg" href="logo_vhm.jpeg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/vhm-design-tokens-v1.css">
+  <link rel="stylesheet" href="css/latribu-public-theme.css">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: var(--font-ui,'Inter',sans-serif); color: var(--txt); background: var(--bg); min-height: 100vh; line-height: 1.45; }
+    a { text-decoration: none; }
+
+    .site-nav { position: fixed; top: 0; width: 100%; padding: 14px 22px; display: flex; justify-content: space-between; align-items: center; z-index: 100; background: rgba(255,255,255,.92); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
+    .site-nav .tribu-brand { font-family: 'Fraunces',serif; font-weight: 700; font-size: 1.4rem; letter-spacing: 1px; color: var(--tribu-600,#A84F3E); text-decoration: none; }
+    .site-nav-end { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+
+    .user-menu { position: relative; z-index: 120; }
+    .user-menu-btn { display: flex; align-items: center; gap: 10px; padding: 5px 12px 5px 5px; border-radius: 999px; border: 1px solid var(--line); background: var(--tribu-100,#F7ECE9); cursor: pointer; color: var(--txt); font-family: inherit; transition: border-color .2s, background .2s; }
+    .user-menu-btn:hover, .user-menu.open .user-menu-btn { border-color: rgba(168,79,62,.55); background: var(--surface-raised,#F0E0DA); }
+    .user-menu-avatar { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; flex-shrink: 0; border: 1px solid rgba(168,79,62,.35); }
+    .user-menu-avatar-ph { width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; background: rgba(168,79,62,.28); color: #fff; font-size: .82rem; font-weight: 800; }
+    .user-menu-label { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; }
+    .user-menu-name { font-size: .88rem; font-weight: 800; color: var(--txt); max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .user-menu-sub { font-size: .72rem; font-weight: 700; color: var(--muted); }
+    .user-menu-chevron { margin-left: 2px; color: var(--muted); font-size: .75rem; transition: transform .2s; }
+    .user-menu.open .user-menu-chevron { transform: rotate(180deg); }
+    .user-menu-panel { display: none; position: absolute; top: calc(100% + 10px); right: 0; min-width: 260px; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 8px; box-shadow: 0 16px 48px rgba(14,23,20,.14); }
+    .user-menu.open .user-menu-panel { display: block; animation: menuIn .18s ease; }
+    @keyframes menuIn { from { opacity:0; transform: translateY(-6px); } to { opacity:1; transform: translateY(0); } }
+    .user-menu-head { padding: 10px 12px 12px; border-bottom: 1px solid var(--line); margin-bottom: 6px; }
+    .user-menu-head-name { font-weight: 800; color: var(--txt); font-size: .92rem; }
+    .user-menu-head-email { font-size: .78rem; color: var(--muted); margin-top: 2px; word-break: break-all; }
+    .user-menu-item { width: 100%; display: flex; align-items: center; gap: 10px; padding: 11px 12px; border: none; background: none; color: var(--txt); font-family: inherit; font-weight: 700; font-size: .9rem; border-radius: 10px; cursor: pointer; text-align: left; transition: background .15s; text-decoration: none; }
+    .user-menu-item:hover, .user-menu-item:focus-visible { background: var(--tribu-100,#F7ECE9); outline: none; }
+    .user-menu-item.active { color: var(--tribu-700,#8F4234); background: var(--tribu-100,#F7ECE9); }
+    .user-menu-item .mi { width: 1.35rem; text-align: center; flex-shrink: 0; }
+    .user-menu-item.danger { color: var(--danger,#B64A5A); }
+    .user-menu-item.danger:hover { background: var(--danger-bg,#FCECEF); }
+    .user-menu-divider { height: 1px; background: var(--line); margin: 6px 4px; }
+    .nav-login-link { color: var(--muted); font-size: .9rem; font-weight: 700; cursor: pointer; background: none; border: none; font-family: inherit; padding: 0; }
+
+    .account-shell { padding-top: 80px; min-height: 100vh; background: linear-gradient(180deg, var(--tribu-100,#F7ECE9) 0%, var(--bg) 240px); }
+    .account-inner { max-width: 760px; margin: 0 auto; padding: 32px 22px 64px; }
+    .account-header { margin-bottom: 28px; }
+    .account-back { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 14px; background: none; border: none; color: var(--muted); font-family: inherit; font-weight: 700; font-size: .85rem; cursor: pointer; padding: 0; text-decoration: none; }
+    .account-back:hover { color: var(--txt); }
+    .account-eyebrow { font-size: .72rem; letter-spacing: .14em; text-transform: uppercase; font-weight: 800; color: var(--muted); margin: 0 0 6px; }
+    .account-title { font-family: 'Fraunces',serif; font-size: 1.75rem; font-weight: 700; color: var(--txt); margin: 0; }
+    .account-tabs { display: flex; flex-wrap: wrap; gap: 8px; padding-bottom: 22px; margin-bottom: 28px; border-bottom: 1px solid var(--line); }
+    .account-tab { padding: 10px 18px; border-radius: 999px; border: 1px solid var(--line); background: transparent; color: var(--muted); font-family: inherit; font-weight: 700; font-size: .88rem; cursor: pointer; white-space: nowrap; transition: background .15s, color .15s; text-decoration: none; display: inline-block; }
+    .account-tab:hover { background: var(--tribu-100,#F7ECE9); color: var(--txt); }
+    .account-tab.active { background: var(--tribu-600,#A84F3E); border-color: transparent; color: #fff; box-shadow: 0 8px 22px -10px rgba(168,79,62,.55); }
+
+    .profile-btn { padding: 11px 20px; border-radius: 30px; border: none; font-weight: 800; font-family: inherit; cursor: pointer; font-size: .9rem; transition: opacity .2s, transform .15s; }
+    .profile-btn:hover { opacity: .9; transform: translateY(-1px); }
+    .profile-btn-primary { background: linear-gradient(135deg,#A84F3E,#8F4234); color: #fff; }
+    .profile-btn-outline { background: transparent; border: 1px solid rgba(168,79,62,.45); color: var(--tribu-700,#8F4234); }
+
+    .subs-renewal-panel { background: linear-gradient(135deg,rgba(45,212,191,.08),rgba(168,79,62,.1)); border: 1px solid rgba(45,212,191,.28); border-radius: 18px; padding: 18px 20px; margin-bottom: 18px; }
+    .subs-renewal-panel h3 { font-family: 'Fraunces',serif; font-size: 1.05rem; color: var(--txt); margin: 0 0 6px; }
+    .subs-renewal-panel p { margin: 0; font-size: .84rem; color: var(--muted); line-height: 1.5; }
+    .subs-renewal-meta { margin-top: 10px; font-size: .82rem; color: #2dd4bf; font-weight: 700; }
+    .subs-card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; margin-bottom: 12px; }
+    .subs-card.active { border-color: rgba(45,212,191,.45); }
+    .subs-title { font-family: 'Fraunces',serif; font-size: 1.1rem; color: var(--txt); margin-bottom: 6px; }
+    .subs-meta { font-size: .85rem; color: var(--muted); line-height: 1.5; }
+    .subs-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: .72rem; font-weight: 800; margin-top: 8px; }
+    .subs-badge.on { background: rgba(45,212,191,.2); color: #2dd4bf; }
+    .subs-badge.off { background: rgba(154,147,179,.15); color: var(--muted); }
+    .subs-badge.warn { background: rgba(201,168,106,.18); color: #7A6535; }
+    .subs-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; align-items: center; }
+    .subs-cancel-btn { background: none; border: 1px solid rgba(251,113,133,.45); color: #fb7185; padding: 8px 14px; border-radius: 999px; font-size: .82rem; font-weight: 800; font-family: inherit; cursor: pointer; transition: background .15s; }
+    .subs-cancel-btn:hover { background: rgba(251,113,133,.12); }
+    .subs-empty { text-align: center; color: var(--muted); padding: 40px 20px; }
+    .subs-link-btn { background: none; border: none; color: var(--tribu-600,#A84F3E); font-family: inherit; font-size: .78rem; font-weight: 800; cursor: pointer; padding: 4px 0; text-decoration: none; }
+    .subs-link-btn:hover { color: var(--tribu-700,#8F4234); text-decoration: underline; }
+
+    .plan-card { background: rgba(168,79,62,.07); border: 1px solid rgba(168,79,62,.3); border-radius: 16px; padding: 20px 22px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+    .plan-nombre { font-family: 'Fraunces',serif; font-size: 1.1rem; font-weight: 700; color: var(--txt); margin-bottom: 4px; }
+    .plan-desc { font-size: .85rem; color: var(--muted); line-height: 1.5; }
+    .plan-precio { font-size: 1.5rem; font-weight: 800; color: var(--tribu-600,#A84F3E); white-space: nowrap; }
+    .plan-adquirir { padding: 10px 22px; border-radius: 30px; font-size: .9rem; font-weight: 800; font-family: inherit; cursor: pointer; border: none; background: linear-gradient(135deg,#A84F3E,#8F4234); color: #fff; }
+
+    .auth-overlay { display: none; position: fixed; inset: 0; background: rgba(12,18,16,.48); backdrop-filter: blur(6px); z-index: 2000; padding: 20px; align-items: center; justify-content: center; }
+    .auth-overlay.show { display: flex; }
+    .auth-box { background: var(--panel); border: 1px solid rgba(168,79,62,.35); border-radius: 24px; width: 100%; max-width: 440px; padding: 36px 32px 28px; position: relative; box-shadow: 0 40px 90px -30px rgba(168,79,62,.45); }
+    .auth-btn { width: 100%; padding: 13px; background: linear-gradient(135deg,#A84F3E,#8F4234); border: none; border-radius: 12px; color: #fff; font-size: 1rem; font-weight: 800; font-family: inherit; cursor: pointer; }
+    .auth-error { color: #fb7185; font-size: .83rem; font-weight: 700; margin-top: 10px; text-align: center; min-height: 20px; }
+    .auth-close { position: absolute; top: 14px; right: 16px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12); color: var(--muted); width: 34px; height: 34px; border-radius: 50%; cursor: pointer; font-size: 1.2rem; line-height: 1; }
+    .tribu-feedback-box { max-width: 440px; text-align: center; padding-top: 32px; }
+    .tribu-feedback-icon { width: 76px; height: 76px; margin: 0 auto 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; }
+    .tribu-feedback-icon.success { background: linear-gradient(135deg,rgba(45,212,191,.22),rgba(56,189,248,.18)); border: 1px solid rgba(45,212,191,.45); color: #5eead4; }
+    .tribu-feedback-icon.error { background: linear-gradient(135deg,rgba(251,113,133,.18),rgba(168,79,62,.12)); border: 1px solid rgba(251,113,133,.42); color: #fb7185; }
+    .tribu-feedback-icon.warn { background: linear-gradient(135deg,rgba(251,191,36,.18),rgba(168,79,62,.1)); border: 1px solid rgba(251,191,36,.4); color: #fcd34d; }
+    .tribu-feedback-icon.processing { background: linear-gradient(135deg,rgba(168,79,62,.18),rgba(168,79,62,.12)); border: 1px solid rgba(168,79,62,.38); color: transparent; }
+    .tribu-feedback-spinner { width: 34px; height: 34px; border-radius: 50%; border: 3px solid rgba(168,79,62,.22); border-top-color: #A84F3E; animation: tribuSpin .8s linear infinite; }
+    @keyframes tribuSpin { to { transform: rotate(360deg); } }
+    .tribu-feedback-eyebrow { font-size: .78rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+    .tribu-feedback-msg { color: var(--muted); font-size: .95rem; line-height: 1.55; margin: 10px 0 22px; }
+    .tribu-confirm-box { max-width: 440px; text-align: center; padding: 28px 26px 24px; }
+    .tribu-confirm-actions { display: flex; gap: 10px; margin-top: 6px; }
+    .tribu-confirm-btn { flex: 1; padding: 12px 14px; border-radius: 999px; font-weight: 800; font-family: inherit; font-size: .88rem; cursor: pointer; }
+    .tribu-confirm-btn.outline { background: transparent; border: 1px solid rgba(168,79,62,.45); color: var(--tribu-700,#8F4234); }
+    .tribu-confirm-btn.danger { border: none; color: #fff; background: linear-gradient(135deg,#be123c,#9f1239); }
+    .tribu-confirm-btn.primary { border: none; color: #fff; background: linear-gradient(135deg,#A84F3E,#8F4234); }
+
+    footer { background: #fff; color: var(--muted); text-align: center; padding: 32px 20px; font-size: .9rem; font-weight: 600; border-top: 1px solid var(--line); position: relative; }
+    footer::before { content: ''; position: absolute; top: -1px; left: 0; right: 0; height: 3px; background: linear-gradient(135deg,#A84F3E,#8F4234); }
+
+    @media (max-width: 600px) {
+      .account-inner { padding: 24px 16px 48px; }
+      .account-tabs { overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; }
+      .account-tabs::-webkit-scrollbar { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="site-nav">
+  <a href="__app_base__/" class="tribu-brand">La Tribu</a>
+  <div class="site-nav-end" id="navAuthArea"></div>
+</nav>
+
+<div class="account-shell">
+  <div class="account-inner">
+    <header class="account-header">
+      <a href="__app_base__/" class="account-back">← Volver a La Tribu</a>
+      <p class="account-eyebrow">Mi cuenta</p>
+      <h1 class="account-title">Mis suscripciones</h1>
+    </header>
+    <nav class="account-tabs">
+      <a href="__app_base__/perfil" class="account-tab">Mi perfil</a>
+      <a href="__app_base__/suscripciones" class="account-tab active">Suscripciones</a>
+      <a href="__app_base__/tarjetas" class="account-tab">Mis tarjetas</a>
+    </nav>
+
+    <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
+      <button type="button" class="profile-btn profile-btn-primary" onclick="abrirModalPlanes()">Ver planes</button>
+    </div>
+    <div id="subsRenewalPanel" class="subs-renewal-panel" style="display:none"></div>
+    <div id="subsLista"><div class="subs-empty">Cargando...</div></div>
+  </div>
+</div>
+
+<footer>
+  <p>&copy; <script>document.write(new Date().getFullYear())</script> VHM - Bienestar, Relaciones &amp; Superación Personal.</p>
+</footer>
+
+<!-- Modal planes -->
+<div class="auth-overlay" id="planesOverlay">
+  <div class="auth-box" style="max-width:560px;width:100%">
+    <button class="auth-close" onclick="cerrarModalPlanes()">&times;</button>
+    <div style="text-align:center;font-family:'Fraunces',serif;font-size:1.8rem;font-weight:700;color:var(--tribu-600,#A84F3E);margin-bottom:6px">La Tribu</div>
+    <div style="text-align:center;font-size:1.15rem;font-weight:800;color:var(--txt);margin-bottom:4px">Elige tu plan</div>
+    <div style="text-align:center;font-size:.85rem;color:var(--muted);margin-bottom:18px">Accede a todo el contenido exclusivo</div>
+    <div id="planesLista" style="display:flex;flex-direction:column;gap:12px"></div>
+    <div id="planesError" class="auth-error"></div>
+  </div>
+</div>
+
+<!-- Modal feedback -->
+<div class="auth-overlay" id="tribuFeedbackOverlay" role="dialog" aria-modal="true">
+  <div class="auth-box tribu-feedback-box">
+    <div class="tribu-feedback-icon success" id="tribuFeedbackIcon">✓</div>
+    <div class="tribu-feedback-eyebrow">La Tribu</div>
+    <div id="tribuFeedbackTitle" style="text-align:center;font-size:1.15rem;font-weight:800;color:var(--txt);margin-bottom:4px"></div>
+    <p class="tribu-feedback-msg" id="tribuFeedbackMsg"></p>
+    <button type="button" class="auth-btn" id="tribuFeedbackBtn" onclick="cerrarTribuFeedback()">Continuar</button>
+  </div>
+</div>
+
+<!-- Modal confirm -->
+<div class="auth-overlay" id="tribuConfirmOverlay" role="dialog" aria-modal="true">
+  <div class="auth-box tribu-confirm-box">
+    <div class="tribu-feedback-icon warn">?</div>
+    <div class="tribu-feedback-eyebrow">La Tribu</div>
+    <div id="tribuConfirmTitle" style="text-align:center;font-size:1.15rem;font-weight:800;color:var(--txt);margin-bottom:4px"></div>
+    <p class="tribu-feedback-msg" id="tribuConfirmMsg"></p>
+    <div class="tribu-confirm-actions">
+      <button type="button" class="tribu-confirm-btn outline" id="tribuConfirmCancel">Volver</button>
+      <button type="button" class="tribu-confirm-btn danger" id="tribuConfirmOk">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/tribu-common.js"></script>
+<script src="js/suscripciones.js"></script>
+</body>
+</html>
