@@ -1557,23 +1557,17 @@ function scrollToContenidoTribu() {
 
 function navToPerfil() {
   closeUserMenu();
-  closeMobileNav();
-  switchTribuTab('perfil');
-  scrollToContenidoTribu();
+  window.location.href = BASE + '/perfil';
 }
 
 function navToSuscripciones() {
   closeUserMenu();
-  closeMobileNav();
-  switchTribuTab('suscripciones');
-  scrollToContenidoTribu();
+  window.location.href = BASE + '/suscripciones';
 }
 
 function navToTarjetas() {
   closeUserMenu();
-  closeMobileNav();
-  switchTribuTab('tarjetas');
-  scrollToContenidoTribu();
+  window.location.href = BASE + '/tarjetas';
 }
 
 function navLogout() {
