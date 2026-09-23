@@ -83,7 +83,7 @@ async function syncSubscriptionAccess(userId) {
 
 async function fetchUserPublic(id) {
   const [rows] = await pool.execute(
-    'SELECT id, nombre, apellido, email, telefono, foto_url, psw_temp, is_suscribed FROM tribu_users WHERE id = ? LIMIT 1',
+    'SELECT id, nombre, apellido, email, telefono, foto_url, carrera, hobbies, a_que_te_dedicas, psw_temp, is_suscribed FROM tribu_users WHERE id = ? LIMIT 1',
     [id]
   );
   if (!rows.length) return null;
@@ -111,6 +111,9 @@ function userPayload(user) {
     email: user.email, telefono: user.telefono || null,
     foto_url: user.foto_url || null, psw_temp: !!user.psw_temp,
     is_suscribed: !!user.is_suscribed, suscripcion_activa: user.suscripcion_activa || null,
+    carrera: user.carrera || null,
+    hobbies: user.hobbies || null,
+    a_que_te_dedicas: user.a_que_te_dedicas || null,
   };
 }
 
@@ -119,20 +122,21 @@ const TRIBU_JWT_SECRET = JWT_SECRET + '_tribu';
 const loginAttempts = new Map();
 const MAX_ATTEMPTS = 5;
 const WINDOW_MS = 15 * 60 * 1000;
-function getAttempts(ip) {
-  const r = loginAttempts.get(ip);
+function attemptKey(ip, email) { return ip + '\x00' + email; }
+function getAttempts(key) {
+  const r = loginAttempts.get(key);
   if (!r || Date.now() - r.start > WINDOW_MS) return null;
   return r;
 }
-function recordAttempt(ip) {
-  const r = loginAttempts.get(ip);
-  if (!r || Date.now() - r.start > WINDOW_MS) loginAttempts.set(ip, { count: 1, start: Date.now() });
+function recordAttempt(key) {
+  const r = loginAttempts.get(key);
+  if (!r || Date.now() - r.start > WINDOW_MS) loginAttempts.set(key, { count: 1, start: Date.now() });
   else r.count++;
 }
-function resetAttempts(ip) { loginAttempts.delete(ip); }
+function resetAttempts(key) { loginAttempts.delete(key); }
 setInterval(() => {
   const now = Date.now();
-  for (const [ip, r] of loginAttempts) if (now - r.start > WINDOW_MS) loginAttempts.delete(ip);
+  for (const [k, r] of loginAttempts) if (now - r.start > WINDOW_MS) loginAttempts.delete(k);
 }, 30 * 60 * 1000).unref();
 
 function signToken(user) {
@@ -155,25 +159,26 @@ function tribuAuthMiddleware(req, res, next) {
 router.post('/login', async (req, res) => {
   try {
     const ip = req.ip || req.connection.remoteAddress;
-    const record = getAttempts(ip);
+    const { email, password } = req.body;
+    if (!email || !password) return res.status(400).json({ error: 'Email y contraseña requeridos' });
+    const key = attemptKey(ip, email.trim().toLowerCase());
+    const record = getAttempts(key);
     if (record && record.count >= MAX_ATTEMPTS) {
       const remaining = Math.ceil((WINDOW_MS - (Date.now() - record.start)) / 60000);
       return res.status(429).json({ error: `Demasiados intentos. Intenta en ${remaining} minuto(s).` });
     }
-    const { email, password } = req.body;
-    if (!email || !password) return res.status(400).json({ error: 'Email y contraseña requeridos' });
 
     const [rows] = await pool.execute(
       'SELECT id, nombre, apellido, email, password, psw_temp, is_suscribed FROM tribu_users WHERE email = ? LIMIT 1',
       [email.trim().toLowerCase()]
     );
-    if (!rows.length) { recordAttempt(ip); return res.status(401).json({ error: 'Credenciales inválidas' }); }
+    if (!rows.length) { recordAttempt(key); return res.status(401).json({ error: 'Credenciales inválidas' }); }
 
     const user = rows[0];
     const valid = await bcrypt.compare(password, user.password);
-    if (!valid) { recordAttempt(ip); return res.status(401).json({ error: 'Credenciales inválidas' }); }
+    if (!valid) { recordAttempt(key); return res.status(401).json({ error: 'Credenciales inválidas' }); }
 
-    resetAttempts(ip);
+    resetAttempts(key);
     const token = signToken(user);
     const profile = await fetchUserPublic(user.id);
     res.json({ token, user: userPayload(profile || user) });
@@ -215,27 +220,27 @@ async function ensureTempPasswordPlain(userId, currentPlain) {
 router.post('/recuperar', async (req, res) => {
   try {
     const ip = req.ip || req.connection.remoteAddress;
-    const record = getAttempts(ip);
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email requerido' });
+    const emailNorm = email.trim().toLowerCase();
+    const key = attemptKey(ip, emailNorm);
+    const record = getAttempts(key);
     if (record && record.count >= MAX_ATTEMPTS) {
       const remaining = Math.ceil((WINDOW_MS - (Date.now() - record.start)) / 60000);
       return res.status(429).json({ error: `Demasiados intentos. Intenta en ${remaining} minuto(s).` });
     }
-    const { email } = req.body;
-    if (!email) return res.status(400).json({ error: 'Email requerido' });
-
-    const emailNorm = email.trim().toLowerCase();
     const [rows] = await pool.execute(
       'SELECT id, psw_temp, password_plain FROM tribu_users WHERE email = ? LIMIT 1', [emailNorm]
     );
     if (!rows.length) {
-      recordAttempt(ip);
+      recordAttempt(key);
       return res.json({ temp: false, message: 'Si el correo existe y tiene contraseña temporal, podrás continuar.' });
     }
     const user = rows[0];
     if (!user.psw_temp) {
       return res.json({ temp: false, message: 'Si el correo existe, recibirás instrucciones por correo cuando esté disponible.' });
     }
-    resetAttempts(ip);
+    resetAttempts(key);
     const tempPassword = await ensureTempPasswordPlain(user.id, user.password_plain);
     res.json({ temp: true, tempPassword, message: 'Esta es tu contraseña temporal. Ingrésala a continuación y crea una nueva contraseña.' });
   } catch (err) { console.error(err); res.status(500).json({ error: 'Error al procesar la solicitud' }); }
@@ -244,27 +249,27 @@ router.post('/recuperar', async (req, res) => {
 router.post('/cambiar-password-temp', async (req, res) => {
   try {
     const ip = req.ip || req.connection.remoteAddress;
-    const record = getAttempts(ip);
-    if (record && record.count >= MAX_ATTEMPTS) {
-      const remaining = Math.ceil((WINDOW_MS - (Date.now() - record.start)) / 60000);
-      return res.status(429).json({ error: `Demasiados intentos. Intenta en ${remaining} minuto(s).` });
-    }
     const { email, tempPassword, newPassword } = req.body;
     if (!email || !tempPassword || !newPassword)
       return res.status(400).json({ error: 'Correo, contraseña temporal y nueva contraseña son requeridos' });
     if (String(newPassword).length < 6)
       return res.status(400).json({ error: 'La nueva contraseña debe tener al menos 6 caracteres' });
-
     const emailNorm = email.trim().toLowerCase();
+    const key = attemptKey(ip, emailNorm);
+    const record = getAttempts(key);
+    if (record && record.count >= MAX_ATTEMPTS) {
+      const remaining = Math.ceil((WINDOW_MS - (Date.now() - record.start)) / 60000);
+      return res.status(429).json({ error: `Demasiados intentos. Intenta en ${remaining} minuto(s).` });
+    }
     const [rows] = await pool.execute(
       'SELECT id, password FROM tribu_users WHERE email = ? AND psw_temp = 1 LIMIT 1', [emailNorm]
     );
-    if (!rows.length) { recordAttempt(ip); return res.status(400).json({ error: 'No se encontró una cuenta con contraseña temporal para ese correo' }); }
+    if (!rows.length) { recordAttempt(key); return res.status(400).json({ error: 'No se encontró una cuenta con contraseña temporal para ese correo' }); }
 
     const valid = await bcrypt.compare(String(tempPassword), rows[0].password);
-    if (!valid) { recordAttempt(ip); return res.status(401).json({ error: 'Contraseña temporal incorrecta' }); }
+    if (!valid) { recordAttempt(key); return res.status(401).json({ error: 'Contraseña temporal incorrecta' }); }
 
-    resetAttempts(ip);
+    resetAttempts(key);
     const hash = await bcrypt.hash(String(newPassword), 12);
     await pool.execute(
       'UPDATE tribu_users SET password = ?, psw_temp = 0, password_plain = NULL, reset_token = NULL, reset_token_exp = NULL WHERE id = ?',
@@ -320,22 +325,31 @@ router.get('/facturacion', tribuAuthMiddleware, async (req, res) => {
 
 router.put('/perfil', tribuAuthMiddleware, async (req, res) => {
   try {
-    const nombre = sanitizeName(req.body.nombre);
-    const apellido = sanitizeName(req.body.apellido);
+    const nombre = sanitizeName(req.body.nombre) || null;
+    const apellido = sanitizeName(req.body.apellido) || null;
     const email = sanitizeEmail(req.body.email);
     const telefono = sanitizePhone(req.body.telefono);
-    if (!nombre || !apellido) return res.status(400).json({ error: 'Nombre y apellido son obligatorios' });
-    if (!email) return res.status(400).json({ error: 'Correo electrónico inválido' });
+    const carrera = String(req.body.carrera || '').trim().slice(0, 200) || null;
+    const hobbies = req.body.hobbies != null ? String(req.body.hobbies).slice(0, 65535) : null;
+    const a_que_te_dedicas = req.body.a_que_te_dedicas != null ? String(req.body.a_que_te_dedicas).slice(0, 65535) : null;
 
-    const [existing] = await pool.execute(
-      'SELECT id FROM tribu_users WHERE email = ? AND id != ? LIMIT 1', [email, req.tribuUser.id]
-    );
-    if (existing.length) return res.status(409).json({ error: 'Ese correo ya está en uso' });
+    if (email) {
+      const [[existing]] = await pool.execute(
+        'SELECT id FROM tribu_users WHERE email = ? AND id != ? LIMIT 1', [email, req.tribuUser.id]
+      );
+      if (existing) return res.status(409).json({ error: 'Ese correo ya está en uso por otra cuenta' });
+    }
 
-    await pool.execute(
-      'UPDATE tribu_users SET nombre = ?, apellido = ?, email = ?, telefono = ? WHERE id = ?',
-      [nombre, apellido, email, telefono, req.tribuUser.id]
-    );
+    const updates = [];
+    const params = [];
+    if (nombre) { updates.push('nombre = ?'); params.push(nombre); }
+    if (apellido) { updates.push('apellido = ?'); params.push(apellido); }
+    if (email) { updates.push('email = ?'); params.push(email); }
+    if (telefono !== undefined) { updates.push('telefono = ?'); params.push(telefono); }
+    updates.push('carrera = ?', 'hobbies = ?', 'a_que_te_dedicas = ?');
+    params.push(carrera, hobbies, a_que_te_dedicas, req.tribuUser.id);
+
+    await pool.execute(`UPDATE tribu_users SET ${updates.join(', ')} WHERE id = ?`, params);
     const user = await fetchUserPublic(req.tribuUser.id);
     const token = signToken(user);
     res.json({ user: userPayload(user), token });

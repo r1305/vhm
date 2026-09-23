@@ -951,6 +951,20 @@
   </style>
   <link rel="stylesheet" href="css/vhm-design-tokens-v1.css">
   <link rel="stylesheet" href="css/latribu-public-theme.css">
+  <link href="vendor/quill.snow.css" rel="stylesheet">
+  <style>
+    .ql-toolbar.ql-snow { border-radius: 10px 10px 0 0; border-color: var(--line); background: var(--tribu-100,#F7ECE9); }
+    .ql-container.ql-snow { border-radius: 0 0 10px 10px; border-color: var(--line); min-height: 120px; font-family: inherit; font-size: .95rem; }
+    .ql-editor { min-height: 110px; color: var(--txt); }
+    .ql-editor.ql-blank::before { color: var(--muted); font-style: normal; }
+    .emoji-btn { background: none; border: 1px solid var(--line); border-radius: 8px; padding: 4px 10px; cursor: pointer; font-size: 1.1rem; color: var(--muted); transition: background .15s; }
+    .emoji-btn:hover { background: var(--tribu-100,#F7ECE9); }
+    .emoji-picker-wrap { position: relative; display: inline-block; }
+    .emoji-grid { display: none; position: absolute; z-index: 200; top: calc(100% + 6px); left: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 10px; box-shadow: 0 12px 36px rgba(14,23,20,.12); display: none; flex-wrap: wrap; gap: 4px; width: 260px; max-height: 200px; overflow-y: auto; }
+    .emoji-grid.open { display: flex; }
+    .emoji-grid button { background: none; border: none; font-size: 1.3rem; cursor: pointer; padding: 4px; border-radius: 6px; transition: background .1s; }
+    .emoji-grid button:hover { background: var(--tribu-100,#F7ECE9); }
+  </style>
 </head>
 <body>
 
@@ -1029,7 +1043,7 @@
         <div id="profileAvatarWrap"></div>
         <div>
           <div style="font-family:'Fraunces',serif;font-size:1.35rem;color:var(--txt,#16201C)" id="profileHeading">Tu perfil</div>
-          <div style="color:var(--muted);font-size:.88rem;margin-top:4px">Actualiza tus datos de contacto</div>
+          <div style="color:var(--muted);font-size:.88rem;margin-top:4px">Cuéntanos sobre ti</div>
         </div>
       </div>
       <div class="tribu-form-grid-2">
@@ -1037,13 +1051,34 @@
         <div class="profile-field"><label>Apellido</label><input type="text" id="pfApellido" autocomplete="family-name"></div>
       </div>
       <div class="profile-field"><label>Correo</label><input type="email" id="pfEmail" autocomplete="email"></div>
-      <div class="profile-field"><label>Celular</label><input type="tel" id="pfTelefono" placeholder="+51 999 999 999" autocomplete="tel"></div>
+      <div class="profile-field"><label>Celular</label><input type="tel" id="pfTelefono" autocomplete="tel"></div>
+      <div class="profile-field"><label>Carrera / Profesión</label><input type="text" id="pfCarrera" placeholder="Ej: Psicóloga, Ingeniera, Coach..." maxlength="200"></div>
+      <div class="profile-field">
+        <label style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+          <span>Mis hobbies</span>
+          <span class="emoji-picker-wrap">
+            <button type="button" class="emoji-btn" onclick="toggleEmojiPicker('hobbiesEmoji',event)" title="Insertar emoji">😊</button>
+            <div class="emoji-grid" id="hobbiesEmoji"></div>
+          </span>
+        </label>
+        <div id="pfHobbiesEditor"></div>
+      </div>
+      <div class="profile-field">
+        <label style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+          <span>¿A qué te dedicas?</span>
+          <span class="emoji-picker-wrap">
+            <button type="button" class="emoji-btn" onclick="toggleEmojiPicker('dedicasEmoji',event)" title="Insertar emoji">😊</button>
+            <div class="emoji-grid" id="dedicasEmoji"></div>
+          </span>
+        </label>
+        <div id="pfDedicasEditor"></div>
+      </div>
       <div class="profile-field">
         <label>Foto de perfil</label>
         <input type="file" id="pfFoto" accept="image/jpeg,image/png,image/webp,image/gif">
       </div>
       <div class="profile-actions">
-        <button type="button" class="profile-btn profile-btn-primary" id="pfSaveBtn" onclick="guardarPerfil()">Guardar cambios</button>
+        <button type="button" class="profile-btn profile-btn-primary" id="pfSaveBtn" onclick="guardarPerfil()">Guardar</button>
         <button type="button" class="profile-btn profile-btn-outline" onclick="subirFotoPerfil()">Subir foto</button>
         <button type="button" class="profile-btn profile-btn-outline" id="pfRemoveFotoBtn" style="display:none" onclick="quitarFotoPerfil()">Quitar foto</button>
       </div>
@@ -1292,6 +1327,60 @@
 </footer>
 
 <script>
+let quillHobbies = null;
+let quillDedicas = null;
+
+const EMOJIS = ['😊','😂','🥰','😎','🤩','🙌','💪','🎉','🔥','✨','💡','🎯','🌟','🚀','💼','📚','🎨','🎵','🏋️','🧘','🌿','🍀','🐾','✈️','🌍','🏠','❤️','💙','💚','💛','🧡','💜','🤝','👏','🙏','💬','📝','🎓','🏆','⭐'];
+
+function initQuillEditors() {
+  if (quillHobbies) return;
+  const toolbarOptions = [
+    ['bold', 'italic', 'underline'],
+    [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+    ['link'],
+    ['clean']
+  ];
+  quillHobbies = new Quill('#pfHobbiesEditor', {
+    theme: 'snow',
+    placeholder: 'Cuéntanos qué te apasiona, qué haces en tu tiempo libre...',
+    modules: { toolbar: toolbarOptions },
+  });
+  quillDedicas = new Quill('#pfDedicasEditor', {
+    theme: 'snow',
+    placeholder: 'Cuéntanos a qué te dedicas, tu trabajo, proyectos...',
+    modules: { toolbar: toolbarOptions },
+  });
+  ['hobbiesEmoji', 'dedicasEmoji'].forEach(id => {
+    const grid = document.getElementById(id);
+    if (!grid) return;
+    grid.innerHTML = EMOJIS.map(e =>
+      `<button type="button" onclick="insertEmoji('${id}','${e}')">${e}</button>`
+    ).join('');
+  });
+}
+
+function toggleEmojiPicker(id, e) {
+  e.stopPropagation();
+  const grid = document.getElementById(id);
+  if (!grid) return;
+  const isOpen = grid.classList.contains('open');
+  document.querySelectorAll('.emoji-grid.open').forEach(g => g.classList.remove('open'));
+  if (!isOpen) grid.classList.add('open');
+}
+
+function insertEmoji(gridId, emoji) {
+  const quill = gridId === 'hobbiesEmoji' ? quillHobbies : quillDedicas;
+  if (!quill) return;
+  const range = quill.getSelection(true);
+  quill.insertText(range.index, emoji);
+  quill.setSelection(range.index + emoji.length);
+  document.getElementById(gridId)?.classList.remove('open');
+}
+
+document.addEventListener('click', () => {
+  document.querySelectorAll('.emoji-grid.open').forEach(g => g.classList.remove('open'));
+});
+
 const API = (window.__APP_BASE__ || '') + '/api';
 let videosData = [];
 let videoActual = null;
@@ -1537,6 +1626,9 @@ function fillPerfilForm() {
   document.getElementById('pfApellido').value = tribuUser.apellido || '';
   document.getElementById('pfEmail').value = tribuUser.email || '';
   document.getElementById('pfTelefono').value = tribuUser.telefono || '';
+  document.getElementById('pfCarrera').value = tribuUser.carrera || '';
+  if (quillHobbies) quillHobbies.root.innerHTML = tribuUser.hobbies || '';
+  if (quillDedicas) quillDedicas.root.innerHTML = tribuUser.a_que_te_dedicas || '';
   document.getElementById('profileHeading').textContent = (tribuUser.nombre || '') + ' ' + (tribuUser.apellido || '');
   renderProfileAvatar();
   const msg = document.getElementById('pfMsg');
@@ -1545,6 +1637,7 @@ function fillPerfilForm() {
 
 async function cargarPerfilForm() {
   if (!tribuUser) return;
+  initQuillEditors();
   fillPerfilForm();
   try {
     const res = await tribuFetch('/tribu-auth/me');
@@ -1575,6 +1668,9 @@ async function guardarPerfil() {
         apellido: document.getElementById('pfApellido').value.trim(),
         email: document.getElementById('pfEmail').value.trim(),
         telefono: document.getElementById('pfTelefono').value.trim(),
+        carrera: document.getElementById('pfCarrera').value.trim(),
+        hobbies: quillHobbies ? quillHobbies.root.innerHTML : '',
+        a_que_te_dedicas: quillDedicas ? quillDedicas.root.innerHTML : '',
       },
     });
     const d = await res.json();
@@ -3299,6 +3395,7 @@ function mostrarTribuHeroVideo(cfg) {
 })();
 </script>
 
+<script src="vendor/quill.min.js"></script>
 <script src="clara-chat.js"></script>
 
 </body>

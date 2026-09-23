@@ -56,6 +56,9 @@ async function crearEsquema() {
       reset_token      VARCHAR(64)  NULL,
       reset_token_exp  DATETIME     NULL,
       foto_url         VARCHAR(500) NULL,
+      carrera          VARCHAR(200) NULL,
+      hobbies          MEDIUMTEXT   NULL,
+      a_que_te_dedicas MEDIUMTEXT   NULL,
       is_suscribed     TINYINT(1)   NOT NULL DEFAULT 0,
       created_at       TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
       updated_at       TIMESTAMP    DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -450,6 +453,16 @@ async function crearEsquema() {
   if (cfgRows.length === 0) {
     await pool.query('INSERT INTO tribu_config (id) VALUES (1)');
   }
+
+  // ── Perfil extendido (migración) ──
+  const [cols] = await pool.query('SHOW COLUMNS FROM tribu_users');
+  const colNames = cols.map(c => c.Field);
+  if (!colNames.includes('carrera'))
+    await pool.query('ALTER TABLE tribu_users ADD COLUMN carrera VARCHAR(200) NULL AFTER foto_url');
+  if (!colNames.includes('hobbies'))
+    await pool.query('ALTER TABLE tribu_users ADD COLUMN hobbies MEDIUMTEXT NULL AFTER carrera');
+  if (!colNames.includes('a_que_te_dedicas'))
+    await pool.query('ALTER TABLE tribu_users ADD COLUMN a_que_te_dedicas MEDIUMTEXT NULL AFTER hobbies');
 
   await ensureAccesosSchema();
   await backfillAccesos();
