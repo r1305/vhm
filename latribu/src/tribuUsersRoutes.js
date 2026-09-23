@@ -12,6 +12,11 @@ function requireAdmin(req, res, next) {
   return res.status(403).json({ error: 'Acceso restringido' });
 }
 
+function requireSuperAdmin(req, res, next) {
+  if (req.user && req.user.rol === 'SUPER_ADMIN') return next();
+  return res.status(403).json({ error: 'Acceso restringido a Super Admin' });
+}
+
 router.get('/', async (req, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page) || 1);
@@ -62,6 +67,18 @@ router.get('/:id/password-temp', requireAdmin, async (req, res) => {
     );
     if (!rows.length) return res.status(404).json({ error: 'No hay contraseña temporal para este usuario' });
     res.json({ password: rows[0].password_plain || null });
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Error al obtener contraseña' }); }
+});
+
+router.get('/:id/password', requireSuperAdmin, async (req, res) => {
+  try {
+    const [rows] = await pool.execute(
+      'SELECT password_plain, psw_temp FROM tribu_users WHERE id = ? LIMIT 1', [req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Usuario no encontrado' });
+    const { password_plain, psw_temp } = rows[0];
+    if (!psw_temp) return res.json({ password: null, changed: true });
+    res.json({ password: password_plain || null, changed: false });
   } catch (err) { console.error(err); res.status(500).json({ error: 'Error al obtener contraseña' }); }
 });
 

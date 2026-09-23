@@ -65,6 +65,10 @@
   }
 
   function passwordCell(u) {
+    if (AdminAuth.isSuperAdmin()) {
+      const label = u.psw_temp ? '🔑 Ver contraseña' : '🔑 Ver contraseña';
+      return '<button type="button" class="btn btn-outline btn-xs" data-action="ver-psw" data-id="' + u.id + '">' + label + '</button>';
+    }
     if (!u.psw_temp) {
       return '<span class="badge" style="background:#d1fae5;color:#065f46">Cambiada</span>';
     }
@@ -103,9 +107,11 @@
           '<td style="font-size:.82rem;color:#888">' + AdminApi.escapeHtml(fecha) + '</td>' +
         '</tr>';
 
-      const pswMobile = u.psw_temp
+      const pswMobile = AdminAuth.isSuperAdmin()
         ? '<button type="button" class="btn btn-outline btn-xs" style="margin-left:4px" data-action="ver-psw" data-id="' + u.id + '">🔑 Ver</button>'
-        : '<span class="badge" style="background:#d1fae5;color:#065f46;margin-left:4px">Cambiada</span>';
+        : (u.psw_temp
+          ? '<button type="button" class="btn btn-outline btn-xs" style="margin-left:4px" data-action="ver-psw" data-id="' + u.id + '">🔑 Ver</button>'
+          : '<span class="badge" style="background:#d1fae5;color:#065f46;margin-left:4px">Cambiada</span>');
 
       cards +=
         '<div class="mc-item">' +
@@ -209,8 +215,17 @@
     AdminUtils.showModal('modal-psw');
 
     try {
-      const res = await AdminApi.apiFetch('/tribu-users/' + u.id + '/password-temp', { headers: AdminApi.authHeaders() });
+      const endpoint = AdminAuth.isSuperAdmin()
+        ? '/tribu-users/' + u.id + '/password'
+        : '/tribu-users/' + u.id + '/password-temp';
+      const res = await AdminApi.apiFetch(endpoint, { headers: AdminApi.authHeaders() });
       const data = await res.json();
+      if (data.changed) {
+        pswCargando.style.display = 'none';
+        pswError.style.display = 'block';
+        pswError.textContent = 'Este usuario ya cambió su contraseña. No es posible verla.';
+        return;
+      }
       pswValor = data.password || '';
     } catch {
       toast('Error al obtener contraseña', 'error');
@@ -219,8 +234,9 @@
       if (pswValor) {
         pswValorWrap.style.display = 'block';
         updatePswDisplay();
-      } else {
+      } else if (pswError.style.display !== 'block') {
         pswError.style.display = 'block';
+        pswError.textContent = 'No se encontró la contraseña.';
       }
     }
   }
