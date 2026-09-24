@@ -228,7 +228,7 @@
             <div class="pkg-historial-title">${esc(pkg.nombre)}</div>
             <div style="display:flex;gap:6px;align-items:center">
               <span class="pkg-estado-badge ${est.cls}">${est.label}</span>
-              <button type="button" class="btn btn-outline btn-xs" data-editar-pkg="${pkg.id}" data-pid="${pid}" title="Editar paquete"><i class="fas fa-pen"></i></button>
+              ${window.__USER_ROL__ !== 'terapeuta' ? `<button type="button" class="btn btn-outline btn-xs" data-editar-pkg="${pkg.id}" data-pid="${pid}" title="Cambiar paquete"><i class="fas fa-pen"></i></button>` : ''}
             </div>
           </div>
           <div class="pkg-historial-meta">
@@ -360,6 +360,7 @@
   }
 
   async function showPacienteForm(p = null) {
+    if (window.__USER_ROL__ === 'terapeuta') return;
     window.showCrmLoader?.('Cargando datos…');
     let catalogo = [];
     let paquetesPac = [];
