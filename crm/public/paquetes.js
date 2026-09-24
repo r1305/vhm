@@ -3,6 +3,7 @@
 
   const { api, toast, esc, openModal, confirmDialog } = window.CRM;
   const isSuperAdmin = window.__USER_ROL__ === 'superadmin';
+  const isAdmin = ['superadmin', 'admin', 'recepcion'].includes(window.__USER_ROL__);
 
   async function loadPaquetes() {
     try {
@@ -17,7 +18,7 @@
           <div class="pkg-card-top">
             <div class="pkg-card-name">${esc(p.nombre)}</div>
             <div class="pkg-card-top-actions">
-              <button class="btn-icon" data-edit="${p.id}" title="Editar"><i class="fas fa-pen"></i></button>
+              ${isAdmin ? `<button class="btn-icon" data-edit="${p.id}" title="Editar"><i class="fas fa-pen"></i></button>` : ''}
               ${isSuperAdmin ? `<button class="btn-icon btn-icon-danger" data-delete="${p.id}" data-name="${esc(p.nombre)}" title="Eliminar"><i class="fas fa-trash"></i></button>` : ''}
             </div>
           </div>
@@ -60,6 +61,7 @@
   }
 
   function showForm(p = null) {
+    if (!isAdmin) return;
     openModal(p ? 'Editar paquete' : 'Nuevo paquete', `
       <div class="form-group"><label class="form-label">Nombre *</label>
         <input class="form-control" id="pkg_nombre" value="${esc(p?.nombre || '')}"></div>
@@ -107,6 +109,6 @@
     }, { successMessage: p ? 'Paquete actualizado' : 'Paquete creado' });
   }
 
-  document.getElementById('btnNuevoPaquete')?.addEventListener('click', () => showForm());
+  if (isAdmin) document.getElementById('btnNuevoPaquete')?.addEventListener('click', () => showForm());
   loadPaquetes();
 })();
