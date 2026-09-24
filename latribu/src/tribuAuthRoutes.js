@@ -13,6 +13,7 @@ const { JWT_SECRET } = require('./auth');
 
 const router = Router();
 const BASE = (process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
+const ASSET_BASE = (process.env.SITE_URL || '').replace(/\/$/, '') || BASE;
 
 const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
 const avatarStorage = multer.diskStorage({
@@ -363,7 +364,7 @@ router.post('/perfil/foto', tribuAuthMiddleware, (req, res) => {
     try {
       const [rows] = await pool.execute('SELECT foto_url FROM tribu_users WHERE id = ? LIMIT 1', [req.tribuUser.id]);
       const oldUrl = rows[0]?.foto_url;
-      const foto_url = `${BASE}/uploads/tribu/${req.file.filename}`;
+      const foto_url = `${ASSET_BASE}/uploads/tribu/${req.file.filename}`;
       await pool.execute('UPDATE tribu_users SET foto_url = ? WHERE id = ?', [foto_url, req.tribuUser.id]);
       if (oldUrl && oldUrl !== foto_url) deleteFotoFile(oldUrl);
       const user = await fetchUserPublic(req.tribuUser.id);

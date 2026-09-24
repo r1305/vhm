@@ -592,8 +592,8 @@ router.post('/', authMiddleware, requireAdmin, upload.single('thumbnail'), async
 
     // Prioridad: archivo subido > URL manual > miniatura/duración/título
     // automáticos del enlace (YouTube o Loom).
-    const BASE = (process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
-    const thumbInicial = req.file ? `${BASE}/uploads/${req.file.filename}` : (thumbnail_url || null);
+    const ASSET_BASE = (process.env.SITE_URL || process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
+    const thumbInicial = req.file ? `${ASSET_BASE}/uploads/${req.file.filename}` : (thumbnail_url || null);
     const media = await enriquecerMedia(video_url, {
       thumb: thumbInicial,
       duracion: duracion || null,
@@ -645,8 +645,8 @@ router.put('/:id', authMiddleware, requireAdmin, upload.single('thumbnail'), asy
 
     if (req.file) {
       eliminarArchivoLocal(thumb);
-      const BASE = (process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
-      thumb = `${BASE}/uploads/${req.file.filename}`;
+      const ASSET_BASE = (process.env.SITE_URL || process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
+      thumb = `${ASSET_BASE}/uploads/${req.file.filename}`;
     } else if (eliminar_thumbnail === 'true' || eliminar_thumbnail === '1') {
       eliminarArchivoLocal(thumb);
       thumb = autoThumbnail(video_url);
