@@ -5,9 +5,8 @@ const pool = require('./db');
 
 const CLIENT_ID     = process.env.GOOGLE_CLIENT_ID;
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-const BASE_REDIRECT = process.env.GOOGLE_REDIRECT_URI
-  ? process.env.GOOGLE_REDIRECT_URI.replace('/callback', '/calendar-callback')
-  : 'https://vhm.com.pe/crm/api/terapeutas/google/calendar-callback';
+const BASE_REDIRECT = process.env.GOOGLE_CALENDAR_REDIRECT_URI
+  || 'https://vhm.com.pe/crm/api/terapeutas/google/calendar-callback';
 
 function getOAuth2Client() {
   return new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, BASE_REDIRECT);
