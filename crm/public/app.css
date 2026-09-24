@@ -194,3 +194,7 @@ body.crm-loading { overflow: hidden; }
   .crm-main { margin-left: 0; }
   .form-row { grid-template-columns: 1fr; }
 }
+
+/* Google Calendar button state */
+#btnGoogleCal.gcal-connected { color: #34a853; border-color: #34a853; }
+#btnGoogleCal.gcal-connected i { color: #34a853; }

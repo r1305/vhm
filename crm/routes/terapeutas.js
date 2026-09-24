@@ -151,7 +151,9 @@ router.get('/google/calendar-callback', async (req, res) => {
   const { code, state } = req.query;
   if (!code || !state) return res.redirect(`${BASE}/terapeutas?gcal=error`);
   try {
-    const terapeutaId = parseInt(Buffer.from(state, 'base64').toString(), 10);
+    const decoded = JSON.parse(Buffer.from(state, 'base64').toString());
+    const terapeutaId = parseInt(decoded.id, 10);
+    const redirect = decoded.redirect || 'terapeutas';
     if (!terapeutaId) throw new Error('state inválido');
     const auth = new (require('googleapis').google.auth.OAuth2)(
       process.env.GOOGLE_CLIENT_ID,
@@ -160,7 +162,7 @@ router.get('/google/calendar-callback', async (req, res) => {
     );
     const { tokens } = await auth.getToken(code);
     await googleCal.saveTokens(terapeutaId, tokens);
-    res.redirect(`${BASE}/terapeutas?gcal=ok&tid=${terapeutaId}`);
+    res.redirect(`${BASE}/${redirect}?gcal=ok&tid=${terapeutaId}`);
   } catch (err) {
     console.error('[gcal callback]', err.message);
     res.redirect(`${BASE}/terapeutas?gcal=error`);
@@ -171,7 +173,8 @@ router.get('/:id/google/auth-url', auth, async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (req.user.rol === 'terapeuta' && req.user.id !== id)
     return res.status(403).json({ error: 'Sin acceso' });
-  res.json({ url: googleCal.getAuthUrl(id) });
+  const redirect = req.query.redirect || 'terapeutas';
+  res.json({ url: googleCal.getAuthUrl(id, redirect) });
 });
 
 router.get('/:id/google/status', auth, async (req, res) => {
