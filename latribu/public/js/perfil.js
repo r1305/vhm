@@ -4,6 +4,18 @@ let quillHobbies = null;
 let quillDedicas = null;
 const EMOJIS = ['😊','😂','🥰','😎','🤩','🙌','💪','🎉','🔥','✨','💡','🎯','🌟','🚀','💼','📚','🎨','🎵','🏋️','🧘','🌿','🍀','🐾','✈️','🌍','🏠','❤️','💙','💚','💛','🧡','💜','🤝','👏','🙏','💬','📝','🎓','🏆','⭐'];
 
+/* ── Loader ── */
+function showLoader(text) {
+  const el = document.getElementById('pageLoader');
+  const txt = document.getElementById('pageLoaderText');
+  if (txt) txt.textContent = text || 'Cargando...';
+  if (el) el.classList.add('show');
+}
+function hideLoader() {
+  document.getElementById('pageLoader')?.classList.remove('show');
+}
+
+/* ── Quill ── */
 function initQuillEditors() {
   if (quillHobbies) return;
   const toolbarOptions = [
@@ -52,17 +64,78 @@ document.addEventListener('click', () => {
   document.querySelectorAll('.emoji-grid.open').forEach(g => g.classList.remove('open'));
 });
 
-function renderProfileAvatar() {
-  const wrap = document.getElementById('profileAvatarWrap');
-  if (!wrap || !window.tribuUser) return;
-  const initial = escapeHtml((window.tribuUser.nombre || '?').charAt(0).toUpperCase());
-  wrap.innerHTML = window.tribuUser.foto_url
-    ? `<img src="${escapeHtml(window.tribuUser.foto_url)}" class="profile-avatar" alt="Foto de perfil">`
-    : `<div class="profile-avatar profile-avatar-ph">${initial}</div>`;
-  const rm = document.getElementById('pfRemoveFotoBtn');
-  if (rm) rm.style.display = window.tribuUser.foto_url ? '' : 'none';
+/* ── Avatar ── */
+function renderAvatar() {
+  const circle = document.getElementById('avatarCircle');
+  const removeBtn = document.getElementById('avatarRemoveBtn');
+  if (!circle || !window.tribuUser) return;
+  const u = window.tribuUser;
+  if (u.foto_url) {
+    circle.innerHTML = `<img src="${escapeHtml(u.foto_url)}" alt="Foto de perfil">`;
+    if (removeBtn) removeBtn.classList.add('show');
+  } else {
+    const initial = escapeHtml((u.nombre || '?').charAt(0).toUpperCase());
+    circle.textContent = initial;
+    if (removeBtn) removeBtn.classList.remove('show');
+  }
 }
 
+function setAvatarPreview(src) {
+  const circle = document.getElementById('avatarCircle');
+  if (circle) circle.innerHTML = `<img src="${escapeHtml(src)}" alt="Vista previa">`;
+}
+
+async function onFotoSelected() {
+  const input = document.getElementById('pfFoto');
+  if (!input?.files?.length) return;
+  const file = input.files[0];
+
+  // Preview inmediato
+  const reader = new FileReader();
+  reader.onload = e => setAvatarPreview(e.target.result);
+  reader.readAsDataURL(file);
+
+  // Subir
+  showLoader('Subiendo foto...');
+  const fd = new FormData();
+  fd.append('foto', file);
+  try {
+    const res = await tribuFetch('/tribu-auth/perfil/foto', { method: 'POST', body: fd });
+    const d = await res.json();
+    if (!res.ok) { setProfileMsg(d.error || 'Error al subir foto', false); renderAvatar(); return; }
+    window.tribuUser = normalizarSuscripcionUsuario(d.user);
+    setStoredUser(window.tribuUser);
+    input.value = '';
+    renderNavAuth();
+    renderAvatar();
+    setProfileMsg('Foto actualizada', true);
+  } catch {
+    setProfileMsg('Error de conexión', false);
+    renderAvatar();
+  } finally {
+    hideLoader();
+  }
+}
+
+async function quitarFotoPerfil() {
+  showLoader('Quitando foto...');
+  try {
+    const res = await tribuFetch('/tribu-auth/perfil/foto', { method: 'DELETE' });
+    const d = await res.json();
+    if (!res.ok) { setProfileMsg(d.error || 'Error', false); return; }
+    window.tribuUser = normalizarSuscripcionUsuario(d.user);
+    setStoredUser(window.tribuUser);
+    renderNavAuth();
+    renderAvatar();
+    setProfileMsg('Foto eliminada', true);
+  } catch {
+    setProfileMsg('Error de conexión', false);
+  } finally {
+    hideLoader();
+  }
+}
+
+/* ── Formulario ── */
 function fillPerfilForm() {
   const u = window.tribuUser;
   if (!u) return;
@@ -74,7 +147,7 @@ function fillPerfilForm() {
   if (quillHobbies) quillHobbies.root.innerHTML = u.hobbies || '';
   if (quillDedicas) quillDedicas.root.innerHTML = u.a_que_te_dedicas || '';
   document.getElementById('profileHeading').textContent = ((u.nombre || '') + ' ' + (u.apellido || '')).trim();
-  renderProfileAvatar();
+  renderAvatar();
   const msg = document.getElementById('pfMsg');
   if (msg) { msg.textContent = ''; msg.className = 'profile-msg'; }
 }
@@ -89,6 +162,7 @@ function setProfileMsg(text, ok) {
 async function guardarPerfil() {
   const btn = document.getElementById('pfSaveBtn');
   btn.disabled = true;
+  showLoader('Guardando perfil...');
   try {
     const res = await tribuFetch('/tribu-auth/perfil', {
       method: 'PUT',
@@ -114,53 +188,19 @@ async function guardarPerfil() {
     setProfileMsg('Error de conexión', false);
   } finally {
     btn.disabled = false;
-  }
-}
-
-async function subirFotoPerfil() {
-  const input = document.getElementById('pfFoto');
-  if (!input?.files?.length) { setProfileMsg('Selecciona una imagen primero', false); return; }
-  const fd = new FormData();
-  fd.append('foto', input.files[0]);
-  try {
-    const res = await tribuFetch('/tribu-auth/perfil/foto', { method: 'POST', body: fd });
-    const d = await res.json();
-    if (!res.ok) { setProfileMsg(d.error || 'Error al subir foto', false); return; }
-    window.tribuUser = normalizarSuscripcionUsuario(d.user);
-    setStoredUser(window.tribuUser);
-    input.value = '';
-    renderNavAuth();
-    fillPerfilForm();
-    setProfileMsg('Foto actualizada', true);
-  } catch {
-    setProfileMsg('Error de conexión', false);
-  }
-}
-
-async function quitarFotoPerfil() {
-  if (!confirm('¿Quitar tu foto de perfil?')) return;
-  try {
-    const res = await tribuFetch('/tribu-auth/perfil/foto', { method: 'DELETE' });
-    const d = await res.json();
-    if (!res.ok) { setProfileMsg(d.error || 'Error', false); return; }
-    window.tribuUser = normalizarSuscripcionUsuario(d.user);
-    setStoredUser(window.tribuUser);
-    renderNavAuth();
-    fillPerfilForm();
-    setProfileMsg('Foto eliminada', true);
-  } catch {
-    setProfileMsg('Error de conexión', false);
+    hideLoader();
   }
 }
 
 /* ── Init ── */
 (async () => {
   if (!requireAuth()) return;
-  const ok = await verificarSesion();
-  if (!ok) { window.location.href = BASE + '/?login=1'; return; }
-  initQuillEditors();
-  fillPerfilForm();
+  showLoader('Cargando perfil...');
   try {
+    const ok = await verificarSesion();
+    if (!ok) { window.location.href = BASE + '/?login=1'; return; }
+    initQuillEditors();
+    fillPerfilForm();
     const res = await tribuFetch('/tribu-auth/me');
     if (res.ok) {
       window.tribuUser = normalizarSuscripcionUsuario(await res.json());
@@ -168,5 +208,7 @@ async function quitarFotoPerfil() {
       fillPerfilForm();
       renderNavAuth();
     }
-  } catch {}
+  } finally {
+    hideLoader();
+  }
 })();

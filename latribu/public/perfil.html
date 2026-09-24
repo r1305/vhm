@@ -61,11 +61,30 @@
     .account-tab:hover { background: var(--tribu-100,#F7ECE9); color: var(--txt); }
     .account-tab.active { background: var(--tribu-600,#A84F3E); border-color: transparent; color: #fff; box-shadow: 0 8px 22px -10px rgba(168,79,62,.55); }
 
+    /* LOADER */
+    .page-loader { display: none; position: fixed; inset: 0; z-index: 9000; background: rgba(14,23,20,.38); backdrop-filter: blur(4px); align-items: center; justify-content: center; }
+    .page-loader.show { display: flex; }
+    .page-loader-box { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 28px 36px; text-align: center; box-shadow: 0 12px 40px rgba(14,23,20,.12); min-width: 180px; }
+    .page-loader-spinner { width: 40px; height: 40px; border-radius: 50%; border: 3px solid rgba(168,79,62,.2); border-top-color: #A84F3E; animation: spin .75s linear infinite; margin: 0 auto 12px; }
+    .page-loader-text { font-size: .88rem; font-weight: 700; color: var(--muted); }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
     /* PROFILE */
     .profile-card { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 24px; }
     .profile-head { display: flex; align-items: center; gap: 18px; margin-bottom: 22px; flex-wrap: wrap; }
-    .profile-avatar { width: 88px; height: 88px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(168,79,62,.45); background: rgba(168,79,62,.15); }
-    .profile-avatar-ph { display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: 800; color: #fff; }
+
+    /* Avatar LinkedIn-style */
+    .avatar-upload { position: relative; width: 100px; height: 100px; flex-shrink: 0; cursor: pointer; }
+    .avatar-upload input[type=file] { display: none; }
+    .avatar-circle { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid rgba(168,79,62,.45); background: rgba(168,79,62,.15); display: flex; align-items: center; justify-content: center; font-size: 2.2rem; font-weight: 800; color: #fff; overflow: hidden; }
+    .avatar-circle img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; }
+    .avatar-overlay { position: absolute; inset: 0; border-radius: 50%; background: rgba(0,0,0,.45); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+    .avatar-upload:hover .avatar-overlay { opacity: 1; }
+    .avatar-overlay-icon { font-size: 1.4rem; line-height: 1; }
+    .avatar-overlay-text { font-size: .62rem; font-weight: 800; color: #fff; letter-spacing: .04em; text-transform: uppercase; }
+    .avatar-remove { position: absolute; top: 2px; right: 2px; width: 22px; height: 22px; border-radius: 50%; background: #fb7185; border: 2px solid #fff; color: #fff; font-size: .75rem; line-height: 1; display: none; align-items: center; justify-content: center; cursor: pointer; font-weight: 800; z-index: 2; }
+    .avatar-remove.show { display: flex; }
+
     .profile-field { margin-bottom: 14px; }
     .profile-field label { display: block; font-size: .82rem; font-weight: 800; color: var(--muted); margin-bottom: 6px; }
     .profile-field input { width: 100%; padding: 11px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface,var(--panel)); color: var(--txt); font-family: inherit; font-size: .95rem; }
@@ -152,7 +171,15 @@
 
     <div class="profile-card">
       <div class="profile-head">
-        <div id="profileAvatarWrap"></div>
+        <label class="avatar-upload" id="avatarUploadLabel" title="Cambiar foto">
+          <input type="file" id="pfFoto" accept="image/jpeg,image/png,image/webp,image/gif" onchange="onFotoSelected()">
+          <div class="avatar-circle" id="avatarCircle"></div>
+          <div class="avatar-overlay">
+            <span class="avatar-overlay-icon">📷</span>
+            <span class="avatar-overlay-text">Cambiar</span>
+          </div>
+          <button type="button" class="avatar-remove" id="avatarRemoveBtn" onclick="event.preventDefault();event.stopPropagation();quitarFotoPerfil()" title="Quitar foto">✕</button>
+        </label>
         <div>
           <div style="font-family:'Fraunces',serif;font-size:1.35rem;color:var(--txt)" id="profileHeading">Tu perfil</div>
           <div style="color:var(--muted);font-size:.88rem;margin-top:4px">Cuéntanos sobre ti</div>
@@ -185,14 +212,8 @@
         </label>
         <div id="pfDedicasEditor"></div>
       </div>
-      <div class="profile-field">
-        <label>Foto de perfil</label>
-        <input type="file" id="pfFoto" accept="image/jpeg,image/png,image/webp,image/gif">
-      </div>
       <div class="profile-actions">
         <button type="button" class="profile-btn profile-btn-primary" id="pfSaveBtn" onclick="guardarPerfil()">Guardar</button>
-        <button type="button" class="profile-btn profile-btn-outline" onclick="subirFotoPerfil()">Subir foto</button>
-        <button type="button" class="profile-btn profile-btn-outline" id="pfRemoveFotoBtn" style="display:none" onclick="quitarFotoPerfil()">Quitar foto</button>
       </div>
       <div class="profile-msg" id="pfMsg"></div>
     </div>
@@ -202,6 +223,14 @@
 <footer>
   <p>&copy; <script>document.write(new Date().getFullYear())</script> VHM - Bienestar, Relaciones &amp; Superación Personal.</p>
 </footer>
+
+<!-- Loader -->
+<div class="page-loader" id="pageLoader">
+  <div class="page-loader-box">
+    <div class="page-loader-spinner"></div>
+    <div class="page-loader-text" id="pageLoaderText">Cargando...</div>
+  </div>
+</div>
 
 <!-- Modal feedback -->
 <div class="auth-overlay" id="tribuFeedbackOverlay" role="dialog" aria-modal="true" aria-labelledby="tribuFeedbackTitle">

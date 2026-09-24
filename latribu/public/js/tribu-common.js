@@ -3,6 +3,17 @@
 const API = (window.__APP_BASE__ || '') + '/api';
 const BASE = window.__APP_BASE__ || '';
 
+/* ── Loader global ── */
+function showLoader(text) {
+  const el = document.getElementById('pageLoader');
+  const txt = document.getElementById('pageLoaderText');
+  if (txt) txt.textContent = text || 'Cargando...';
+  if (el) el.classList.add('show');
+}
+function hideLoader() {
+  document.getElementById('pageLoader')?.classList.remove('show');
+}
+
 /* ── Storage ── */
 function getToken() { return localStorage.getItem('tribu_token'); }
 function setToken(t) { localStorage.setItem('tribu_token', t); }

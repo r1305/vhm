@@ -81,6 +81,13 @@
     .subs-link-btn { background: none; border: none; color: var(--tribu-600,#A84F3E); font-family: inherit; font-size: .78rem; font-weight: 800; cursor: pointer; padding: 4px 0; text-decoration: none; }
     .subs-link-btn:hover { color: var(--tribu-700,#8F4234); text-decoration: underline; }
 
+    .page-loader { display: none; position: fixed; inset: 0; z-index: 9000; background: rgba(14,23,20,.38); backdrop-filter: blur(4px); align-items: center; justify-content: center; }
+    .page-loader.show { display: flex; }
+    .page-loader-box { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 28px 36px; text-align: center; box-shadow: 0 12px 40px rgba(14,23,20,.12); min-width: 180px; }
+    .page-loader-spinner { width: 40px; height: 40px; border-radius: 50%; border: 3px solid rgba(168,79,62,.2); border-top-color: #A84F3E; animation: spin .75s linear infinite; margin: 0 auto 12px; }
+    .page-loader-text { font-size: .88rem; font-weight: 700; color: var(--muted); }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
     .plan-card { background: rgba(168,79,62,.07); border: 1px solid rgba(168,79,62,.3); border-radius: 16px; padding: 20px 22px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
     .plan-nombre { font-family: 'Fraunces',serif; font-size: 1.1rem; font-weight: 700; color: var(--txt); margin-bottom: 4px; }
     .plan-desc { font-size: .85rem; color: var(--muted); line-height: 1.5; }
@@ -191,5 +198,13 @@
 
 <script src="js/tribu-common.js"></script>
 <script src="js/suscripciones.js"></script>
+
+<!-- Loader -->
+<div class="page-loader" id="pageLoader">
+  <div class="page-loader-box">
+    <div class="page-loader-spinner"></div>
+    <div class="page-loader-text" id="pageLoaderText">Cargando...</div>
+  </div>
+</div>
 </body>
 </html>

@@ -151,9 +151,14 @@ function cerrarModalPlanes() {
 /* ── Init ── */
 (async () => {
   if (!requireAuth()) return;
-  const ok = await verificarSesion();
-  if (!ok) { window.location.href = BASE + '/?login=1'; return; }
-  await cargarMisSuscripciones();
+  showLoader('Cargando suscripciones...');
+  try {
+    const ok = await verificarSesion();
+    if (!ok) { window.location.href = BASE + '/?login=1'; return; }
+    await cargarMisSuscripciones();
+  } finally {
+    hideLoader();
+  }
 
   document.getElementById('planesOverlay')?.addEventListener('click', e => {
     if (e.target.id === 'planesOverlay') cerrarModalPlanes();
