@@ -40,11 +40,6 @@
         if (id) hideModal(id);
       });
     });
-    (root || document).querySelectorAll('.modal-overlay').forEach(function (overlay) {
-      overlay.addEventListener('click', function (e) {
-        if (e.target === overlay) overlay.classList.remove('show');
-      });
-    });
   }
 
   function bindTabs(containerSelector, panelPrefix) {
