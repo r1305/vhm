@@ -8,6 +8,11 @@
   const USER_ROL = window.__USER_ROL__ || 'terapeuta';
   const IS_SUPERADMIN = USER_ROL === 'superadmin';
 
+  // Toast si viene de callback OAuth Google Calendar
+  const _qs = new URLSearchParams(location.search);
+  if (_qs.get('gcal') === 'ok')    { toast('Google Calendar vinculado ✅'); history.replaceState(null, '', location.pathname); }
+  if (_qs.get('gcal') === 'error') { toast('Error al vincular Google Calendar', 'danger'); history.replaceState(null, '', location.pathname); }
+
   const ROLE_LABELS = {
     superadmin: 'Superadmin',
     admin: 'Administrador',
@@ -44,12 +49,16 @@
   }
 
   function renderTerCard(t) {
+    const gcalBadge = t.google_calendar_connected
+      ? `<span title="Google Calendar vinculado" style="color:#34a853;font-size:13px"><i class="fab fa-google"></i></span>`
+      : '';
     return `
       <div class="ter-card">
         <div class="ter-card-top">
           <div class="ter-avatar">${(t.nombre?.[0]||'').toUpperCase()}</div>
           <div style="display:flex;gap:4px;align-items:center">
             ${t.pwa_installed_at ? `<i class="fas fa-mobile-screen" title="PWA instalada el ${fmtDate(t.pwa_installed_at)}" style="color:var(--primary);font-size:13px"></i>` : ''}
+            ${gcalBadge}
             <button class="btn-icon" data-edit="${t.id}" title="Editar"><i class="fas fa-pen"></i></button>
           </div>
         </div>
@@ -60,9 +69,13 @@
         </div>
         <div class="ter-card-footer">
           ${t.activo ? '<span class="badge badge-green">Activo</span>' : '<span class="badge badge-gray">Inactivo</span>'}
-          ${t.rol === 'terapeuta' ? `<button class="btn btn-outline btn-sm" data-horario="${t.id}" style="margin-left:auto;font-size:11px">
-            <i class="fas fa-clock"></i> Horario
-          </button>` : ''}
+          ${t.rol === 'terapeuta' ? `
+            <button class="btn btn-outline btn-sm" data-horario="${t.id}" style="margin-left:auto;font-size:11px">
+              <i class="fas fa-clock"></i> Horario
+            </button>
+            <button class="btn btn-outline btn-sm" data-gcal="${t.id}" data-gcal-connected="${t.google_calendar_connected ? '1' : '0'}" title="Google Calendar" style="font-size:11px">
+              <i class="fab fa-google"></i>
+            </button>` : ''}
         </div>
       </div>`;
   }
@@ -84,6 +97,13 @@
     document.querySelectorAll('[data-horario]').forEach(btn =>
       btn.addEventListener('click', () => showHorario(data.find(t => t.id == btn.dataset.horario)))
     );
+    document.querySelectorAll('[data-gcal]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tid = parseInt(btn.dataset.gcal, 10);
+        const connected = btn.dataset.gcalConnected === '1';
+        showGoogleCalModal(tid, connected, data.find(t => t.id === tid));
+      });
+    });
     document.querySelectorAll('[data-role-toggle]').forEach(btn => {
       btn.addEventListener('click', () => {
         const rol = btn.dataset.roleToggle;
@@ -249,6 +269,35 @@
     document.getElementById('btnCopyLink')?.addEventListener('click', () => {
       navigator.clipboard.writeText(link).then(() => toast('Link copiado'));
     });
+  }
+
+  async function showGoogleCalModal(tid, connected, ter) {
+    const nombre = ter ? fullName(ter) : `Terapeuta #${tid}`;
+    const { confirmDialog } = window.CRM;
+    if (connected) {
+      const ok = await confirmDialog({
+        title: 'Desconectar Google Calendar',
+        message: `¿Desconectar la cuenta de Google Calendar de ${nombre}? Ya no se cruzarán sus eventos al mostrar disponibilidad.`,
+        confirmLabel: 'Desconectar',
+        danger: true,
+      });
+      if (!ok) return;
+      try {
+        await api(`/terapeutas/${tid}/google`, { method: 'DELETE', successMessage: 'Google Calendar desconectado' });
+        loadTerapeutas();
+      } catch (e) { toast(e.message, 'danger'); }
+    } else {
+      const ok = await confirmDialog({
+        title: 'Vincular Google Calendar',
+        message: `Se abrirá una ventana de Google para que ${nombre} autorice el acceso de solo lectura a su calendario. ¿Continuar?`,
+        confirmLabel: 'Continuar',
+      });
+      if (!ok) return;
+      try {
+        const { url } = await api(`/terapeutas/${tid}/google/auth-url`);
+        window.location.href = url;
+      } catch (e) { toast(e.message, 'danger'); }
+    }
   }
 
   document.getElementById('btnNuevoTerapeuta').addEventListener('click', () => showTerapeutaForm());
