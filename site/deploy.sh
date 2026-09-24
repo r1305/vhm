@@ -60,7 +60,7 @@ npm_install_app() {
   (cd "$dir" && npm install --omit=dev)
 }
 
-for app in site crm luma; do
+for app in site crm latribu luma; do
   npm_install_app "$app"
 done
 
@@ -71,9 +71,10 @@ if [ -f site/public/DEPLOY_VERSION.txt ]; then
 fi
 
 echo ""
-echo "==> Limpiando workers lsnode (site + crm)..."
+echo "==> Limpiando workers lsnode (site + crm + latribu + luma)..."
 bash site/scripts/cpanel-clean-workers.sh -f --site-only
 bash site/scripts/cpanel-clean-workers.sh -f --crm-only
+bash site/scripts/cpanel-clean-workers.sh -f --latribu-only
 bash site/scripts/cpanel-clean-workers.sh -f --luma-only
 
 if [ "$DO_RESTART" -eq 1 ]; then
@@ -83,5 +84,5 @@ else
   echo ""
   echo "==> Código actualizado y workers limpiados."
   echo "    Para reiniciar site, crm y luma:"
-  echo "      bash site/scripts/cpanel-restart-apps.sh"
+  echo "      bash site/scripts/cpanel-restart-apps.sh site crm latribu luma"
 fi
