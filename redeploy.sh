@@ -75,13 +75,13 @@ fi
 
 if [ "$DO_RESTART" -eq 1 ]; then
   echo ""
-  echo "==> [3/3] Reiniciando apps Node (site, crm, luma, openwa)..."
-  bash "$VHM_ROOT/site/scripts/cpanel-restart-apps.sh" site crm luma openwa
+  echo "==> [3/3] Reiniciando apps Node (site, crm, latribu, luma, openwa)..."
+  bash "$VHM_ROOT/site/scripts/cpanel-restart-apps.sh" site crm latribu luma openwa
 else
   echo ""
   echo "==> Código actualizado (sin reinicio)."
   echo "    Para reiniciar:"
-  echo "      bash $VHM_ROOT/site/scripts/cpanel-restart-apps.sh site crm luma openwa"
+  echo "      bash $VHM_ROOT/site/scripts/cpanel-restart-apps.sh site crm latribu luma openwa"
 fi
 
 echo ""
