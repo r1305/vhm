@@ -180,6 +180,7 @@ async function ensureSchema() {
 
     // Agregar telefono a terapeutas si no existe
     try { await conn.execute('ALTER TABLE terapeutas ADD COLUMN telefono VARCHAR(30) DEFAULT NULL'); } catch (_) {}
+    try { await conn.execute('ALTER TABLE terapeutas ADD COLUMN google_calendar_tokens TEXT DEFAULT NULL'); } catch (_) {}
     try {
       await conn.execute(
         'ALTER TABLE terapeutas ADD COLUMN presencial_habilitado TINYINT(1) NOT NULL DEFAULT 1 AFTER activo'

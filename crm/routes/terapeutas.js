@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const pool = require('../lib/db');
 const { auth, authAdmin } = require('../lib/auth');
 const { canAssignRole, canManageUser, listFilterForRole } = require('../lib/roles');
+const googleCal = require('../lib/googleCalendar');
 
 const router = Router();
 
@@ -27,6 +28,7 @@ router.get('/', auth, async (req, res) => {
     const [rows] = await pool.execute(`
       SELECT t.id, t.nombre, t.apellido, t.username, t.email, t.telefono, t.rol, t.especialidad, t.activo,
              t.presencial_habilitado,
+             (t.google_calendar_tokens IS NOT NULL) AS google_calendar_connected,
              MAX(p.installed_at) AS pwa_installed_at
       FROM terapeutas t
       LEFT JOIN pwa_installs p ON p.user_id = t.id
@@ -139,6 +141,52 @@ router.patch('/:id/presencial', auth, async (req, res) => {
   } catch {
     res.status(500).json({ error: 'Error al actualizar modalidad presencial' });
   }
+});
+
+// ── Google Calendar por terapeuta ────────────────────────────
+
+// Callback OAuth2 — debe ir ANTES de /:id para no colisionar
+router.get('/google/calendar-callback', async (req, res) => {
+  const BASE = (process.env.APP_MOUNT_PATH || '/crm').replace(/\/$/, '');
+  const { code, state } = req.query;
+  if (!code || !state) return res.redirect(`${BASE}/terapeutas?gcal=error`);
+  try {
+    const terapeutaId = parseInt(Buffer.from(state, 'base64').toString(), 10);
+    if (!terapeutaId) throw new Error('state inválido');
+    const auth = new (require('googleapis').google.auth.OAuth2)(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+      googleCal.BASE_REDIRECT
+    );
+    const { tokens } = await auth.getToken(code);
+    await googleCal.saveTokens(terapeutaId, tokens);
+    res.redirect(`${BASE}/terapeutas?gcal=ok&tid=${terapeutaId}`);
+  } catch (err) {
+    console.error('[gcal callback]', err.message);
+    res.redirect(`${BASE}/terapeutas?gcal=error`);
+  }
+});
+
+router.get('/:id/google/auth-url', auth, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (req.user.rol === 'terapeuta' && req.user.id !== id)
+    return res.status(403).json({ error: 'Sin acceso' });
+  res.json({ url: googleCal.getAuthUrl(id) });
+});
+
+router.get('/:id/google/status', auth, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (req.user.rol === 'terapeuta' && req.user.id !== id)
+    return res.status(403).json({ error: 'Sin acceso' });
+  res.json({ connected: await googleCal.isConnected(id) });
+});
+
+router.delete('/:id/google', auth, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (req.user.rol === 'terapeuta' && req.user.id !== id)
+    return res.status(403).json({ error: 'Sin acceso' });
+  await googleCal.disconnect(id);
+  res.json({ ok: true });
 });
 
 module.exports = router;

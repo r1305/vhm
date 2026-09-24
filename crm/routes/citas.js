@@ -4,6 +4,7 @@ const { auth, ownerFilter } = require('../lib/auth');
 const { sendRecordatorioCita } = require('../lib/mailer');
 const { createMeetLink, isConnected } = require('../lib/googleMeet');
 const { getActivePacientePaquete } = require('../lib/paquetesPaciente');
+const googleCal = require('../lib/googleCalendar');
 
 const router = Router();
 const t = (v, max = 255) => v == null ? null : String(v).trim().slice(0, max) || null;
@@ -51,7 +52,17 @@ router.get('/disponibles', async (req, res) => {
       'SELECT hora_inicio, hora_fin FROM disponibilidad WHERE terapeuta_id=? AND dia_semana=? AND activo=1',
       [terapeuta_id, dia]
     );
-    res.json(slots);
+
+    // Cruzar con Google Calendar si el terapeuta tiene cuenta vinculada
+    let busySlots = [];
+    try {
+      const connected = await googleCal.isConnected(terapeuta_id);
+      if (connected) {
+        busySlots = await googleCal.getBusySlots(terapeuta_id, fecha, fecha);
+      }
+    } catch (_) {}
+
+    res.json({ slots, busySlots });
   } catch { res.status(500).json({ error: 'Error' }); }
 });
 
