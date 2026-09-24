@@ -22,6 +22,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(require('cookie-parser')());
 
 const BASE_PATH = (process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
+const SITE_URL = (process.env.SITE_URL || '').replace(/\/$/, '');
 app.use((req, res, next) => { res.locals.basePath = BASE_PATH; next(); });
 
 // CSRF protection
