@@ -323,39 +323,33 @@
       btn.addEventListener('click', () => {
         const pkgId = btn.dataset.editarPkg;
         const patientId = btn.dataset.pid;
-        const pkg = (arguments[0] === pid ? catalogo : []).find ? null : null; // se busca en paquetesPac
-        // Buscar el paquete en el DOM renderizado
         const histBox = document.getElementById('paqueteHistorialBox');
-        const allPkgs = histBox?._paquetesData || [];
-        const pkgData = allPkgs.find((x) => String(x.id) === String(pkgId));
-        openModal('Editar paquete asignado', `
-          <div class="form-group"><label class="form-label">Nombre</label>
-            <input class="form-control" id="epkg_nombre" value="${esc(pkgData?.nombre || '')}"></div>
-          <div class="form-row">
-            <div class="form-group"><label class="form-label">Fecha inicio</label>
-              <input type="date" class="form-control" id="epkg_fecha" value="${pkgData?.fecha_inicio ? String(pkgData.fecha_inicio).slice(0,10) : ''}"></div>
-            <div class="form-group"><label class="form-label">Sesiones</label>
-              <input type="number" min="1" class="form-control" id="epkg_sesiones" value="${pkgData?.sesiones || ''}"></div>
-            <div class="form-group"><label class="form-label">Precio (S/)</label>
-              <input type="number" min="0" step="0.01" class="form-control" id="epkg_precio" value="${pkgData?.precio ?? ''}"></div>
-          </div>`, async () => {
+        const pkgData = (histBox?._paquetesData || []).find((x) => String(x.id) === String(pkgId));
+        const catOpts = catalogo.map((c) =>
+          `<option value="${c.id}" ${pkgData?.paquete_catalogo_id == c.id ? 'selected' : ''}>${esc(c.nombre)} — ${c.sesiones} ses. — ${fmtMoney(c.precio)}</option>`
+        ).join('');
+        openModal('Cambiar paquete', `
+          <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px">Paquete actual: <strong>${esc(pkgData?.nombre || '—')}</strong></p>
+          <div class="form-group"><label class="form-label">Seleccionar nuevo paquete</label>
+            <select class="form-select" id="epkg_catalogo"><option value="">— Seleccionar —</option>${catOpts}</select></div>
+          <div class="form-group"><label class="form-label">Fecha inicio</label>
+            <input type="date" class="form-control" id="epkg_fecha" value="${pkgData?.fecha_inicio ? String(pkgData.fecha_inicio).slice(0,10) : ''}"></div>`,
+        async () => {
+          const catId = document.getElementById('epkg_catalogo').value;
+          if (!catId) throw new Error('Selecciona un paquete');
+          const cat = catalogo.find((c) => String(c.id) === catId);
           await api(`/pacientes/${patientId}/paquetes-adquiridos/${pkgId}`, {
             method: 'PATCH',
             body: {
-              nombre:       document.getElementById('epkg_nombre').value.trim(),
+              nombre:       cat.nombre,
               fecha_inicio: document.getElementById('epkg_fecha').value,
-              sesiones:     Number(document.getElementById('epkg_sesiones').value),
-              precio:       Number(document.getElementById('epkg_precio').value),
+              sesiones:     cat.sesiones,
+              precio:       cat.precio,
             },
           });
-          // Recargar historial
           const r = await api(`/pacientes/${patientId}/paquetes-adquiridos`, { loader: false });
           const box = document.getElementById('paqueteHistorialBox');
-          if (box) {
-            box.innerHTML = renderHistorialPaquetes(r, patientId);
-            box._paquetesData = r;
-            bindPaqueteEvents(patientId, catalogo);
-          }
+          if (box) { box.innerHTML = renderHistorialPaquetes(r, patientId); box._paquetesData = r; bindPaqueteEvents(patientId, catalogo); }
         }, { successMessage: 'Paquete actualizado' });
       });
     });
@@ -532,8 +526,12 @@
   async function showPacienteDetalle(p) {
     if (!p) return;
     let paquetesPac = [];
+    let catalogo = [];
     try {
-      paquetesPac = await api(`/pacientes/${p.id}/paquetes-adquiridos`, { loaderMessage: 'Cargando historial…' });
+      [paquetesPac, catalogo] = await Promise.all([
+        api(`/pacientes/${p.id}/paquetes-adquiridos`, { loaderMessage: 'Cargando historial…' }),
+        api('/paquetes?activo=1', { loader: false }).catch(() => []),
+      ]);
     } catch {
       paquetesPac = [];
     }
@@ -575,24 +573,26 @@
         const pkgId = btn.dataset.editarPkg;
         const patientId = btn.dataset.pid;
         const pkgData = paquetesPac.find((x) => String(x.id) === String(pkgId));
-        openModal('Editar paquete asignado', `
-          <div class="form-group"><label class="form-label">Nombre</label>
-            <input class="form-control" id="epkg_nombre" value="${esc(pkgData?.nombre || '')}"></div>
-          <div class="form-row">
-            <div class="form-group"><label class="form-label">Fecha inicio</label>
-              <input type="date" class="form-control" id="epkg_fecha" value="${pkgData?.fecha_inicio ? String(pkgData.fecha_inicio).slice(0,10) : ''}"></div>
-            <div class="form-group"><label class="form-label">Sesiones</label>
-              <input type="number" min="1" class="form-control" id="epkg_sesiones" value="${pkgData?.sesiones || ''}"></div>
-            <div class="form-group"><label class="form-label">Precio (S/)</label>
-              <input type="number" min="0" step="0.01" class="form-control" id="epkg_precio" value="${pkgData?.precio ?? ''}"></div>
-          </div>`, async () => {
+        const catOpts = catalogo.map((c) =>
+          `<option value="${c.id}" ${pkgData?.paquete_catalogo_id == c.id ? 'selected' : ''}>${esc(c.nombre)} — ${c.sesiones} ses. — ${fmtMoney(c.precio)}</option>`
+        ).join('');
+        openModal('Cambiar paquete', `
+          <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px">Paquete actual: <strong>${esc(pkgData?.nombre || '—')}</strong></p>
+          <div class="form-group"><label class="form-label">Seleccionar nuevo paquete</label>
+            <select class="form-select" id="epkg_catalogo"><option value="">— Seleccionar —</option>${catOpts}</select></div>
+          <div class="form-group"><label class="form-label">Fecha inicio</label>
+            <input type="date" class="form-control" id="epkg_fecha" value="${pkgData?.fecha_inicio ? String(pkgData.fecha_inicio).slice(0,10) : ''}"></div>`,
+        async () => {
+          const catId = document.getElementById('epkg_catalogo').value;
+          if (!catId) throw new Error('Selecciona un paquete');
+          const cat = catalogo.find((c) => String(c.id) === catId);
           await api(`/pacientes/${patientId}/paquetes-adquiridos/${pkgId}`, {
             method: 'PATCH',
             body: {
-              nombre:       document.getElementById('epkg_nombre').value.trim(),
+              nombre:       cat.nombre,
               fecha_inicio: document.getElementById('epkg_fecha').value,
-              sesiones:     Number(document.getElementById('epkg_sesiones').value),
-              precio:       Number(document.getElementById('epkg_precio').value),
+              sesiones:     cat.sesiones,
+              precio:       cat.precio,
             },
           });
           closeModal();
