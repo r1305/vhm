@@ -19,7 +19,7 @@
             <div class="pkg-card-name">${esc(p.nombre)}</div>
             <div class="pkg-card-top-actions">
               ${isAdmin ? `<button class="btn-icon" data-edit="${p.id}" title="Editar"><i class="fas fa-pen"></i></button>` : ''}
-              ${isSuperAdmin ? `<button class="btn-icon btn-icon-danger" data-delete="${p.id}" data-name="${esc(p.nombre)}" title="Eliminar"><i class="fas fa-trash"></i></button>` : ''}
+              ${isAdmin ? `<button class="btn-icon btn-icon-danger" data-delete="${p.id}" data-name="${esc(p.nombre)}" title="Eliminar"><i class="fas fa-trash"></i></button>` : ''}
             </div>
           </div>
           <div class="pkg-card-meta">
