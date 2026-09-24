@@ -208,7 +208,9 @@
         </div>
         ${c.pagado
           ? '<span class="badge badge-green">Pagada</span>'
-          : `<button type="button" class="btn btn-outline btn-xs" data-pagar-cuota="${c.id}" data-pid="${pid}">Marcar pagada</button>`}
+          : window.__USER_ROL__ !== 'terapeuta'
+            ? `<button type="button" class="btn btn-outline btn-xs" data-pagar-cuota="${c.id}" data-pid="${pid}">Marcar pagada</button>`
+            : ''}
       </div>`;
     }).join('');
   }
