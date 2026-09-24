@@ -44,10 +44,10 @@ function canViewUserList(actorRol) {
   return isStaffAdmin(actorRol);
 }
 
-function listFilterForRole(actorRol) {
+function listFilterForRole(actorRol, actorId) {
   if (isSuperAdmin(actorRol)) return { sql: '', params: [] };
   if (isStaffAdmin(actorRol)) return { sql: " AND t.rol = 'terapeuta'", params: [] };
-  return { sql: ' AND t.id = ?', params: [] };
+  return { sql: ' AND t.id = ?', params: [actorId] };
 }
 
 module.exports = {

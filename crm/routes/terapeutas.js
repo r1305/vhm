@@ -21,7 +21,7 @@ router.get('/', auth, async (req, res) => {
     if (!['superadmin', 'admin', 'recepcion', 'terapeuta'].includes(req.user.rol)) {
       return res.status(403).json({ error: 'Sin acceso' });
     }
-    const filter = listFilterForRole(req.user.rol);
+    const filter = listFilterForRole(req.user.rol, req.user.id);
     const soloClinicos = req.query.clinicos === '1' || req.query.rol === 'terapeuta';
     const clinicoSql = soloClinicos ? " AND t.rol = 'terapeuta'" : '';
     const [rows] = await pool.execute(`
@@ -35,7 +35,7 @@ router.get('/', auth, async (req, res) => {
       ORDER BY t.nombre
     `, filter.params);
     res.json(rows);
-  } catch { res.status(500).json({ error: 'Error' }); }
+  } catch (err) { console.error('[GET /terapeutas]', err); res.status(500).json({ error: 'Error' }); }
 });
 
 router.post('/', authAdmin, async (req, res) => {
