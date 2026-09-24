@@ -55,6 +55,7 @@ async function eliminarTarjetaGuardada(cardId) {
     confirmText: 'Sí, eliminar', cancelText: 'Cancelar',
   });
   if (!ok) return;
+  showLoader('Eliminando tarjeta...');
   try {
     const res = await tribuFetch('/tribu-auth/tarjetas/' + cardId, { method: 'DELETE' });
     const d = await res.json();
@@ -63,10 +64,13 @@ async function eliminarTarjetaGuardada(cardId) {
     mostrarTribuFeedback({ type: 'success', title: 'Tarjeta eliminada', message: d.message || 'La tarjeta fue eliminada correctamente.', btnText: 'Entendido' });
   } catch (err) {
     mostrarTribuFeedback({ type: 'error', title: 'No se pudo eliminar', message: err.message || 'Intenta de nuevo.', btnText: 'Cerrar' });
+  } finally {
+    hideLoader();
   }
 }
 
 async function marcarTarjetaDefault(cardId) {
+  showLoader('Actualizando...');
   try {
     const res = await tribuFetch('/tribu-auth/tarjetas/' + cardId + '/default', { method: 'PUT' });
     const d = await res.json();
@@ -75,15 +79,22 @@ async function marcarTarjetaDefault(cardId) {
     mostrarTribuFeedback({ type: 'success', title: 'Tarjeta principal', message: d.message || 'Tarjeta principal actualizada.', btnText: 'Entendido' });
   } catch (err) {
     mostrarTribuFeedback({ type: 'error', title: 'No se pudo actualizar', message: err.message || 'Intenta de nuevo.', btnText: 'Cerrar' });
+  } finally {
+    hideLoader();
   }
 }
 
 /* ── Init ── */
 (async () => {
   if (!requireAuth()) return;
-  const ok = await verificarSesion();
-  if (!ok) { window.location.href = BASE + '/?login=1'; return; }
-  await cargarMisTarjetas();
+  showLoader('Cargando tarjetas...');
+  try {
+    const ok = await verificarSesion();
+    if (!ok) { window.location.href = BASE + '/?login=1'; return; }
+    await cargarMisTarjetas();
+  } finally {
+    hideLoader();
+  }
 
   document.getElementById('tribuConfirmCancel')?.addEventListener('click', () => cerrarTribuConfirm(false));
   document.getElementById('tribuConfirmOk')?.addEventListener('click', () => cerrarTribuConfirm(true));
