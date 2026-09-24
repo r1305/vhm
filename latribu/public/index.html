@@ -657,6 +657,10 @@
     .auth-field input { width: 100%; padding: 12px 14px; background: var(--surface, var(--panel)); border: 1px solid var(--line); border-radius: 12px; color: var(--text, var(--txt)); font-size: .95rem; font-family: inherit; transition: border-color .2s; }
     .auth-field input:focus { outline: none; border-color: var(--purple); background: var(--primary-soft, rgba(168,79,62,.08)); box-shadow: var(--focus-ring); }
     .auth-field input::placeholder { color: rgba(101,113,108,.55); }
+    .pw-wrap { position: relative; }
+    .pw-wrap input { padding-right: 42px; }
+    .pw-toggle { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 1rem; color: var(--muted); padding: 4px; line-height: 1; opacity: .7; transition: opacity .15s; }
+    .pw-toggle:hover { opacity: 1; }
     .auth-btn { width: 100%; padding: 13px; margin-top: 6px; background: var(--grad-warm); border: none; border-radius: 12px; color: #fff; font-size: 1rem; font-weight: 800; font-family: inherit; cursor: pointer; transition: opacity .2s, transform .15s; }
     .auth-btn:hover:not(:disabled) { opacity: .9; transform: translateY(-1px); }
     .auth-btn:disabled { opacity: .5; cursor: not-allowed; }
@@ -1256,7 +1260,7 @@
       <div class="auth-title">Iniciar sesion</div>
       <div class="auth-sub">Accede a tu espacio de crecimiento</div>
       <div class="auth-field"><label>Correo</label><input type="email" id="loginEmail" placeholder="tu@correo.com" autocomplete="email"></div>
-      <div class="auth-field"><label>Contrasena</label><input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password"></div>
+      <div class="auth-field"><label>Contrasena</label><div class="pw-wrap"><input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password"><button type="button" class="pw-toggle" onclick="togglePw('loginPassword',this)" aria-label="Mostrar contraseña">👁</button></div></div>
       <button class="auth-btn" id="loginBtn" onclick="doLogin()">Entrar</button>
       <div class="auth-error" id="loginError"></div>
       <div class="auth-footer"><a onclick="mostrarPanel('authRecuperar')">Olvide mi contrasena</a></div>
@@ -1271,7 +1275,7 @@
         <div class="auth-field"><label>Apellido</label><input type="text" id="regApellido" placeholder="Garcia" autocomplete="family-name"></div>
       </div>
       <div class="auth-field"><label>Correo</label><input type="email" id="regEmail" placeholder="tu@correo.com" autocomplete="email"></div>
-      <div class="auth-field"><label>Contrasena</label><input type="password" id="regPassword" placeholder="Minimo 6 caracteres" autocomplete="new-password"></div>
+      <div class="auth-field"><label>Contrasena</label><div class="pw-wrap"><input type="password" id="regPassword" placeholder="Minimo 6 caracteres" autocomplete="new-password"><button type="button" class="pw-toggle" onclick="togglePw('regPassword',this)" aria-label="Mostrar contraseña">👁</button></div></div>
       <button class="auth-btn" id="regBtn" onclick="doRegistro()">Crear cuenta</button>
       <div class="auth-error" id="regError"></div>
       <div class="auth-footer" style="margin-top:14px">Ya tienes cuenta? <a onclick="mostrarPanel('authLogin')">Iniciar sesion</a></div>
@@ -1302,8 +1306,8 @@
     <div id="authNuevaPassword" style="display:none">
       <div class="auth-title">Nueva contrasena</div>
       <div class="auth-sub">Crea la contraseña con la que iniciaras sesion de ahora en adelante</div>
-      <div class="auth-field"><label>Nueva contrasena</label><input type="password" id="recNewPassword" placeholder="Minimo 6 caracteres" autocomplete="new-password"></div>
-      <div class="auth-field"><label>Confirmar contrasena</label><input type="password" id="recNewPassword2" placeholder="Repite la contrasena" autocomplete="new-password"></div>
+      <div class="auth-field"><label>Nueva contrasena</label><div class="pw-wrap"><input type="password" id="recNewPassword" placeholder="Minimo 6 caracteres" autocomplete="new-password"><button type="button" class="pw-toggle" onclick="togglePw('recNewPassword',this)" aria-label="Mostrar contraseña">👁</button></div></div>
+      <div class="auth-field"><label>Confirmar contrasena</label><div class="pw-wrap"><input type="password" id="recNewPassword2" placeholder="Repite la contrasena" autocomplete="new-password"><button type="button" class="pw-toggle" onclick="togglePw('recNewPassword2',this)" aria-label="Mostrar contraseña">👁</button></div></div>
       <button class="auth-btn" id="recNewBtn" onclick="doCambiarPasswordTemp()">Guardar contrasena</button>
       <div class="auth-error" id="recNewError"></div>
       <div class="auth-footer" style="margin-top:14px"><a onclick="mostrarPanel('authIngresarTemp')">Volver</a></div>
@@ -1999,6 +2003,12 @@ async function verificarSesion() {
   syncClaraWidget();
 }
 
+function togglePw(id, btn) {
+  const inp = document.getElementById(id);
+  const show = inp.type === 'password';
+  inp.type = show ? 'text' : 'password';
+  btn.textContent = show ? '🙈' : '👁';
+}
 function abrirLogin() { abrirAuth("authLogin"); }
 function abrirLoginAuth() { abrirAuth("authLogin"); }
 function abrirRegistroAuth() { abrirAuth("authRegistro"); }
@@ -2118,7 +2128,7 @@ async function doCambiarPasswordTemp() {
 
 function doLogout() { clearToken(); tribuUser = null; renderNavAuth(); syncClaraWidget(); cargar(); }
 
-document.getElementById('authOverlay').addEventListener('click', e => { if (e.target.id === 'authOverlay') cerrarAuth(); });
+
 document.getElementById('authOverlay').addEventListener('keydown', e => {
   if (e.key !== 'Enter') return;
   const visible = ['authLogin','authRegistro','authRecuperar','authIngresarTemp','authNuevaPassword'].find(p => document.getElementById(p).style.display !== 'none');
@@ -2819,21 +2829,11 @@ function cerrarTribuConfirm(result) {
 
 document.getElementById('tribuConfirmCancel')?.addEventListener('click', () => cerrarTribuConfirm(false));
 document.getElementById('tribuConfirmOk')?.addEventListener('click', () => cerrarTribuConfirm(true));
-document.getElementById('tribuConfirmOverlay')?.addEventListener('click', e => {
-  if (e.target.id === 'tribuConfirmOverlay') cerrarTribuConfirm(false);
-});
 document.getElementById('tribuConfirmOverlay')?.addEventListener('keydown', e => {
   if (e.key === 'Escape') cerrarTribuConfirm(false);
 });
-document.getElementById('planesOverlay').addEventListener('click', e => { if (e.target.id === 'planesOverlay') cerrarModalPlanes(); });
-document.getElementById('pagoOverlay').addEventListener('click', e => { if (e.target.id === 'pagoOverlay') cerrarModalPago(); });
 document.getElementById('pagoBillingEmail')?.addEventListener('input', schedulePagoBrickRemount);
 document.getElementById('pagoBillingEmail')?.addEventListener('blur', schedulePagoBrickRemount);
-document.getElementById('tribuFeedbackOverlay').addEventListener('click', e => {
-  if (e.target.id === 'tribuFeedbackOverlay' && !e.currentTarget.classList.contains('no-dismiss')) {
-    cerrarTribuFeedback();
-  }
-});
 
 function bannerSinSuscripcion() {
   const logueado = !!tribuUser;
@@ -3021,9 +3021,7 @@ function cerrarEvento() {
   document.body.style.overflow = '';
 }
 
-document.getElementById('evtOverlay').addEventListener('click', e => {
-  if (e.target.id === 'evtOverlay') cerrarEvento();
-});
+
 
 function getLikedSet() {
   try { return new Set(JSON.parse(localStorage.getItem('vhm_liked_videos') || '[]')); }
@@ -3244,9 +3242,7 @@ async function likeRapido(id, btn) {
   } catch {}
 }
 
-document.getElementById('playerOverlay').addEventListener('click', e => {
-  if (e.target.id === 'playerOverlay') cerrarPlayer();
-});
+
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     cerrarPlayer();

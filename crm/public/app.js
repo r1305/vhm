@@ -165,9 +165,7 @@
     if (input && input.style.display !== 'none') closeDialog(input.value.trim() || null);
     else closeDialog(true);
   });
-  document.getElementById('crmDialogOverlay')?.addEventListener('click', (e) => {
-    if (e.target.id === 'crmDialogOverlay') closeDialog(null);
-  });
+
   document.getElementById('crmDialogInput')?.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
