@@ -14,12 +14,12 @@ function getOAuth2Client() {
 }
 
 // state = base64(terapeutaId) para recuperarlo en el callback
-function getAuthUrl(terapeutaId) {
+function getAuthUrl(terapeutaId, redirect = 'terapeutas') {
   return getOAuth2Client().generateAuthUrl({
     access_type: 'offline',
     prompt: 'consent',
     scope: ['https://www.googleapis.com/auth/calendar.readonly'],
-    state: Buffer.from(String(terapeutaId)).toString('base64'),
+    state: Buffer.from(JSON.stringify({ id: terapeutaId, redirect })).toString('base64'),
   });
 }
 

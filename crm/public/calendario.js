@@ -479,6 +479,62 @@
   );
   document.getElementById('calTerapeuta')?.addEventListener('change', loadCitas);
 
+  /* ── Google Calendar (terapeuta) ── */
+  async function showGoogleCalConfig() {
+    const uid = window.__USER_ID__;
+    let connected = false;
+    try {
+      const r = await api(`/terapeutas/${uid}/google/status`, { loader: false });
+      connected = !!r.connected;
+    } catch (_) {}
+
+    const { confirmDialog } = window.CRM;
+    if (connected) {
+      const ok = await confirmDialog({
+        title: 'Google Calendar vinculado',
+        message: 'Tu cuenta de Google Calendar está vinculada. Los eventos de tu calendario se usan para validar tu disponibilidad.\n\n¿Deseas desconectarla?',
+        confirmLabel: 'Desconectar',
+        danger: true,
+      });
+      if (!ok) return;
+      try {
+        await api(`/terapeutas/${uid}/google`, { method: 'DELETE', successMessage: 'Google Calendar desconectado' });
+        document.getElementById('btnGoogleCal')?.classList.remove('gcal-connected');
+      } catch (e) { toast(e.message, 'danger'); }
+    } else {
+      const ok = await confirmDialog({
+        title: 'Vincular Google Calendar',
+        message: 'Se abrirá una ventana de Google para autorizar el acceso de solo lectura a tu calendario. Esto permite validar tus espacios libres y ocupados automáticamente.',
+        confirmLabel: 'Vincular cuenta',
+      });
+      if (!ok) return;
+      try {
+        const { url } = await api(`/terapeutas/${uid}/google/auth-url?redirect=calendario`);
+        window.location.href = url;
+      } catch (e) { toast(e.message, 'danger'); }
+    }
+  }
+
+  // Marcar botón si ya está conectado al cargar
+  if (window.__USER_ROL__ === 'terapeuta') {
+    api(`/terapeutas/${window.__USER_ID__}/google/status`, { loader: false })
+      .then(r => {
+        const btn = document.getElementById('btnGoogleCal');
+        if (!btn) return;
+        if (r.connected) {
+          btn.classList.add('gcal-connected');
+          btn.title = 'Google Calendar vinculado ✅';
+        }
+      }).catch(() => {});
+  }
+
+  document.getElementById('btnGoogleCal')?.addEventListener('click', showGoogleCalConfig);
+
+  // Toast si viene de callback OAuth
+  const _calQs = new URLSearchParams(location.search);
+  if (_calQs.get('gcal') === 'ok')    { toast('Google Calendar vinculado ✅'); history.replaceState(null, '', location.pathname); }
+  if (_calQs.get('gcal') === 'error') { toast('Error al vincular Google Calendar', 'danger'); history.replaceState(null, '', location.pathname); }
+
   /* ── Init: cargar terapeutas para el modal de bloqueo ── */
   api('/terapeutas?clinicos=1', { loader: false }).then(ts => { terapeutasCache = ts; }).catch(() => {});
   api('/pacientes', { loader: false }).then(ps => { window.CRM.pacientesCache = ps; }).catch(() => {});
