@@ -36,23 +36,18 @@
   };
 
   const ESTADO_CITA = {
-    pendiente:  { label: 'Pendiente',      css: 'badge-yellow' },
-    confirmada: { label: 'Confirmada',     css: 'badge-blue'   },
-    reagendada: { label: 'Reagendada',     css: 'badge-purple' },
-    realizada:  { label: 'Realizada',      css: 'badge-green'  },
-    cancelada:  { label: 'Cancelada',      css: 'badge-red'    },
-    no_show:    { label: 'No se presentó', css: 'badge-gray'   },
+    realizada: { label: 'Realizada', css: 'badge-green'  },
+    cancelada: { label: 'Cancelada', css: 'badge-yellow' },
+    no_show:   { label: 'Perdida',   css: 'badge-red'    },
   };
 
-  const ESTADO_CITA_SELECT_EXCLUDE = new Set(['confirmada']);
-
   function estadoCitaSelectEntries() {
-    return Object.entries(ESTADO_CITA).filter(([k]) => !ESTADO_CITA_SELECT_EXCLUDE.has(k));
+    return Object.entries(ESTADO_CITA);
   }
 
-  /** Opciones HTML para selects de estado de cita (sin Confirmada). */
-  function estadoCitaOptionsHtml(selected = null) {
-    const sel = ESTADO_CITA_SELECT_EXCLUDE.has(selected) ? 'pendiente' : selected;
+  /** Opciones HTML para selects de estado de cita. Default: realizada. */
+  function estadoCitaOptionsHtml(selected = 'realizada') {
+    const sel = ESTADO_CITA[selected] ? selected : 'realizada';
     return estadoCitaSelectEntries()
       .map(([k, v]) => `<option value="${k}"${k === sel ? ' selected' : ''}>${v.label}</option>`)
       .join('');

@@ -306,7 +306,7 @@
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Estado</label>
-          <select class="form-select" id="f_estado">${estadoCitaOptionsHtml('pendiente')}</select>
+          <select class="form-select" id="f_estado">${estadoCitaOptionsHtml('realizada')}</select>
         </div>
       </div>
       <div class="form-group">
