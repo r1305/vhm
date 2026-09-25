@@ -112,19 +112,27 @@ async function getEvents(terapeutaId, fechaInicio, fechaFin) {
 }
 
 // Crea un evento en Google Calendar y devuelve el gcal_event_id
-async function createEvent(terapeutaId, { titulo, fecha, horaInicio, horaFin, descripcion }) {
+async function createEvent(terapeutaId, { titulo, fecha, horaInicio, horaFin, descripcion, withMeet = false }) {
   const auth = await getAuthedClient(terapeutaId);
   const calendar = google.calendar({ version: 'v3', auth });
+  const requestBody = {
+    summary: titulo,
+    description: descripcion || '',
+    start: { dateTime: `${fecha}T${horaInicio}:00`, timeZone: 'America/Lima' },
+    end:   { dateTime: `${fecha}T${horaFin}:00`,   timeZone: 'America/Lima' },
+  };
+  if (withMeet) {
+    requestBody.conferenceData = {
+      createRequest: { requestId: `vhm-${Date.now()}`, conferenceSolutionKey: { type: 'hangoutsMeet' } },
+    };
+  }
   const { data } = await calendar.events.insert({
     calendarId: 'primary',
-    requestBody: {
-      summary: titulo,
-      description: descripcion || '',
-      start: { dateTime: `${fecha}T${horaInicio}:00`, timeZone: 'America/Lima' },
-      end:   { dateTime: `${fecha}T${horaFin}:00`,   timeZone: 'America/Lima' },
-    },
+    conferenceDataVersion: withMeet ? 1 : 0,
+    requestBody,
   });
-  return data.id;
+  const meetLink = withMeet ? (data.hangoutLink || data.conferenceData?.entryPoints?.[0]?.uri || null) : null;
+  return { gcalEventId: data.id, meetLink };
 }
 
 // Actualiza un evento existente
