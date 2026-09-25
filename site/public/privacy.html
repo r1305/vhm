@@ -33,7 +33,6 @@
     td { color: #bbb; }
     footer { margin-top: 48px; padding-top: 24px; border-top: 1px solid #222; text-align: center; color: #666; font-size: .85rem; }
     footer a { color: #c8e6f0; }
-
     @media (max-width: 600px) {
       .container { padding: 24px 16px 60px; }
       h1 { font-size: 1.5rem; }
@@ -49,6 +48,7 @@
   <a href="./" style="text-decoration:none"><div class="logo">VHM</div></a>
   <div class="links">
     <a href="./">Inicio</a>
+    <a href="terms">Condiciones del Servicio</a>
     <a href="deletion">Eliminación de Datos</a>
   </div>
 </nav>
@@ -57,13 +57,12 @@
 
   <span class="badge updated">📅 Actualizada</span>
   <h1>Política de Privacidad</h1>
-  <p class="last-updated">Última actualización: 1 de julio de 2026</p>
+  <p class="last-updated">Última actualización: 1 de julio de 2025</p>
 
   <p>En <strong>VHM — Bienestar, Relaciones & Superación Personal</strong> (en adelante, "VHM", "nosotros" o "nuestro"), nos comprometemos a proteger tu privacidad. Esta Política de Privacidad explica cómo recopilamos, usamos, almacenamos y protegemos tu información personal cuando visitas nuestro sitio web <strong>vhm.com.pe</strong> o utilizas nuestros servicios.</p>
 
   <p>Al utilizar nuestro sitio, aceptas las prácticas descritas en esta política. Si no estás de acuerdo, por favor no utilices nuestros servicios.</p>
 
-  <!-- ============================================================ -->
   <h2>1. Datos que Recopilamos</h2>
 
   <h3>1.1. Datos que nos proporcionas voluntariamente</h3>
@@ -73,6 +72,7 @@
     <li><strong>Testimonios:</strong> nombre, foto y texto del testimonio que nos autorices a publicar.</li>
     <li><strong>WhatsApp:</strong> cuando nos contactas a través de nuestro botón flotante de WhatsApp, compartes tu número de teléfono y el contenido de la conversación.</li>
     <li><strong>Chat con Clara (asistente IA):</strong> las preguntas y mensajes que envías voluntariamente.</li>
+    <li><strong>Agendamiento de citas:</strong> nombre, correo electrónico, teléfono y preferencias de horario cuando solicitas una sesión.</li>
   </ul>
 
   <h3>1.2. Datos recopilados automáticamente</h3>
@@ -83,13 +83,13 @@
     <li><strong>Datos técnicos:</strong> dirección IP, tipo de navegador, sistema operativo, y páginas de referencia.</li>
   </ul>
 
-  <h3>1.3. Datos de administradores</h3>
+  <h3>1.3. Datos de pacientes y usuarios del CRM</h3>
+  <p>Si eres paciente o usuario registrado en nuestra plataforma interna, almacenamos: nombre completo, correo electrónico, teléfono, historial de citas, notas de sesión y datos de pagos. Estos datos se tratan con estricta confidencialidad y solo son accesibles por el personal autorizado.</p>
+
+  <h3>1.4. Datos de administradores</h3>
   <p>Los usuarios administradores registran: nombre de usuario, correo electrónico, nombre completo y rol. Estos datos se almacenan de forma segura para el control de acceso al panel de administración.</p>
 
-  <!-- ============================================================ -->
   <h2>2. Finalidad del Tratamiento de Datos</h2>
-
-  <p>Utilizamos tus datos para las siguientes finalidades:</p>
 
   <table>
     <thead>
@@ -109,6 +109,11 @@
         <td>Contactarte sobre el estado de tu reclamo</td>
         <td>Obligación legal</td>
         <td>Correo electrónico, teléfono</td>
+      </tr>
+      <tr>
+        <td>Gestionar citas y sesiones terapéuticas</td>
+        <td>Ejecución del contrato de servicio</td>
+        <td>Nombre, contacto, historial de citas</td>
       </tr>
       <tr>
         <td>Mejorar nuestros servicios y personalizar tu experiencia</td>
@@ -133,10 +138,7 @@
     </tbody>
   </table>
 
-  <!-- ============================================================ -->
   <h2>3. Cookies y Tecnologías de Seguimiento</h2>
-
-  <p>Este sitio utiliza las siguientes tecnologías:</p>
 
   <table>
     <thead>
@@ -153,6 +155,11 @@
         <td>Según política de Meta</td>
       </tr>
       <tr>
+        <td>Cookie de sesión</td>
+        <td>Autenticación de usuarios registrados</td>
+        <td>Sesión / 7 días</td>
+      </tr>
+      <tr>
         <td>Cookie CSRF</td>
         <td>Seguridad del formulario</td>
         <td>Sesión</td>
@@ -167,7 +174,6 @@
 
   <p>Puedes configurar tu navegador para rechazar cookies o alertarte cuando se envíen. Ten en cuenta que algunas partes del sitio podrían no funcionar correctamente.</p>
 
-  <!-- ============================================================ -->
   <h2>4. Almacenamiento y Seguridad de los Datos</h2>
 
   <p>Tus datos se almacenan en servidores seguros con acceso restringido. Implementamos medidas técnicas y organizativas para proteger tu información, incluyendo:</p>
@@ -178,19 +184,18 @@
     <li>Protección CSRF en formularios.</li>
     <li>Limitación de tasa (rate limiting) en endpoints públicos.</li>
   </ul>
-  <p>Los datos del Libro de Reclamaciones se conservan por el tiempo exigido por la legislación peruana aplicable. Los testimonios se conservan hasta que solicites su eliminación.</p>
+  <p>Los datos del Libro de Reclamaciones se conservan por el tiempo exigido por la legislación peruana aplicable. Los testimonios se conservan hasta que solicites su eliminación. Los datos de pacientes se conservan durante la relación terapéutica y por el período mínimo exigido por ley.</p>
 
-  <!-- ============================================================ -->
   <h2>5. Compartición de Datos con Terceros</h2>
 
   <p>Compartimos tu información solo en los siguientes casos:</p>
   <ul>
     <li><strong>Meta Platforms (Facebook/Instagram):</strong> a través del Meta Pixel para fines publicitarios y de medición. Meta puede utilizar estos datos según su propia <a href="https://www.facebook.com/privacy/policy" target="_blank" rel="noopener noreferrer">Política de Privacidad</a>.</li>
+    <li><strong>Google:</strong> para el envío de correos electrónicos transaccionales y, si aplica, para la gestión de videollamadas mediante Google Meet.</li>
     <li><strong>Autoridades competentes:</strong> cuando la ley peruana nos obligue a proporcionar información.</li>
   </ul>
   <p>No vendemos tu información personal a terceros bajo ninguna circunstancia.</p>
 
-  <!-- ============================================================ -->
   <h2>6. Tus Derechos</h2>
 
   <p>De acuerdo con la Ley de Protección de Datos Personales del Perú (Ley N° 29733), tienes los siguientes derechos:</p>
@@ -201,27 +206,21 @@
     <li><strong>Oposición:</strong> oponerte al tratamiento de tus datos para fines específicos.</li>
     <li><strong>Revocación del consentimiento:</strong> retirar tu consentimiento en cualquier momento.</li>
   </ul>
-
   <p>Para ejercer cualquiera de estos derechos, contáctanos a través del correo electrónico o formulario indicados en la sección de contacto.</p>
 
-  <!-- ============================================================ -->
   <h2>7. Eliminación de Datos</h2>
 
   <p>Si deseas solicitar la eliminación de tus datos personales de nuestros sistemas, visita nuestra <a href="deletion">página de Eliminación de Datos</a> donde encontrarás las instrucciones detalladas para hacerlo.</p>
-
   <p>Procesaremos tu solicitud dentro de los <strong>30 días calendario</strong> posteriores a la verificación de tu identidad.</p>
 
-  <!-- ============================================================ -->
   <h2>8. Menores de Edad</h2>
 
   <p>Nuestros servicios están dirigidos a personas mayores de 18 años. No recopilamos intencionalmente datos de menores de edad. Si eres padre/madre/tutor y descubres que un menor nos ha proporcionado datos personales, contáctanos para que los eliminemos.</p>
 
-  <!-- ============================================================ -->
-  <h2>9. Cambios a esta Política de Privacidad</h2>
+  <h2>9. Cambios a esta Política</h2>
 
   <p>Podemos actualizar esta política periódicamente. Te notificaremos cualquier cambio publicando la nueva versión en esta página con la fecha de actualización. Te recomendamos revisar esta página regularmente.</p>
 
-  <!-- ============================================================ -->
   <h2>10. Contacto</h2>
 
   <div class="contact-box">
@@ -232,11 +231,16 @@
     <p>📍 Lima, Perú</p>
   </div>
 
-  <p>Para asuntos relacionados con protección de datos, puedes contactar a nuestro responsable de tratamiento de datos en la dirección de correo electrónico indicada arriba. Daremos respuesta a tu solicitud en un plazo máximo de 15 días hábiles.</p>
+  <p>Daremos respuesta a tu solicitud en un plazo máximo de 15 días hábiles.</p>
 
   <footer>
-    <p>&copy; 2026 VHM — Bienestar, Relaciones & Superación Personal. Todos los derechos reservados.</p>
-    <p style="margin-top:8px"><a href="./">Inicio</a> | <a href="deletion">Eliminación de Datos</a> | <a href="reclamo">Libro de Reclamaciones</a></p>
+    <p>&copy; <script>document.write(new Date().getFullYear())</script> VHM — Bienestar, Relaciones & Superación Personal. Todos los derechos reservados.</p>
+    <p style="margin-top:8px">
+      <a href="./">Inicio</a> |
+      <a href="terms">Condiciones del Servicio</a> |
+      <a href="deletion">Eliminación de Datos</a> |
+      <a href="reclamo">Libro de Reclamaciones</a>
+    </p>
   </footer>
 </div>
 
