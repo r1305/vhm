@@ -161,7 +161,10 @@
       .map(([v, l]) => `<option value="${v}" ${original.modalidad === v ? 'selected' : ''}>${l}</option>`).join('');
 
     openModal('Editar cita', `
-      ${cita.meet_link ? `<div style="margin-bottom:14px"><a href="${esc(cita.meet_link)}" target="_blank" rel="noopener" class="btn btn-outline btn-sm" style="color:#1a73e8;border-color:#1a73e8"><i class="fas fa-video"></i> Unirse a Google Meet</a></div>` : ''}
+      ${cita.meet_link ? `<div style="margin-bottom:14px;display:flex;align-items:center;gap:8px">
+        <a href="${esc(cita.meet_link)}" target="_blank" rel="noopener" class="btn btn-outline btn-sm" style="color:#1a73e8;border-color:#1a73e8"><i class="fas fa-video"></i> Unirse a Google Meet</a>
+        <button type="button" class="btn btn-outline btn-sm" id="btnCopyMeetEdit" title="Copiar link" style="color:#1a73e8;border-color:#1a73e8"><i class="fas fa-copy"></i></button>
+      </div>` : ''}
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Fecha *</label>
@@ -229,6 +232,9 @@
     }, { saveLabel: 'Revisar cambios' });
 
     setTimeout(() => {
+      document.getElementById('btnCopyMeetEdit')?.addEventListener('click', () => {
+        navigator.clipboard.writeText(cita.meet_link).then(() => toast('Link copiado'));
+      });
       const hi = document.getElementById('f_edit_hora_inicio');
       const hf = document.getElementById('f_edit_hora_fin');
       if (hi && hf) {

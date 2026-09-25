@@ -444,11 +444,17 @@
         <div style="grid-column:1/-1"><span style="color:var(--text-muted)">Estado</span><br><span class="badge ${estado.css}">${estado.label}</span></div>
       </div>
       ${c.notas ? `<div style="margin-top:12px"><span style="color:var(--text-muted);font-size:12px">Observaciones</span><p style="margin-top:4px;font-size:13px">${esc(c.notas)}</p></div>` : ''}
-      ${c.meet_link ? `<div style="margin-top:14px"><a href="${esc(c.meet_link)}" target="_blank" rel="noopener" class="btn btn-outline btn-sm" style="color:#1a73e8;border-color:#1a73e8"><i class="fas fa-video"></i> Unirse a Google Meet</a></div>` : ''}
+      ${c.meet_link ? `<div style="margin-top:14px;display:flex;align-items:center;gap:8px">
+        <a href="${esc(c.meet_link)}" target="_blank" rel="noopener" class="btn btn-outline btn-sm" style="color:#1a73e8;border-color:#1a73e8"><i class="fas fa-video"></i> Unirse a Google Meet</a>
+        <button class="btn btn-outline btn-sm" id="btnCopyMeet" title="Copiar link" style="color:#1a73e8;border-color:#1a73e8"><i class="fas fa-copy"></i></button>
+      </div>` : ''}
       <div style="margin-top:16px">
         <button class="btn btn-primary btn-sm" id="btnEditarCita"><i class="fas fa-pen"></i> Editar cita</button>
       </div>`, null);
     document.getElementById('modalSave').style.display = 'none';
+    document.getElementById('btnCopyMeet')?.addEventListener('click', () => {
+      navigator.clipboard.writeText(c.meet_link).then(() => toast('Link copiado'));
+    });
     document.getElementById('btnEditarCita').addEventListener('click', () => {
       window.CRM.closeModal();
       setTimeout(() => showEditarCita(c, loadCitas), 80);
