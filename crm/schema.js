@@ -269,6 +269,7 @@ async function ensureSchema() {
     `);
 
     try { await conn.execute('ALTER TABLE citas ADD COLUMN paciente_paquete_id INT NULL'); } catch (_) {}
+    try { await conn.execute('ALTER TABLE citas ADD COLUMN gcal_event_id VARCHAR(255) DEFAULT NULL'); } catch (_) {}
 
     // Config del cron de WhatsApp
     await conn.execute(`

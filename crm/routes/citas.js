@@ -66,6 +66,11 @@ router.get('/disponibles', async (req, res) => {
   } catch { res.status(500).json({ error: 'Error' }); }
 });
 
+function gcalTitulo(pac, tipo) {
+  const TIPO = { primera_vez: 'Primera consulta', seguimiento: 'Sesión', evaluacion: 'Evaluación', urgencia: 'Urgencia' };
+  return `${TIPO[tipo] || 'Sesión'}${pac ? ' — ' + pac.nombre + ' ' + pac.apellido : ''}`;
+}
+
 router.post('/', auth, async (req, res) => {
   const { paciente_id, terapeuta_id, fecha, modalidad='presencial', tipo='seguimiento', estado='realizada', notas } = req.body || {};
   let { hora_inicio, hora_fin } = req.body || {};
@@ -95,7 +100,19 @@ router.post('/', auth, async (req, res) => {
       `UPDATE pacientes SET estado='confirmado' WHERE id=? AND estado='prospecto'`,
       [pid(paciente_id)]
     );
-    res.status(201).json({ id: r.insertId, meet_link });
+    let gcal_event_id = null;
+    try {
+      if (await googleCal.isConnected(pid(terapeuta_id))) {
+        const [[pac]] = await pool.execute('SELECT nombre, apellido FROM pacientes WHERE id=?', [pid(paciente_id)]);
+        gcal_event_id = await googleCal.createEvent(pid(terapeuta_id), {
+          titulo: gcalTitulo(pac, tipo),
+          fecha, horaInicio: hora_inicio, horaFin: hora_fin,
+          descripcion: `Modalidad: ${modalidad}${notas ? '\n' + notas : ''}`,
+        });
+        if (gcal_event_id) await pool.execute('UPDATE citas SET gcal_event_id=? WHERE id=?', [gcal_event_id, r.insertId]);
+      }
+    } catch (e) { console.error('[gcal create]', e.message); }
+    res.status(201).json({ id: r.insertId, meet_link, gcal_event_id });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -138,12 +155,15 @@ router.delete('/:cid', auth, async (req, res) => {
   const cid = pid(req.params.cid);
   if (!cid) return res.status(400).json({ error: 'ID inválido' });
   try {
-    const [[cita]] = await pool.execute('SELECT estado, terapeuta_id FROM citas WHERE id=?', [cid]);
+    const [[cita]] = await pool.execute('SELECT estado, terapeuta_id, gcal_event_id FROM citas WHERE id=?', [cid]);
     if (!cita) return res.status(404).json({ error: 'No encontrada' });
     const esAdmin = req.user.rol !== 'terapeuta';
     if (!esAdmin && cita.estado !== 'pendiente') return res.status(400).json({ error: 'Solo se pueden eliminar citas pendientes' });
     if (!esAdmin && cita.terapeuta_id !== req.user.id)
       return res.status(403).json({ error: 'Sin acceso' });
+    if (cita.gcal_event_id) {
+      try { await googleCal.deleteEvent(cita.terapeuta_id, cita.gcal_event_id); } catch (e) { console.error('[gcal delete]', e.message); }
+    }
     await pool.execute('DELETE FROM citas WHERE id=?', [cid]);
     res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -188,6 +208,20 @@ router.put('/:cid', auth, async (req, res) => {
     }
     const setsAll = Object.keys(updates).map(k => `${k}=?`).join(', ');
     await pool.execute(`UPDATE citas SET ${setsAll} WHERE id=?`, [...Object.values(updates), cid]);
+    // Sincronizar con Google Calendar si hay cambios de fecha/hora
+    const gcalId = cita.gcal_event_id;
+    if (gcalId && (updates.fecha || updates.hora_inicio || updates.hora_fin || updates.tipo || updates.notas || updates.modalidad)) {
+      try {
+        const [[pac]] = await pool.execute('SELECT nombre, apellido FROM pacientes WHERE id=?', [cita.paciente_id]);
+        await googleCal.updateEvent(cita.terapeuta_id, gcalId, {
+          titulo: gcalTitulo(pac, updates.tipo || cita.tipo),
+          fecha: updates.fecha || String(cita.fecha).slice(0,10),
+          horaInicio: updates.hora_inicio || String(cita.hora_inicio).slice(0,5),
+          horaFin: updates.hora_fin || String(cita.hora_fin).slice(0,5),
+          descripcion: `Modalidad: ${updates.modalidad || cita.modalidad}${(updates.notas || cita.notas) ? '\n' + (updates.notas || cita.notas) : ''}`,
+        });
+      } catch (e) { console.error('[gcal update]', e.message); }
+    }
     res.json({ ok: true, meet_link: updates.meet_link || cita.meet_link || null });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
