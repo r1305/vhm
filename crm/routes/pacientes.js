@@ -9,6 +9,7 @@ const tribuProvision = require('../lib/tribuProvision');
 const {
   loadPacientePaquetes,
   createPacientePaquete,
+  deletePacientePaquete,
   markCuotaPagada,
 } = require('../lib/paquetesPaciente');
 
@@ -237,6 +238,19 @@ router.patch('/:pid/paquetes-adquiridos/:pkgId', authAdmin, async (req, res) => 
     res.json({ ok: true, paquetes });
   } catch (err) {
     res.status(500).json({ error: err.message || 'Error al actualizar paquete' });
+  }
+});
+
+router.delete('/:pid/paquetes-adquiridos/:pkgId', authAdmin, async (req, res) => {
+  const pid = id(req.params.pid);
+  const pkgId = id(req.params.pkgId);
+  if (!pid || !pkgId) return res.status(400).json({ error: 'ID inválido' });
+  try {
+    await deletePacientePaquete(pid, pkgId);
+    const paquetes = await loadPacientePaquetes(pid);
+    res.json({ ok: true, paquetes });
+  } catch (err) {
+    res.status(400).json({ error: err.message || 'Error al eliminar paquete' });
   }
 });
 

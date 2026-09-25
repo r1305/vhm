@@ -285,6 +285,28 @@ async function createPacientePaquete(pacienteId, payload) {
   }
 }
 
+async function deletePacientePaquete(pacienteId, pkgId) {
+  const [[pkg]] = await pool.execute(
+    'SELECT id FROM paciente_paquetes WHERE id = ? AND paciente_id = ?',
+    [pkgId, pacienteId]
+  );
+  if (!pkg) throw new Error('Paquete no encontrado');
+
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    await conn.execute('UPDATE citas SET paciente_paquete_id = NULL WHERE paciente_paquete_id = ?', [pkgId]);
+    await conn.execute('DELETE FROM paciente_paquete_cuotas WHERE paciente_paquete_id = ?', [pkgId]);
+    await conn.execute('DELETE FROM paciente_paquetes WHERE id = ?', [pkgId]);
+    await conn.commit();
+  } catch (err) {
+    await conn.rollback();
+    throw err;
+  } finally {
+    conn.release();
+  }
+}
+
 async function markCuotaPagada(pacienteId, cuotaId) {
   const [[cuota]] = await pool.execute(
     `SELECT c.id, c.paciente_paquete_id, c.pagado
@@ -401,6 +423,7 @@ module.exports = {
   loadCuotas,
   loadPacientePaquetes,
   createPacientePaquete,
+  deletePacientePaquete,
   markCuotaPagada,
   evaluateBooking,
   getSesionesResumen,
