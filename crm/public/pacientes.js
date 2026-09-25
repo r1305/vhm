@@ -6,6 +6,7 @@
 
   const { api, toast, esc, fmtDate, badge, fullName,
           openModal, closeModal, ESTADO_PACIENTE } = window.CRM;
+  const isAdmin = ['superadmin', 'admin', 'recepcion'].includes(window.__USER_ROL__);
 
   let terapeutasCache = [];
   let chipTerapeutaId = null;
@@ -231,6 +232,7 @@
             <div style="display:flex;gap:6px;align-items:center">
               <span class="pkg-estado-badge ${est.cls}">${est.label}</span>
               ${window.__USER_ROL__ !== 'terapeuta' ? `<button type="button" class="btn btn-outline btn-xs" data-editar-pkg="${pkg.id}" data-pid="${pid}" title="Cambiar paquete"><i class="fas fa-pen"></i></button>` : ''}
+              ${isAdmin ? `<button type="button" class="btn btn-outline btn-xs btn-danger-outline" data-eliminar-pkg="${pkg.id}" data-pid="${pid}" title="Eliminar paquete"><i class="fas fa-trash"></i></button>` : ''}
             </div>
           </div>
           <div class="pkg-historial-meta">
@@ -353,6 +355,25 @@
           const box = document.getElementById('paqueteHistorialBox');
           if (box) { box.innerHTML = renderHistorialPaquetes(r, patientId); box._paquetesData = r; bindPaqueteEvents(patientId, catalogo); }
         }, { successMessage: 'Paquete actualizado' });
+      });
+    });
+
+    document.querySelectorAll('[data-eliminar-pkg]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const pkgId = btn.dataset.eliminarPkg;
+        const patientId = btn.dataset.pid;
+        const ok = await window.CRM.confirmDialog({
+          title: 'Eliminar paquete',
+          message: 'Se eliminará el paquete y sus cuotas. Las citas vinculadas quedarán sin paquete asignado. ¿Continuar?',
+          confirmLabel: 'Eliminar',
+          danger: true,
+        });
+        if (!ok) return;
+        try {
+          const r = await api(`/pacientes/${patientId}/paquetes-adquiridos/${pkgId}`, { method: 'DELETE', successMessage: 'Paquete eliminado' });
+          const box = document.getElementById('paqueteHistorialBox');
+          if (box) { box.innerHTML = renderHistorialPaquetes(r.paquetes || [], patientId); box._paquetesData = r.paquetes || []; bindPaqueteEvents(patientId, catalogo); }
+        } catch (e) { toast(e.message, 'danger'); }
       });
     });
 
@@ -601,6 +622,25 @@
           closeModal();
           showPacienteDetalle(p);
         }, { successMessage: 'Paquete actualizado' });
+      });
+    });
+
+    document.querySelectorAll('[data-eliminar-pkg]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const pkgId = btn.dataset.eliminarPkg;
+        const patientId = btn.dataset.pid;
+        const ok = await window.CRM.confirmDialog({
+          title: 'Eliminar paquete',
+          message: 'Se eliminará el paquete y sus cuotas. Las citas vinculadas quedarán sin paquete asignado. ¿Continuar?',
+          confirmLabel: 'Eliminar',
+          danger: true,
+        });
+        if (!ok) return;
+        try {
+          await api(`/pacientes/${patientId}/paquetes-adquiridos/${pkgId}`, { method: 'DELETE', successMessage: 'Paquete eliminado' });
+          closeModal();
+          showPacienteDetalle(p);
+        } catch (e) { toast(e.message, 'danger'); }
       });
     });
   }

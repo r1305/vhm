@@ -7,7 +7,7 @@
 
   const COLORS = ['#176B87', '#237A68', '#A84F3E', '#287A5B', '#A66A13', '#B64A5A', '#3E6FA4', '#64B5CE'];
   const MODALIDAD_LABEL = { presencial: 'Presencial', videollamada: 'Videollamada', telefono: 'Teléfono' };
-  const ACTIVOS = new Set(['pendiente', 'confirmada', 'reagendada']);
+  const ESTADO_COLOR = { realizada: '#22c55e', cancelada: '#f59e0b', no_show: '#ef4444' };
 
   function estadoLabel(estado) {
     return ESTADO_CITA[estado]?.label || estado;
@@ -54,8 +54,9 @@
       const val = parseFloat(r[valueKey]) || 0;
       const pct = total > 0 ? Math.round((val / total) * 100) : 0;
       const label = labelFn ? labelFn(r) : r.estado;
+      const color = ESTADO_COLOR[r.estado] || COLORS[i % COLORS.length];
       return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-        <div style="width:12px;height:12px;border-radius:3px;background:${COLORS[i % COLORS.length]};flex-shrink:0"></div>
+        <div style="width:12px;height:12px;border-radius:3px;background:${color};flex-shrink:0"></div>
         <div style="flex:1;font-size:13px">${esc(label)}</div>
         <div style="font-size:13px;font-weight:700;min-width:24px;text-align:right">${val}</div>
         <div style="font-size:11px;color:var(--text-muted);width:38px;text-align:right">${pct}%</div>
@@ -103,18 +104,16 @@
     const evaluadas  = realizadas + noShows;
     const tasa       = k.tasa_asistencia;
     const pct        = tasa != null ? tasa : 0;
-    const activas    = sumEstados(estados, [...ACTIVOS]);
 
     container.innerHTML = `
       <div class="mr-gauge-ring" style="--pct:${pct}">
         <span class="mr-gauge-val">${tasa != null ? `${tasa}%` : '—'}</span>
       </div>
-      <div class="mr-gauge-detail">${realizadas} realizadas · ${noShows} no-show</div>
+      <div class="mr-gauge-detail">${realizadas} realizadas · ${noShows} perdidas</div>
       <div class="mr-gauge-caption">
         ${evaluadas > 0
-          ? `De ${evaluadas} citas con resultado (realizada o no-show), ${realizadas} asistieron.`
+          ? `De ${evaluadas} citas con resultado, ${realizadas} asistieron.`
           : 'Aún no hay citas cerradas en este período.'}
-        ${activas ? `<br>${activas} cita${activas !== 1 ? 's' : ''} aún activa${activas !== 1 ? 's' : ''}.` : ''}
       </div>`;
   }
 
@@ -123,7 +122,6 @@
     const realizadas = Number(k.citas_realizadas) || 0;
     const canceladas = Number(k.citas_canceladas) || 0;
     const noShows    = Number(k.no_shows) || 0;
-    const activas    = sumEstados(estados, [...ACTIVOS]);
     const dias       = daysInRange(desde, hasta);
     const pctReal    = total > 0 ? Math.round((realizadas / total) * 100) : 0;
 
@@ -137,9 +135,8 @@
         </div>
         <div class="mr-summary-stats">
           <span class="mr-summary-pill success"><i class="fas fa-circle-check"></i> ${realizadas} realizadas</span>
-          ${activas ? `<span class="mr-summary-pill"><i class="fas fa-hourglass-half"></i> ${activas} activas</span>` : ''}
           ${canceladas ? `<span class="mr-summary-pill warning"><i class="fas fa-ban"></i> ${canceladas} canceladas</span>` : ''}
-          ${noShows ? `<span class="mr-summary-pill muted"><i class="fas fa-user-slash"></i> ${noShows} no-show</span>` : ''}
+          ${noShows ? `<span class="mr-summary-pill danger"><i class="fas fa-user-slash"></i> ${noShows} perdidas</span>` : ''}
         </div>
       </div>`;
   }
@@ -169,7 +166,6 @@
       const d = await api(`/reportes/stats?${qs}`, { loaderMessage: 'Cargando reporte…' });
       const k = d.kpis || {};
       const estados = d.citasPorEstado || [];
-      const activas = sumEstados(estados, [...ACTIVOS]);
       const totalAll = estados.reduce((s, e) => s + Number(e.total || 0), 0);
 
       renderSummary(desde, hasta, k, estados);
@@ -178,7 +174,7 @@
         {
           label: 'Citas programadas',
           value: k.citas_periodo || 0,
-          sub: 'Sin canceladas ni no-show',
+          sub: 'Total en el período',
           css: 'accent',
         },
         {
@@ -186,12 +182,6 @@
           value: k.citas_realizadas || 0,
           sub: k.citas_periodo ? `${Math.round(((k.citas_realizadas || 0) / k.citas_periodo) * 100)}% del programado` : '—',
           css: 'success',
-        },
-        {
-          label: 'Activas / pendientes',
-          value: activas,
-          sub: 'Pendiente, confirmada o reagendada',
-          css: 'info',
         },
         {
           label: 'Tasa de asistencia',
