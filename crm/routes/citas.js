@@ -81,8 +81,10 @@ router.post('/', auth, async (req, res) => {
   hora_inicio = hora_inicio || '17:00';
   hora_fin    = hora_fin    || '18:00';
   try {
+    const terapeutaConGcal = await googleCal.isConnected(pid(terapeuta_id)).catch(() => false);
     let meet_link = null;
-    if (modalidad === 'videollamada' && await isConnected().catch(() => false)) {
+    // Si el terapeuta NO tiene GCal, usar cuenta global como fallback para Meet
+    if (modalidad === 'videollamada' && !terapeutaConGcal && await isConnected().catch(() => false)) {
       const [[pac]] = await pool.execute('SELECT nombre, apellido FROM pacientes WHERE id=?', [pid(paciente_id)]);
       meet_link = await createMeetLink({
         titulo: `Sesión VHM${pac ? ' — ' + pac.nombre + ' ' + pac.apellido : ''}`,
@@ -102,14 +104,18 @@ router.post('/', auth, async (req, res) => {
     );
     let gcal_event_id = null;
     try {
-      if (await googleCal.isConnected(pid(terapeuta_id))) {
+      if (terapeutaConGcal) {
         const [[pac]] = await pool.execute('SELECT nombre, apellido FROM pacientes WHERE id=?', [pid(paciente_id)]);
-        gcal_event_id = await googleCal.createEvent(pid(terapeuta_id), {
+        const withMeet = modalidad === 'videollamada';
+        const result = await googleCal.createEvent(pid(terapeuta_id), {
           titulo: gcalTitulo(pac, tipo),
           fecha, horaInicio: hora_inicio, horaFin: hora_fin,
           descripcion: `Modalidad: ${modalidad}${notas ? '\n' + notas : ''}`,
+          withMeet,
         });
-        if (gcal_event_id) await pool.execute('UPDATE citas SET gcal_event_id=? WHERE id=?', [gcal_event_id, r.insertId]);
+        gcal_event_id = result.gcalEventId;
+        if (withMeet && result.meetLink) meet_link = result.meetLink;
+        if (gcal_event_id) await pool.execute('UPDATE citas SET gcal_event_id=?, meet_link=? WHERE id=?', [gcal_event_id, meet_link, r.insertId]);
       }
     } catch (e) { console.error('[gcal create]', e.message); }
     res.status(201).json({ id: r.insertId, meet_link, gcal_event_id });
@@ -196,15 +202,34 @@ router.put('/:cid', auth, async (req, res) => {
     const sets = Object.keys(updates).map(k => `${k}=?`).join(', ');
     // Generar Meet link si cambia a videollamada y no tiene uno
     const nuevaModalidad = updates.modalidad || cita.modalidad;
-    if (nuevaModalidad === 'videollamada' && !cita.meet_link && await isConnected().catch(() => false)) {
-      const fechaFinal     = updates.fecha      || String(cita.fecha).slice(0,10);
-      const horaInicioFinal = updates.hora_inicio || String(cita.hora_inicio).slice(0,5);
-      const horaFinFinal    = updates.hora_fin    || String(cita.hora_fin).slice(0,5);
+    if (nuevaModalidad === 'videollamada' && !cita.meet_link) {
+      const fechaFinal      = updates.fecha       || String(cita.fecha).slice(0,10);
+      const horaInicioFinal = updates.hora_inicio  || String(cita.hora_inicio).slice(0,5);
+      const horaFinFinal    = updates.hora_fin     || String(cita.hora_fin).slice(0,5);
       const [[pac]] = await pool.execute('SELECT nombre, apellido FROM pacientes WHERE id=?', [cita.paciente_id]);
-      updates.meet_link = await createMeetLink({
-        titulo: `Sesión VHM${pac ? ' — ' + pac.nombre + ' ' + pac.apellido : ''}`,
-        fecha: fechaFinal, horaInicio: horaInicioFinal, horaFin: horaFinFinal,
-      }).catch(e => { console.error('[meet]', e.message); return null; });
+      const terConGcal = await googleCal.isConnected(cita.terapeuta_id).catch(() => false);
+      if (terConGcal && cita.gcal_event_id) {
+        // Actualizar el evento existente en GCal con conferenceData para obtener Meet link
+        try {
+          const result = await googleCal.createEvent(cita.terapeuta_id, {
+            titulo: gcalTitulo(pac, updates.tipo || cita.tipo),
+            fecha: fechaFinal, horaInicio: horaInicioFinal, horaFin: horaFinFinal,
+            descripcion: `Modalidad: videollamada`,
+            withMeet: true,
+          });
+          if (result.meetLink) updates.meet_link = result.meetLink;
+          // Borrar el evento temporal creado para Meet (el original ya existe)
+          if (result.gcalEventId && result.gcalEventId !== cita.gcal_event_id) {
+            googleCal.deleteEvent(cita.terapeuta_id, result.gcalEventId).catch(() => {});
+          }
+        } catch (e) { console.error('[meet gcal]', e.message); }
+      } else if (!terConGcal && await isConnected().catch(() => false)) {
+        // Fallback: cuenta global
+        updates.meet_link = await createMeetLink({
+          titulo: `Sesión VHM${pac ? ' — ' + pac.nombre + ' ' + pac.apellido : ''}`,
+          fecha: fechaFinal, horaInicio: horaInicioFinal, horaFin: horaFinFinal,
+        }).catch(e => { console.error('[meet]', e.message); return null; });
+      }
     }
     const setsAll = Object.keys(updates).map(k => `${k}=?`).join(', ');
     await pool.execute(`UPDATE citas SET ${setsAll} WHERE id=?`, [...Object.values(updates), cid]);
