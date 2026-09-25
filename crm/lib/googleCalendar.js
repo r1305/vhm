@@ -96,13 +96,19 @@ async function getEvents(terapeutaId, fechaInicio, fechaFin) {
     orderBy: 'startTime',
     maxResults: 250,
   });
-  return (data.items || []).map(e => ({
-    gcal_id: e.id,
-    titulo: e.summary || 'Evento',
-    start: e.start?.dateTime || e.start?.date,
-    end:   e.end?.dateTime   || e.end?.date,
-    allDay: !e.start?.dateTime,
-  }));
+  return (data.items || []).map(e => {
+    const allDay = !e.start?.dateTime;
+    const start  = e.start?.dateTime || e.start?.date;
+    // Para eventos de todo el día, Google devuelve end como día siguiente (exclusivo).
+    // Restamos 1 día para obtener la fecha real de fin.
+    let end = e.end?.dateTime || e.end?.date;
+    if (allDay && end) {
+      const d = new Date(end + 'T12:00:00');
+      d.setDate(d.getDate() - 1);
+      end = d.toISOString().slice(0, 10);
+    }
+    return { gcal_id: e.id, titulo: e.summary || 'Evento', start, end, allDay };
+  });
 }
 
 // Crea un evento en Google Calendar y devuelve el gcal_event_id
