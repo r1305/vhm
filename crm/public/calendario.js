@@ -90,10 +90,39 @@
       if (tid) qsB.set('terapeuta_id', tid);
       else if (window.__USER_ROL__ === 'terapeuta') qsB.set('terapeuta_id', window.__USER_ID__);
 
-      [citasCache, bloqueosCache] = await Promise.all([
+      // Terapeuta efectivo para Google Calendar
+      const gcalTid = tid || (window.__USER_ROL__ === 'terapeuta' ? window.__USER_ID__ : null);
+
+      const promises = [
         api(`/citas?${qs}`, { loaderMessage: 'Cargando calendario…' }),
         api(`/bloqueos?${qsB}`, { loaderMessage: 'Cargando calendario…' }),
-      ]);
+      ];
+      if (gcalTid) {
+        promises.push(
+          api(`/terapeutas/${gcalTid}/google/status`, { loader: false })
+            .then(r => r.connected
+              ? api(`/terapeutas/${gcalTid}/google/events?desde=${desdeStr}&hasta=${hastaStr}`, { loader: false })
+              : [])
+            .catch(() => [])
+        );
+      }
+
+      const [citas, bloqueos, gcalEvents = []] = await Promise.all(promises);
+      citasCache    = citas;
+      // Mezclar bloqueos CRM + eventos externos de Google Calendar
+      bloqueosCache = [
+        ...bloqueos,
+        ...gcalEvents.map(e => ({
+          id: 'gcal_' + e.gcal_id,
+          titulo: e.titulo,
+          fecha_inicio: String(e.start).slice(0,10),
+          fecha_fin:    String(e.end  ).slice(0,10),
+          hora_inicio:  e.allDay ? '00:00' : String(e.start).slice(11,16),
+          hora_fin:     e.allDay ? '23:59' : String(e.end  ).slice(11,16),
+          terapeuta_nombre: '',
+          gcal: true,
+        }))
+      ];
 
       if (vista === 'semana' && desde.getMonth() !== hasta.getMonth()) {
         const qs2 = new URLSearchParams(qs);
@@ -185,7 +214,8 @@
       html += `<span class="cal-dia-num">${dia.getDate()}</span>`;
       bloqs.forEach(b => {
         if (shown >= MAX) return;
-        html += `<div class="cal-bloqueo" data-bloqueo="${b.id}" title="${esc(b.titulo)}">🔒 ${esc(b.titulo)}</div>`;
+        const icon = b.gcal ? '<i class="fab fa-google" style="font-size:10px"></i>' : '🔒';
+        html += `<div class="cal-bloqueo${b.gcal?' cal-bloqueo-gcal':''}" data-bloqueo="${b.id}" title="${esc(b.titulo)}">${icon} ${esc(b.titulo)}</div>`;
         shown++;
       });
       citas.slice(0, MAX - shown).forEach(c => {
@@ -228,7 +258,10 @@
     cols.forEach(d => {
       const fStr=isoDate(d), citas=porFecha[fStr]||[], bloqs=bMap[fStr]||[], esHoy=d.getTime()===hoy.getTime();
       html += `<td class="${esHoy?'cal-hoy-col':''} ${bloqs.length?'cal-dia-bloqueado':''}" data-fecha="${fStr}" style="padding:4px;min-height:50px">`;
-      bloqs.forEach(b => { html += `<div class="cal-bloqueo" data-bloqueo="${b.id}" style="margin-bottom:3px">🔒 ${esc(b.titulo)}<span style="opacity:.7;font-size:10px"> · ${esc(b.terapeuta_nombre||'')}</span></div>`; });
+      bloqs.forEach(b => { 
+        const icon = b.gcal ? '<i class="fab fa-google" style="font-size:10px"></i>' : '🔒';
+        html += `<div class="cal-bloqueo${b.gcal?' cal-bloqueo-gcal':''}" data-bloqueo="${b.id}" style="margin-bottom:3px">${icon} ${esc(b.titulo)}<span style="opacity:.7;font-size:10px"> · ${esc(b.terapeuta_nombre||'')}</span></div>`; 
+      });
       citas.forEach(c => { html += `<div class="cal-evento ${colorForTer(c.terapeuta_id)}" data-cita="${c.id}" style="margin-bottom:3px">${esc((c.paciente_nombre||'').split(' ')[0])} ${esc((c.paciente_apellido||'').split(' ')[0])}<span style="opacity:.8;font-size:10px"> · ${esc(c.terapeuta_nombre||'')}</span></div>`; });
       if (!citas.length && !bloqs.length) html += `<div style="height:30px"></div>`;
       html += `</td>`;
@@ -275,7 +308,8 @@
         <div class="cal-dia-cell${bloqsSlot.length?' cal-dia-bloqueado':''}" data-fecha="${fStr}">`;
 
       bloqsSlot.forEach(b => {
-        html += `<div class="cal-bloqueo" data-bloqueo="${b.id}">🔒 ${esc(b.titulo)}<span style="opacity:.7;font-size:10px"> · ${esc(b.terapeuta_nombre||'')}</span></div>`;
+        const icon = b.gcal ? '<i class="fab fa-google" style="font-size:10px"></i>' : '🔒';
+        html += `<div class="cal-bloqueo${b.gcal?' cal-bloqueo-gcal':''}" data-bloqueo="${b.id}">${icon} ${esc(b.titulo)}<span style="opacity:.7;font-size:10px"> · ${esc(b.terapeuta_nombre||'')}</span></div>`;
       });
       citasSlot.forEach(c => {
         const hi = String(c.hora_inicio||'').slice(0,5);
@@ -397,14 +431,16 @@
 
   /* ── Detalle bloqueo ── */
   function showDetalleBloqueo(b) {
-    const puedeBorrar = window.__USER_ROL__ !== 'terapeuta' || String(b.terapeuta_id) === String(window.__USER_ID__);
-    openModal('Bloqueo de agenda', `
+    const esGcal = !!b.gcal;
+    const puedeBorrar = !esGcal && (window.__USER_ROL__ !== 'terapeuta' || String(b.terapeuta_id) === String(window.__USER_ID__));
+    openModal(esGcal ? 'Evento de Google Calendar' : 'Bloqueo de agenda', `
       <div style="font-size:13px;display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div><span style="color:var(--text-muted)">Terapeuta</span><br><strong>${esc((b.terapeuta_nombre||'') + ' ' + (b.terapeuta_apellido||''))}</strong></div>
+        ${esGcal ? `<div style="grid-column:1/-1"><span style="color:var(--text-muted)">Origen</span><br><strong><i class="fab fa-google"></i> Google Calendar</strong></div>` : `<div><span style="color:var(--text-muted)">Terapeuta</span><br><strong>${esc((b.terapeuta_nombre||'') + ' ' + (b.terapeuta_apellido||''))}</strong></div>`}
         <div><span style="color:var(--text-muted)">Motivo</span><br><strong>${esc(b.titulo)}</strong></div>
         <div><span style="color:var(--text-muted)">Desde</span><br><strong>${b.fecha_inicio}</strong></div>
         <div><span style="color:var(--text-muted)">Hasta</span><br><strong>${b.fecha_fin}</strong></div>
       </div>
+      ${esGcal ? `<p style="margin-top:12px;font-size:12px;color:var(--text-muted)">Este evento proviene de Google Calendar. Para modificarlo, hazlo directamente en Google Calendar.</p>` : ''}
       ${puedeBorrar ? `<div style="margin-top:16px">
         <button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger)" id="btnEliminarBloqueo">
           <i class="fas fa-trash"></i> Eliminar bloqueo

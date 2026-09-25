@@ -198,3 +198,7 @@ body.crm-loading { overflow: hidden; }
 /* Google Calendar button state */
 #btnGoogleCal.gcal-connected { color: #34a853; border-color: #34a853; }
 #btnGoogleCal.gcal-connected i { color: #34a853; }
+
+/* Bloqueos de Google Calendar en el calendario */
+.cal-bloqueo-gcal { background: #e8f0fe !important; color: #1a73e8 !important; border-left: 2px solid #1a73e8 !important; }
+[data-theme="dark"] .cal-bloqueo-gcal { background: #1a2a4a !important; color: #8ab4f8 !important; border-left-color: #8ab4f8 !important; }

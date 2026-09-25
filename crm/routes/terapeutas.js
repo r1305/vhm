@@ -184,6 +184,19 @@ router.get('/:id/google/status', auth, async (req, res) => {
   res.json({ connected: await googleCal.isConnected(id) });
 });
 
+router.get('/:id/google/events', auth, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (req.user.rol === 'terapeuta' && req.user.id !== id)
+    return res.status(403).json({ error: 'Sin acceso' });
+  const desde = String(req.query.desde || '').slice(0, 10);
+  const hasta = String(req.query.hasta || '').slice(0, 10);
+  if (!desde || !hasta) return res.status(400).json({ error: 'desde y hasta requeridos' });
+  try {
+    const events = await googleCal.getEvents(id, desde, hasta);
+    res.json(events);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 router.delete('/:id/google', auth, async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (req.user.rol === 'terapeuta' && req.user.id !== id)
