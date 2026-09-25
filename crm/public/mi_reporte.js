@@ -206,7 +206,7 @@
           css: 'warning',
         },
         {
-          label: 'No se presentaron',
+          label: 'Perdidas',
           value: k.no_shows || 0,
           sub: 'Ausencias registradas',
           css: '',
