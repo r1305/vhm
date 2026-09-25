@@ -69,6 +69,14 @@
     return map;
   }
 
+  // Devuelve true si el bloqueo ocupa todo el día (para pintar fondo rojo)
+  function esBloqueoDiario(b) {
+    if (b.gcal && !b.allDay) return false;
+    const hi = b.hora_inicio || '00:00';
+    const hf = b.hora_fin   || '23:59';
+    return hi <= '00:01' && hf >= '23:58';
+  }
+
   /* ── Cargar citas y bloqueos ── */
   async function loadCitas() {
     try {
@@ -112,16 +120,27 @@
       // Mezclar bloqueos CRM + eventos externos de Google Calendar
       bloqueosCache = [
         ...bloqueos,
-        ...gcalEvents.map(e => ({
-          id: 'gcal_' + e.gcal_id,
-          titulo: e.titulo,
-          fecha_inicio: String(e.start).slice(0,10),
-          fecha_fin:    String(e.end  ).slice(0,10),
-          hora_inicio:  e.allDay ? '00:00' : String(e.start).slice(11,16),
-          hora_fin:     e.allDay ? '23:59' : String(e.end  ).slice(11,16),
-          terapeuta_nombre: '',
-          gcal: true,
-        }))
+        ...gcalEvents.map(e => {
+          // Convertir hora UTC a Lima (UTC-5) para eventos con hora
+          let hi = '00:00', hf = '23:59';
+          if (!e.allDay && e.start) {
+            const s = new Date(e.start);
+            const en = new Date(e.end);
+            hi = `${String(s.getHours()).padStart(2,'0')}:${String(s.getMinutes()).padStart(2,'0')}`;
+            hf = `${String(en.getHours()).padStart(2,'0')}:${String(en.getMinutes()).padStart(2,'0')}`;
+          }
+          return {
+            id: 'gcal_' + e.gcal_id,
+            titulo: e.titulo,
+            fecha_inicio: String(e.start).slice(0,10),
+            fecha_fin:    String(e.end  ).slice(0,10),
+            hora_inicio:  hi,
+            hora_fin:     hf,
+            allDay:       e.allDay,
+            terapeuta_nombre: '',
+            gcal: true,
+          };
+        })
       ];
 
       if (vista === 'semana' && desde.getMonth() !== hasta.getMonth()) {
@@ -209,13 +228,15 @@
       const bloqs = bMap[fStr] || [];
       const MAX   = 3;
       let shown   = 0;
+      const tieneBloqueoDia = bloqs.some(esBloqueoDiario);
 
-      html += `<td class="${esHoy?'cal-hoy':''} ${!esMes?'cal-otro-mes':''} ${bloqs.length?'cal-dia-bloqueado':''}" data-fecha="${fStr}">`;
+      html += `<td class="${esHoy?'cal-hoy':''} ${!esMes?'cal-otro-mes':''} ${tieneBloqueoDia?'cal-dia-bloqueado':''}" data-fecha="${fStr}">`;
       html += `<span class="cal-dia-num">${dia.getDate()}</span>`;
       bloqs.forEach(b => {
         if (shown >= MAX) return;
         const icon = b.gcal ? '<i class="fab fa-google" style="font-size:10px"></i>' : '🔒';
-        html += `<div class="cal-bloqueo${b.gcal?' cal-bloqueo-gcal':''}" data-bloqueo="${b.id}" title="${esc(b.titulo)}">${icon} ${esc(b.titulo)}</div>`;
+        const hora = (!b.allDay && b.gcal) ? ` ${b.hora_inicio}` : '';
+        html += `<div class="cal-bloqueo${b.gcal?' cal-bloqueo-gcal':''}" data-bloqueo="${b.id}" title="${esc(b.titulo)}">${icon}${hora} ${esc(b.titulo)}</div>`;
         shown++;
       });
       citas.slice(0, MAX - shown).forEach(c => {
@@ -257,10 +278,12 @@
     html += `</tr></thead><tbody><tr><td class="cal-time-col" style="font-size:10px;padding-top:6px">citas</td>`;
     cols.forEach(d => {
       const fStr=isoDate(d), citas=porFecha[fStr]||[], bloqs=bMap[fStr]||[], esHoy=d.getTime()===hoy.getTime();
-      html += `<td class="${esHoy?'cal-hoy-col':''} ${bloqs.length?'cal-dia-bloqueado':''}" data-fecha="${fStr}" style="padding:4px;min-height:50px">`;
+      const tieneBloqueoDia = bloqs.some(esBloqueoDiario);
+      html += `<td class="${esHoy?'cal-hoy-col':''} ${tieneBloqueoDia?'cal-dia-bloqueado':''}" data-fecha="${fStr}" style="padding:4px;min-height:50px">`;
       bloqs.forEach(b => { 
         const icon = b.gcal ? '<i class="fab fa-google" style="font-size:10px"></i>' : '🔒';
-        html += `<div class="cal-bloqueo${b.gcal?' cal-bloqueo-gcal':''}" data-bloqueo="${b.id}" style="margin-bottom:3px">${icon} ${esc(b.titulo)}<span style="opacity:.7;font-size:10px"> · ${esc(b.terapeuta_nombre||'')}</span></div>`; 
+        const hora = (!b.allDay && b.gcal) ? ` ${b.hora_inicio}` : '';
+        html += `<div class="cal-bloqueo${b.gcal?' cal-bloqueo-gcal':''}" data-bloqueo="${b.id}" style="margin-bottom:3px">${icon}${hora} ${esc(b.titulo)}</div>`; 
       });
       citas.forEach(c => { html += `<div class="cal-evento ${colorForTer(c.terapeuta_id)}" data-cita="${c.id}" style="margin-bottom:3px">${esc((c.paciente_nombre||'').split(' ')[0])} ${esc((c.paciente_apellido||'').split(' ')[0])}<span style="opacity:.8;font-size:10px"> · ${esc(c.terapeuta_nombre||'')}</span></div>`; });
       if (!citas.length && !bloqs.length) html += `<div style="height:30px"></div>`;
@@ -437,8 +460,8 @@
       <div style="font-size:13px;display:grid;grid-template-columns:1fr 1fr;gap:10px">
         ${esGcal ? `<div style="grid-column:1/-1"><span style="color:var(--text-muted)">Origen</span><br><strong><i class="fab fa-google"></i> Google Calendar</strong></div>` : `<div><span style="color:var(--text-muted)">Terapeuta</span><br><strong>${esc((b.terapeuta_nombre||'') + ' ' + (b.terapeuta_apellido||''))}</strong></div>`}
         <div><span style="color:var(--text-muted)">Motivo</span><br><strong>${esc(b.titulo)}</strong></div>
-        <div><span style="color:var(--text-muted)">Desde</span><br><strong>${b.fecha_inicio}</strong></div>
-        <div><span style="color:var(--text-muted)">Hasta</span><br><strong>${b.fecha_fin}</strong></div>
+        <div><span style="color:var(--text-muted)">Desde</span><br><strong>${b.fecha_inicio}${!b.allDay && b.gcal ? ' ' + b.hora_inicio : ''}</strong></div>
+        <div><span style="color:var(--text-muted)">Hasta</span><br><strong>${b.fecha_fin}${!b.allDay && b.gcal ? ' ' + b.hora_fin : ''}</strong></div>
       </div>
       ${esGcal ? `<p style="margin-top:12px;font-size:12px;color:var(--text-muted)">Este evento proviene de Google Calendar. Para modificarlo, hazlo directamente en Google Calendar.</p>` : ''}
       ${puedeBorrar ? `<div style="margin-top:16px">
