@@ -36,6 +36,7 @@
   };
 
   const ESTADO_CITA = {
+    pendiente: { label: 'Pendiente', css: 'badge-blue'   },
     realizada: { label: 'Realizada', css: 'badge-green'  },
     cancelada: { label: 'Cancelada', css: 'badge-yellow' },
     no_show:   { label: 'Perdida',   css: 'badge-red'    },

@@ -72,7 +72,7 @@ function gcalTitulo(pac, tipo) {
 }
 
 router.post('/', auth, async (req, res) => {
-  const { paciente_id, terapeuta_id, fecha, modalidad='presencial', tipo='seguimiento', estado='realizada', notas } = req.body || {};
+  const { paciente_id, terapeuta_id, fecha, modalidad='presencial', tipo='seguimiento', estado='pendiente', notas } = req.body || {};
   let { hora_inicio, hora_fin } = req.body || {};
   if (!paciente_id || !terapeuta_id || !fecha)
     return res.status(400).json({ error: 'Campos requeridos faltantes' });
