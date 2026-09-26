@@ -2,6 +2,7 @@ const { Router } = require('express');
 const pool = require('../lib/db');
 const { createMeetLink, isConnected } = require('../lib/googleMeet');
 const { evaluateBooking } = require('../lib/paquetesPaciente');
+const googleCal = require('../lib/googleCalendar');
 const router = Router();
 
 const t   = (v, max=255) => v == null ? null : String(v).trim().slice(0,max) || null;
@@ -89,11 +90,19 @@ router.get('/:username/slots', async (req, res) => {
       [ter.id, desdeStr, hastaStr]
     );
 
-    // Bloqueos en el rango
+    // Bloqueos en el rango (CRM)
     const [bloqueos] = await pool.execute(
       'SELECT fecha_inicio, fecha_fin, hora_inicio, hora_fin FROM bloqueos WHERE terapeuta_id=? AND fecha_inicio<=? AND fecha_fin>=?',
       [ter.id, hastaStr, desdeStr]
     );
+
+    // Bloqueos de Google Calendar
+    let gcalBusy = [];
+    try {
+      if (await googleCal.isConnected(ter.id)) {
+        gcalBusy = await googleCal.getBusySlots(ter.id, desdeStr, hastaStr);
+      }
+    } catch (_) {}
 
     const ocupados = {};
     citas.forEach(c => {
@@ -137,13 +146,21 @@ router.get('/:username/slots', async (req, res) => {
         continue;
       }
 
+      // Busy slots de GCal para este día (convertir a minutos Lima)
+      const gcalBusyHoy = gcalBusy
+        .filter(b => String(b.start).slice(0,10) === f || String(b.end).slice(0,10) === f)
+        .map(b => ({
+          ini: limaMin(new Date(b.start)),
+          fin: limaMin(new Date(b.end)),
+        }));
+
       const slots = [];
       for (const rango of rangos) {
         for (let m = rango.ini; m + 60 <= rango.fin; m += 60) {
-          // Hoy: descartar slots cuya hora de inicio ya pasó en Lima
           if (esHoy && m <= minAhora) continue;
           if (ocupados[f]?.has(m)) continue;
           if ((bloqueadoParcial[f] || []).some(b => m < b.fin && m + 60 > b.ini)) continue;
+          if (gcalBusyHoy.some(b => m < b.fin && m + 60 > b.ini)) continue;
           slots.push(minToHora(m));
         }
       }
@@ -179,12 +196,27 @@ router.post('/:username/agendar', async (req, res) => {
       return res.status(400).json({ error: 'Este terapeuta no ofrece atención presencial' });
     }
 
-    // Verificar que el slot sigue libre
+    // Verificar que el slot sigue libre (BD + Google Calendar)
     const [[ocupado]] = await pool.execute(
       `SELECT id FROM citas WHERE terapeuta_id=? AND fecha=? AND hora_inicio=? AND estado NOT IN ('cancelada')`,
       [ter.id, fecha, hora_inicio + ':00']
     );
     if (ocupado) return res.status(409).json({ error: 'Este horario ya fue tomado, elige otro' });
+
+    // Validar contra Google Calendar
+    try {
+      if (await googleCal.isConnected(ter.id)) {
+        const slotIni = toMin(hora_inicio);
+        const slotFin = slotIni + 60;
+        const busy = await googleCal.getBusySlots(ter.id, fecha, fecha);
+        const bloqueado = busy.some(b => {
+          const bIni = limaMin(new Date(b.start));
+          const bFin = limaMin(new Date(b.end));
+          return slotIni < bFin && slotFin > bIni;
+        });
+        if (bloqueado) return res.status(409).json({ error: 'Este horario no está disponible, elige otro' });
+      }
+    } catch (_) {}
 
     // Calcular hora_fin (+1h)
     const [hh, mm] = hora_inicio.split(':').map(Number);
@@ -262,6 +294,12 @@ function toMin(t) {
 }
 function minToHora(m) {
   return `${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`;
+}
+// Convierte un Date a minutos del día en zona America/Lima
+function limaMin(date) {
+  const str = date.toLocaleString('en-US', { timeZone: 'America/Lima', hour: '2-digit', minute: '2-digit', hour12: false });
+  const [h, m] = str.split(':').map(Number);
+  return h * 60 + m;
 }
 
 module.exports = router;
