@@ -194,7 +194,11 @@ router.get('/:id/google/events', auth, async (req, res) => {
   try {
     const events = await googleCal.getEvents(id, desde, hasta);
     res.json(events);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) {
+    console.error('[gcal getEvents]', e.message);
+    // Token expirado o error de Google — devolver vacío para no romper el calendario
+    res.json([]);
+  }
 });
 
 router.delete('/:id/google', auth, async (req, res) => {

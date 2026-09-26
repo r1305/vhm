@@ -65,11 +65,13 @@ async function disconnect(terapeutaId) {
 
 // Devuelve el calendarId del calendario "VHM" del terapeuta, creándolo si no existe
 async function getOrCreateVhmCalendar(terapeutaId) {
-  // 1. Buscar en caché (BD)
-  const [[row]] = await pool.execute(
-    'SELECT google_calendar_id FROM terapeutas WHERE id = ?', [terapeutaId]
-  );
-  if (row?.google_calendar_id) return row.google_calendar_id;
+  // 1. Buscar en caché (BD) — con fallback si la columna aún no existe
+  try {
+    const [[row]] = await pool.execute(
+      'SELECT google_calendar_id FROM terapeutas WHERE id = ?', [terapeutaId]
+    );
+    if (row?.google_calendar_id) return row.google_calendar_id;
+  } catch (_) { /* columna puede no existir todavía */ }
 
   // 2. Buscar en la cuenta de Google si ya existe un calendario llamado "VHM"
   const auth = await getAuthedClient(terapeutaId);
