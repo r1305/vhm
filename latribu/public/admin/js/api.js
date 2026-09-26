@@ -35,6 +35,19 @@
     return res;
   }
 
+  async function apiFetchForm(url, options) {
+    options = options || {};
+    const headers = Object.assign({}, formHeaders(), options.headers || {});
+    const res = await fetch(API_BASE + url, { credentials: 'same-origin', ...options, headers });
+    if (res.status === 401) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      global.location.href = 'login.html';
+      throw new Error('Sesión expirada');
+    }
+    return res;
+  }
+
   function apiUrl(path) { return API_BASE + path; }
 
   function asset(path) {
@@ -48,5 +61,5 @@
     });
   }
 
-  global.AdminApi = { API_BASE, getCookie, authHeaders, formHeaders, apiFetch, apiUrl, asset, escapeHtml };
+  global.AdminApi = { API_BASE, getCookie, authHeaders, formHeaders, apiFetch, apiFetchForm, apiUrl, asset, escapeHtml };
 })(window);

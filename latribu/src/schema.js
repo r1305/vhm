@@ -360,12 +360,14 @@ async function crearEsquema() {
       evento_id INT NOT NULL,
       titulo VARCHAR(200) NOT NULL,
       cuerpo TEXT NOT NULL,
+      foto_url VARCHAR(500) DEFAULT NULL,
       orden INT NOT NULL DEFAULT 0,
       fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       KEY idx_pm_evento (evento_id),
       CONSTRAINT fk_pm_evento FOREIGN KEY (evento_id) REFERENCES plantilla_eventos(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
+  try { await pool.query('ALTER TABLE plantilla_mensajes ADD COLUMN foto_url VARCHAR(500) DEFAULT NULL'); } catch (_) {}
 
   // ── Encuestas ──
   await pool.query(`

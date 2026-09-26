@@ -59,6 +59,15 @@
             <label>Mensaje * <span class="optional">(formato WhatsApp)</span></label>
             <div id="wa-editor-root"></div>
           </div>
+          <div class="form-group">
+            <label>Foto <span class="optional">(opcional)</span></label>
+            <div id="msg-foto-preview" style="display:none;margin-bottom:8px">
+              <img id="msg-foto-img" src="" alt="preview" style="max-width:100%;max-height:180px;border-radius:8px;border:1px solid var(--border)">
+              <button type="button" id="btn-quitar-foto" style="display:block;margin-top:6px;font-size:12px;color:var(--danger);background:none;border:none;cursor:pointer">✕ Quitar foto</button>
+            </div>
+            <input type="file" id="msg-foto-input" accept="image/*" style="display:none">
+            <button type="button" class="btn btn-outline btn-sm" id="btn-seleccionar-foto">🖼️ Seleccionar foto</button>
+          </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-outline" data-modal-close="modal-mensaje">Cancelar</button>
@@ -67,6 +76,28 @@
       </div>
     </div>
   </div></div>
+  <!-- Modal subir foto a mensaje existente -->
+  <div class="modal-overlay" id="modal-foto">
+    <div class="modal" style="max-width:420px">
+      <div class="modal-header">
+        <h3>🖼️ Foto del mensaje</h3>
+        <button type="button" class="modal-close" data-modal-close="modal-foto">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="foto-modal-preview" style="margin-bottom:12px"></div>
+        <input type="file" id="foto-modal-input" accept="image/*" style="display:none">
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button type="button" class="btn btn-outline btn-sm" id="btn-foto-modal-seleccionar">🖼️ Seleccionar imagen</button>
+          <button type="button" class="btn btn-danger btn-sm" id="btn-foto-modal-eliminar" style="display:none">✕ Eliminar foto</button>
+        </div>
+        <p style="font-size:12px;color:var(--text-muted);margin-top:10px">Máx. 8 MB · JPG, PNG, WEBP, GIF</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" data-modal-close="modal-foto">Cerrar</button>
+        <button type="button" class="btn btn-primary" id="btn-foto-modal-guardar" style="display:none">Subir foto</button>
+      </div>
+    </div>
+  </div>
   <script src="js/api.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/toast.js"></script>
