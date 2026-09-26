@@ -68,7 +68,7 @@ router.get('/disponibles', async (req, res) => {
 
 function gcalTitulo(pac, tipo) {
   const TIPO = { primera_vez: 'Primera consulta', seguimiento: 'Sesión', evaluacion: 'Evaluación', urgencia: 'Urgencia' };
-  return `[VHM] ${TIPO[tipo] || 'Sesión'}${pac ? ' — ' + pac.nombre + ' ' + pac.apellido : ''}`;
+  return `${TIPO[tipo] || 'Sesión'}${pac ? ' — ' + pac.nombre + ' ' + pac.apellido : ''}`;
 }
 
 router.post('/', auth, async (req, res) => {
