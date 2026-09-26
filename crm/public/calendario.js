@@ -118,9 +118,12 @@
       const [citas, bloqueos, gcalEvents = []] = await Promise.all(promises);
       citasCache    = citas;
       // Mezclar bloqueos CRM + eventos externos de Google Calendar
+      // IDs de eventos GCal que ya están representados como citas en el CRM
+      const gcalIdsEnCitas = new Set(citas.map(c => c.gcal_event_id).filter(Boolean));
+
       bloqueosCache = [
         ...bloqueos,
-        ...gcalEvents.map(e => {
+        ...gcalEvents.filter(e => !gcalIdsEnCitas.has(e.gcal_id)).map(e => {
           // Convertir hora UTC a Lima (UTC-5) para eventos con hora
           let hi = '00:00', hf = '23:59';
           if (!e.allDay && e.start) {
