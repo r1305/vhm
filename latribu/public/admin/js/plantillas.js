@@ -172,7 +172,6 @@
                 ' · ' + (ev.total_mensajes || 0) + ' mensaje(s)</div>' +
             '</div>' +
             '<div class="plantilla-evento-actions">' +
-              '<button type="button" class="btn btn-primary btn-xs" data-add-msg="' + ev.id + '">+ Mensaje</button>' +
               '<button type="button" class="btn btn-outline btn-xs" data-edit-ev="' + ev.id + '">Editar</button>' +
               '<button type="button" class="btn btn-danger btn-xs" data-del-ev="' + ev.id + '">Eliminar</button>' +
             '</div>' +
