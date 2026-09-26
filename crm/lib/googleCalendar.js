@@ -58,9 +58,39 @@ async function isConnected(terapeutaId) {
 
 async function disconnect(terapeutaId) {
   await pool.execute(
-    'UPDATE terapeutas SET google_calendar_tokens = NULL WHERE id = ?',
+    'UPDATE terapeutas SET google_calendar_tokens = NULL, google_calendar_id = NULL WHERE id = ?',
     [terapeutaId]
   );
+}
+
+// Devuelve el calendarId del calendario "VHM" del terapeuta, creándolo si no existe
+async function getOrCreateVhmCalendar(terapeutaId) {
+  // 1. Buscar en caché (BD)
+  const [[row]] = await pool.execute(
+    'SELECT google_calendar_id FROM terapeutas WHERE id = ?', [terapeutaId]
+  );
+  if (row?.google_calendar_id) return row.google_calendar_id;
+
+  // 2. Buscar en la cuenta de Google si ya existe un calendario llamado "VHM"
+  const auth = await getAuthedClient(terapeutaId);
+  const calendar = google.calendar({ version: 'v3', auth });
+  const { data } = await calendar.calendarList.list();
+  const existing = (data.items || []).find(c => c.summary === 'VHM');
+  let calendarId = existing?.id;
+
+  // 3. Si no existe, crearlo
+  if (!calendarId) {
+    const { data: created } = await calendar.calendars.insert({
+      requestBody: { summary: 'VHM', timeZone: 'America/Lima' },
+    });
+    calendarId = created.id;
+  }
+
+  // 4. Guardar en BD para no volver a buscarlo
+  await pool.execute(
+    'UPDATE terapeutas SET google_calendar_id = ? WHERE id = ?', [calendarId, terapeutaId]
+  );
+  return calendarId;
 }
 
 // Devuelve array de { start, end } (strings ISO) de eventos ocupados en el rango
@@ -115,6 +145,7 @@ async function getEvents(terapeutaId, fechaInicio, fechaFin) {
 async function createEvent(terapeutaId, { titulo, fecha, horaInicio, horaFin, descripcion, withMeet = false }) {
   const auth = await getAuthedClient(terapeutaId);
   const calendar = google.calendar({ version: 'v3', auth });
+  const calendarId = await getOrCreateVhmCalendar(terapeutaId);
   const requestBody = {
     summary: titulo,
     description: descripcion || '',
@@ -127,7 +158,7 @@ async function createEvent(terapeutaId, { titulo, fecha, horaInicio, horaFin, de
     };
   }
   const { data } = await calendar.events.insert({
-    calendarId: 'primary',
+    calendarId,
     conferenceDataVersion: withMeet ? 1 : 0,
     requestBody,
   });
@@ -139,8 +170,9 @@ async function createEvent(terapeutaId, { titulo, fecha, horaInicio, horaFin, de
 async function updateEvent(terapeutaId, gcalEventId, { titulo, fecha, horaInicio, horaFin, descripcion }) {
   const auth = await getAuthedClient(terapeutaId);
   const calendar = google.calendar({ version: 'v3', auth });
+  const calendarId = await getOrCreateVhmCalendar(terapeutaId);
   await calendar.events.patch({
-    calendarId: 'primary',
+    calendarId,
     eventId: gcalEventId,
     requestBody: {
       summary: titulo,
@@ -155,7 +187,8 @@ async function updateEvent(terapeutaId, gcalEventId, { titulo, fecha, horaInicio
 async function deleteEvent(terapeutaId, gcalEventId) {
   const auth = await getAuthedClient(terapeutaId);
   const calendar = google.calendar({ version: 'v3', auth });
-  await calendar.events.delete({ calendarId: 'primary', eventId: gcalEventId });
+  const calendarId = await getOrCreateVhmCalendar(terapeutaId);
+  await calendar.events.delete({ calendarId, eventId: gcalEventId });
 }
 
 module.exports = {
