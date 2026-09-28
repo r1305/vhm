@@ -46,6 +46,7 @@ async function cargarMes() {
   loading.style.display = 'block';
   loading.textContent = 'Cargando eventos...';
   const mes = `${calYear}-${String(calMonth+1).padStart(2,'0')}`;
+  window._tribuLoaderStart();
   try {
     const res = await fetch(`${API}/eventos?mes=${mes}`);
     if (!res.ok) throw new Error();
@@ -55,6 +56,8 @@ async function cargarMes() {
     loading.style.display = 'none';
   } catch {
     loading.textContent = 'No se pudieron cargar los eventos.';
+  } finally {
+    window._tribuLoaderEnd();
   }
 }
 

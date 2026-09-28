@@ -71,6 +71,7 @@ function bannerSinSuscripcion() {
 
 async function cargar() {
   const cont = document.getElementById('contenido');
+  window._tribuLoaderStart();
   try {
     const [vRes, cRes] = await Promise.all([fetch(`${API}/videos`), fetch(`${API}/videos/categorias`)]);
     if (!vRes.ok) throw new Error();
@@ -103,6 +104,8 @@ async function cargar() {
     if (!tieneSuscripcion()) cont.insertAdjacentHTML('afterbegin', bannerSinSuscripcion());
   } catch {
     cont.innerHTML = '<div class="empty">No se pudieron cargar los recursos.</div>';
+  } finally {
+    window._tribuLoaderEnd();
   }
 }
 
@@ -171,6 +174,7 @@ async function likeRapido(id, btn) {
   if (!v) return;
   const set = getLikedSet();
   const yaLiked = set.has(id);
+  window._tribuLoaderStart();
   try {
     const res = await fetch(`${API}/videos/${id}/like`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ quitar: yaLiked }) });
     const d = await res.json();
@@ -181,6 +185,7 @@ async function likeRapido(id, btn) {
     btn.childNodes[0].nodeValue = (!yaLiked ? '❤️' : '🤍') + ' ';
     btn.querySelector('span').textContent = v.likes;
   } catch {}
+  finally { window._tribuLoaderEnd(); }
 }
 
 document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarPlayer(); });

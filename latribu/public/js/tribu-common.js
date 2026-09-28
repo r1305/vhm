@@ -3,15 +3,53 @@
 const API = (window.__APP_BASE__ || '') + '/api';
 const BASE = window.__APP_BASE__ || '';
 
-/* ── Loader global ── */
+/* ── Top bar loader ── */
+(function () {
+  const BAR_ID = 'tribuTopBar';
+  function ensureBar() {
+    if (document.getElementById(BAR_ID)) return;
+    const bar = document.createElement('div');
+    bar.id = BAR_ID;
+    bar.style.cssText = 'position:fixed;top:0;left:0;width:0;height:3px;z-index:99999;background:linear-gradient(90deg,#A84F3E,#C9A86A);transition:width .3s ease,opacity .4s ease;opacity:0;pointer-events:none;border-radius:0 2px 2px 0';
+    document.documentElement.appendChild(bar);
+  }
+  let _active = 0;
+  let _timer = null;
+  window._tribuLoaderStart = function () {
+    _active++;
+    ensureBar();
+    const bar = document.getElementById(BAR_ID);
+    if (!bar) return;
+    clearTimeout(_timer);
+    bar.style.transition = 'width .3s ease,opacity .1s ease';
+    bar.style.opacity = '1';
+    bar.style.width = '70%';
+  };
+  window._tribuLoaderEnd = function () {
+    _active = Math.max(0, _active - 1);
+    if (_active > 0) return;
+    const bar = document.getElementById(BAR_ID);
+    if (!bar) return;
+    bar.style.transition = 'width .15s ease,opacity .4s ease .15s';
+    bar.style.width = '100%';
+    _timer = setTimeout(() => {
+      bar.style.opacity = '0';
+      setTimeout(() => { bar.style.width = '0'; bar.style.transition = 'none'; }, 420);
+    }, 150);
+  };
+})();
+
+/* Overlay loader (para acciones explícitas como guardar/subir foto) */
 function showLoader(text) {
   const el = document.getElementById('pageLoader');
   const txt = document.getElementById('pageLoaderText');
   if (txt) txt.textContent = text || 'Cargando...';
   if (el) el.classList.add('show');
+  window._tribuLoaderStart();
 }
 function hideLoader() {
   document.getElementById('pageLoader')?.classList.remove('show');
+  window._tribuLoaderEnd();
 }
 
 /* ── Storage ── */
@@ -69,7 +107,12 @@ async function tribuFetch(path, options = {}) {
     headers['Content-Type'] = 'application/json';
     body = JSON.stringify(body);
   }
-  return fetch(API + path, { ...options, headers, body });
+  window._tribuLoaderStart();
+  try {
+    return await fetch(API + path, { ...options, headers, body });
+  } finally {
+    window._tribuLoaderEnd();
+  }
 }
 
 /* ── Nav ── */
@@ -141,6 +184,7 @@ async function verificarSesion() {
   if (!token) { window.tribuUser = null; renderNavAuth(); return false; }
   window.tribuUser = normalizarSuscripcionUsuario(getStoredUser());
   renderNavAuth();
+  window._tribuLoaderStart();
   try {
     const res = await fetch(API + '/tribu-auth/me', { headers: { Authorization: 'Bearer ' + token } });
     if (res.ok) {
@@ -151,6 +195,8 @@ async function verificarSesion() {
     }
   } catch {
     window.tribuUser = normalizarSuscripcionUsuario(getStoredUser());
+  } finally {
+    window._tribuLoaderEnd();
   }
   renderNavAuth();
   return !!window.tribuUser;
