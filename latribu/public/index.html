@@ -1089,6 +1089,33 @@
       </div>
       <div class="profile-msg" id="pfMsg"></div>
     </div>
+
+    <!-- CARD RECURSOS -->
+    <div class="profile-card" style="margin-top:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <div style="font-family:'Fraunces',serif;font-size:1.2rem;font-weight:700;color:var(--txt)">📚 Recursos</div>
+        <span id="pfRecursosCount" style="font-size:.78rem;font-weight:800;color:var(--muted)"></span>
+      </div>
+      <div id="pfRecursosGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px">
+        <div style="color:var(--muted);font-size:.88rem;padding:20px 0">Cargando recursos...</div>
+      </div>
+    </div>
+
+    <!-- CARD CALENDARIO -->
+    <div class="profile-card" style="margin-top:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <div style="font-family:'Fraunces',serif;font-size:1.2rem;font-weight:700;color:var(--txt)">📅 Acceso rápido — Calendario</div>
+      </div>
+      <div id="pfCalWrap">
+        <div id="pfCalLockBanner" style="display:none"></div>
+        <div class="cal-header" style="margin-bottom:14px">
+          <h2 id="pfCalMesTitulo" style="font-family:'Fraunces',serif;font-size:1.2rem;color:var(--txt);text-transform:capitalize"></h2>
+        </div>
+        <div class="cal-grid" id="pfCalDow"></div>
+        <div class="cal-grid" id="pfCalGrid" style="margin-top:8px"></div>
+        <div class="cal-empty" id="pfCalLoading">Cargando eventos...</div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -2923,6 +2950,8 @@ async function switchTribuTab(tab) {
     }
   } else if (tab === 'perfil') {
     await cargarPerfilForm();
+    cargarRecursosPerfil();
+    cargarCalendarioPerfil();
   } else if (tab === 'suscripciones') {
     await cargarMisSuscripciones();
   } else if (tab === 'tarjetas') {
@@ -3254,6 +3283,91 @@ document.addEventListener('keydown', e => {
 });
 
 verificarSesion().then(cargar);
+
+async function cargarRecursosPerfil() {
+  const grid = document.getElementById('pfRecursosGrid');
+  const countEl = document.getElementById('pfRecursosCount');
+  if (!grid) return;
+  grid.innerHTML = '<div style="color:var(--muted);font-size:.88rem;padding:20px 0">Cargando recursos...</div>';
+  try {
+    const [vRes, cRes] = await Promise.all([fetch(`${API}/videos`), fetch(`${API}/videos/categorias`)]);
+    if (!vRes.ok) throw new Error();
+    const videos = await vRes.json();
+    const cats = cRes.ok ? await cRes.json() : [];
+    if (!videos.length) {
+      grid.innerHTML = '<div style="color:var(--muted);font-size:.88rem">Próximamente nuevos recursos.</div>';
+      return;
+    }
+    if (countEl) countEl.textContent = videos.length + ' recurso' + (videos.length === 1 ? '' : 's');
+    grid.innerHTML = videos.map(v => {
+      const cat = cats.find(c => c.id === v.categoria_id);
+      return '<div onclick="abrirVideo(' + v.id + ')" style="cursor:pointer;background:var(--tribu-100,#F7ECE9);border:1px solid var(--line);border-radius:14px;overflow:hidden;transition:transform .2s,box-shadow .2s" onmouseenter="this.style.transform=\'translateY(-4px)\';this.style.boxShadow=\'0 12px 28px -12px rgba(168,79,62,.4)\'" onmouseleave="this.style.transform=\'\';this.style.boxShadow=\'\'">' +
+        (v.thumbnail_url ? '<div style="aspect-ratio:16/9;overflow:hidden"><img src="' + escapeHtml(v.thumbnail_url) + '" style="width:100%;height:100%;object-fit:cover;display:block" loading="lazy"></div>' : '<div style="aspect-ratio:16/9;background:rgba(168,79,62,.12);display:flex;align-items:center;justify-content:center;font-size:1.8rem">▶️</div>') +
+        '<div style="padding:10px 12px">' +
+          '<div style="font-weight:700;font-size:.88rem;color:var(--txt);line-height:1.3;margin-bottom:4px">' + escapeHtml(v.titulo) + '</div>' +
+          (cat ? '<div style="font-size:.72rem;font-weight:700;color:var(--muted)">' + escapeHtml(cat.nombre) + '</div>' : '') +
+        '</div>' +
+      '</div>';
+    }).join('');
+  } catch {
+    grid.innerHTML = '<div style="color:var(--muted);font-size:.88rem">No se pudieron cargar los recursos.</div>';
+  }
+}
+
+async function cargarCalendarioPerfil() {
+  const loading = document.getElementById('pfCalLoading');
+  const lockBanner = document.getElementById('pfCalLockBanner');
+  if (!loading) return;
+  if (!tieneSuscripcion()) {
+    if (lockBanner) { lockBanner.innerHTML = bannerSinSuscripcion(); lockBanner.style.display = 'block'; }
+    loading.style.display = 'none';
+    document.getElementById('pfCalDow').innerHTML = '';
+    document.getElementById('pfCalGrid').innerHTML = '';
+    return;
+  }
+  if (lockBanner) { lockBanner.style.display = 'none'; lockBanner.innerHTML = ''; }
+  loading.style.display = 'block';
+  loading.textContent = 'Cargando eventos...';
+  const now = new Date();
+  const mes = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const titulo = document.getElementById('pfCalMesTitulo');
+  if (titulo) titulo.textContent = `${MESES_ES[now.getMonth()]} ${now.getFullYear()}`;
+  document.getElementById('pfCalDow').innerHTML = DOW_ES.map(d => `<div class="cal-dow">${d}</div>`).join('');
+  try {
+    const res = await fetch(`${API}/eventos?mes=${mes}`);
+    if (!res.ok) throw new Error();
+    const evs = await res.json();
+    eventosMes = Array.isArray(evs) ? evs : [];
+    renderCalendarioPerfil(now.getFullYear(), now.getMonth());
+    loading.style.display = 'none';
+  } catch {
+    loading.textContent = 'No se pudieron cargar los eventos.';
+  }
+}
+
+function renderCalendarioPerfil(year, month) {
+  const grid = document.getElementById('pfCalGrid');
+  if (!grid) return;
+  const first = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  let startDow = first.getDay();
+  startDow = startDow === 0 ? 6 : startDow - 1;
+  const today = new Date();
+  const hoyStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  let html = '';
+  for (let i = 0; i < startDow; i++) html += '<div class="cal-day other"></div>';
+  for (let d = 1; d <= lastDay; d++) {
+    const fechaStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const evs = eventosMes.filter(e => String(e.fecha).slice(0, 10) === fechaStr);
+    const isToday = fechaStr === hoyStr;
+    html += `<div class="cal-day${isToday ? ' today' : ''}">
+      <div class="cal-day-num">${d}</div>
+      <div class="cal-events-desktop">${evs.map(e => `<div class="cal-ev" onclick="verEvento(${e.id})">${escapeHtml(e.nombre)}</div>`).join('')}</div>
+      <div class="cal-events-mobile">${evs.length ? '<div class="cal-icon" onclick="verEvento(' + evs[0].id + ')"><span class="cal-icon-inner">📅</span>' + (evs.length > 1 ? '<span class="cal-badge">' + evs.length + '</span>' : '') + '</div>' : ''}</div>
+    </div>`;
+  }
+  grid.innerHTML = html;
+}
 
 function tribuLandingEscapeHtml(s) {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
