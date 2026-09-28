@@ -204,6 +204,8 @@ app.get('/perfil', (req, res) => sendPublicHtml(res, 'perfil.html'));
 app.get('/suscripciones', (req, res) => sendPublicHtml(res, 'suscripciones.html'));
 app.get('/tarjetas', (req, res) => sendPublicHtml(res, 'tarjetas.html'));
 app.get('/encuesta/:slug', (req, res) => sendPublicHtml(res, 'encuesta.html'));
+app.get('/recursos', (req, res) => sendPublicHtml(res, 'recursos.html'));
+app.get('/calendario', (req, res) => sendPublicHtml(res, 'calendario.html'));
 
 // Static files
 app.use(express.static(path.join(__dirname, '../public'), { maxAge: '1d', index: false }));

@@ -100,6 +100,8 @@ function renderNavAuth() {
             <div class="user-menu-head-email">${escapeHtml(user.email || '')}</div>
           </div>
           <a href="${BASE}/perfil" class="user-menu-item${p.endsWith('/perfil') ? ' active' : ''}" role="menuitem"><span class="mi">👤</span> Mi perfil</a>
+          <a href="${BASE}/recursos" class="user-menu-item${p.endsWith('/recursos') ? ' active' : ''}" role="menuitem"><span class="mi">📚</span> Recursos</a>
+          <a href="${BASE}/calendario" class="user-menu-item${p.endsWith('/calendario') ? ' active' : ''}" role="menuitem"><span class="mi">📅</span> Calendario</a>
           <a href="${BASE}/suscripciones" class="user-menu-item${p.endsWith('/suscripciones') ? ' active' : ''}" role="menuitem"><span class="mi">📋</span> Suscripciones</a>
           <a href="${BASE}/tarjetas" class="user-menu-item${p.endsWith('/tarjetas') ? ' active' : ''}" role="menuitem"><span class="mi">💳</span> Mis tarjetas</a>
           <div class="user-menu-divider"></div>
