@@ -156,9 +156,64 @@
     AdminUtils.mostrarMsg(document.getElementById('redes-msg'), ok ? 'Guardado' : 'Error al guardar', ok);
   });
 
+  // ── Beneficios landing ──
+  let beneficiosData = [];
+
+  async function loadBeneficios() {
+    const r = await AdminApi.apiFetch('/config');
+    if (!r.ok) return;
+    const d = await r.json();
+    const raw = d.beneficios;
+    beneficiosData = Array.isArray(raw) ? raw
+      : (raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : []);
+    renderBeneficios();
+  }
+
+  function renderBeneficios() {
+    const lista = document.getElementById('beneficios-lista');
+    if (!lista) return;
+    if (!beneficiosData.length) {
+      lista.innerHTML = '<p style="font-size:.82rem;color:var(--text-muted)">Sin ítems. Agrega el primero.</p>';
+      return;
+    }
+    lista.innerHTML = beneficiosData.map((item, i) =>
+      `<div style="display:flex;gap:8px;align-items:center">
+        <input type="text" value="${AdminApi.escapeHtml(item)}" data-idx="${i}"
+          style="flex:1;padding:9px 12px;border:2px solid var(--border-strong);border-radius:10px;font-size:.9rem;background:var(--bg-input);color:var(--text-primary)"
+          oninput="beneficiosData[this.dataset.idx]=this.value">
+        <button type="button" class="btn btn-danger btn-xs" onclick="beneficiosEliminar(${i})">✕</button>
+      </div>`
+    ).join('');
+  }
+
+  window.beneficiosEliminar = function(i) {
+    beneficiosData.splice(i, 1);
+    renderBeneficios();
+  };
+
+  document.getElementById('btn-add-beneficio').addEventListener('click', () => {
+    beneficiosData.push('');
+    renderBeneficios();
+    // focus en el nuevo input
+    const inputs = document.querySelectorAll('#beneficios-lista input');
+    if (inputs.length) inputs[inputs.length - 1].focus();
+  });
+
+  document.getElementById('btn-beneficios-guardar').addEventListener('click', async () => {
+    // Leer valores actuales de los inputs
+    document.querySelectorAll('#beneficios-lista input[data-idx]').forEach(inp => {
+      beneficiosData[parseInt(inp.dataset.idx)] = inp.value.trim();
+    });
+    const items = beneficiosData.filter(Boolean);
+    const ok = await saveConfig({ beneficios: items });
+    if (ok) beneficiosData = items;
+    AdminUtils.mostrarMsg(document.getElementById('beneficios-msg'), ok ? 'Guardado' : 'Error al guardar', ok);
+  });
+
   // Init
   loadSusConfig();
   loadPlanes();
   loadCulqi();
   loadConfig();
+  loadBeneficios();
 })();

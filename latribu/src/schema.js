@@ -455,6 +455,7 @@ async function crearEsquema() {
   if (cfgRows.length === 0) {
     await pool.query('INSERT INTO tribu_config (id) VALUES (1)');
   }
+  try { await pool.query('ALTER TABLE tribu_config ADD COLUMN beneficios JSON DEFAULT NULL'); } catch (_) {}
 
   // ── Perfil extendido (migración) ──
   const [cols] = await pool.query('SHOW COLUMNS FROM tribu_users');
