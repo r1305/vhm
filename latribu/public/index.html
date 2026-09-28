@@ -271,6 +271,139 @@
     .tribu-hero-video { max-width: 860px; margin: 0 auto 28px; }
     .tribu-hero-video[hidden] { display: none !important; }
 
+    /* CARD PERFIL COMPLETADO */
+    .tribu-perfil-wrap {
+      max-width: 960px; margin: 0 auto 14px; padding: 0 22px;
+    }
+    .tribu-perfil-card {
+      background: var(--panel); border: 1px solid var(--line); border-radius: 20px;
+      padding: 18px 22px; cursor: pointer; position: relative; overflow: hidden;
+      display: flex; align-items: center; gap: 18px;
+      transition: transform .22s, box-shadow .22s, border-color .22s;
+    }
+    .tribu-perfil-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+      background: var(--grad-warm);
+    }
+    .tribu-perfil-card:hover {
+      transform: translateY(-3px);
+      border-color: rgba(168,79,62,.45);
+      box-shadow: 0 14px 32px -14px rgba(168,79,62,.35);
+    }
+    .tribu-perfil-card.is-complete { cursor: default; pointer-events: none; }
+    .tribu-perfil-card.is-complete:hover { transform: none; box-shadow: none; border-color: var(--line); }
+    .tribu-perfil-pct-ring {
+      flex-shrink: 0; position: relative; width: 52px; height: 52px;
+    }
+    .tribu-perfil-pct-ring svg { width: 52px; height: 52px; transform: rotate(-90deg); }
+    .tribu-perfil-pct-ring .ring-bg { fill: none; stroke: rgba(168,79,62,.14); stroke-width: 4; }
+    .tribu-perfil-pct-ring .ring-fill { fill: none; stroke: #A84F3E; stroke-width: 4; stroke-linecap: round; transition: stroke-dashoffset .5s ease; }
+    .tribu-perfil-pct-ring .ring-fill.done { stroke: #237A68; }
+    .tribu-perfil-pct-num {
+      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      font-size: .72rem; font-weight: 800; color: var(--txt);
+    }
+    .tribu-perfil-body { flex: 1; min-width: 0; }
+    .tribu-perfil-eyebrow {
+      font-size: .7rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase;
+      color: var(--tribu-600); margin-bottom: 3px;
+    }
+    .tribu-perfil-title {
+      font-family: 'Fraunces', serif; font-size: 1rem; font-weight: 700;
+      color: var(--txt); margin-bottom: 6px; line-height: 1.2;
+    }
+    .tribu-perfil-steps { display: flex; gap: 6px; flex-wrap: wrap; }
+    .tribu-perfil-step {
+      display: flex; align-items: center; gap: 4px;
+      font-size: .72rem; font-weight: 700; color: var(--muted);
+      padding: 3px 8px; border-radius: 999px;
+      background: rgba(168,79,62,.08); border: 1px solid rgba(168,79,62,.15);
+    }
+    .tribu-perfil-step.done { color: #237A68; background: rgba(35,122,104,.1); border-color: rgba(35,122,104,.25); }
+    .tribu-perfil-step .step-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+    .tribu-perfil-arrow { flex-shrink: 0; color: var(--muted); font-size: 1.1rem; opacity: .6; }
+    /* MODAL PERFIL COMUNIDAD */
+    .tribu-cp-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(12,18,16,.52); backdrop-filter: blur(6px);
+      z-index: 1100; padding: 16px; align-items: center; justify-content: center;
+    }
+    .tribu-cp-overlay.show { display: flex; }
+    .tribu-cp-box {
+      background: var(--panel); border: 1px solid var(--line); border-radius: 22px;
+      width: 100%; max-width: 500px; padding: 28px 28px 24px; position: relative;
+      box-shadow: 0 40px 90px -30px rgba(168,79,62,.4);
+      max-height: calc(100dvh - 32px); overflow-y: auto;
+    }
+    .tribu-cp-close {
+      position: absolute; top: 14px; right: 16px;
+      background: var(--tribu-100,#F7ECE9); border: 1px solid var(--line);
+      color: var(--txt); width: 34px; height: 34px; border-radius: 50%;
+      cursor: pointer; font-size: 1.2rem; display: flex; align-items: center; justify-content: center;
+      transition: background .15s;
+    }
+    .tribu-cp-close:hover { background: rgba(168,79,62,.15); }
+    .tribu-cp-steps-nav { display: flex; gap: 6px; margin-bottom: 22px; }
+    .tribu-cp-step-dot {
+      flex: 1; height: 4px; border-radius: 4px;
+      background: rgba(168,79,62,.18); transition: background .25s;
+    }
+    .tribu-cp-step-dot.active { background: #A84F3E; }
+    .tribu-cp-step-dot.done { background: #237A68; }
+    .tribu-cp-eyebrow {
+      font-size: .7rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase;
+      color: var(--tribu-600); margin-bottom: 4px;
+    }
+    .tribu-cp-title {
+      font-family: 'Fraunces', serif; font-size: 1.3rem; font-weight: 700;
+      color: var(--txt); margin-bottom: 4px; line-height: 1.2;
+    }
+    .tribu-cp-hint { font-size: .84rem; color: var(--muted); margin-bottom: 20px; line-height: 1.5; }
+    .tribu-cp-field { margin-bottom: 14px; }
+    .tribu-cp-field label {
+      display: block; font-size: .78rem; font-weight: 800; color: var(--muted);
+      margin-bottom: 6px; text-transform: uppercase; letter-spacing: .04em;
+    }
+    .tribu-cp-field input {
+      width: 100%; padding: 11px 12px; border-radius: 11px;
+      border: 1px solid var(--line); background: var(--panel); color: var(--txt);
+      font-size: .95rem; font-family: inherit; transition: border-color .2s;
+    }
+    .tribu-cp-field input:focus { outline: none; border-color: rgba(168,79,62,.55); }
+    .tribu-cp-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .tribu-cp-chip {
+      padding: 8px 14px; border-radius: 999px; font-size: .84rem; font-weight: 700;
+      border: 1px solid var(--line); background: transparent; color: var(--muted);
+      cursor: pointer; font-family: inherit;
+      transition: background .15s, border-color .15s, color .15s; user-select: none;
+    }
+    .tribu-cp-chip.selected {
+      background: rgba(168,79,62,.12); border-color: rgba(168,79,62,.55); color: var(--tribu-700);
+    }
+    .tribu-cp-chip-limit { font-size: .74rem; color: var(--muted); margin-top: 8px; font-weight: 600; }
+    .tribu-cp-actions { display: flex; gap: 10px; margin-top: 22px; align-items: center; }
+    .tribu-cp-btn-back {
+      background: none; border: 1px solid var(--line); color: var(--muted);
+      padding: 10px 18px; border-radius: 999px; font-family: inherit;
+      font-weight: 700; font-size: .88rem; cursor: pointer;
+      transition: border-color .15s, color .15s;
+    }
+    .tribu-cp-btn-back:hover { border-color: rgba(168,79,62,.4); color: var(--txt); }
+    .tribu-cp-btn-next {
+      flex: 1; padding: 11px 18px; border-radius: 999px; border: none;
+      background: var(--grad-warm); color: #fff; font-family: inherit;
+      font-weight: 800; font-size: .92rem; cursor: pointer; transition: opacity .15s;
+    }
+    .tribu-cp-btn-next:hover { opacity: .9; }
+    .tribu-cp-btn-next:disabled { opacity: .45; cursor: not-allowed; }
+    .tribu-cp-err { font-size: .8rem; color: #fb7185; font-weight: 700; margin-top: 8px; min-height: 18px; }
+    @media (max-width: 480px) {
+      .tribu-cp-box { padding: 22px 16px 18px; border-radius: 18px; }
+      .tribu-perfil-card { padding: 14px 16px; gap: 14px; }
+      .tribu-perfil-pct-ring { width: 44px; height: 44px; }
+      .tribu-perfil-pct-ring svg { width: 44px; height: 44px; }
+    }
+
     /* PRÓXIMA ACTIVIDAD */
     .tribu-proxima-wrap {
       max-width: 960px; margin: 0 auto 18px; padding: 0 22px;
@@ -1092,6 +1225,7 @@
 <div id="tabCamino">
   <div class="camino-intro">
     <div id="tribuAccesoRapido" style="display:none">
+      <div class="tribu-perfil-wrap" id="tribuPerfilWrap"></div>
       <div class="tribu-proxima-wrap" id="tribuProximaWrap"></div>
       <div class="tribu-acceso-rapido">
         <a href="/recursos" class="tribu-acceso-card">
@@ -1278,6 +1412,57 @@
       <div class="player-actions">
         <button class="like-btn" id="pLike" onclick="toggleLike()">🤍 <span id="pLikeCount">0</span></button>
         <span id="pVistas"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PERFIL COMUNIDAD -->
+<div class="tribu-cp-overlay" id="cpOverlay">
+  <div class="tribu-cp-box">
+    <button type="button" class="tribu-cp-close" onclick="cerrarCpModal()" aria-label="Cerrar">&times;</button>
+    <div class="tribu-cp-steps-nav">
+      <div class="tribu-cp-step-dot" id="cpDot0"></div>
+      <div class="tribu-cp-step-dot" id="cpDot1"></div>
+      <div class="tribu-cp-step-dot" id="cpDot2"></div>
+    </div>
+    <!-- Paso 1 -->
+    <div id="cpStep0">
+      <div class="tribu-cp-eyebrow">Paso 1 de 3 &middot; Tu identidad</div>
+      <div class="tribu-cp-title">Cómo te verá la comunidad</div>
+      <div class="tribu-cp-hint">“Así te verá la comunidad.”</div>
+      <div class="tribu-cp-field"><label>Nombre visible</label><input type="text" id="cpNombre" autocomplete="given-name" placeholder="Tu nombre"></div>
+      <div class="tribu-cp-field"><label>Ciudad (opcional)</label><input type="text" id="cpCiudad" autocomplete="address-level2" placeholder="Ej: Lima, Madrid…"></div>
+      <div class="tribu-cp-field"><label>Ocupación / Profesión</label><input type="text" id="cpCarrera" placeholder="Ej: Psicóloga, Coach, Ingeniera…"></div>
+      <div class="tribu-cp-err" id="cpErr0"></div>
+      <div class="tribu-cp-actions">
+        <button type="button" class="tribu-cp-btn-next" onclick="cpNext(0)">Siguiente &rarr;</button>
+      </div>
+    </div>
+    <!-- Paso 2 -->
+    <div id="cpStep1" style="display:none">
+      <div class="tribu-cp-eyebrow">Paso 2 de 3 &middot; Tus intereses</div>
+      <div class="tribu-cp-title">¿Qué te apasiona?</div>
+      <div class="tribu-cp-hint">“Esto nos ayuda a mostrarte personas y actividades afines.” Elige hasta 6.</div>
+      <div class="tribu-cp-chips" id="cpInteresesChips"></div>
+      <div class="tribu-cp-chip-limit" id="cpInteresesLimit">0 / 6 seleccionados</div>
+      <div class="tribu-cp-err" id="cpErr1"></div>
+      <div class="tribu-cp-actions">
+        <button type="button" class="tribu-cp-btn-back" onclick="cpBack(1)">&larr; Volver</button>
+        <button type="button" class="tribu-cp-btn-next" onclick="cpNext(1)">Siguiente &rarr;</button>
+      </div>
+    </div>
+    <!-- Paso 3 -->
+    <div id="cpStep2" style="display:none">
+      <div class="tribu-cp-eyebrow">Paso 3 de 3 &middot; ¿Qué buscas aquí?</div>
+      <div class="tribu-cp-title">¿Qué te trajo a La Tribu?</div>
+      <div class="tribu-cp-hint">“No todos llegan por lo mismo.” Elige 1 a 3.</div>
+      <div class="tribu-cp-chips" id="cpObjetivosChips"></div>
+      <div class="tribu-cp-chip-limit" id="cpObjetivosLimit">0 / 3 seleccionados</div>
+      <div class="tribu-cp-err" id="cpErr2"></div>
+      <div class="tribu-cp-actions">
+        <button type="button" class="tribu-cp-btn-back" onclick="cpBack(2)">&larr; Volver</button>
+        <button type="button" class="tribu-cp-btn-next" id="cpSaveBtn" onclick="cpGuardar()">Guardar perfil</button>
       </div>
     </div>
   </div>
@@ -1626,9 +1811,11 @@ function renderNavAuth() {
     if (beneficiosWrap) beneficiosWrap.style.display = 'none';
     if (accesoRapido && accesoRapido.style.display === 'none') {
       accesoRapido.style.display = '';
+      renderPerfilCard();
       cargarProximaActividad();
     } else if (accesoRapido) {
       accesoRapido.style.display = '';
+      renderPerfilCard();
     }
     const initial = escapeHtml((tribuUser.nombre || '?').charAt(0).toUpperCase());
     const avatarHtml = tribuUser.foto_url
@@ -3509,6 +3696,198 @@ document.addEventListener('keydown', e => {
     cerrarPlayer();
     cerrarEvento();
   }
+});
+
+/* ── PERFIL COMPLETADO ── */
+const CP_INTERESES = [
+  'Lectura','Viajes','Deportes','Cine','Música','Emprendimiento',
+  'Psicología','Crecimiento personal','Arte','Meditación','Cocina',
+  'Tecnología','Naturaleza','Yoga','Baile','Fotografía'
+];
+const CP_OBJETIVOS = [
+  'Conocer personas','Crecer personalmente','Apoyo emocional',
+  'Actividades grupales','Networking','Deporte y bienestar',
+  'Aprender cosas nuevas','Viajar y hacer planes'
+];
+
+let _cpInteresesSel = [];
+let _cpObjetivosSel = [];
+let _cpStep = 0;
+
+function calcPerfilPct(user) {
+  if (!user) return { pct: 0, steps: [false, false, false] };
+  const s1 = !!(user.nombre && user.carrera);
+  const s2 = !!(user.intereses && (typeof user.intereses === 'string' ? JSON.parse(user.intereses) : user.intereses).length > 0);
+  const s3 = !!(user.objetivos && (typeof user.objetivos === 'string' ? JSON.parse(user.objetivos) : user.objetivos).length > 0);
+  const done = [s1, s2, s3].filter(Boolean).length;
+  return { pct: Math.round((done / 3) * 100), steps: [s1, s2, s3] };
+}
+
+function renderPerfilCard() {
+  const wrap = document.getElementById('tribuPerfilWrap');
+  if (!wrap || !tribuUser) return;
+  const { pct, steps } = calcPerfilPct(tribuUser);
+  const r = 22; const circ = 2 * Math.PI * r;
+  const offset = circ - (pct / 100) * circ;
+  const isDone = pct === 100;
+  const stepLabels = ['Tu identidad', 'Tus intereses', '¿Qué buscas?'];
+  wrap.innerHTML =
+    '<div class="tribu-perfil-card' + (isDone ? ' is-complete' : '') + '"' +
+    (isDone ? '' : ' onclick="abrirCpModal()" role="button" tabindex="0" aria-label="Completar perfil"') + '>' +
+      '<div class="tribu-perfil-pct-ring">' +
+        '<svg viewBox="0 0 52 52"><circle class="ring-bg" cx="26" cy="26" r="' + r + '"/>' +
+        '<circle class="ring-fill' + (isDone ? ' done' : '') + '" cx="26" cy="26" r="' + r + '"' +
+        ' stroke-dasharray="' + circ.toFixed(2) + '"' +
+        ' stroke-dashoffset="' + offset.toFixed(2) + '"/></svg>' +
+        '<div class="tribu-perfil-pct-num">' + pct + '%</div>' +
+      '</div>' +
+      '<div class="tribu-perfil-body">' +
+        '<div class="tribu-perfil-eyebrow">Tu perfil</div>' +
+        '<div class="tribu-perfil-title">' + (isDone ? '¡Perfil completo! ✨' : 'Completa tu perfil') + '</div>' +
+        '<div class="tribu-perfil-steps">' +
+          stepLabels.map((l, i) =>
+            '<span class="tribu-perfil-step' + (steps[i] ? ' done' : '') + '">' +
+            '<span class="step-dot"></span>' + escapeHtml(l) + '</span>'
+          ).join('') +
+        '</div>' +
+      '</div>' +
+      (isDone ? '' : '<div class="tribu-perfil-arrow">›</div>') +
+    '</div>';
+  if (!isDone) {
+    wrap.querySelector('.tribu-perfil-card')?.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abrirCpModal(); }
+    });
+  }
+}
+
+function abrirCpModal() {
+  if (!tribuUser) return;
+  // Pre-rellenar paso 1
+  document.getElementById('cpNombre').value = tribuUser.nombre || '';
+  document.getElementById('cpCiudad').value = tribuUser.ciudad || '';
+  document.getElementById('cpCarrera').value = tribuUser.carrera || '';
+  // Pre-seleccionar intereses
+  let savedIntereses = [];
+  try { savedIntereses = tribuUser.intereses ? (typeof tribuUser.intereses === 'string' ? JSON.parse(tribuUser.intereses) : tribuUser.intereses) : []; } catch {}
+  _cpInteresesSel = [...savedIntereses];
+  // Pre-seleccionar objetivos
+  let savedObjetivos = [];
+  try { savedObjetivos = tribuUser.objetivos ? (typeof tribuUser.objetivos === 'string' ? JSON.parse(tribuUser.objetivos) : tribuUser.objetivos) : []; } catch {}
+  _cpObjetivosSel = [...savedObjetivos];
+  // Renderizar chips
+  renderCpChips('cpInteresesChips', CP_INTERESES, _cpInteresesSel, 6, 'cpInteresesLimit');
+  renderCpChips('cpObjetivosChips', CP_OBJETIVOS, _cpObjetivosSel, 3, 'cpObjetivosLimit');
+  // Ir al primer paso incompleto
+  const { steps } = calcPerfilPct(tribuUser);
+  _cpStep = steps[0] ? (steps[1] ? 2 : 1) : 0;
+  cpShowStep(_cpStep);
+  document.getElementById('cpOverlay').classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+
+function cerrarCpModal() {
+  document.getElementById('cpOverlay').classList.remove('show');
+  document.body.style.overflow = '';
+}
+
+function cpShowStep(n) {
+  [0, 1, 2].forEach(i => {
+    document.getElementById('cpStep' + i).style.display = i === n ? '' : 'none';
+    const dot = document.getElementById('cpDot' + i);
+    dot.className = 'tribu-cp-step-dot' + (i < n ? ' done' : i === n ? ' active' : '');
+  });
+  _cpStep = n;
+  ['cpErr0','cpErr1','cpErr2'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = ''; });
+}
+
+function renderCpChips(containerId, options, selected, max, limitId) {
+  const box = document.getElementById(containerId);
+  if (!box) return;
+  box.innerHTML = options.map(opt =>
+    '<button type="button" class="tribu-cp-chip' + (selected.includes(opt) ? ' selected' : '') + '"' +
+    ' onclick="toggleCpChip(this,\'' + containerId + '\',\'' + escapeHtml(opt) + '\',' + max + ',\'' + limitId + '\')">'
+    + escapeHtml(opt) + '</button>'
+  ).join('');
+  document.getElementById(limitId).textContent = selected.length + ' / ' + max + ' seleccionados';
+}
+
+function toggleCpChip(btn, containerId, opt, max, limitId) {
+  const arr = containerId === 'cpInteresesChips' ? _cpInteresesSel : _cpObjetivosSel;
+  const idx = arr.indexOf(opt);
+  if (idx >= 0) {
+    arr.splice(idx, 1);
+    btn.classList.remove('selected');
+  } else {
+    if (arr.length >= max) return;
+    arr.push(opt);
+    btn.classList.add('selected');
+  }
+  document.getElementById(limitId).textContent = arr.length + ' / ' + max + ' seleccionados';
+}
+
+function cpNext(step) {
+  if (step === 0) {
+    const nombre = document.getElementById('cpNombre').value.trim();
+    const carrera = document.getElementById('cpCarrera').value.trim();
+    if (!nombre) { document.getElementById('cpErr0').textContent = 'El nombre es obligatorio'; return; }
+    if (!carrera) { document.getElementById('cpErr0').textContent = 'La ocupación es obligatoria'; return; }
+    cpShowStep(1);
+  } else if (step === 1) {
+    if (_cpInteresesSel.length === 0) { document.getElementById('cpErr1').textContent = 'Elige al menos un interés'; return; }
+    cpShowStep(2);
+  }
+}
+
+function cpBack(step) {
+  cpShowStep(step - 1);
+}
+
+async function cpGuardar() {
+  if (_cpObjetivosSel.length === 0) { document.getElementById('cpErr2').textContent = 'Elige al menos una opción'; return; }
+  const btn = document.getElementById('cpSaveBtn');
+  btn.disabled = true; btn.textContent = 'Guardando...';
+  try {
+    // Paso 1: guardar nombre, ciudad, carrera
+    const r1 = await tribuFetch('/tribu-auth/perfil', {
+      method: 'PUT',
+      body: {
+        nombre: document.getElementById('cpNombre').value.trim(),
+        apellido: tribuUser.apellido || '',
+        email: tribuUser.email || '',
+        carrera: document.getElementById('cpCarrera').value.trim(),
+      }
+    });
+    if (!r1.ok) throw new Error((await r1.json()).error || 'Error al guardar');
+    const d1 = await r1.json();
+    if (d1.token) setToken(d1.token);
+    tribuUser = normalizarSuscripcionUsuario(d1.user);
+    setStoredUser(tribuUser);
+    // Paso 2+3: guardar ciudad, intereses, objetivos
+    const r2 = await tribuFetch('/tribu-auth/perfil/comunidad', {
+      method: 'PUT',
+      body: {
+        ciudad: document.getElementById('cpCiudad').value.trim(),
+        intereses: _cpInteresesSel,
+        objetivos: _cpObjetivosSel,
+      }
+    });
+    if (!r2.ok) throw new Error((await r2.json()).error || 'Error al guardar');
+    const d2 = await r2.json();
+    if (d2.token) setToken(d2.token);
+    tribuUser = normalizarSuscripcionUsuario(d2.user);
+    setStoredUser(tribuUser);
+    renderNavAuth();
+    renderPerfilCard();
+    cerrarCpModal();
+  } catch (err) {
+    document.getElementById('cpErr2').textContent = err.message || 'Error al guardar';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Guardar perfil';
+  }
+}
+
+document.getElementById('cpOverlay')?.addEventListener('keydown', e => {
+  if (e.key === 'Escape') cerrarCpModal();
 });
 
 verificarSesion().then(cargar);
