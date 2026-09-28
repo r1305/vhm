@@ -21,6 +21,7 @@
       <button type="button" data-tab="pixel">📊 Pixel</button>
       <button type="button" data-tab="whatsapp">💬 WhatsApp</button>
       <button type="button" data-tab="redes">🌐 Redes</button>
+      <button type="button" data-tab="landing">🏠 Landing</button>
     </div>
 
     <!-- SUSCRIPCIONES -->
@@ -109,6 +110,20 @@
         <div class="form-group"><label>TikTok</label><input type="url" id="red-tiktok" placeholder="https://tiktok.com/..."></div>
         <button type="button" class="btn btn-primary" id="btn-redes-guardar">💾 Guardar</button>
         <div class="msg-box" id="redes-msg"></div>
+      </div>
+    </div>
+
+    <!-- LANDING -->
+    <div data-panel="landing" style="display:none">
+      <div class="config-section" style="max-width:560px">
+        <h3>🏠 Beneficios del Landing</h3>
+        <p style="font-size:.85rem;color:var(--text-muted);margin-bottom:16px">Estos ítems aparecen debajo del video en la página principal de La Tribu.</p>
+        <div id="beneficios-lista" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px"></div>
+        <button type="button" class="btn btn-outline btn-sm" id="btn-add-beneficio">+ Agregar ítem</button>
+        <div style="margin-top:16px">
+          <button type="button" class="btn btn-primary" id="btn-beneficios-guardar">💾 Guardar</button>
+        </div>
+        <div class="msg-box" id="beneficios-msg"></div>
       </div>
     </div>
 

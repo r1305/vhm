@@ -9,6 +9,16 @@ function requireAdmin(req, res, next) {
   return res.status(403).json({ error: 'Acceso restringido' });
 }
 
+// Pública: beneficios
+router.get('/beneficios', async (req, res) => {
+  try {
+    const [rows] = await pool.execute('SELECT beneficios FROM tribu_config WHERE id = 1');
+    const raw = rows[0]?.beneficios;
+    const items = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : [];
+    res.json(Array.isArray(items) ? items : []);
+  } catch { res.json([]); }
+});
+
 // Pública: pixel
 router.get('/pixel-config', async (req, res) => {
   try {
@@ -51,17 +61,23 @@ router.put('/config', authMiddleware, requireAdmin, async (req, res) => {
       pixel_id, pixel_activo,
       whatsapp_numero, whatsapp_mensaje, whatsapp_activo,
       instagram, facebook, youtube, tiktok,
+      beneficios,
     } = req.body;
+    const beneficiosJson = beneficios !== undefined
+      ? JSON.stringify(Array.isArray(beneficios) ? beneficios : [])
+      : null;
     await pool.execute(
       `UPDATE tribu_config SET
         pixel_id = ?, pixel_activo = ?,
         whatsapp_numero = ?, whatsapp_mensaje = ?, whatsapp_activo = ?,
         instagram = ?, facebook = ?, youtube = ?, tiktok = ?
+        ${beneficiosJson !== null ? ', beneficios = ?' : ''}
        WHERE id = 1`,
       [
         pixel_id || null, pixel_activo ? 1 : 0,
         whatsapp_numero || null, whatsapp_mensaje || null, whatsapp_activo ? 1 : 0,
         instagram || null, facebook || null, youtube || null, tiktok || null,
+        ...(beneficiosJson !== null ? [beneficiosJson] : []),
       ]
     );
     res.json({ message: 'Configuración guardada' });

@@ -271,6 +271,24 @@
     .camino-intro .intro, .camino-intro .pact { text-align: center; }
     .tribu-hero-video { max-width: 860px; margin: 0 auto 28px; }
     .tribu-hero-video[hidden] { display: none !important; }
+
+    /* BENEFICIOS */
+    .tribu-beneficios {
+      max-width: 680px; margin: 0 auto 32px;
+      display: flex; flex-direction: column; gap: 12px;
+      padding: 0 22px;
+    }
+    .tribu-beneficio-item {
+      display: flex; align-items: flex-start; gap: 14px;
+      font-size: 1rem; color: var(--muted); line-height: 1.55;
+    }
+    .tribu-beneficio-item::before {
+      content: '✔'; flex-shrink: 0; margin-top: 2px;
+      width: 22px; height: 22px; border-radius: 50%;
+      background: var(--grad-warm); color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .75rem; font-weight: 800;
+    }
     .tribu-hero-video-inner {
       position: relative; width: 100%; padding-bottom: 56.25%; height: 0;
       border-radius: 18px; overflow: hidden;
@@ -983,14 +1001,7 @@
 </header>
 
 <section id="tribuContentShell">
-<div class="tribu-tabs-wrap">
-  <div class="tribu-tabs">
-    <button type="button" class="tribu-tab active" data-tab="camino" onclick="switchTribuTab('camino')">Camino Interior</button>
-    <button type="button" class="tribu-tab" data-tab="calendario" onclick="switchTribuTab('calendario')">Calendario</button>
-  </div>
-</div>
-
-<div id="tabCamino" class="tribu-panel active">
+<div id="tabCamino">
   <div class="camino-intro">
     <div id="tribuHeroVideoWrap" class="tribu-hero-video" hidden>
       <div class="tribu-hero-video-inner">
@@ -1005,24 +1016,14 @@
         </div>
       </div>
     </div>
-    <p class="intro" id="heroIntro">Cada masterclass y entrenamiento que encontrarás aquí, nació de historias reales. Estás entrando a un espacio diseñado para devolverte claridad, fuerza y dirección cuando más lo necesitas.</p>
-    <p class="pact" id="heroPacto">Cada recurso tiene un propósito: ayudarte a entender, soltar, ordenar, sanar y avanzar. Lo importante no es la velocidad, sino tu constancia.</p>
+    <div id="tribuBeneficios" style="display:none"></div>
+    <div id="tribuJoinWrap" style="display:none;text-align:center;margin:32px 0 8px">
+      <button type="button" class="lock-btn lock-btn-primary" style="font-size:1rem;padding:14px 36px;border-radius:999px" onclick="abrirLoginAuth()">Quiero unirme &rarr;</button>
+    </div>
   </div>
   <main class="section" id="contenido">
     <div class="empty" id="loading">Cargando recursos...</div>
   </main>
-</div>
-
-<div id="tabCalendario" class="tribu-panel">
-  <div class="cal-wrap">
-    <div id="calLockBanner" class="cal-lock-banner" style="display:none"></div>
-    <div class="cal-header">
-      <h2 id="calMesTitulo"></h2>
-    </div>
-    <div class="cal-grid" id="calDow"></div>
-    <div class="cal-grid" id="calGrid" style="margin-top:8px"></div>
-    <div class="cal-empty" id="calLoading">Cargando eventos...</div>
-  </div>
 </div>
 </section>
 
@@ -1464,7 +1465,9 @@ function clearStaleLockUi() {
 function renderNavAuth() {
   const area = document.getElementById('navAuthArea');
   if (!area) return;
+  const joinWrap = document.getElementById('tribuJoinWrap');
   if (tribuUser) {
+    if (joinWrap) joinWrap.style.display = 'none';
     const initial = escapeHtml((tribuUser.nombre || '?').charAt(0).toUpperCase());
     const avatarHtml = tribuUser.foto_url
       ? `<img src="${escapeHtml(tribuUser.foto_url)}" class="user-menu-avatar" alt="">`
@@ -3356,12 +3359,27 @@ function mostrarTribuHeroVideo(cfg) {
   try {
     const res = await fetch(`${API}/videos/landing`);
     const cfg = await res.json();
-    if (cfg.intro) document.getElementById('heroIntro').textContent = cfg.intro;
-    if (cfg.pacto) document.getElementById('heroPacto').textContent = cfg.pacto;
+    if (cfg.intro) document.getElementById('heroIntro') && (document.getElementById('heroIntro').textContent = cfg.intro);
+    if (cfg.pacto) document.getElementById('heroPacto') && (document.getElementById('heroPacto').textContent = cfg.pacto);
     if (tribuLandingTieneVideo(cfg)) mostrarTribuHeroVideo(cfg);
     else {
       const wrap = document.getElementById('tribuHeroVideoWrap');
       if (wrap) wrap.hidden = true;
+    }
+  } catch {}
+
+  // Beneficios
+  try {
+    const res = await fetch(`${API}/beneficios`);
+    const items = await res.json();
+    const wrap = document.getElementById('tribuBeneficios');
+    const joinWrap = document.getElementById('tribuJoinWrap');
+    if (wrap && Array.isArray(items) && items.length) {
+      wrap.style.display = '';
+      wrap.innerHTML = '<div class="tribu-beneficios">' +
+        items.map(t => `<div class="tribu-beneficio-item">${escapeHtml(t)}</div>`).join('') +
+        '</div>';
+      if (joinWrap && !tribuUser) joinWrap.style.display = '';
     }
   } catch {}
 })();
