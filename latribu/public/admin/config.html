@@ -22,6 +22,7 @@
       <button type="button" data-tab="whatsapp">💬 WhatsApp</button>
       <button type="button" data-tab="redes">🌐 Redes</button>
       <button type="button" data-tab="landing">🏠 Landing</button>
+      <button type="button" data-tab="comunidad">🫂 Comunidad</button>
     </div>
 
     <!-- SUSCRIPCIONES -->
@@ -127,7 +128,57 @@
       </div>
     </div>
 
-    <!-- MODAL PLAN -->
+    <!-- COMUNIDAD -->
+    <div data-panel="comunidad" style="display:none">
+      <div class="config-section" style="max-width:640px">
+        <h3>🫂 Chips de Comunidad</h3>
+        <p style="font-size:.85rem;color:var(--text-muted);margin-bottom:20px">Estos chips aparecen en el modal de perfil de los usuarios. Los cambios se reflejan de inmediato.</p>
+
+        <div style="display:flex;gap:24px;flex-wrap:wrap">
+          <!-- Intereses -->
+          <div style="flex:1;min-width:260px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+              <h4 style="font-size:.95rem;font-weight:700">Intereses</h4>
+              <button type="button" class="btn btn-primary btn-sm" onclick="abrirChipModal('intereses')">+ Agregar</button>
+            </div>
+            <div id="chips-intereses-lista"></div>
+          </div>
+          <!-- Objetivos -->
+          <div style="flex:1;min-width:260px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+              <h4 style="font-size:.95rem;font-weight:700">¿Qué buscan?</h4>
+              <button type="button" class="btn btn-primary btn-sm" onclick="abrirChipModal('objetivos')">+ Agregar</button>
+            </div>
+            <div id="chips-objetivos-lista"></div>
+          </div>
+        </div>
+        <div class="msg-box" id="chips-msg"></div>
+      </div>
+    </div>
+
+    <!-- MODAL CHIP -->
+    <div class="modal-overlay" id="modal-chip">
+      <div class="modal">
+        <div class="modal-header">
+          <h3 id="modal-chip-title">🏷️ Nuevo chip</h3>
+          <button type="button" class="modal-close" data-modal-close="modal-chip">✕</button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="chip-id">
+          <input type="hidden" id="chip-tipo">
+          <div class="form-group"><label>Etiqueta</label><input type="text" id="chip-label" placeholder="Ej: Meditación" maxlength="80"></div>
+          <div class="form-group"><label>Orden</label><input type="number" id="chip-orden" value="0" min="0"></div>
+          <div class="form-group" style="display:flex;align-items:center;gap:12px">
+            <label style="margin:0">Activo</label>
+            <label class="switch"><input type="checkbox" id="chip-activo" checked><span class="slider"></span></label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" data-modal-close="modal-chip">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="btn-guardar-chip">💾 Guardar</button>
+        </div>
+      </div>
+    </div>
     <div class="modal-overlay" id="modal-plan">
       <div class="modal">
         <div class="modal-header">

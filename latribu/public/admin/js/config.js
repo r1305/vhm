@@ -210,10 +210,93 @@
     AdminUtils.mostrarMsg(document.getElementById('beneficios-msg'), ok ? 'Guardado' : 'Error al guardar', ok);
   });
 
+  // ── Chips de comunidad ──
+  let chipsData = { intereses: [], objetivos: [] };
+  let editChipId = null;
+  let editChipTipo = null;
+
+  async function loadChips(tipo) {
+    const r = await AdminApi.apiFetch('/tribu-catalogo/admin/' + tipo);
+    if (!r.ok) return;
+    chipsData[tipo] = await r.json();
+    renderChips(tipo);
+  }
+
+  function renderChips(tipo) {
+    const lista = document.getElementById('chips-' + tipo + '-lista');
+    if (!lista) return;
+    if (!chipsData[tipo].length) {
+      lista.innerHTML = '<p style="font-size:.82rem;color:var(--text-muted)">Sin chips. Agrega el primero.</p>';
+      return;
+    }
+    lista.innerHTML = chipsData[tipo].map(c =>
+      `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <span style="flex:1;padding:7px 12px;border:1px solid var(--border-strong);border-radius:999px;font-size:.85rem;background:var(--bg-card);color:${c.activo ? 'var(--text-primary)' : 'var(--text-muted)'}">
+          ${AdminApi.escapeHtml(c.label)}${!c.activo ? ' <em style="font-size:.72rem">(inactivo)</em>' : ''}
+        </span>
+        <button class="btn btn-outline btn-xs" onclick="editarChip(${c.id},'${tipo}')">&#9998;</button>
+        <button class="btn btn-danger btn-xs" onclick="eliminarChip(${c.id},'${tipo}')">&#128465;</button>
+      </div>`
+    ).join('');
+  }
+
+  window.abrirChipModal = function(tipo) {
+    editChipId = null;
+    editChipTipo = tipo;
+    document.getElementById('modal-chip-title').textContent = tipo === 'intereses' ? '🏷️ Nuevo interés' : '🏷️ Nuevo objetivo';
+    document.getElementById('chip-id').value = '';
+    document.getElementById('chip-tipo').value = tipo;
+    document.getElementById('chip-label').value = '';
+    document.getElementById('chip-orden').value = chipsData[tipo].length;
+    document.getElementById('chip-activo').checked = true;
+    AdminUtils.showModal('modal-chip');
+    setTimeout(() => document.getElementById('chip-label').focus(), 80);
+  };
+
+  window.editarChip = function(id, tipo) {
+    const c = chipsData[tipo].find(x => x.id === id);
+    if (!c) return;
+    editChipId = id;
+    editChipTipo = tipo;
+    document.getElementById('modal-chip-title').textContent = '✏️ Editar chip';
+    document.getElementById('chip-id').value = id;
+    document.getElementById('chip-tipo').value = tipo;
+    document.getElementById('chip-label').value = c.label;
+    document.getElementById('chip-orden').value = c.orden;
+    document.getElementById('chip-activo').checked = !!c.activo;
+    AdminUtils.showModal('modal-chip');
+    setTimeout(() => document.getElementById('chip-label').focus(), 80);
+  };
+
+  window.eliminarChip = async function(id, tipo) {
+    if (!confirm('¿Eliminar este chip?')) return;
+    const r = await AdminApi.apiFetch('/tribu-catalogo/admin/' + id, { method: 'DELETE' });
+    toast(r.ok ? 'Chip eliminado' : 'Error al eliminar', r.ok ? 'success' : 'error');
+    if (r.ok) loadChips(tipo);
+  };
+
+  document.getElementById('btn-guardar-chip').addEventListener('click', async () => {
+    const tipo = document.getElementById('chip-tipo').value;
+    const label = document.getElementById('chip-label').value.trim();
+    const orden = document.getElementById('chip-orden').value;
+    const activo = document.getElementById('chip-activo').checked;
+    if (!label) return toast('La etiqueta es obligatoria', 'error');
+    const isEdit = !!editChipId;
+    const url = isEdit ? '/tribu-catalogo/admin/' + editChipId : '/tribu-catalogo/admin';
+    const method = isEdit ? 'PUT' : 'POST';
+    const body = isEdit ? { label, orden, activo } : { tipo, label, orden, activo };
+    const r = await AdminApi.apiFetch(url, { method, body: JSON.stringify(body) });
+    const d = await r.json();
+    toast(r.ok ? 'Guardado' : (d.error || 'Error'), r.ok ? 'success' : 'error');
+    if (r.ok) { AdminUtils.hideModal('modal-chip'); loadChips(tipo); }
+  });
+
   // Init
   loadSusConfig();
   loadPlanes();
   loadCulqi();
   loadConfig();
   loadBeneficios();
+  loadChips('intereses');
+  loadChips('objetivos');
 })();
