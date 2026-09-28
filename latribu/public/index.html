@@ -271,6 +271,59 @@
     .tribu-hero-video { max-width: 860px; margin: 0 auto 28px; }
     .tribu-hero-video[hidden] { display: none !important; }
 
+    /* PRÓXIMA ACTIVIDAD */
+    .tribu-proxima-wrap {
+      max-width: 960px; margin: 0 auto 18px; padding: 0 22px;
+    }
+    .tribu-proxima-card {
+      background: var(--panel); border: 1px solid var(--line); border-radius: 20px;
+      padding: 20px 24px; cursor: pointer; position: relative; overflow: hidden;
+      display: flex; align-items: center; gap: 20px;
+      transition: transform .22s, box-shadow .22s, border-color .22s;
+    }
+    .tribu-proxima-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+      background: var(--grad-cool);
+    }
+    .tribu-proxima-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(168,79,62,.45);
+      box-shadow: 0 16px 36px -16px rgba(168,79,62,.4);
+    }
+    .tribu-proxima-card.is-loading,
+    .tribu-proxima-card.is-empty { cursor: default; pointer-events: none; }
+    .tribu-proxima-card.is-loading:hover,
+    .tribu-proxima-card.is-empty:hover { transform: none; box-shadow: none; border-color: var(--line); }
+    .tribu-proxima-icon {
+      flex-shrink: 0; width: 52px; height: 52px; border-radius: 14px;
+      display: flex; align-items: center; justify-content: center; font-size: 1.6rem;
+      background: linear-gradient(135deg, rgba(35,122,104,.15), rgba(62,111,164,.15));
+      border: 1px solid rgba(35,122,104,.25);
+    }
+    .tribu-proxima-body { flex: 1; min-width: 0; }
+    .tribu-proxima-eyebrow {
+      font-size: .7rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase;
+      color: var(--teal); margin-bottom: 4px;
+    }
+    .tribu-proxima-nombre {
+      font-family: 'Fraunces', serif; font-size: 1.1rem; font-weight: 700;
+      color: var(--txt); line-height: 1.25; margin-bottom: 5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .tribu-proxima-meta {
+      display: flex; flex-wrap: wrap; gap: 10px;
+      font-size: .82rem; color: var(--muted); font-weight: 600;
+    }
+    .tribu-proxima-meta span { display: flex; align-items: center; gap: 4px; }
+    .tribu-proxima-arrow {
+      flex-shrink: 0; color: var(--muted); font-size: 1.1rem; opacity: .6;
+    }
+    @media (max-width: 480px) {
+      .tribu-proxima-card { padding: 16px 16px; gap: 14px; }
+      .tribu-proxima-icon { width: 44px; height: 44px; font-size: 1.3rem; border-radius: 12px; }
+      .tribu-proxima-nombre { font-size: 1rem; }
+    }
+
     /* CARDS ACCESO RÁPIDO (usuario logueado) */
     .tribu-acceso-rapido {
       max-width: 960px; margin: 0 auto 36px;
@@ -1039,6 +1092,7 @@
 <div id="tabCamino">
   <div class="camino-intro">
     <div id="tribuAccesoRapido" style="display:none">
+      <div class="tribu-proxima-wrap" id="tribuProximaWrap"></div>
       <div class="tribu-acceso-rapido">
         <a href="/recursos" class="tribu-acceso-card">
           <div class="tribu-acceso-card-icon">📚</div>
@@ -1570,7 +1624,12 @@ function renderNavAuth() {
     if (joinWrap) joinWrap.style.display = 'none';
     if (heroVideoWrap) heroVideoWrap.hidden = true;
     if (beneficiosWrap) beneficiosWrap.style.display = 'none';
-    if (accesoRapido) accesoRapido.style.display = '';
+    if (accesoRapido && accesoRapido.style.display === 'none') {
+      accesoRapido.style.display = '';
+      cargarProximaActividad();
+    } else if (accesoRapido) {
+      accesoRapido.style.display = '';
+    }
     const initial = escapeHtml((tribuUser.nombre || '?').charAt(0).toUpperCase());
     const avatarHtml = tribuUser.foto_url
       ? `<img src="${escapeHtml(tribuUser.foto_url)}" class="user-menu-avatar" alt="">`
@@ -3053,6 +3112,80 @@ function irARecursos() {
 function irACalendario() {
   switchTribuTab('calendario');
   window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+let _proximaEvento = null;
+
+function fmtFechaLegible(fechaStr) {
+  if (!fechaStr) return '';
+  const [y, m, d] = String(fechaStr).slice(0, 10).split('-').map(Number);
+  const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  const dias = ['dom','lun','mar','mié','jue','vie','sáb'];
+  const fecha = new Date(y, m - 1, d);
+  return `${dias[fecha.getDay()]} ${d} ${meses[m - 1]}`;
+}
+
+async function cargarProximaActividad() {
+  const wrap = document.getElementById('tribuProximaWrap');
+  if (!wrap) return;
+  wrap.innerHTML = '<div class="tribu-proxima-card is-loading"><div class="tribu-proxima-body"><div class="tribu-proxima-eyebrow">Tu próxima actividad</div><div class="tribu-proxima-nombre" style="color:var(--muted);font-family:inherit;font-size:.9rem;font-weight:600">Cargando...</div></div></div>';
+  try {
+    const hoy = hoyYmdLocal();
+    const res = await fetch(`${API}/eventos`);
+    if (!res.ok) throw new Error();
+    const eventos = await res.json();
+    const proximos = Array.isArray(eventos)
+      ? eventos.filter(e => String(e.fecha).slice(0, 10) >= hoy)
+      : [];
+    if (!proximos.length) {
+      wrap.innerHTML = '<div class="tribu-proxima-card is-empty"><div class="tribu-proxima-icon">📅</div><div class="tribu-proxima-body"><div class="tribu-proxima-eyebrow">Tu próxima actividad</div><div class="tribu-proxima-nombre" style="font-family:inherit;font-size:.9rem;font-weight:600;color:var(--muted)">No hay eventos próximos por ahora</div></div></div>';
+      return;
+    }
+    _proximaEvento = proximos[0];
+    const ev = _proximaEvento;
+    const fechaLabel = fmtFechaLegible(ev.fecha);
+    const horaLabel = ev.hora_inicio ? fmtHora(ev.hora_inicio) + (ev.hora_fin ? ` – ${fmtHora(ev.hora_fin)}` : '') : '';
+    wrap.innerHTML =
+      '<div class="tribu-proxima-card" onclick="verProximaActividad()" role="button" tabindex="0" aria-label="Ver detalles de ' + escapeHtml(ev.nombre) + '">' +
+        '<div class="tribu-proxima-icon">📅</div>' +
+        '<div class="tribu-proxima-body">' +
+          '<div class="tribu-proxima-eyebrow">Tu próxima actividad</div>' +
+          '<div class="tribu-proxima-nombre">' + escapeHtml(ev.nombre) + '</div>' +
+          '<div class="tribu-proxima-meta">' +
+            (fechaLabel ? '<span>🗓 ' + escapeHtml(fechaLabel) + '</span>' : '') +
+            (horaLabel ? '<span>🕐 ' + escapeHtml(horaLabel) + '</span>' : '') +
+            (ev.lugar ? '<span>📍 ' + escapeHtml(ev.lugar) + '</span>' : '') +
+          '</div>' +
+        '</div>' +
+        '<div class="tribu-proxima-arrow">›</div>' +
+      '</div>';
+    wrap.querySelector('.tribu-proxima-card')?.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); verProximaActividad(); }
+    });
+  } catch {
+    wrap.innerHTML = '';
+  }
+}
+
+function verProximaActividad() {
+  if (!_proximaEvento) return;
+  const ev = _proximaEvento;
+  const fin = ev.hora_fin ? ` – ${fmtHora(ev.hora_fin)}` : '';
+  document.getElementById('evtNombre').textContent = ev.nombre;
+  document.getElementById('evtFecha').textContent = String(ev.fecha).slice(0, 10);
+  document.getElementById('evtHora').textContent = `${fmtHora(ev.hora_inicio)}${fin}`;
+  document.getElementById('evtLugar').textContent = ev.lugar || '';
+  const linkRow = document.getElementById('evtLinkRow');
+  const linkEl = document.getElementById('evtLink');
+  if (ev.ubicacion) {
+    linkEl.href = ev.ubicacion;
+    linkEl.textContent = ev.ubicacion;
+    linkRow.style.display = 'flex';
+  } else {
+    linkRow.style.display = 'none';
+  }
+  document.getElementById('evtOverlay').classList.add('show');
+  document.body.style.overflow = 'hidden';
 }
 
 function fmtHora(t) {
