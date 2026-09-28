@@ -466,6 +466,12 @@ async function crearEsquema() {
     await pool.query('ALTER TABLE tribu_users ADD COLUMN hobbies MEDIUMTEXT NULL AFTER carrera');
   if (!colNames.includes('a_que_te_dedicas'))
     await pool.query('ALTER TABLE tribu_users ADD COLUMN a_que_te_dedicas MEDIUMTEXT NULL AFTER hobbies');
+  if (!colNames.includes('intereses'))
+    await pool.query('ALTER TABLE tribu_users ADD COLUMN intereses JSON NULL AFTER a_que_te_dedicas');
+  if (!colNames.includes('objetivos'))
+    await pool.query('ALTER TABLE tribu_users ADD COLUMN objetivos JSON NULL AFTER intereses');
+  if (!colNames.includes('ciudad'))
+    await pool.query('ALTER TABLE tribu_users ADD COLUMN ciudad VARCHAR(120) NULL AFTER objetivos');
 
   await ensureAccesosSchema();
   await backfillAccesos();

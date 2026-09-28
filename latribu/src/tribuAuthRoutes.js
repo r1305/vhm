@@ -84,7 +84,7 @@ async function syncSubscriptionAccess(userId) {
 
 async function fetchUserPublic(id) {
   const [rows] = await pool.execute(
-    'SELECT id, nombre, apellido, email, telefono, foto_url, carrera, hobbies, a_que_te_dedicas, psw_temp, is_suscribed FROM tribu_users WHERE id = ? LIMIT 1',
+    'SELECT id, nombre, apellido, email, telefono, foto_url, carrera, hobbies, a_que_te_dedicas, intereses, objetivos, ciudad, psw_temp, is_suscribed FROM tribu_users WHERE id = ? LIMIT 1',
     [id]
   );
   if (!rows.length) return null;
@@ -115,6 +115,9 @@ function userPayload(user) {
     carrera: user.carrera || null,
     hobbies: user.hobbies || null,
     a_que_te_dedicas: user.a_que_te_dedicas || null,
+    intereses: user.intereses || null,
+    objetivos: user.objetivos || null,
+    ciudad: user.ciudad || null,
   };
 }
 
@@ -355,6 +358,26 @@ router.put('/perfil', tribuAuthMiddleware, async (req, res) => {
     const token = signToken(user);
     res.json({ user: userPayload(user), token });
   } catch (err) { console.error(err); res.status(500).json({ error: 'Error al actualizar el perfil' }); }
+});
+
+router.put('/perfil/comunidad', tribuAuthMiddleware, async (req, res) => {
+  try {
+    const { ciudad, intereses, objetivos } = req.body;
+    const ciudadVal = ciudad != null ? String(ciudad).trim().slice(0, 120) || null : undefined;
+    const interesesVal = Array.isArray(intereses) ? JSON.stringify(intereses.slice(0, 6)) : undefined;
+    const objetivosVal = Array.isArray(objetivos) ? JSON.stringify(objetivos.slice(0, 3)) : undefined;
+    const sets = [];
+    const params = [];
+    if (ciudadVal !== undefined) { sets.push('ciudad = ?'); params.push(ciudadVal); }
+    if (interesesVal !== undefined) { sets.push('intereses = ?'); params.push(interesesVal); }
+    if (objetivosVal !== undefined) { sets.push('objetivos = ?'); params.push(objetivosVal); }
+    if (!sets.length) return res.status(400).json({ error: 'Nada que actualizar' });
+    params.push(req.tribuUser.id);
+    await pool.execute(`UPDATE tribu_users SET ${sets.join(', ')} WHERE id = ?`, params);
+    const user = await fetchUserPublic(req.tribuUser.id);
+    const token = signToken(user);
+    res.json({ user: userPayload(user), token });
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Error al guardar' }); }
 });
 
 router.post('/perfil/foto', tribuAuthMiddleware, (req, res) => {
