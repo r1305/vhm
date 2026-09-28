@@ -273,9 +273,12 @@
 
     /* CARDS ACCESO RÁPIDO (usuario logueado) */
     .tribu-acceso-rapido {
-      max-width: 680px; margin: 0 auto 36px;
-      display: grid; grid-template-columns: 1fr 1fr; gap: 18px;
+      max-width: 960px; margin: 0 auto 36px;
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px;
       padding: 0 22px;
+    }
+    @media (max-width: 720px) {
+      .tribu-acceso-rapido { grid-template-columns: 1fr 1fr; }
     }
     .tribu-acceso-card {
       background: var(--panel); border: 1px solid var(--line); border-radius: 20px;
@@ -300,8 +303,8 @@
     }
     .tribu-acceso-card-hint { font-size: .82rem; color: var(--muted); font-weight: 600; }
     @media (max-width: 480px) {
-      .tribu-acceso-rapido { grid-template-columns: 1fr; gap: 12px; }
-      .tribu-acceso-card { padding: 22px 18px; }
+      .tribu-acceso-rapido { grid-template-columns: 1fr 1fr; gap: 12px; }
+      .tribu-acceso-card { padding: 22px 14px; }
     }
 
     /* BENEFICIOS */
@@ -1040,12 +1043,22 @@
         <a href="/recursos" class="tribu-acceso-card">
           <div class="tribu-acceso-card-icon">📚</div>
           <div class="tribu-acceso-card-label">Recursos</div>
-          <div class="tribu-acceso-card-hint">Todos los videos disponibles</div>
+          <div class="tribu-acceso-card-hint">Biblioteca de contenido</div>
         </a>
         <a href="/calendario" class="tribu-acceso-card">
           <div class="tribu-acceso-card-icon">📅</div>
           <div class="tribu-acceso-card-label">Calendario</div>
-          <div class="tribu-acceso-card-hint">Próximos eventos</div>
+          <div class="tribu-acceso-card-hint">Eventos y actividades</div>
+        </a>
+        <a href="/ia" class="tribu-acceso-card">
+          <div class="tribu-acceso-card-icon">🤖</div>
+          <div class="tribu-acceso-card-label">IA</div>
+          <div class="tribu-acceso-card-hint">Tu aliada de bienestar</div>
+        </a>
+        <a href="/comunidad" class="tribu-acceso-card">
+          <div class="tribu-acceso-card-icon">🫂</div>
+          <div class="tribu-acceso-card-label">Comunidad</div>
+          <div class="tribu-acceso-card-hint">Conecta y comparte</div>
         </a>
       </div>
     </div>
