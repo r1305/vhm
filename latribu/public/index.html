@@ -272,6 +272,39 @@
     .tribu-hero-video { max-width: 860px; margin: 0 auto 28px; }
     .tribu-hero-video[hidden] { display: none !important; }
 
+    /* CARDS ACCESO RÁPIDO (usuario logueado) */
+    .tribu-acceso-rapido {
+      max-width: 680px; margin: 0 auto 36px;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 18px;
+      padding: 0 22px;
+    }
+    .tribu-acceso-card {
+      background: var(--panel); border: 1px solid var(--line); border-radius: 20px;
+      padding: 28px 22px; cursor: pointer; text-align: center;
+      transition: transform .22s, box-shadow .22s, border-color .22s;
+      display: flex; flex-direction: column; align-items: center; gap: 10px;
+      position: relative; overflow: hidden;
+    }
+    .tribu-acceso-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+      background: var(--grad-warm);
+    }
+    .tribu-acceso-card:hover {
+      transform: translateY(-6px);
+      border-color: rgba(168,79,62,.45);
+      box-shadow: 0 20px 40px -16px rgba(168,79,62,.4);
+    }
+    .tribu-acceso-card-icon { font-size: 2.4rem; line-height: 1; }
+    .tribu-acceso-card-label {
+      font-family: 'Fraunces', serif; font-size: 1.15rem; font-weight: 700;
+      color: var(--txt); line-height: 1.2;
+    }
+    .tribu-acceso-card-hint { font-size: .82rem; color: var(--muted); font-weight: 600; }
+    @media (max-width: 480px) {
+      .tribu-acceso-rapido { grid-template-columns: 1fr; gap: 12px; }
+      .tribu-acceso-card { padding: 22px 18px; }
+    }
+
     /* BENEFICIOS */
     .tribu-beneficios {
       max-width: 680px; margin: 0 auto 32px;
@@ -1003,6 +1036,20 @@
 <section id="tribuContentShell">
 <div id="tabCamino">
   <div class="camino-intro">
+    <div id="tribuAccesoRapido" style="display:none">
+      <div class="tribu-acceso-rapido">
+        <div class="tribu-acceso-card" onclick="irARecursos()">
+          <div class="tribu-acceso-card-icon">📚</div>
+          <div class="tribu-acceso-card-label">Recursos</div>
+          <div class="tribu-acceso-card-hint">Todos los videos disponibles</div>
+        </div>
+        <div class="tribu-acceso-card" onclick="irACalendario()">
+          <div class="tribu-acceso-card-icon">📅</div>
+          <div class="tribu-acceso-card-label">Calendario</div>
+          <div class="tribu-acceso-card-hint">Próximos eventos</div>
+        </div>
+      </div>
+    </div>
     <div id="tribuHeroVideoWrap" class="tribu-hero-video" hidden>
       <div class="tribu-hero-video-inner">
         <video id="tribuHeroVideo" class="tribu-hero-video-el" controls playsinline preload="none" controlsList="nodownload noplaybackrate"></video>
@@ -1021,9 +1068,20 @@
       <button type="button" class="lock-btn lock-btn-primary" style="font-size:1rem;padding:14px 36px;border-radius:999px" onclick="abrirLoginAuth()">Quiero unirme &rarr;</button>
     </div>
   </div>
-  <main class="section" id="contenido">
+  <main class="section" id="contenido" style="display:none">
+    <button type="button" class="account-back" style="margin-bottom:18px" onclick="irACamino()">← Volver</button>
     <div class="empty" id="loading">Cargando recursos...</div>
   </main>
+</div>
+<div id="tabCalendario" style="display:none">
+  <div class="cal-wrap">
+    <button type="button" class="account-back" style="margin-bottom:4px" onclick="irACamino()">← Volver</button>
+    <div id="calLockBanner" class="cal-lock-banner" style="display:none"></div>
+    <div class="cal-header"><h2 id="calMesTitulo"></h2></div>
+    <div class="cal-grid" id="calDow"></div>
+    <div class="cal-grid" id="calGrid" style="margin-top:8px"></div>
+    <div class="cal-empty" id="calLoading">Cargando eventos...</div>
+  </div>
 </div>
 </section>
 
@@ -1493,8 +1551,14 @@ function renderNavAuth() {
   const area = document.getElementById('navAuthArea');
   if (!area) return;
   const joinWrap = document.getElementById('tribuJoinWrap');
+  const heroVideoWrap = document.getElementById('tribuHeroVideoWrap');
+  const beneficiosWrap = document.getElementById('tribuBeneficios');
+  const accesoRapido = document.getElementById('tribuAccesoRapido');
   if (tribuUser) {
     if (joinWrap) joinWrap.style.display = 'none';
+    if (heroVideoWrap) heroVideoWrap.hidden = true;
+    if (beneficiosWrap) beneficiosWrap.style.display = 'none';
+    if (accesoRapido) accesoRapido.style.display = '';
     const initial = escapeHtml((tribuUser.nombre || '?').charAt(0).toUpperCase());
     const avatarHtml = tribuUser.foto_url
       ? `<img src="${escapeHtml(tribuUser.foto_url)}" class="user-menu-avatar" alt="">`
@@ -1524,6 +1588,7 @@ function renderNavAuth() {
       </div>`;
   } else {
     closeUserMenu();
+    if (accesoRapido) accesoRapido.style.display = 'none';
     area.innerHTML = '<button type="button" class="nav-login-link" onclick="abrirLogin()">Iniciar sesión</button>';
     if (document.getElementById('tabPerfil')?.classList.contains('active') ||
         document.getElementById('tabSuscripciones')?.classList.contains('active') ||
@@ -2880,10 +2945,7 @@ function bannerSinSuscripcion() {
 }
 
 function ensureCalendarioDom() {
-  const wrap = document.querySelector('#tabCalendario .cal-wrap');
-  if (!wrap || !document.getElementById('calGrid')) {
-    if (wrap) wrap.innerHTML = CAL_WRAP_HTML;
-  }
+  // El DOM del calendario ya está fijo en el HTML, no hace falta reconstruirlo
 }
 
 function renderCalendarioBloqueado() {
@@ -2903,8 +2965,8 @@ function hideCalendarioLock() {
 }
 
 async function refreshCalendarioIfActive() {
-  if (!document.getElementById('tabCalendario').classList.contains('active')) return;
-  ensureCalendarioDom();
+  const tabCal = document.getElementById('tabCalendario');
+  if (!tabCal || tabCal.style.display === 'none') return;
   if (tieneSuscripcion()) await cargarCalendario();
   else renderCalendarioBloqueado();
 }
@@ -2913,12 +2975,9 @@ async function afterAuthSuccess() {
   showPageLoader('Actualizando contenido...');
   renderNavAuth();
   clearStaleLockUi();
-  const cont = document.getElementById('contenido');
-  if (cont) cont.innerHTML = '<div class="empty">Actualizando recursos...</div>';
   cerrarAuth();
   try {
-    await cargar();
-    await refreshCalendarioIfActive();
+    await switchTribuTab('camino');
   } finally {
     hidePageLoader();
   }
@@ -2930,15 +2989,25 @@ async function switchTribuTab(tab) {
     tab = 'camino';
   }
   updateTribuShells(tab);
-  document.querySelectorAll('.tribu-tab').forEach(b => {
-    b.classList.toggle('active', (tab === 'camino' || tab === 'calendario') && b.dataset.tab === tab);
-  });
-  document.getElementById('tabCamino').classList.toggle('active', tab === 'camino');
-  document.getElementById('tabCalendario').classList.toggle('active', tab === 'calendario');
-  document.getElementById('tabPerfil').classList.toggle('active', tab === 'perfil');
-  document.getElementById('tabSuscripciones').classList.toggle('active', tab === 'suscripciones');
-  document.getElementById('tabTarjetas').classList.toggle('active', tab === 'tarjetas');
-  if (tab === 'calendario') {
+
+  // Paneles dentro de tribuContentShell
+  const tabCamino = document.getElementById('tabCamino');
+  const tabCalendario = document.getElementById('tabCalendario');
+  const contenido = document.getElementById('contenido');
+
+  if (tab === 'camino') {
+    if (tabCamino) tabCamino.style.display = '';
+    if (tabCalendario) tabCalendario.style.display = 'none';
+    if (contenido) contenido.style.display = 'none';
+  } else if (tab === 'recursos') {
+    if (tabCamino) tabCamino.style.display = 'none';
+    if (tabCalendario) tabCalendario.style.display = 'none';
+    if (contenido) { contenido.style.display = ''; }
+    await cargar();
+  } else if (tab === 'calendario') {
+    if (tabCamino) tabCamino.style.display = 'none';
+    if (tabCalendario) tabCalendario.style.display = '';
+    if (contenido) contenido.style.display = 'none';
     showPageLoader('Cargando calendario...');
     try {
       if (!tribuUser) await verificarSesion();
@@ -2957,6 +3026,21 @@ async function switchTribuTab(tab) {
   } else if (tab === 'tarjetas') {
     await cargarMisTarjetas();
   }
+}
+
+function irACamino() {
+  switchTribuTab('camino');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function irARecursos() {
+  switchTribuTab('recursos');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function irACalendario() {
+  switchTribuTab('calendario');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function fmtHora(t) {
@@ -3475,7 +3559,7 @@ function mostrarTribuHeroVideo(cfg) {
     const cfg = await res.json();
     if (cfg.intro) document.getElementById('heroIntro') && (document.getElementById('heroIntro').textContent = cfg.intro);
     if (cfg.pacto) document.getElementById('heroPacto') && (document.getElementById('heroPacto').textContent = cfg.pacto);
-    if (tribuLandingTieneVideo(cfg)) mostrarTribuHeroVideo(cfg);
+    if (tribuLandingTieneVideo(cfg) && !tribuUser) mostrarTribuHeroVideo(cfg);
     else {
       const wrap = document.getElementById('tribuHeroVideoWrap');
       if (wrap) wrap.hidden = true;
