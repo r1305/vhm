@@ -3699,20 +3699,21 @@ document.addEventListener('keydown', e => {
 });
 
 /* ── PERFIL COMPLETADO ── */
-const CP_INTERESES = [
-  'Lectura','Viajes','Deportes','Cine','Música','Emprendimiento',
-  'Psicología','Crecimiento personal','Arte','Meditación','Cocina',
-  'Tecnología','Naturaleza','Yoga','Baile','Fotografía'
-];
-const CP_OBJETIVOS = [
-  'Conocer personas','Crecer personalmente','Apoyo emocional',
-  'Actividades grupales','Networking','Deporte y bienestar',
-  'Aprender cosas nuevas','Viajar y hacer planes'
-];
-
+let _cpCatalogo = { intereses: [], objetivos: [] };
 let _cpInteresesSel = [];
 let _cpObjetivosSel = [];
 let _cpStep = 0;
+
+async function cargarCatalogo() {
+  try {
+    const [ri, ro] = await Promise.all([
+      fetch(`${API}/tribu-catalogo/intereses`),
+      fetch(`${API}/tribu-catalogo/objetivos`),
+    ]);
+    if (ri.ok) _cpCatalogo.intereses = await ri.json();
+    if (ro.ok) _cpCatalogo.objetivos = await ro.json();
+  } catch {}
+}
 
 function calcPerfilPct(user) {
   if (!user) return { pct: 0, steps: [false, false, false] };
@@ -3775,8 +3776,8 @@ function abrirCpModal() {
   try { savedObjetivos = tribuUser.objetivos ? (typeof tribuUser.objetivos === 'string' ? JSON.parse(tribuUser.objetivos) : tribuUser.objetivos) : []; } catch {}
   _cpObjetivosSel = [...savedObjetivos];
   // Renderizar chips
-  renderCpChips('cpInteresesChips', CP_INTERESES, _cpInteresesSel, 6, 'cpInteresesLimit');
-  renderCpChips('cpObjetivosChips', CP_OBJETIVOS, _cpObjetivosSel, 3, 'cpObjetivosLimit');
+  renderCpChips('cpInteresesChips', _cpCatalogo.intereses, _cpInteresesSel, 6, 'cpInteresesLimit');
+  renderCpChips('cpObjetivosChips', _cpCatalogo.objetivos, _cpObjetivosSel, 3, 'cpObjetivosLimit');
   // Ir al primer paso incompleto
   const { steps } = calcPerfilPct(tribuUser);
   _cpStep = steps[0] ? (steps[1] ? 2 : 1) : 0;
@@ -3891,6 +3892,7 @@ document.getElementById('cpOverlay')?.addEventListener('keydown', e => {
 });
 
 verificarSesion().then(cargar);
+cargarCatalogo();
 
 async function cargarRecursosPerfil() {
   const grid = document.getElementById('pfRecursosGrid');

@@ -457,6 +457,27 @@ async function crearEsquema() {
   }
   try { await pool.query('ALTER TABLE tribu_config ADD COLUMN beneficios JSON DEFAULT NULL'); } catch (_) {}
 
+  // ── Catálogo de chips (intereses / objetivos) ──
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS tribu_catalogo_chips (
+      id     INT AUTO_INCREMENT PRIMARY KEY,
+      tipo   ENUM('intereses','objetivos') NOT NULL,
+      label  VARCHAR(80) NOT NULL,
+      orden  INT NOT NULL DEFAULT 0,
+      activo TINYINT(1) NOT NULL DEFAULT 1,
+      KEY idx_tcc_tipo_activo (tipo, activo)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+  const [chipCount] = await pool.query('SELECT COUNT(*) AS total FROM tribu_catalogo_chips');
+  if (chipCount[0].total === 0) {
+    const intereses = ['Lectura','Viajes','Deportes','Cine','Música','Emprendimiento','Psicología','Crecimiento personal','Arte','Meditación','Cocina','Tecnología','Naturaleza','Yoga','Baile','Fotografía'];
+    const objetivos = ['Conocer personas','Crecer personalmente','Apoyo emocional','Actividades grupales','Networking','Deporte y bienestar','Aprender cosas nuevas','Viajar y hacer planes'];
+    for (let i = 0; i < intereses.length; i++)
+      await pool.query('INSERT INTO tribu_catalogo_chips (tipo, label, orden) VALUES (?, ?, ?)', ['intereses', intereses[i], i]);
+    for (let i = 0; i < objetivos.length; i++)
+      await pool.query('INSERT INTO tribu_catalogo_chips (tipo, label, orden) VALUES (?, ?, ?)', ['objetivos', objetivos[i], i]);
+  }
+
   // ── Perfil extendido (migración) ──
   const [cols] = await pool.query('SHOW COLUMNS FROM tribu_users');
   const colNames = cols.map(c => c.Field);
