@@ -1238,7 +1238,7 @@
           <div class="tribu-acceso-card-label">Calendario</div>
           <div class="tribu-acceso-card-hint">Eventos y actividades</div>
         </a>
-        <a id="iaAccesoCard" class="tribu-acceso-card" style="display:none">
+        <a href="/ia" class="tribu-acceso-card">
           <div class="tribu-acceso-card-icon">🤖</div>
           <div class="tribu-acceso-card-label">IA</div>
           <div class="tribu-acceso-card-hint">Tu aliada de bienestar</div>
@@ -4108,28 +4108,6 @@ function mostrarTribuHeroVideo(cfg) {
   } catch {}
 })();
 
-// Botón flotante de WhatsApp (igual que el landing principal)
-(async function() {
-  try {
-    const response = await fetch(API + '/whatsapp-config');
-    const config = await response.json();
-    if (config.numero && config.activo) {
-      const mensaje = config.mensaje ? encodeURIComponent(config.mensaje) : '';
-      const url = `https://wa.me/${config.numero}${mensaje ? '?text=' + mensaje : ''}`;
-      const btn = document.createElement('a');
-      btn.href = url; btn.target = '_blank'; btn.rel = 'noopener noreferrer';
-      // Configurar card de IA con el link de WhatsApp
-      const iaCard = document.getElementById('iaAccesoCard');
-      if (iaCard) {
-        iaCard.href = url;
-        iaCard.target = '_blank';
-        iaCard.rel = 'noopener noreferrer';
-        iaCard.style.display = '';
-      }
-      document.documentElement.classList.add('tribu-has-wa');
-    }
-  } catch (e) {}
-})();
 </script>
 
 <script src="vendor/quill.min.js"></script>
