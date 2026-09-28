@@ -205,7 +205,7 @@
     panel = el('div', { 'class': 'clara-panel', 'role': 'dialog', 'aria-label': 'Chat con Clara' });
     panel.innerHTML =
       '<div class="clara-head">' +
-        '<img src="logo_vhm.jpeg" alt="Clara">' +
+        '<span style="font-size:1.4rem;line-height:1">🛖</span>' +
         '<div>' +
           '<div class="clara-h-name">Clara</div>' +
           '<div class="clara-h-sub"><span class="clara-dot"></span> Tu Guía 24/7 · by Ps. Guillermo</div>' +
