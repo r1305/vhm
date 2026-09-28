@@ -5,6 +5,7 @@ async function cargarMisSuscripciones() {
   const renewalPanel = document.getElementById('subsRenewalPanel');
   if (!lista) return;
   lista.innerHTML = '<div class="subs-empty">Cargando...</div>';
+  window._tribuLoaderStart();
   try {
     const res = await tribuFetch('/tribu-auth/suscripciones');
     const d = await res.json();
@@ -69,6 +70,8 @@ async function cargarMisSuscripciones() {
     }).join('');
   } catch {
     lista.innerHTML = '<div class="subs-empty">No se pudieron cargar las suscripciones.</div>';
+  } finally {
+    window._tribuLoaderEnd();
   }
 }
 
