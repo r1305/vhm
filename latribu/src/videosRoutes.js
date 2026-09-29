@@ -196,6 +196,8 @@ function landingPayload(row) {
   return {
     intro: cfg.intro != null ? cfg.intro : LANDING_INTRO_DEFAULT,
     pacto: cfg.pacto != null ? cfg.pacto : LANDING_PACTO_DEFAULT,
+    hero_title: cfg.hero_title || null,
+    hero_subtitle: cfg.hero_subtitle || null,
     hero_video_url: heroVideoUrl || null,
     hero_video_type: parsed ? parsed.type : null,
     hero_video_file_id: parsed && parsed.type === 'drive' ? parsed.fileId : null,
@@ -331,7 +333,7 @@ function eliminarArchivoLocal(thumbUrl) {
 router.get('/landing', async (req, res) => {
   try {
     const [rows] = await pool.query(
-      'SELECT intro, pacto, hero_video_url FROM video_landing WHERE id = 1'
+      'SELECT intro, pacto, hero_video_url, hero_title, hero_subtitle FROM video_landing WHERE id = 1'
     );
     res.json(landingPayload(rows[0]));
   } catch (err) {
@@ -363,6 +365,8 @@ router.put('/landing', authMiddleware, requireAdmin, async (req, res) => {
     if (!intro || !pacto) {
       return res.status(400).json({ error: 'Ambos textos son obligatorios' });
     }
+    const heroTitle = req.body.hero_title != null ? String(req.body.hero_title).trim().slice(0, 200) : null;
+    const heroSubtitle = req.body.hero_subtitle != null ? String(req.body.hero_subtitle).trim().slice(0, 200) : null;
     let heroVideoUrl = null;
     if (req.body && req.body.hero_video_url != null) {
       const raw = String(req.body.hero_video_url).trim();
@@ -377,11 +381,11 @@ router.put('/landing', authMiddleware, requireAdmin, async (req, res) => {
       }
     }
     await pool.query(
-      `INSERT INTO video_landing (id, intro, pacto, hero_video_url) VALUES (1, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE intro = VALUES(intro), pacto = VALUES(pacto), hero_video_url = VALUES(hero_video_url)`,
-      [intro, pacto, heroVideoUrl]
+      `INSERT INTO video_landing (id, intro, pacto, hero_video_url, hero_title, hero_subtitle) VALUES (1, ?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE intro = VALUES(intro), pacto = VALUES(pacto), hero_video_url = VALUES(hero_video_url), hero_title = VALUES(hero_title), hero_subtitle = VALUES(hero_subtitle)`,
+      [intro, pacto, heroVideoUrl, heroTitle || null, heroSubtitle || null]
     );
-    res.json({ message: 'Landing actualizado', ...landingPayload({ intro, pacto, hero_video_url: heroVideoUrl }) });
+    res.json({ message: 'Landing actualizado', ...landingPayload({ intro, pacto, hero_video_url: heroVideoUrl, hero_title: heroTitle, hero_subtitle: heroSubtitle }) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error al guardar el landing' });
