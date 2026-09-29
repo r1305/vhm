@@ -456,6 +456,8 @@ async function crearEsquema() {
     await pool.query('INSERT INTO tribu_config (id) VALUES (1)');
   }
   try { await pool.query('ALTER TABLE tribu_config ADD COLUMN beneficios JSON DEFAULT NULL'); } catch (_) {}
+  try { await pool.query('ALTER TABLE video_landing ADD COLUMN hero_title VARCHAR(200) NULL'); } catch (_) {}
+  try { await pool.query('ALTER TABLE video_landing ADD COLUMN hero_subtitle VARCHAR(200) NULL'); } catch (_) {}
 
   // ── Catálogo de chips (intereses / objetivos) ──
   await pool.query(`

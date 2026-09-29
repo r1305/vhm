@@ -4085,6 +4085,14 @@ function mostrarTribuHeroVideo(cfg) {
     const cfg = await res.json();
     if (cfg.intro) document.getElementById('heroIntro') && (document.getElementById('heroIntro').textContent = cfg.intro);
     if (cfg.pacto) document.getElementById('heroPacto') && (document.getElementById('heroPacto').textContent = cfg.pacto);
+    if (cfg.hero_title) {
+      const h1 = document.querySelector('.hero h1');
+      if (h1) h1.innerHTML = escapeHtml(cfg.hero_title);
+    }
+    if (cfg.hero_subtitle) {
+      const eyebrow = document.querySelector('.hero .eyebrow');
+      if (eyebrow) eyebrow.textContent = cfg.hero_subtitle;
+    }
     if (tribuLandingTieneVideo(cfg) && !tribuUser) mostrarTribuHeroVideo(cfg);
     else {
       const wrap = document.getElementById('tribuHeroVideoWrap');

@@ -231,6 +231,34 @@
   // ── Beneficios landing ──
   let beneficiosData = [];
 
+  async function loadLandingHero() {
+    const r = await AdminApi.apiFetch('/videos/landing');
+    if (!r.ok) return;
+    const d = await r.json();
+    document.getElementById('landing-title').value = d.hero_title || '';
+    document.getElementById('landing-subtitle').value = d.hero_subtitle || '';
+  }
+
+  document.getElementById('btn-landing-hero-guardar').addEventListener('click', async () => {
+    const body = {
+      intro: ' ', pacto: ' ', // requeridos por la ruta pero no se usan aquí
+      hero_title: document.getElementById('landing-title').value.trim(),
+      hero_subtitle: document.getElementById('landing-subtitle').value.trim(),
+    };
+    // Cargar intro/pacto actuales para no pisarlos
+    try {
+      const cur = await AdminApi.apiFetch('/videos/landing');
+      if (cur.ok) {
+        const d = await cur.json();
+        body.intro = d.intro || ' ';
+        body.pacto = d.pacto || ' ';
+        if (d.hero_video_url) body.hero_video_url = d.hero_video_url;
+      }
+    } catch {}
+    const r = await AdminApi.apiFetch('/videos/landing', { method: 'PUT', body: JSON.stringify(body) });
+    AdminUtils.mostrarMsg(document.getElementById('landing-hero-msg'), r.ok ? 'Guardado' : 'Error al guardar', r.ok);
+  });
+
   async function loadBeneficios() {
     const r = await AdminApi.apiFetch('/config');
     if (!r.ok) return;
@@ -368,6 +396,7 @@
   loadPlanes();
   loadCulqi();
   loadConfig();
+  loadLandingHero();
   loadBeneficios();
   loadChips('intereses');
   loadChips('objetivos');
