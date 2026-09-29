@@ -1,8 +1,58 @@
 (function (global) {
-  const EMOJIS = [
-    '😀', '😊', '🙂', '😉', '😍', '🥰', '😘', '🤗', '🤩', '😎',
-    '🙏', '👍', '👏', '💪', '✨', '⭐', '🎉', '🔥', '❤️', '💚',
-    '💙', '💜', '🌟', '✅', '☑️', '📅', '🕐', '📍', '👉', '💬',
+  const EMOJI_CATS = [
+    { label: '😀 Caritas', emojis: [
+      '😀','😁','😂','😃','😄','😅','😆','😇','😈','😉','😊','😋','😌','😍','😎','😏',
+      '😐','😑','😒','😓','😔','😕','😖','😗','😘','😙','😚','😛','😜','😝','😞','😟',
+      '😠','😡','😢','😣','😤','😥','😦','😧','😨','😩','😪','😫','😬','😭','😮','😯',
+      '😰','😱','😲','😳','😴','😵','😶','😷','🥰','🥱','🥲','🥳','🥴','🥵','🥶','🥷',
+      '🥸','🥹','🥺','🥻','🥼','🥽','🥾','🥿','🤔','🤨','🤩','🤪','🤫','🤬','🤭','🤮',
+      '🤯','🤐','🤑','🤒','🤓','🤕','🤖','🤗','🤘','🤙','🤚','🤛','🤜','🤝','🤞','🤟',
+      '🙈','🙉','🙊','🙋','🙌','🙍','🙎','🙏',
+    ]},
+    { label: '👋 Gestos', emojis: [
+      '👋','🤚','👌','✌️','🤞','🤟','🤘','👈','👉','👆','👇','☝️','👍','👎',
+      '✊','👊','🤛','🤜','👏','🙌','🙏','✍️','💅','💪','🦵','🦶','🤳','💏','💑',
+    ]},
+    { label: '❤️ Amor', emojis: [
+      '❤️','🧡','💛','💚','💙','💜','💗','💘','💖','💕','💔','💓','💞','💝','💟',
+      '❣️','💌','💋','💍','💎','💊','💉',
+    ]},
+    { label: '🎉 Celebración', emojis: [
+      '🎉','🎊','🎈','🎋','🎌','🎍','🎎','🎏','🎐','🎑','🎒','🎓','🏆','🥇','🥈','🥉',
+      '🏅','🎖️','🎗️','🎫','🎪','🎭','🎨','🎧','🎤','🎥','🎦','🎩','🎬',
+      '✨','🔥','💥','💦','💨','💯','🎯',
+    ]},
+    { label: '🐶 Animales', emojis: [
+      '🐶','🐱','🐭','🐹','🐰','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐽','🐸','🐢','🐥',
+      '🐦','🐧','🐤','🐣','🐝','🦋','🦌','🦍','🦎','🦏','🦐','🦑',
+    ]},
+    { label: '🌸 Naturaleza', emojis: [
+      '🌸','🌹','🌺','🌻','🌼','🌽','🌾','🌿','🍀','🍁','🍂','🍃','🍄','🍅','🍆','🍇',
+      '🍈','🍉','🍊','🍋','🍌','🍍','🍎','🍏','🍐','🍑','🍒','🍓',
+      '🌍','🌎','🌏','🌞','🌟','⭐','⛅','☁️','⚡','🌈','❄️','☃️','🌊',
+    ]},
+    { label: '🍔 Comida', emojis: [
+      '🍔','🍕','🍖','🍗','🍘','🍙','🍚','🍛','🍜','🍝','🍞','🍟','🍠','🍡','🍢','🍣',
+      '🍤','🍥','🍦','🍧','🍨','🍩','🍪','🍫','🍬','🍭','🍮','🍯','🍰','🍱','🍲','🍳',
+      '🍴','🍵','🍶','🍷','🍸','🍹','🍺','🍻',
+    ]},
+    { label: '✈️ Viajes', emojis: [
+      '✈️','🚀','🚁','🚂','🚃','🚄','🚅','🚆','🚇','🚈','🚉','🚊','🚋','🚌','🚍','🚎',
+      '🏠','🏡','🏢','🏣','🏤','🏥','🏦','🏧','🏨','🏩','🏪','🏫','🏬','🏭','🏮','🏯',
+    ]},
+    { label: '💼 Trabajo', emojis: [
+      '💼','📚','📝','📧','📱','💻','💰','💳','💴','💵','💸','💹','💺',
+      '🔑','🔒','🔓','🔔','🔖','🔗','💡','🎯','🎓','🏆','🥇','📊','📈','📉',
+    ]},
+    { label: '✅ Símbolos', emojis: [
+      '✅','❌','✔️','✖️','➕','➖','➗','✴️','✳️','✨','💯','⭐','🔥',
+      '➡️','⬅️','⬆️','⬇️','↗️','↘️','↙️','↖️','🔄','▶️','⏸️','⏹️','⏺️',
+      '1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟',
+    ]},
+    { label: '🧘 Bienestar', emojis: [
+      '🧘','🧙','🧚','🧛','🧜','🧝','🧞','🧟','🧠','🧡','🧢','🧣','🧤','🧥','🧦','🧧',
+      '🏋️','🏊','🏃','🚶','🚴','🚵','🤸','🤼','🤽','🤾','🤿','🥀','🥁','🥂','🥃','🥄',
+    ]},
   ];
 
   function escapeHtml(s) {
@@ -50,11 +100,32 @@
     const preview = root.querySelector('.wa-preview');
     const emojiPop = root.querySelector('.wa-emoji-pop');
 
-    emojiPop.innerHTML = EMOJIS.map(function (e) {
-      return '<button type="button" data-emoji="' + e + '">' + e + '</button>';
-    }).join('');
+    emojiPop.innerHTML =
+      '<div class="wa-emoji-tabs">' +
+        EMOJI_CATS.map(function (cat, i) {
+          return '<button type="button" class="wa-emoji-tab' + (i === 0 ? ' active' : '') + '" data-cat="' + i + '">' + cat.label.split(' ')[0] + '</button>';
+        }).join('') +
+      '</div>' +
+      '<div class="wa-emoji-grid" id="wa-emoji-grid"></div>';
 
-    function updatePreview() {
+    var activecat = 0;
+    function renderCat(idx) {
+      activecat = idx;
+      emojiPop.querySelectorAll('.wa-emoji-tab').forEach(function (b) {
+        b.classList.toggle('active', parseInt(b.dataset.cat, 10) === idx);
+      });
+      emojiPop.querySelector('#wa-emoji-grid').innerHTML = EMOJI_CATS[idx].emojis.map(function (e) {
+        return '<button type="button" data-emoji="' + e + '">' + e + '</button>';
+      }).join('');
+    }
+    renderCat(0);
+
+    emojiPop.addEventListener('click', function (e) {
+      const tab = e.target.closest('.wa-emoji-tab');
+      if (tab) { renderCat(parseInt(tab.dataset.cat, 10)); return; }
+      const btn = e.target.closest('button[data-emoji]');
+      if (btn) insertEmoji(btn.dataset.emoji);
+    });
       preview.innerHTML = waToHtml(textarea.value) || '<span style="opacity:.5">...</span>';
     }
 
@@ -106,13 +177,7 @@
       else if (action === 'emoji') emojiPop.classList.toggle('show');
     });
 
-    emojiPop.addEventListener('click', function (e) {
-      const btn = e.target.closest('button[data-emoji]');
-      if (!btn) return;
-      insertEmoji(btn.dataset.emoji);
-    });
-
-    document.addEventListener('click', function (e) {
+('click', function (e) {
       if (!root.contains(e.target)) emojiPop.classList.remove('show');
     });
 

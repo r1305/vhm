@@ -3,8 +3,77 @@
   AdminUtils.bindTabs('.sub-tabs', '');
   AdminUtils.bindModalClose();
 
-  // ── Suscripciones ──
-  let planes = [], editPlanId = null;
+  // ── Quill para descripción de plan ──
+  const EMOJIS = [
+    // Caritas
+    '😀','😁','😂','😃','😄','😅','😆','😇','😈','😉','😊','😋','😌','😍','😎','😏',
+    '😐','😑','😒','😓','😔','😕','😖','😗','😘','😙','😚','😛','😜','😝','😞','😟',
+    '😠','😡','😢','😣','😤','😥','😦','😧','😨','😩','😪','😫','😬','😭','😮','😯',
+    '😰','😱','😲','😳','😴','😵','😶','😷','🥰','🥱','🥲','🥳','🥴','🥵','🥶','🥷',
+    '🥸','🥹','🥺','🥻','🥼','🥽','🥾','🥿','🦀','🤔','🤨','🤩','🤪','🤫','🤬','🤭',
+    '🤮','🤯','🤐','🤑','🤒','🤓','🤕','🤖','🤗','🤘','🤙','🤚','🤛','🤜','🤝','🤞',
+    '🤟','🙈','🙉','🙊','🙋','🙌','🙍','🙎','🙏',
+    // Manos y gestos
+    '👋','🤚','👌','✌️','🤞','🤟','🤘','👈','👉','👆','👇','☝️','👍','👎',
+    '✊','👊','🤛','🤜','👏','🙌','🙏','✍️','💅','💪','🦵','🦶','🤳','💏','💑',
+    // Corazones y amor
+    '❤️','🧡','💛','💚','💙','💜','💗','💘','💖','💕','💔','💓','💞','💝','💟','♥️',
+    '❣️','💌','💋','💍','💎','💊','💉','🩸','🩹','🩺','🩻','🩼','🩽',
+    // Celebración y logros
+    '🎉','🎊','🎈','🎋','🎌','🎍','🎎','🎏','🎐','🎑','🎒','🎓','🏆','🥇','🥈','🥉',
+    '🏅','🎖️','🎗️','🎫','🎪','🎭','🎨','🎧','🎤','🎥','🎦','🎩','🎬',
+    // Naturaleza y animales
+    '🐶','🐱','🐭','🐹','🐰','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐽','🐸','🐢','🐥',
+    '🐦','🐧','🐤','🐣','🐝','🦋','🦌','🦍','🦎','🦏','🦐','🦑','🌸','🌹','🌺','🌻',
+    '🌼','🌽','🌾','🌿','🍀','🍁','🍂','🍃','🍄','🍅','🍆','🍇','🍈','🍉','🍊','🍋',
+    // Comida
+    '🍌','🍍','🍎','🍏','🍐','🍑','🍒','🍓','🍔','🍕','🍖','🍗','🍘','🍙','🍚','🍛',
+    '🍜','🍝','🍞','🍟','🍠','🍡','🍢','🍣','🍤','🍥','🍦','🍧','🍨','🍩','🍪','🍫',
+    '🍬','🍭','🍮','🍯','🍰','🍱','🍲','🍳','🍴','🍵','🍶','🍷','🍸','🍹','🍺','🍻',
+    // Viajes y lugares
+    '✈️','🚀','🚁','🚂','🚃','🚄','🚅','🚆','🚇','🚈','🚉','🚊','🚋','🚌','🚍','🚎',
+    '🌍','🌎','🌏','🌐','🌑','🌒','🌓','🌔','🌕','🌖','🌗','🌘','🌙','🌚','🌛','🌜',
+    '🌝','🌞','🌟','🌠','⭐','🌡️','⛅','☁️','⚡','🌈','❄️','☃️','🔥','💧','🌊',
+    // Objetos y símbolos
+    '💪','📚','📝','📧','📱','💻','💼','💰','💳','💴','💵','💶','💷','💸','💹','💺',
+    '🔑','🔒','🔓','🔔','🔕','🔖','🔗','🔘','🔙','🔚','🔛','🔜','🔝','🔞','🔟','🔠',
+    '✅','❌','✔️','✖️','➕','➖','➗','✴️','✳️','✨','💥','💦','💧','💨','💩','💯',
+    '🎯','🎱','🎲','🎳','🎴','🎵','🎶','🎷','🎸','🎹','🎺','🎻','🎼','🎽','🎾','🎿',
+    // Actividades y deporte
+    '⚽','🏀','🏈','⚾','🎾','🎱','🏓','🏸','🏊','🏋️','🥊','🥋','🥌','🥍','🥎','🥏',
+    '🧘','🧙','🧚','🧛','🧜','🧝','🧞','🧟','🧠','🧡','🧢','🧣','🧤','🧥','🧦','🧧',
+    // Flechas y señales
+    '➡️','⬅️','⬆️','⬇️','↗️','↘️','↙️','↖️','🔄','🔃','🔂','🔁','🔀','▶️','⏸️','⏹️',
+    '⏺️','⏭️','⏮️','⏯️','⏱️','⏲️','⏰','⌚','⌛','▪️','▫️','◼️','◽','◾','◻',
+  ];
+  let quillDesc = null;
+
+  function initQuillDesc() {
+    if (quillDesc) return;
+    quillDesc = new Quill('#pf-descripcion-editor', {
+      theme: 'snow',
+      placeholder: 'Acceso completo...',
+      modules: { toolbar: [['bold','italic','underline'],[{'list':'ordered'},{'list':'bullet'}],['link'],['clean']] },
+    });
+    // Emoji grid
+    const grid = document.getElementById('pf-desc-emoji-grid');
+    grid.innerHTML = EMOJIS.map(e => `<button type="button" style="background:none;border:none;font-size:1.3rem;cursor:pointer;padding:4px;border-radius:6px" onclick="insertDescEmoji('${e}')">${e}</button>`).join('');
+    document.getElementById('pf-desc-emoji-btn').addEventListener('click', e => {
+      e.stopPropagation();
+      const open = grid.style.display === 'flex';
+      grid.style.display = open ? 'none' : 'flex';
+    });
+    document.addEventListener('click', () => { grid.style.display = 'none'; }, { capture: false });
+  }
+
+  window.insertDescEmoji = function(emoji) {
+    if (!quillDesc) return;
+    const range = quillDesc.getSelection(true);
+    quillDesc.insertText(range.index, emoji);
+    quillDesc.setSelection(range.index + emoji.length);
+    document.getElementById('pf-desc-emoji-grid').style.display = 'none';
+  };
+
 
   async function loadSusConfig() {
     const r = await AdminApi.apiFetch('/suscripciones/config');
@@ -25,7 +94,7 @@
         <td>${AdminApi.escapeHtml(p.nombre)}</td>
         <td>S/ ${Number(p.precio).toFixed(2)}</td>
         <td>${p.vigencia_dias} días</td>
-        <td>${AdminApi.escapeHtml(p.descripcion || '—')}</td>
+        <td>${p.descripcion ? '<span title="' + AdminApi.escapeHtml(p.descripcion.replace(/<[^>]*>/g,'').slice(0,120)) + '">✓</span>' : '—'}</td>
         <td>
           <button class="btn btn-outline btn-xs" onclick="editPlan(${p.id})">✏️</button>
           <button class="btn btn-danger btn-xs" onclick="deletePlan(${p.id})">🗑️</button>
@@ -47,8 +116,10 @@
   document.getElementById('btn-nuevo-plan').addEventListener('click', () => {
     editPlanId = null;
     document.getElementById('modal-plan-title').textContent = '💳 Nuevo Plan';
-    ['pf-nombre', 'pf-precio', 'pf-descripcion'].forEach(id => document.getElementById(id).value = '');
+    ['pf-nombre', 'pf-precio'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('pf-vigencia').value = '30';
+    initQuillDesc();
+    quillDesc.root.innerHTML = '';
     AdminUtils.showModal('modal-plan');
   });
 
@@ -60,7 +131,8 @@
     document.getElementById('pf-nombre').value = p.nombre;
     document.getElementById('pf-precio').value = p.precio;
     document.getElementById('pf-vigencia').value = p.vigencia_dias;
-    document.getElementById('pf-descripcion').value = p.descripcion || '';
+    initQuillDesc();
+    quillDesc.root.innerHTML = p.descripcion || '';
     AdminUtils.showModal('modal-plan');
   };
 
@@ -76,7 +148,7 @@
       nombre: document.getElementById('pf-nombre').value.trim(),
       precio: document.getElementById('pf-precio').value,
       vigencia_dias: document.getElementById('pf-vigencia').value,
-      descripcion: document.getElementById('pf-descripcion').value.trim(),
+      descripcion: quillDesc ? quillDesc.root.innerHTML.trim() : '',
     };
     if (!body.nombre || !body.precio) return toast('Nombre y precio son obligatorios', 'error');
     const url = editPlanId ? '/suscripciones/' + editPlanId : '/suscripciones';

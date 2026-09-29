@@ -167,7 +167,7 @@
     const diasCuota = window.CuotasPlan.normalizeDiasSiguienteCuota(catalogo.dias_siguiente_cuota);
     const descuentoNum = Number(descuento) || 0;
     let html = `<div class="pkg-cuotas-preview">
-      <div class="pkg-cuota-preview-summary">${plan.length} cuota${plan.length > 1 ? 's' : ''} · ${descuentoNum > 0 ? `<span style="text-decoration:line-through;color:var(--text-muted);margin-right:4px">${fmtMoney(catalogo.precio)}</span>` : ''}Total ${fmtMoney(totalPrecio)}${tipoPago === 'parcial' ? ` · cada ${diasCuota} días` : ''}</div>`;
+      <div class="pkg-cuota-preview-summary">${plan.length} cuota${plan.length > 1 ? 's' : ''}${window.__USER_ROL__ !== 'terapeuta' ? ` · ${descuentoNum > 0 ? `<span style="text-decoration:line-through;color:var(--text-muted);margin-right:4px">${fmtMoney(catalogo.precio)}</span>` : ''}Total ${fmtMoney(totalPrecio)}` : ''}${tipoPago === 'parcial' ? ` · cada ${diasCuota} días` : ''}</div>`;
     for (const cuota of plan) {
       const sesLabel = cuota.sesiones_inicio === cuota.sesiones_fin
         ? `Sesión ${cuota.sesiones_inicio}`
@@ -189,7 +189,7 @@
 
   const ESTADO_PAQUETE = {
     activo:    { label: 'Activo',    cls: 'activo' },
-    pendiente:   { label: 'En cola',       cls: 'pendiente' },
+    pendiente:   { label: 'Programado',     cls: 'pendiente' },
     vencido:     { label: 'Vencido',       cls: 'vencido' },
     agotado:     { label: 'Agotado',       cls: 'agotado' },
     reemplazado: { label: 'Reemplazado',   cls: 'inactivo' },
@@ -204,7 +204,7 @@
       return `
       <div class="pkg-cuota-row ${c.pagado ? 'pagada' : ''}">
         <div>
-          <strong>Cuota ${c.numero}</strong> · ${fmtMoney(c.monto)}
+          <strong>Cuota ${c.numero}</strong>${window.__USER_ROL__ !== 'terapeuta' ? ` · ${fmtMoney(c.monto)}` : ''}
           <div class="pkg-cuota-meta">Pago: ${String(c.fecha_pago || '').slice(0, 10)}${sesLabel ? ` · ${sesLabel}` : ''}</div>
         </div>
         ${c.pagado
@@ -236,7 +236,7 @@
             </div>
           </div>
           <div class="pkg-historial-meta">
-            ${fmtMoney(pkg.precio)} · ${pkg.sesiones} sesiones (${usadas} usadas, ${restantes} restantes)<br>
+            ${window.__USER_ROL__ !== 'terapeuta' ? `${fmtMoney(pkg.precio)} · ` : ''}${pkg.sesiones} sesiones (${usadas} usadas, ${restantes} restantes)<br>
             Inicio: ${String(pkg.fecha_inicio).slice(0, 10)} · Vence: ${String(pkg.vence_at || '').slice(0, 10)}<br>
             ${pkg.tipo_pago === 'parcial'
               ? `${pkg.num_cuotas} cuotas · cada ${pkg.dias_siguiente_cuota || 15} días`
@@ -330,7 +330,7 @@
         const histBox = document.getElementById('paqueteHistorialBox');
         const pkgData = (histBox?._paquetesData || []).find((x) => String(x.id) === String(pkgId));
         const catOpts = catalogo.map((c) =>
-          `<option value="${c.id}" ${pkgData?.paquete_catalogo_id == c.id ? 'selected' : ''}>${esc(c.nombre)} — ${c.sesiones} ses. — ${fmtMoney(c.precio)}</option>`
+          `<option value="${c.id}" ${pkgData?.paquete_catalogo_id == c.id ? 'selected' : ''}>${esc(c.nombre)} — ${c.sesiones} ses.${window.__USER_ROL__ !== 'terapeuta' ? ` — ${fmtMoney(c.precio)}` : ''}</option>`
         ).join('');
         openModal('Cambiar paquete', `
           <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px">Paquete actual: <strong>${esc(pkgData?.nombre || '—')}</strong></p>
@@ -407,7 +407,7 @@
     const tsOpts   = terapeutasCache.map(t =>
       `<option value="${t.id}" ${p?.terapeuta_id==t.id?'selected':''}>${esc(fullName(t))}</option>`).join('');
     const catOpts = catalogo.length
-      ? catalogo.map((c) => `<option value="${c.id}">${esc(c.nombre)} — ${c.sesiones} ses. — ${fmtMoney(c.precio)}</option>`).join('')
+      ? catalogo.map((c) => `<option value="${c.id}">${esc(c.nombre)} — ${c.sesiones} ses.${window.__USER_ROL__ !== 'terapeuta' ? ` — ${fmtMoney(c.precio)}` : ''}</option>`).join('')
       : '<option value="">No hay paquetes activos</option>';
 
     window._lastPaquetesPac = paquetesPac;
@@ -598,7 +598,7 @@
         const patientId = btn.dataset.pid;
         const pkgData = paquetesPac.find((x) => String(x.id) === String(pkgId));
         const catOpts = catalogo.map((c) =>
-          `<option value="${c.id}" ${pkgData?.paquete_catalogo_id == c.id ? 'selected' : ''}>${esc(c.nombre)} — ${c.sesiones} ses. — ${fmtMoney(c.precio)}</option>`
+          `<option value="${c.id}" ${pkgData?.paquete_catalogo_id == c.id ? 'selected' : ''}>${esc(c.nombre)} — ${c.sesiones} ses.${window.__USER_ROL__ !== 'terapeuta' ? ` — ${fmtMoney(c.precio)}` : ''}</option>`
         ).join('');
         openModal('Cambiar paquete', `
           <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px">Paquete actual: <strong>${esc(pkgData?.nombre || '—')}</strong></p>
