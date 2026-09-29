@@ -202,3 +202,153 @@ body.crm-loading { overflow: hidden; }
 /* Bloqueos de Google Calendar en el calendario */
 .cal-bloqueo-gcal { background: #e8f0fe !important; color: #1a73e8 !important; border-left: 2px solid #1a73e8 !important; }
 [data-theme="dark"] .cal-bloqueo-gcal { background: #1a2a4a !important; color: #8ab4f8 !important; border-left-color: #8ab4f8 !important; }
+
+/* ── iOS Install Banner ─────────────────────────────── */
+#iosInstallBanner {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.ios-install-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, .45);
+  backdrop-filter: blur(4px);
+}
+.ios-install-sheet {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  background: var(--card-bg, #fff);
+  border-radius: 20px 20px 0 0;
+  padding: 28px 24px 36px;
+  box-shadow: 0 -8px 40px rgba(0,0,0,.18);
+  animation: iosSheetUp .28s cubic-bezier(.32,1,.23,1);
+}
+@keyframes iosSheetUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+.ios-install-close {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  background: var(--bg, #f0f0f0);
+  border: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--text-muted, #888);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ios-install-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: var(--primary, #176B87);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  margin: 0 auto 14px;
+}
+.ios-install-title {
+  font-size: 18px;
+  font-weight: 700;
+  text-align: center;
+  color: var(--text-primary, #111);
+  margin-bottom: 6px;
+}
+.ios-install-sub {
+  font-size: 13px;
+  color: var(--text-muted, #666);
+  text-align: center;
+  margin-bottom: 22px;
+  line-height: 1.5;
+}
+.ios-install-steps {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.ios-install-steps li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  color: var(--text-primary, #222);
+  line-height: 1.45;
+}
+.ios-step-num {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--primary-light, rgba(23,107,135,.15));
+  color: var(--primary, #176B87);
+  font-weight: 700;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ios-browser-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(0,122,255,.1);
+  color: #0066cc;
+  border-radius: 6px;
+  padding: 2px 7px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-left: 4px;
+}
+.ios-share-icon {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  margin-left: 4px;
+  color: var(--primary, #176B87);
+}
+.ios-add-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: 1.5px solid currentColor;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 700;
+  margin-left: 4px;
+  vertical-align: middle;
+  color: var(--primary, #176B87);
+}
+.ios-install-dismiss {
+  width: 100%;
+  padding: 12px;
+  border: 1.5px solid var(--border, #ddd);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-muted, #666);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+.ios-install-dismiss:hover {
+  background: var(--bg, #f5f5f5);
+}

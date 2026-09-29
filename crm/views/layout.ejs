@@ -159,25 +159,96 @@
   </div>
 </div>
 
+<!-- Banner iOS install -->
+<div id="iosInstallBanner" style="display:none" role="dialog" aria-modal="true" aria-labelledby="iosInstallTitle">
+  <div class="ios-install-backdrop"></div>
+  <div class="ios-install-sheet">
+    <button type="button" class="ios-install-close" id="iosInstallClose" aria-label="Cerrar">&times;</button>
+    <div class="ios-install-icon"><i class="fas fa-heart-pulse"></i></div>
+    <div class="ios-install-title" id="iosInstallTitle">Instala VHM CRM</div>
+    <div class="ios-install-sub">Accede más rápido desde tu pantalla de inicio, sin abrir el navegador.</div>
+    <ol class="ios-install-steps">
+      <li>
+        <span class="ios-step-num">1</span>
+        <span>Abre esta página en <strong>Safari</strong> <span class="ios-browser-badge"><i class="fab fa-safari"></i> Safari</span></span>
+      </li>
+      <li>
+        <span class="ios-step-num">2</span>
+        <span>Toca el botón <strong>Compartir</strong> en la barra inferior
+          <span class="ios-share-icon" aria-hidden="true">
+            <svg width="18" height="22" viewBox="0 0 18 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M9 1v13M4 5l5-5 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <rect x="1" y="9" width="16" height="12" rx="2" stroke="currentColor" stroke-width="2"/>
+            </svg>
+          </span>
+        </span>
+      </li>
+      <li>
+        <span class="ios-step-num">3</span>
+        <span>Selecciona <strong>"Agregar a pantalla de inicio"</strong> <span class="ios-add-icon" aria-hidden="true">＋</span></span>
+      </li>
+    </ol>
+    <button type="button" class="ios-install-dismiss" id="iosInstallDismiss">Ahora no</button>
+  </div>
+</div>
+
 <script src="<%= BASE %>/app.js?v=<%= assetVersion %>"></script>
 <script>
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('<%= BASE %>/sw.js?v=<%= assetVersion %>').catch(() => {});
   }
   (function () {
+    const DISMISS_KEY = 'crm-ios-install-dismissed';
+    const DISMISS_DAYS = 7;
+
+    function isIos() {
+      return /iphone|ipad|ipod/i.test(navigator.userAgent);
+    }
+    function isStandalone() {
+      return window.navigator.standalone === true ||
+             window.matchMedia('(display-mode: standalone)').matches;
+    }
+    function wasDismissed() {
+      const ts = parseInt(localStorage.getItem(DISMISS_KEY) || '0', 10);
+      return ts && (Date.now() - ts) < DISMISS_DAYS * 86400000;
+    }
+
     let _deferredPrompt = null;
     const btn = document.getElementById('btnInstallPwa');
+    const banner = document.getElementById('iosInstallBanner');
 
+    // Android/Chrome: prompt nativo
     window.addEventListener('beforeinstallprompt', e => {
       e.preventDefault();
       _deferredPrompt = e;
       if (btn) btn.style.display = 'flex';
     });
-
     window.addEventListener('appinstalled', () => {
       _deferredPrompt = null;
       if (btn) btn.style.display = 'none';
     });
+
+    // iOS: mostrar botón si no está instalado y no fue descartado
+    if (isIos() && !isStandalone() && !wasDismissed()) {
+      if (btn) btn.style.display = 'flex';
+    }
+
+    function showIosBanner() {
+      if (!banner) return;
+      banner.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+    }
+    function hideIosBanner(dismiss) {
+      if (!banner) return;
+      banner.style.display = 'none';
+      document.body.style.overflow = '';
+      if (dismiss) localStorage.setItem(DISMISS_KEY, String(Date.now()));
+    }
+
+    document.getElementById('iosInstallClose')?.addEventListener('click', () => hideIosBanner(true));
+    document.getElementById('iosInstallDismiss')?.addEventListener('click', () => hideIosBanner(true));
+    document.getElementById('iosInstallBanner')?.querySelector('.ios-install-backdrop')
+      ?.addEventListener('click', () => hideIosBanner(true));
 
     if (btn) {
       btn.addEventListener('click', async () => {
@@ -189,14 +260,8 @@
             btn.style.display = 'none';
             fetch('<%= BASE %>/api/pwa/install', { method: 'POST', credentials: 'same-origin' }).catch(() => {});
           }
-        } else {
-          // iOS Safari: no soporta beforeinstallprompt, mostrar instrucciones
-          const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
-          if (isIos) {
-            alert('En Safari: toca el botón Compartir \u{1F4E4} y luego "Agregar a pantalla de inicio".');
-          } else {
-            alert('Para instalar: abre el menú de Chrome (\u22EE) y selecciona "Agregar a pantalla de inicio".');
-          }
+        } else if (isIos()) {
+          showIosBanner();
         }
       });
     }
