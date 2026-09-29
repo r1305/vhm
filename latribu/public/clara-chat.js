@@ -174,7 +174,6 @@
   function abrir() {
     if (!mounted) return;
     panel.classList.add('open');
-    launcher.style.display = 'none';
     asegurarConfig().then(function () {
       if (!body.dataset.rendered) {
         if (modoApi) renderModoApi(); else renderModoPopup();
@@ -186,7 +185,6 @@
   function cerrar() {
     if (!mounted) return;
     panel.classList.remove('open');
-    launcher.style.display = 'flex';
   }
 
   function mountDom() {
@@ -196,11 +194,7 @@
     style.textContent = css;
     document.head.appendChild(style);
 
-    launcher = el('button', { 'class': 'clara-launcher', 'aria-label': 'Abrir chat con Clara', 'title': 'Chatea con Clara' });
-    launcher.innerHTML = '<span class="clara-badge"></span>' +
-      '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
-      '<path d="M12 3C7.03 3 3 6.58 3 11c0 1.94.78 3.71 2.08 5.08-.14 1.2-.6 2.3-1.32 3.2-.2.25-.02.62.3.6 1.6-.12 3.06-.6 4.27-1.36.83.25 1.72.38 2.67.38 4.97 0 9-3.58 9-8s-4.03-8-9-8z" fill="#fff"/>' +
-      '<circle cx="8.5" cy="11" r="1.2" fill="#A84F3E"/><circle cx="12" cy="11" r="1.2" fill="#8F4234"/><circle cx="15.5" cy="11" r="1.2" fill="#E58B78"/></svg>';
+    launcher = null;
 
     panel = el('div', { 'class': 'clara-panel', 'role': 'dialog', 'aria-label': 'Chat con Clara' });
     panel.innerHTML =
@@ -215,14 +209,12 @@
       '<div class="clara-body" id="claraBody"></div>' +
       '<div id="claraFootMount"></div>';
 
-    document.body.appendChild(launcher);
     document.body.appendChild(panel);
 
     body = panel.querySelector('#claraBody');
     footMount = panel.querySelector('#claraFootMount');
     closeBtn = panel.querySelector('.clara-close');
 
-    launcher.addEventListener('click', abrir);
     closeBtn.addEventListener('click', cerrar);
     mounted = true;
   }
@@ -230,7 +222,6 @@
   function destroy() {
     if (!mounted) return;
     cerrar();
-    if (launcher) launcher.remove();
     if (panel) panel.remove();
     if (style) style.remove();
     launcher = panel = style = body = footMount = closeBtn = null;
@@ -244,8 +235,7 @@
     opts = opts || {};
     if (typeof opts.getAuthHeaders === 'function') getAuthHeaders = opts.getAuthHeaders;
     mountDom();
-    launcher.style.display = 'flex';
   }
 
-  window.ClaraChat = { init: init, destroy: destroy };
+  window.ClaraChat = { init: init, destroy: destroy, open: abrir };
 })();
