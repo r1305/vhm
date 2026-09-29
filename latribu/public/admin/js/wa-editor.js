@@ -126,6 +126,8 @@
       const btn = e.target.closest('button[data-emoji]');
       if (btn) insertEmoji(btn.dataset.emoji);
     });
+
+    function updatePreview() {
       preview.innerHTML = waToHtml(textarea.value) || '<span style="opacity:.5">...</span>';
     }
 
@@ -177,7 +179,7 @@
       else if (action === 'emoji') emojiPop.classList.toggle('show');
     });
 
-('click', function (e) {
+    document.addEventListener('click', function (e) {
       if (!root.contains(e.target)) emojiPop.classList.remove('show');
     });
 
