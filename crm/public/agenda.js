@@ -123,13 +123,17 @@
     if (!p) { showDetailEmpty(); return; }
     detail.innerHTML = '<div class="view-loading">Cargando citas…</div>';
     try {
-      const citas = await api(`/citas?paciente_id=${pacienteId}`, { loaderMessage: 'Cargando citas…' });
-      const sesionesTotal = parseInt(p.sesiones_total || 0, 10);
-      const sesionesConsumidas = citas.filter(c => c.estado === 'realizada' || c.estado === 'no_show').length;
-      const total      = sesionesTotal;
-      const realizadas = sesionesConsumidas;
+      const [citas, sesResumen] = await Promise.all([
+        api(`/citas?paciente_id=${pacienteId}`, { loaderMessage: 'Cargando citas…' }),
+        api(`/pacientes/${pacienteId}/sesiones-resumen`, { loader: false }).catch(() => null),
+      ]);
+      const total      = sesResumen ? sesResumen.sesiones_registradas : 0;
+      const realizadas = sesResumen ? sesResumen.citas_tomadas : 0;
       const pendientes = citas.filter(c => ['pendiente','confirmada','reagendada'].includes(c.estado)).length;
-      const porAgendar = Math.max(0, sesionesTotal - sesionesConsumidas);
+      const porAgendar = sesResumen ? sesResumen.pendientes : 0;
+      // Actualizar badge lateral con el valor real de sesiones pendientes
+      citasCounts[String(pacienteId)] = porAgendar;
+      renderPacList();
       const inicial    = (p.nombre?.[0]||'?').toUpperCase();
       const metaParts  = [p.telefono, p.email, p.terapeuta_nombre].filter(Boolean);
       const porMes = {}, ordenMes = [];
@@ -180,14 +184,17 @@
       const qs = new URLSearchParams();
       const tid = document.getElementById('agendaTerapeuta')?.value;
       if (tid) qs.set('terapeuta_id', tid);
-      const [pacientes, citas] = await Promise.all([
-        api(`/pacientes?${qs}`, { loaderMessage: 'Cargando agenda…' }),
-        api('/citas', { loaderMessage: 'Cargando agenda…' }),
-      ]);
+      const pacientes = await api(`/pacientes?${qs}`, { loaderMessage: 'Cargando agenda…' });
       pacientesCache = pacientes;
       window.CRM.pacientesCache = pacientes;
       citasCounts = {};
-      citas.forEach(c => { const k=String(c.paciente_id); citasCounts[k]=(citasCounts[k]||0)+1; });
+      // Badge = sesiones pendientes por agendar (sesiones_total - citas consumidas del paquete activo)
+      pacientes.forEach(p => {
+        const total = Number(p.sesiones_total) || 0;
+        const confirm = Number(p.citas_confirmadas) || 0;
+        const porAgendar = Math.max(0, total - confirm);
+        if (porAgendar > 0) citasCounts[String(p.id)] = porAgendar;
+      });
       const sel = document.getElementById('agendaPaciente');
       if (sel) {
         sel.innerHTML = `<option value="">Todos los pacientes</option>` +

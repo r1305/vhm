@@ -36,7 +36,6 @@ router.get('/', auth, async (req, res) => {
                COALESCE(
                  (SELECT pp.sesiones FROM paciente_paquetes pp
                   WHERE pp.paciente_id = p.id AND pp.activo = 1
-                    AND pp.fecha_inicio <= CURDATE()
                     AND (pp.vence_at IS NULL OR pp.vence_at >= CURDATE())
                   ORDER BY pp.fecha_inicio ASC, pp.id ASC LIMIT 1),
                  (SELECT SUM(ps.sesiones) FROM paciente_sesiones ps WHERE ps.paciente_id = p.id),
@@ -48,7 +47,6 @@ router.get('/', auth, async (req, res) => {
                   AND DATE(c.fecha) >= COALESCE(
                     (SELECT pp.fecha_inicio FROM paciente_paquetes pp
                      WHERE pp.paciente_id = p.id AND pp.activo = 1
-                       AND pp.fecha_inicio <= CURDATE()
                        AND (pp.vence_at IS NULL OR pp.vence_at >= CURDATE())
                      ORDER BY pp.fecha_inicio ASC, pp.id ASC LIMIT 1),
                     '1900-01-01'
@@ -56,7 +54,6 @@ router.get('/', auth, async (req, res) => {
                ) AS citas_confirmadas,
                (SELECT pp.nombre FROM paciente_paquetes pp
                  WHERE pp.paciente_id = p.id AND pp.activo = 1
-                   AND pp.fecha_inicio <= CURDATE()
                    AND (pp.vence_at IS NULL OR pp.vence_at >= CURDATE())
                  ORDER BY pp.fecha_inicio ASC, pp.id ASC LIMIT 1) AS paquete_nombre,
                (SELECT COUNT(*) FROM paciente_paquetes pp WHERE pp.paciente_id = p.id) AS paquetes_total
