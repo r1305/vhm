@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="es" data-product="tribu">
+<head>
+  <meta charset="UTF-8">
+  <script>(function(){var t=localStorage.getItem('tribu-theme');if(t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme:dark)').matches))document.documentElement.setAttribute('data-theme','dark');})();</script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Comunidad — La Tribu</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛖</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/vhm-design-tokens-v1.css">
+  <link rel="stylesheet" href="css/latribu-public-theme.css">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: var(--font-ui,'Inter',sans-serif); color: var(--txt); background: var(--bg); min-height: 100vh; line-height: 1.45; }
+    a { text-decoration: none; }
+    
+    /* HEADER */
+    .site-nav { position: fixed; top: 0; width: 100%; padding: 14px 22px; display: flex; justify-content: space-between; align-items: center; z-index: 100; background: rgba(255,255,255,.92); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
+    .site-nav .tribu-brand { font-family: 'Fraunces',serif; font-weight: 700; font-size: 1.4rem; letter-spacing: 1px; color: var(--tribu-600,#A84F3E); text-decoration: none; }
+    .site-nav-end { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+    
+    /* USER MENU */
+    .user-menu { position: relative; z-index: 120; }
+    .user-menu-btn { display: flex; align-items: center; gap: 10px; padding: 5px 12px 5px 5px; border-radius: 999px; border: 1px solid var(--line); background: var(--tribu-100,#F7ECE9); cursor: pointer; color: var(--txt); font-family: inherit; transition: border-color .2s, background .2s; }
+    .user-menu-btn:hover, .user-menu.open .user-menu-btn { border-color: rgba(168,79,62,.55); background: var(--surface-raised,#F0E0DA); }
+    .user-menu-avatar { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; flex-shrink: 0; border: 1px solid rgba(168,79,62,.35); }
+    .user-menu-avatar-ph { width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; background: rgba(168,79,62,.28); color: #fff; font-size: .82rem; font-weight: 800; }
+    .user-menu-label { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; }
+    .user-menu-name { font-size: .88rem; font-weight: 800; color: var(--txt); max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .user-menu-sub { font-size: .72rem; font-weight: 700; color: var(--muted); }
+    .user-menu-chevron { margin-left: 2px; color: var(--muted); font-size: .75rem; transition: transform .2s; }
+    .user-menu.open .user-menu-chevron { transform: rotate(180deg); }
+    .user-menu-panel { display: none; position: absolute; top: calc(100% + 10px); right: 0; min-width: 260px; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 8px; box-shadow: 0 16px 48px rgba(14,23,20,.14); }
+    .user-menu.open .user-menu-panel { display: block; animation: menuIn .18s ease; }
+    @keyframes menuIn { from { opacity:0; transform: translateY(-6px); } to { opacity:1; transform: translateY(0); } }
+    .user-menu-head { padding: 10px 12px 12px; border-bottom: 1px solid var(--line); margin-bottom: 6px; }
+    .user-menu-head-name { font-weight: 800; color: var(--txt); font-size: .92rem; }
+    .user-menu-head-email { font-size: .78rem; color: var(--muted); margin-top: 2px; word-break: break-all; }
+    .user-menu-item { width: 100%; display: flex; align-items: center; gap: 10px; padding: 11px 12px; border: none; background: none; color: var(--txt); font-family: inherit; font-weight: 700; font-size: .9rem; border-radius: 10px; cursor: pointer; text-align: left; transition: background .15s; text-decoration: none; }
+    .user-menu-item:hover, .user-menu-item:focus-visible { background: var(--tribu-100,#F7ECE9); outline: none; }
+    .user-menu-item.active { color: var(--tribu-700,#8F4234); background: var(--tribu-100,#F7ECE9); }
+    .user-menu-item .mi { width: 1.35rem; text-align: center; flex-shrink: 0; }
+    .user-menu-item.danger { color: var(--danger,#B64A5A); }
+    .user-menu-item.danger:hover { background: var(--danger-bg,#FCECEF); }
+    .user-menu-divider { height: 1px; background: var(--line); margin: 6px 4px; }
+    .nav-login-link { color: var(--muted); font-size: .9rem; font-weight: 700; cursor: pointer; background: none; border: none; font-family: inherit; padding: 0; }
+    
+    /* WHATSAPP EDITOR (mismo que admin/plantillas) */
+    .wa-editor { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--surface); }
+    .wa-toolbar {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 4px;
+      padding: 8px 10px; border-bottom: 1px solid var(--border); background: var(--surface-subtle);
+    }
+    .wa-toolbar button {
+      min-width: 34px; height: 34px; padding: 0 8px; border: none; border-radius: 8px;
+      background: transparent; color: var(--text-secondary); font-size: .85rem; font-weight: 600;
+      font-family: inherit; cursor: pointer; transition: background .15s, color .15s;
+    }
+    .wa-toolbar button:hover { background: var(--surface-raised); color: var(--text); }
+    .wa-toolbar button.active { background: var(--primary-soft); color: var(--primary); }
+    .wa-toolbar .wa-sep { width: 1px; height: 22px; background: var(--border); margin: 0 4px; }
+    .wa-textarea {
+      width: 100%; min-height: 140px; max-height: 280px; padding: 14px;
+      border: none; resize: vertical; font-family: inherit; font-size: .9rem;
+      line-height: 1.55; background: transparent; color: var(--text);
+    }
+    .wa-textarea:focus { outline: none; }
+    .wa-preview-wrap { border-top: 1px solid var(--border); padding: 10px 14px 12px; }
+    .wa-preview-label { font-size: .72rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 6px; }
+    .wa-preview {
+      font-size: .85rem; line-height: 1.55; color: var(--text-secondary);
+      white-space: pre-wrap; word-break: break-word; min-height: 24px;
+    }
+    .wa-preview strong { font-weight: 700; color: var(--text); }
+    .wa-preview em { font-style: italic; }
+    .wa-preview del { text-decoration: line-through; }
+    .wa-preview code { font-family: ui-monospace, monospace; font-size: .82em; background: var(--surface-raised); padding: 1px 5px; border-radius: 4px; }
+    .wa-emoji-wrap { position: relative; }
+    .wa-emoji-pop {
+      display: none; position: absolute; z-index: 50; margin-top: 4px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; box-shadow: var(--shadow-card);
+      width: 300px; overflow: hidden;
+    }
+    .wa-emoji-pop.show { display: flex; flex-direction: column; }
+    .wa-emoji-tabs {
+      display: flex; overflow-x: auto; gap: 2px; padding: 6px 8px;
+      border-bottom: 1px solid var(--border); background: var(--surface-subtle);
+      scrollbar-width: none;
+    }
+    .wa-emoji-tabs::-webkit-scrollbar { display: none; }
+    .wa-emoji-tab {
+      flex-shrink: 0; padding: 4px 8px; border: none; border-radius: 6px;
+      background: transparent; font-size: 1.1rem; cursor: pointer;
+      transition: background .12s; color: var(--text-secondary);
+    }
+    .wa-emoji-tab:hover { background: var(--surface-raised); }
+    .wa-emoji-tab.active { background: var(--primary-soft); }
+    .wa-emoji-grid {
+      display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px;
+      padding: 8px; max-height: 200px; overflow-y: auto;
+    }
+    .wa-emoji-grid button {
+      width: 32px; height: 32px; border: none; border-radius: 6px;
+      background: transparent; font-size: 1.15rem; cursor: pointer;
+    }
+    .wa-emoji-grid button:hover { background: var(--surface-raised); }
+    
+    /* OVERLAY (modal de feedback) */
+    .auth-overlay { display: none; position: fixed; inset: 0; background: rgba(12,18,16,.48); backdrop-filter: blur(6px); z-index: 2000; padding: 20px; align-items: center; justify-content: center; }
+    .auth-overlay.show { display: flex; }
+    
+    /* FEEDBACK MODAL */
+    .tribu-feedback-box { max-width: 440px; text-align: center; padding-top: 32px; }
+    .tribu-feedback-icon { width: 76px; height: 76px; margin: 0 auto 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; }
+    .tribu-feedback-icon.success { background: linear-gradient(135deg,rgba(45,212,191,.22),rgba(56,189,248,.18)); border: 1px solid rgba(45,212,191,.45); color: #5eead4; }
+    .tribu-feedback-icon.error { background: linear-gradient(135deg,rgba(251,113,133,.18),rgba(168,79,62,.12)); border: 1px solid rgba(251,113,133,.42); color: #fb7185; }
+    .tribu-feedback-icon.warn { background: linear-gradient(135deg,rgba(251,191,36,.18),rgba(168,79,62,.1)); border: 1px solid rgba(251,191,36,.4); color: #fcd34d; }
+    .tribu-feedback-icon.processing { background: linear-gradient(135deg,rgba(168,79,62,.18),rgba(168,79,62,.12)); border: 1px solid rgba(168,79,62,.38); color: transparent; }
+    .tribu-feedback-spinner { width: 34px; height: 34px; border-radius: 50%; border: 3px solid rgba(168,79,62,.22); border-top-color: #A84F3E; animation: tribuSpin .8s linear infinite; }
+    @keyframes tribuSpin { to { transform: rotate(360deg); } }
+    .tribu-feedback-eyebrow { font-size: .78rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+    .tribu-feedback-msg { color: var(--muted); font-size: .95rem; line-height: 1.55; margin: 10px 0 22px; }
+    
+    /* MAIN CONTENT */
+    .comunidad-shell { padding-top: 80px; min-height: 100vh; background: var(--bg); }
+    .comunidad-inner { max-width: 800px; margin: 0 auto; padding: 32px 22px 64px; }
+    
+    /* PROFILE SECTION */
+    .comunidad-profile { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 24px; margin-bottom: 32px; }
+    .comunidad-profile-header { display: flex; align-items: center; gap: 24px; margin-bottom: 24px; flex-wrap: wrap; }
+    .comunidad-avatar-large { position: relative; width: 120px; height: 120px; flex-shrink: 0; }
+    .comunidad-avatar-circle { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 3px solid rgba(168,79,62,.45); background: rgba(168,79,62,.15); display: flex; align-items: center; justify-content: center; font-size: 4rem; font-weight: 800; color: #fff; overflow: hidden; }
+    .comunidad-avatar-circle img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; }
+    .comunidad-avatar-overlay { position: absolute; inset: 0; border-radius: 50%; background: rgba(0,0,0,.4); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+    .comunidad-avatar-large:hover .comunidad-avatar-overlay { opacity: 1; }
+.comunidad-avatar-overlay-icon { font-size: 2rem; line-height: 1; }
+     .comunidad-avatar-overlay-text { font-size: .85rem; font-weight: 800; color: #fff; }
+    
+    .comunidad-profile-info { display: flex; flex-direction: column; }
+    .comunidad-profile-name { font-family: 'Fraunces',serif; font-size: 2rem; font-weight: 700; color: var(--txt); margin-bottom: 4px; }
+    .comunidad-profile-title { font-size: .95rem; color: var(--muted); }
+    
+    /* CHIPS SECTION */
+    .comunidad-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+    .comunidad-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: var(--surface-raised,#F0E0DA); border-radius: 20px; font-size: .88rem; font-weight: 600; color: var(--tribu-700,#8F4234); border: 1px solid rgba(168,79,62,.2); }
+    .comunidad-chip-icon { font-size: 1rem; }
+    
+    /* POST CREATION SECTION */
+    .comunidad-post-section { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 24px; }
+    .comunidad-post-header { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin-bottom: 20px; }
+    .comunidad-avatar-small { position: relative; width: 56px; height: 56px; flex-shrink: 0; }
+    .comunidad-avatar-circle-small { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 2px solid rgba(168,79,62,.35); background: rgba(168,79,62,.1); display: flex; align-items: center; justify-content: center; font-size: 1.8rem; font-weight: 700; color: #fff; overflow: hidden; }
+    .comunidad-avatar-circle-small img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; }
+    .comunidad-post-editor { flex: 1 1 100%; min-width: 0; }
+    .comunidad-post-actions { display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
+    .comunidad-post-btn { padding: 10px 18px; border-radius: 30px; border: none; font-weight: 700; font-family: inherit; font-size: .9rem; cursor: pointer; transition: opacity .2s, transform .15s; }
+    .comunidad-post-btn:hover { opacity: .9; transform: translateY(-1px); }
+    .comunidad-post-btn-primary { background: linear-gradient(135deg,#A84F3E,#8F4234); color: #fff; }
+    .comunidad-post-btn-outline { background: transparent; border: 1px solid rgba(168,79,62,.45); color: var(--tribu-700,#8F4234); }
+    .comunidad-post-input { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+    .comunidad-post-input input { flex: 1; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface,var(--panel)); color: var(--txt); font-family: inherit; font-size: .9rem; }
+    .comunidad-post-input button { padding: 0 16px; }
+    
+    /* LOADER */
+    .page-loader { display: none; position: fixed; inset: 0; z-index: 9000; background: rgba(14,23,20,.38); backdrop-filter: blur(4px); align-items: center; justify-content: center; }
+    .page-loader.show { display: flex; }
+    .page-loader-box { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 28px 36px; text-align: center; box-shadow: 0 12px 40px rgba(14,23,20,.12); min-width: 180px; }
+    .page-loader-spinner { width: 40px; height: 40px; border-radius: 50%; border: 3px solid rgba(168,79,62,.2); border-top-color: #A84F3E; animation: spin .75s linear infinite; margin: 0 auto 12px; }
+    .page-loader-text { font-size: .88rem; font-weight: 700; color: var(--muted); }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    
+    /* RESPONSIVE */
+    @media (max-width: 600px) {
+      .comunidad-inner { padding: 24px 16px 48px; }
+      .comunidad-profile-header { flex-direction: column; align-items: center; text-align: center; }
+      .comunidad-profile-info { align-items: center; }
+      .comunidad-post-header { flex-direction: column; align-items: stretch; }
+      .comunidad-avatar-small { width: 70px; height: 70px; margin: 0 auto 16px; }
+      .comunidad-post-editor { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="site-nav">
+    <a href="/" class="tribu-brand">La Tribu</a>
+    <div class="site-nav-end" id="navAuthArea"></div>
+  </nav>
+
+  <div class="comunidad-shell">
+    <div class="comunidad-inner">
+      <!-- LOADER -->
+      <div class="page-loader" id="pageLoader">
+        <div class="page-loader-box">
+          <div class="page-loader-spinner"></div>
+          <div class="page-loader-text" id="pageLoaderText">Cargando perfil...</div>
+        </div>
+      </div>
+
+      <!-- PROFILE SECTION -->
+      <section class="comunidad-profile">
+        <div class="comunidad-profile-header">
+          <div class="comunidad-avatar-large">
+            <input type="file" id="comunidadFoto" accept="image/jpeg,image/png,image/webp,image/gif" style="display: none;">
+            <div class="comunidad-avatar-circle" id="comunidadAvatarCircle"></div>
+            <div class="comunidad-avatar-overlay">
+              <span class="comunidad-avatar-overlay-icon">📷</span>
+              <span class="comunidad-avatar-overlay-text">Cambiar foto</span>
+            </div>
+          </div>
+          <div>
+            <h1 class="comunidad-profile-name" id="comunidadNombre">Cargando...</h1>
+            <p class="comunidad-profile-title" id="comunidadTitulo">Mi comunidad</p>
+          </div>
+        </div>
+        <div class="comunidad-chips" id="comunidadChips">
+          <!-- Chips will be inserted here -->
+        </div>
+      </section>
+
+      <!-- POST CREATION SECTION -->
+      <section class="comunidad-post-section">
+        <div class="comunidad-post-header">
+          <div class="comunidad-avatar-small">
+            <div class="comunidad-avatar-circle-small" id="comunidadAvatarSmall"></div>
+          </div>
+          <div class="comunidad-post-editor" id="comunidadPostEditor"></div>
+        </div>
+        <div class="comunidad-post-actions">
+          <button type="button" class="comunidad-post-btn comunidad-post-btn-outline" id="comunidadFotoBtn">📷 Añadir foto</button>
+          <input type="file" id="comunidadPostFoto" accept="image/jpeg,image/png,image/webp,image/gif" style="display: none;">
+          <button type="button" class="comunidad-post-btn comunidad-post-btn-primary" id="comunidadPostBtn">Publicar</button>
+        </div>
+        <div class="comunidad-post-input" id="comunidadPostInput" style="display: none;">
+          <input type="text" id="comunidadPostFilename" placeholder="Nombre de archivo..." readonly>
+          <button type="button" class="comunidad-post-btn" id="comunidadPostClearBtn">✕ Limpiar</button>
+        </div>
+        <div class="comunidad-post-msg" id="comunidadPostMsg"></div>
+      </section>
+    </div>
+  </div>
+
+
+
+  <!-- Modal feedback -->
+  <div class="auth-overlay" id="tribuFeedbackOverlay" role="dialog" aria-modal="true" aria-labelledby="tribuFeedbackTitle">
+    <div class="auth-box tribu-feedback-box">
+      <div class="tribu-feedback-icon success" id="tribuFeedbackIcon">✓</div>
+      <div class="tribu-feedback-eyebrow">La Tribu</div>
+      <div class="auth-title" id="tribuFeedbackTitle" style="text-align:center;font-size:1.15rem;font-weight:800;color:var(--txt);margin-bottom:4px"></div>
+      <p class="tribu-feedback-msg" id="tribuFeedbackMsg"></p>
+      <button type="button" class="auth-btn" id="tribuFeedbackBtn" onclick="cerrarTribuFeedback()">Continuar</button>
+    </div>
+  </div>
+
+  <script src="js/tribu-common.js"></script>
+  <script src="js/wa-editor.js"></script>
+  <script src="js/comunidad.js"></script>
+</body>
+</html>

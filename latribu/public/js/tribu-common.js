@@ -1,7 +1,28 @@
 /* tribu-common.js — auth, nav y helpers compartidos */
 
-const API = (window.__APP_BASE__ || '') + '/api';
-const BASE = window.__APP_BASE__ || '';
+function resolveBase() {
+  if (typeof window.__APP_BASE__ === 'string' && window.__APP_BASE__ !== '') {
+    return window.__APP_BASE__.replace(/\/+$/, '');
+  }
+  const script = document.currentScript;
+  if (script && script.src) {
+    const m = script.src.match(/^(.*)\/js\/[^/]*\.js(\?|#|$)/);
+    if (m) {
+      try { return new URL(m[1]).pathname.replace(/\/+$/, ''); } catch (e) { /* ignore */ }
+    }
+  }
+  const baseEl = document.querySelector('base[href]');
+  if (baseEl) {
+    const href = baseEl.getAttribute('href');
+    if (href) {
+      try { return new URL(href, location.href).pathname.replace(/\/+$/, ''); } catch (e) { /* ignore */ }
+    }
+  }
+  return '';
+}
+
+const BASE = resolveBase();
+const API = BASE + '/api';
 
 /* ── Top bar loader ── */
 (function () {
