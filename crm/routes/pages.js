@@ -3,6 +3,7 @@ const router  = express.Router();
 const db      = require('../lib/db');
 const { getHomePath } = require('../lib/crmNav');
 const { isStaffAdmin, isSuperAdmin } = require('../lib/roles');
+const { SQL } = require('../lib/paquetesPaciente');
 
 const TITLES = {
   encuestas:       'Encuestas',
@@ -168,9 +169,9 @@ router.get('/dashboard', requireSession, (req, res, next) => {
   const user = req.session.user;
   try {
     const [[{ pacientes_activos }]] = await db.execute("SELECT COUNT(*) AS pacientes_activos FROM pacientes WHERE estado = 'activo'");
-    const [[{ retenidos }]]         = await db.execute('SELECT COUNT(*) AS retenidos FROM (SELECT paciente_id FROM paciente_sesiones GROUP BY paciente_id HAVING COUNT(*) >= 2) x');
+    const [[{ retenidos }]]         = await db.execute(`SELECT COUNT(*) AS retenidos FROM pacientes p WHERE p.estado='activo' AND ${SQL.paquetesComprados('p')} >= 2`);
     const [[{ altas_mes }]]         = await db.execute("SELECT COUNT(*) AS altas_mes FROM pacientes WHERE estado='alta' AND DATE_FORMAT(updated_at,'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')");
-    const [[{ sin_paquete }]]       = await db.execute("SELECT COUNT(*) AS sin_paquete FROM pacientes p WHERE p.estado='activo' AND NOT EXISTS (SELECT 1 FROM paciente_sesiones ps WHERE ps.paciente_id = p.id)");
+    const [[{ sin_paquete }]]       = await db.execute(`SELECT COUNT(*) AS sin_paquete FROM pacientes p WHERE p.estado='activo' AND ${SQL.sinSesiones('p')}`);
     const [[{ leads_mes }]]         = await db.execute("SELECT COUNT(*) AS leads_mes FROM leads WHERE DATE_FORMAT(created_at,'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')");
     const [[{ convertidos_mes }]]   = await db.execute("SELECT COUNT(*) AS convertidos_mes FROM leads WHERE estado='convertido' AND DATE_FORMAT(updated_at,'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')");
     const [[{ no_show_mes }]]       = await db.execute("SELECT COUNT(*) AS no_show_mes FROM citas WHERE estado='no_show' AND DATE_FORMAT(fecha,'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')");
@@ -180,15 +181,20 @@ router.get('/dashboard', requireSession, (req, res, next) => {
     const tasaRetencion   = pacientes_activos > 0 ? Math.round((retenidos / pacientes_activos) * 100) : 0;
     const tasaConversion  = leads_mes > 0 ? Math.round((convertidos_mes / leads_mes) * 100) : 0;
     const tasaNoShow      = citas_mes > 0 ? Math.round((no_show_mes / citas_mes) * 100) : 0;
-    // Próximos a agotar sesiones (≤2 restantes)
+    // Próximos a agotar: pacientes con paquete vigente y ≤2 sesiones agendables.
+    // Usa el mismo `sesiones_pendientes` que las tarjetas de paciente, de modo que
+    // el número coincide con el que se ve al abrir el detalle.
     const [proximosAgotar] = await db.execute(`
       SELECT p.id, p.nombre, p.apellido, p.telefono, t.nombre AS terapeuta_nombre,
-             COALESCE((SELECT SUM(ps.sesiones) FROM paciente_sesiones ps WHERE ps.paciente_id = p.id), 0) AS sesiones_total,
-             COALESCE((SELECT COUNT(*) FROM citas c WHERE c.paciente_id = p.id AND c.estado IN ('realizada','no_show')), 0) AS sesiones_usadas
+             ${SQL.sesionesTotal('p')}          AS sesiones_total,
+             ${SQL.citasConfirmadas('p')}       AS sesiones_usadas,
+             ${SQL.sesionesPendientes('p')}     AS sesiones_restantes,
+             ${SQL.paqueteNombre('p')}          AS paquete_nombre
       FROM pacientes p LEFT JOIN terapeutas t ON p.terapeuta_id = t.id
       WHERE p.estado = 'activo'
-      HAVING sesiones_total > 0 AND (sesiones_total - sesiones_usadas) <= 2
-      ORDER BY (sesiones_total - sesiones_usadas) ASC, p.nombre ASC
+        AND ${SQL.paqueteNombre('p')} IS NOT NULL
+        AND ${SQL.sesionesPendientes('p')} <= 2
+      ORDER BY ${SQL.sesionesPendientes('p')} ASC, p.nombre ASC
       LIMIT 15
     `);
 
@@ -206,29 +212,38 @@ router.get('/dashboard', requireSession, (req, res, next) => {
       LIMIT 15
     `);
 
-    // Activos sin paquete asignado
-
+    // Activos que nunca han adquirido sesiones (ni en paquetes ni en el legacy)
     const [sinPaquete] = await db.execute(`
       SELECT p.id, p.nombre, p.apellido, p.telefono, t.nombre AS terapeuta_nombre,
              p.created_at
       FROM pacientes p LEFT JOIN terapeutas t ON p.terapeuta_id = t.id
-      WHERE p.estado = 'activo'
-        AND NOT EXISTS (SELECT 1 FROM paciente_sesiones ps WHERE ps.paciente_id = p.id)
+      WHERE p.estado = 'activo' AND ${SQL.sinSesiones('p')}
       ORDER BY p.created_at DESC LIMIT 10
     `);
 
-    // Paquetes vencidos con sesiones sin usar
+    // Paquetes vencidos con sesiones sin usar.
+    // Antes consultaba la tabla `packs`, que está vacía: la card nunca mostraba nada.
+    // Ahora sale de paciente_paquetes, la fuente real de paquetes.
+    // Sin filtro `activo = 1`: al vencer, syncPackageLifecycle ya marca el paquete
+    // como inactivo, así que exigirlo haría que la card quedara siempre vacía.
     const [packVencidos] = await db.execute(`
       SELECT p.id, p.nombre, p.apellido, p.telefono, t.nombre AS terapeuta_nombre,
-             pk.nombre AS pack_nombre, pk.vence_at,
-             (pk.sesiones_total - pk.sesiones_usadas) AS sesiones_restantes
-      FROM packs pk
-      JOIN pacientes p ON p.id = pk.paciente_id
+             pp.nombre AS pack_nombre, pp.vence_at,
+             (pp.sesiones - (
+               SELECT COUNT(*) FROM citas c
+               WHERE c.paciente_id = p.id AND c.estado IN ('realizada','no_show')
+                 AND DATE(c.fecha) >= DATE(pp.fecha_inicio)
+             )) AS sesiones_restantes
+      FROM paciente_paquetes pp
+      JOIN pacientes p ON p.id = pp.paciente_id
       LEFT JOIN terapeutas t ON t.id = p.terapeuta_id
-      WHERE pk.vence_at < CURDATE()
-        AND pk.activo = 1
-        AND (pk.sesiones_total - pk.sesiones_usadas) > 0
-      ORDER BY pk.vence_at ASC LIMIT 10
+      WHERE pp.vence_at < CURDATE()
+        AND (pp.sesiones - (
+          SELECT COUNT(*) FROM citas c
+          WHERE c.paciente_id = p.id AND c.estado IN ('realizada','no_show')
+            AND DATE(c.fecha) >= DATE(pp.fecha_inicio)
+        )) > 0
+      ORDER BY pp.vence_at ASC LIMIT 10
     `);
 
     // Ocupación por terapeuta
@@ -247,7 +262,7 @@ router.get('/dashboard', requireSession, (req, res, next) => {
       { label: 'Conversión leads',    value: `${tasaConversion}%`, sub: `${convertidos_mes} de ${leads_mes} este mes`, state: tasaConversion >= 30 ? 'ok' : 'warn' },
       { label: 'No-show del mes',     value: `${tasaNoShow}%`, sub: `${no_show_mes} de ${citas_mes} citas`, state: tasaNoShow > 15 ? 'warn' : 'ok' },
       { label: 'Altas este mes',      value: altas_mes, sub: 'tratamientos finalizados', state: null },
-      { label: 'Sin paquete activo',  value: sin_paquete, sub: 'pacientes activos', state: sin_paquete > 0 ? 'warn' : null },
+      { label: 'Sin sesiones',        value: sin_paquete, sub: 'activos que nunca compraron', state: sin_paquete > 0 ? 'warn' : null },
     ];
 
     render(res, 'dashboard', {

@@ -12,6 +12,7 @@ const {
   deletePacientePaquete,
   markCuotaPagada,
   getSesionesResumen,
+  SQL,
 } = require('../lib/paquetesPaciente');
 
 router.get('/conteo-por-terapeuta', auth, async (req, res) => {
@@ -34,38 +35,10 @@ router.get('/', auth, async (req, res) => {
     const sinEmail = req.query.sin_email    === '1';
     const of = ownerFilter(req, 'p');
     let sql = `SELECT p.*, t.nombre AS terapeuta_nombre,
-               COALESCE(
-                 (SELECT SUM(pp.sesiones) FROM paciente_paquetes pp
-                  WHERE pp.paciente_id = p.id),
-                 (SELECT SUM(ps.sesiones) FROM paciente_sesiones ps WHERE ps.paciente_id = p.id),
-                 0
-               ) AS sesiones_total,
-               (SELECT COUNT(*) FROM citas c
-                WHERE c.paciente_id = p.id
-                  AND c.estado IN ('realizada','no_show')
-               ) AS citas_confirmadas,
-               COALESCE(GREATEST(0, (
-                 SELECT pp.sesiones - (
-                   (SELECT COUNT(*) FROM citas c2
-                    WHERE c2.paciente_paquete_id = pp.id
-                      AND c2.estado IN ('realizada','no_show')
-                      AND DATE(c2.fecha) >= DATE(pp.fecha_inicio))
-                   + (SELECT COUNT(*) FROM citas c3
-                      WHERE c3.paciente_id = p.id AND c3.paciente_paquete_id IS NULL
-                        AND c3.estado IN ('realizada','no_show')
-                        AND DATE(c3.fecha) >= DATE(pp.fecha_inicio))
-                 )
-                 FROM paciente_paquetes pp
-                 WHERE pp.paciente_id = p.id AND pp.activo = 1
-                   AND (pp.vence_at IS NULL OR pp.vence_at >= CURDATE())
-                   AND DATE(pp.fecha_inicio) <= CURDATE()
-                 ORDER BY pp.fecha_inicio ASC, pp.id ASC LIMIT 1
-               )), 0) AS sesiones_pendientes,
-               (SELECT pp.nombre FROM paciente_paquetes pp
-                 WHERE pp.paciente_id = p.id AND pp.activo = 1
-                   AND (pp.vence_at IS NULL OR pp.vence_at >= CURDATE())
-                   AND DATE(pp.fecha_inicio) <= CURDATE()
-                 ORDER BY pp.fecha_inicio ASC, pp.id ASC LIMIT 1) AS paquete_nombre,
+               ${SQL.sesionesTotal('p')}      AS sesiones_total,
+               ${SQL.citasConfirmadas('p')}   AS citas_confirmadas,
+               ${SQL.sesionesPendientes('p')} AS sesiones_pendientes,
+               ${SQL.paqueteNombre('p')}      AS paquete_nombre,
                (SELECT COUNT(*) FROM paciente_paquetes pp WHERE pp.paciente_id = p.id) AS paquetes_total
                FROM pacientes p LEFT JOIN terapeutas t ON p.terapeuta_id = t.id WHERE 1=1`;
     const params = [];

@@ -21,7 +21,7 @@
     </div>
     <% if (proximosAgotar.length) { %>
     <div class="dash-list">
-      <% proximosAgotar.forEach(p => { const r = p.sesiones_total - p.sesiones_usadas; %>
+      <% proximosAgotar.forEach(p => { const r = p.sesiones_restantes; %>
       <div class="list-item">
         <div class="list-icon">
           <i class="fas fa-<%= r <= 0 ? 'ban' : 'hourglass-half' %>"></i>
