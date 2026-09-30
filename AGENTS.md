@@ -85,6 +85,32 @@ que liste terapeutas para selectores o métricas debe incluir
 `WHERE rol = 'terapeuta'`. Ver `routes/pages.js` (`/calendario`, ocupación) y
 `routes/leads.js` (auto-asignación).
 
+Para decidir si un rol de *staff* (ve a todos los pacientes), usar
+`isStaffAdmin(rol)` de `lib/roles.js` en lugar de comparar contra el literal
+`'terapeuta'`, para que un rol nuevo no requiera editar cada comparación.
+
+## Aislamiento por terapeuta
+
+El listado de pacientes ya aplica `ownerFilter`, pero los endpoints que reciben
+un `pid` en la ruta no lo hacen solos. Al añadir uno hay que comprobar que el
+paciente pertenece al terapeuta que pregunta:
+
+- `puedeVerPaciente(req, pid)` en `routes/pacientes.js` devuelve `true` para
+  roles de staff y, si no, exige `pacientes.terapeuta_id = req.user.id`.
+- Sin esa comprobación, conocer el id de otro paciente basta para leer sus
+  paquetes, sesiones usadas y cuotas.
+
+Cubierto por los endpoints `/pacientes/:pid`, `/pacientes/:pid/sesiones-resumen`
+y `/pacientes/:pid/paquetes-adquiridos`.
+
+## Estado en el frontend
+
+No guardar listados de pacientes en `window.CRM`. Cada vista los cargaba con
+filtros distintos y el último en escribir ganaba, así que el mismo buscador
+mostraba pacientes distintos según la página desde la que se abría. El
+autocompletado de "Nueva cita" consulta `/pacientes?q=`, que aplica
+`ownerFilter` y la búsqueda real en el servidor.
+
 ## Commits
 
 Mensajes en español, formato convencional (`fix(crm):`, `feat(crm):`).
