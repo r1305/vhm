@@ -190,11 +190,10 @@
       pacientesCache = pacientes;
       window.CRM.pacientesCache = pacientes;
       citasCounts = {};
-      // Badge = sesiones pendientes por agendar (sesiones_total - citas consumidas del paquete activo)
+      // Badge = sesiones pendientes por agendar (las del paquete vigente).
+      // El backend ya lo calcula en sesiones_pendientes con la misma regla.
       pacientes.forEach(p => {
-        const total = Number(p.sesiones_total) || 0;
-        const confirm = Number(p.citas_confirmadas) || 0;
-        const porAgendar = Math.max(0, total - confirm);
+        const porAgendar = Number(p.sesiones_pendientes) || 0;
         if (porAgendar > 0) citasCounts[String(p.id)] = porAgendar;
       });
       const sel = document.getElementById('agendaPaciente');

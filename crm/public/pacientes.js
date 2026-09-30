@@ -57,8 +57,7 @@
       document.getElementById('tablaPacientes').innerHTML = data.length
         ? data.map(p => {
           const total    = Number(p.sesiones_total) || 0;
-          const confirm  = Number(p.citas_confirmadas) || 0;
-          const pendient = Math.max(0, total - confirm);
+          const pendient = Number(p.sesiones_pendientes) || 0;
           return `
           <div class="pac-card">
             <div class="pac-card-top">
@@ -455,7 +454,7 @@
       <div class="form-group"><label class="form-label">Motivo de consulta</label><textarea class="form-control" id="f_motivo" rows="2">${esc(p?.motivo_consulta||'')}</textarea></div>
       <div class="form-group">
         <label class="form-label">Historial de paquetes ${paquetesPac.length ? `(${paquetesPac.length})` : ''}</label>
-        ${sesResumen && sesResumen.sesiones_registradas > 0 ? `
+        ${sesResumen ? `
           <div style="display:flex;gap:8px;margin-bottom:8px;font-size:12px;flex-wrap:wrap">
             <span style="background:var(--primary-light,rgba(23,107,135,.15));color:var(--primary);padding:3px 10px;border-radius:10px">
               <i class="fas fa-layer-group"></i> Sesiones registradas: <strong>${sesResumen.sesiones_registradas}</strong>
