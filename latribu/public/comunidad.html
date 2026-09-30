@@ -163,6 +163,31 @@
     .comunidad-post-input { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
     .comunidad-post-input input { flex: 1; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface,var(--panel)); color: var(--txt); font-family: inherit; font-size: .9rem; }
     .comunidad-post-input button { padding: 0 16px; }
+
+    /* FEED */
+    .comunidad-feed-section { margin-top: 28px; }
+    .comunidad-feed-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+    .comunidad-feed-title { font-family: 'Fraunces',serif; font-size: 1.5rem; font-weight: 700; color: var(--txt); margin: 0; }
+    .comunidad-feed-orden { padding: 8px 12px; border-radius: 20px; border: 1px solid var(--line); background: var(--panel); color: var(--txt); font-family: inherit; font-size: .85rem; cursor: pointer; }
+    .comunidad-feed { display: flex; flex-direction: column; gap: 14px; }
+    .comunidad-card { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 18px; }
+    .comunidad-card-head { display: flex; align-items: center; gap: 12px; }
+    .comunidad-card-avatar { width: 42px; height: 42px; flex-shrink: 0; border-radius: 50%; background: rgba(168,79,62,.15); display: flex; align-items: center; justify-content: center; font-weight: 800; color: #fff; overflow: hidden; }
+    .comunidad-card-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .comunidad-card-meta { display: flex; flex-direction: column; min-width: 0; }
+    .comunidad-card-name { font-weight: 700; color: var(--txt); font-size: .95rem; }
+    .comunidad-card-time { font-size: .78rem; color: var(--muted); }
+    .comunidad-card-tag { margin-left: auto; font-size: .72rem; color: var(--muted); flex-shrink: 0; }
+    .comunidad-card-text { margin: 12px 0 0; color: var(--txt); font-size: .95rem; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .comunidad-card-photo { display: block; width: 100%; margin-top: 12px; border-radius: 12px; border: 1px solid var(--line); }
+    .comunidad-card-actions { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+    .comunidad-like { display: inline-flex; align-items: center; gap: 7px; padding: 7px 14px; border-radius: 20px; border: 1px solid var(--line); background: transparent; color: var(--muted); font-family: inherit; font-size: .85rem; font-weight: 700; cursor: pointer; transition: opacity .2s, transform .15s; }
+    .comunidad-like:hover { opacity: .85; transform: translateY(-1px); }
+    .comunidad-like.is-liked { color: var(--tribu-700,#8F4234); border-color: rgba(168,79,62,.45); background: rgba(168,79,62,.08); }
+    .comunidad-card-del { margin-left: auto; border: none; background: transparent; color: var(--muted); font-family: inherit; font-size: .82rem; font-weight: 700; cursor: pointer; padding: 7px 10px; border-radius: 20px; }
+    .comunidad-card-del:hover { color: #B4453A; }
+    .comunidad-feed-more { display: flex; justify-content: center; margin-top: 18px; }
+    .comunidad-feed-empty { text-align: center; color: var(--muted); padding: 40px 20px; background: var(--panel); border: 1px dashed var(--line); border-radius: 18px; }
     
     /* LOADER */
     .page-loader { display: none; position: fixed; inset: 0; z-index: 9000; background: rgba(14,23,20,.38); backdrop-filter: blur(4px); align-items: center; justify-content: center; }
@@ -239,19 +264,48 @@
         </div>
         <div class="comunidad-post-msg" id="comunidadPostMsg"></div>
       </section>
+
+      <!-- FEED -->
+      <section class="comunidad-feed-section">
+        <div class="comunidad-feed-header">
+          <h2 class="comunidad-feed-title">Logros de la comunidad</h2>
+          <select id="comunidadFeedOrden" class="comunidad-feed-orden" aria-label="Ordenar publicaciones">
+            <option value="recientes">Más recientes</option>
+            <option value="likes">Más apoyados</option>
+          </select>
+        </div>
+        <div id="comunidadFeed" class="comunidad-feed" aria-live="polite"></div>
+        <div class="comunidad-feed-more">
+          <button type="button" id="comunidadFeedMore" class="comunidad-post-btn comunidad-post-btn-outline" style="display:none;">Cargar más logros</button>
+        </div>
+      </section>
     </div>
   </div>
 
 
 
   <!-- Modal feedback -->
-  <div class="auth-overlay" id="tribuFeedbackOverlay" role="dialog" aria-modal="true" aria-labelledby="tribuFeedbackTitle">
-    <div class="auth-box tribu-feedback-box">
-      <div class="tribu-feedback-icon success" id="tribuFeedbackIcon">✓</div>
+<div class="auth-overlay" id="tribuFeedbackOverlay" role="dialog" aria-modal="true" aria-labelledby="tribuFeedbackTitle">
+  <div class="auth-box tribu-feedback-box">
+    <div class="tribu-feedback-icon success" id="tribuFeedbackIcon">✓</div>
+    <div class="tribu-feedback-eyebrow">La Tribu</div>
+    <div class="auth-title" id="tribuFeedbackTitle" style="text-align:center;font-size:1.15rem;font-weight:800;color:var(--txt);margin-bottom:4px"></div>
+    <p class="tribu-feedback-msg" id="tribuFeedbackMsg"></p>
+    <button type="button" class="auth-btn" id="tribuFeedbackBtn" onclick="cerrarTribuFeedback()">Continuar</button>
+  </div>
+</div>
+
+  <!-- Modal confirm -->
+  <div class="auth-overlay" id="tribuConfirmOverlay" role="dialog" aria-modal="true">
+    <div class="auth-box tribu-confirm-box">
+      <div class="tribu-feedback-icon warn" id="tribuConfirmIcon">?</div>
       <div class="tribu-feedback-eyebrow">La Tribu</div>
-      <div class="auth-title" id="tribuFeedbackTitle" style="text-align:center;font-size:1.15rem;font-weight:800;color:var(--txt);margin-bottom:4px"></div>
-      <p class="tribu-feedback-msg" id="tribuFeedbackMsg"></p>
-      <button type="button" class="auth-btn" id="tribuFeedbackBtn" onclick="cerrarTribuFeedback()">Continuar</button>
+      <div class="auth-title" id="tribuConfirmTitle" style="text-align:center;font-size:1.15rem;font-weight:800;color:var(--txt);margin-bottom:4px"></div>
+      <p class="tribu-feedback-msg" id="tribuConfirmMsg"></p>
+      <div class="tribu-confirm-actions">
+        <button type="button" class="tribu-confirm-btn outline" id="tribuConfirmCancel">Volver</button>
+        <button type="button" class="tribu-confirm-btn danger" id="tribuConfirmOk">Confirmar</button>
+      </div>
     </div>
   </div>
 
