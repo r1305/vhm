@@ -63,7 +63,7 @@ async function cargarMisSuscripciones() {
         '<div class="subs-title">' + escapeHtml(s.nombre) + '</div>' +
         '<div class="subs-meta">S/ ' + parseFloat(s.precio).toFixed(2) + ' · ' + ini + ' → ' + fin + '</div>' +
         renewLine +
-        (s.descripcion ? '<div class="subs-meta">' + escapeHtml(s.descripcion) + '</div>' : '') +
+        (s.descripcion ? '<div class="subs-meta">' + s.descripcion + '</div>' : '') +
         '<span class="subs-badge ' + badgeClass + '">' + badgeText + '</span>' +
         (actions ? '<div class="subs-actions">' + actions + '</div>' : '') +
         '</div>';
@@ -136,7 +136,7 @@ async function abrirModalPlanes() {
     '<div class="plan-card">' +
       '<div class="plan-info">' +
         '<div class="plan-nombre">' + escapeHtml(p.nombre) + '</div>' +
-        (p.descripcion ? '<div class="plan-desc">' + escapeHtml(p.descripcion) + '</div>' : '') +
+        (p.descripcion ? '<div class="plan-desc">' + p.descripcion + '</div>' : '') +
       '</div>' +
       '<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">' +
         '<div class="plan-precio">S/ ' + parseFloat(p.precio).toFixed(2) + '<span style="font-size:.75rem;font-weight:700;color:var(--muted);margin-left:4px">/ mes</span></div>' +
