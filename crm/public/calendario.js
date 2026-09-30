@@ -2,7 +2,8 @@
 (function () {
   'use strict';
 
-  const { api, toast, esc, openModal, confirmDialog, ESTADO_CITA, fullName } = window.CRM;
+  const { api, toast, esc, openModal, confirmDialog, ESTADO_CITA, fullName,
+          limaDateKey, CRM_TZ } = window.CRM;
 
   const DIAS_CORTO  = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
   const DIAS_LARGO  = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
@@ -124,19 +125,26 @@
       bloqueosCache = [
         ...bloqueos,
         ...gcalEvents.filter(e => !gcalIdsEnCitas.has(e.gcal_id)).map(e => {
-          // Convertir hora UTC a Lima (UTC-5) para eventos con hora
-          let hi = '00:00', hf = '23:59';
+          // Google devuelve los instantes en UTC. Hay que proyectarlos a hora de
+          // Lima con Intl: getHours() daria la hora del navegador y fecha:slice(0,10)
+          // cortaria la fecha en UTC, que cruza el dia a las 19:00 Lima.
+          let hi = '00:00', hf = '23:59', fi = e.fecha_inicio || null, ff = e.fecha_fin || null;
           if (!e.allDay && e.start) {
             const s = new Date(e.start);
-            const en = new Date(e.end);
-            hi = `${String(s.getHours()).padStart(2,'0')}:${String(s.getMinutes()).padStart(2,'0')}`;
-            hf = `${String(en.getHours()).padStart(2,'0')}:${String(en.getMinutes()).padStart(2,'0')}`;
+            const en = e.end ? new Date(e.end) : s;
+            const hFmt = new Intl.DateTimeFormat('en-GB', {
+              timeZone: CRM_TZ, hour: '2-digit', minute: '2-digit', hour12: false,
+            });
+            hi = hFmt.format(s);
+            hf = hFmt.format(en);
+            fi = limaDateKey(s);
+            ff = limaDateKey(en);
           }
           return {
             id: 'gcal_' + e.gcal_id,
             titulo: e.titulo,
-            fecha_inicio: String(e.start).slice(0,10),
-            fecha_fin:    String(e.end  ).slice(0,10),
+            fecha_inicio: fi,
+            fecha_fin:    ff,
             hora_inicio:  hi,
             hora_fin:     hf,
             allDay:       e.allDay,

@@ -5,7 +5,8 @@
 (function () {
   'use strict';
 
-  const { api, toast, esc, openModal, closeModal, fullName, ESTADO_CITA, estadoCitaOptionsHtml } = window.CRM;
+  const { api, toast, esc, openModal, closeModal, fullName, ESTADO_CITA,
+          estadoCitaOptionsHtml, limaDateKey } = window.CRM;
 
   const TIPO_CITA = {
     primera_vez: 'Primera consulta', seguimiento: 'Tratamiento',
@@ -254,8 +255,9 @@
     const preselected = paciente || (pacienteId
       ? pacientesCache().find(p => String(p.id) === String(pacienteId))
       : null);
-    const hoy = new Date();
-    const fechaISO = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
+    // getFullYear/getMonth/getDate usan la zona del navegador. Lima es UTC-5, asi que
+    // despues de las 19:00 devolarianan el dia siguiente. limaDateKey() fija Lima.
+    const fechaISO = limaDateKey(new Date());
     const esTerapeuta = window.__USER_ROL__ === 'terapeuta';
     const pacienteLocked = !!preselected;
 
