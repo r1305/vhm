@@ -11,6 +11,7 @@ const {
   createPacientePaquete,
   deletePacientePaquete,
   markCuotaPagada,
+  getSesionesResumen,
 } = require('../lib/paquetesPaciente');
 
 router.get('/conteo-por-terapeuta', auth, async (req, res) => {
@@ -34,27 +35,36 @@ router.get('/', auth, async (req, res) => {
     const of = ownerFilter(req, 'p');
     let sql = `SELECT p.*, t.nombre AS terapeuta_nombre,
                COALESCE(
-                 (SELECT pp.sesiones FROM paciente_paquetes pp
-                  WHERE pp.paciente_id = p.id AND pp.activo = 1
-                    AND (pp.vence_at IS NULL OR pp.vence_at >= CURDATE())
-                  ORDER BY pp.fecha_inicio ASC, pp.id ASC LIMIT 1),
+                 (SELECT SUM(pp.sesiones) FROM paciente_paquetes pp
+                  WHERE pp.paciente_id = p.id),
                  (SELECT SUM(ps.sesiones) FROM paciente_sesiones ps WHERE ps.paciente_id = p.id),
                  0
                ) AS sesiones_total,
                (SELECT COUNT(*) FROM citas c
                 WHERE c.paciente_id = p.id
                   AND c.estado IN ('realizada','no_show')
-                  AND DATE(c.fecha) >= COALESCE(
-                    (SELECT pp.fecha_inicio FROM paciente_paquetes pp
-                     WHERE pp.paciente_id = p.id AND pp.activo = 1
-                       AND (pp.vence_at IS NULL OR pp.vence_at >= CURDATE())
-                     ORDER BY pp.fecha_inicio ASC, pp.id ASC LIMIT 1),
-                    '1900-01-01'
-                  )
                ) AS citas_confirmadas,
+               COALESCE(GREATEST(0, (
+                 SELECT pp.sesiones - (
+                   (SELECT COUNT(*) FROM citas c2
+                    WHERE c2.paciente_paquete_id = pp.id
+                      AND c2.estado IN ('realizada','no_show')
+                      AND DATE(c2.fecha) >= DATE(pp.fecha_inicio))
+                   + (SELECT COUNT(*) FROM citas c3
+                      WHERE c3.paciente_id = p.id AND c3.paciente_paquete_id IS NULL
+                        AND c3.estado IN ('realizada','no_show')
+                        AND DATE(c3.fecha) >= DATE(pp.fecha_inicio))
+                 )
+                 FROM paciente_paquetes pp
+                 WHERE pp.paciente_id = p.id AND pp.activo = 1
+                   AND (pp.vence_at IS NULL OR pp.vence_at >= CURDATE())
+                   AND DATE(pp.fecha_inicio) <= CURDATE()
+                 ORDER BY pp.fecha_inicio ASC, pp.id ASC LIMIT 1
+               )), 0) AS sesiones_pendientes,
                (SELECT pp.nombre FROM paciente_paquetes pp
                  WHERE pp.paciente_id = p.id AND pp.activo = 1
                    AND (pp.vence_at IS NULL OR pp.vence_at >= CURDATE())
+                   AND DATE(pp.fecha_inicio) <= CURDATE()
                  ORDER BY pp.fecha_inicio ASC, pp.id ASC LIMIT 1) AS paquete_nombre,
                (SELECT COUNT(*) FROM paciente_paquetes pp WHERE pp.paciente_id = p.id) AS paquetes_total
                FROM pacientes p LEFT JOIN terapeutas t ON p.terapeuta_id = t.id WHERE 1=1`;
@@ -154,37 +164,12 @@ router.put('/:pid', authAdmin, async (req, res) => {
   } catch { res.status(500).json({ error: 'Error al actualizar' }); }
 });
 
-// ── Resumen de sesiones (legacy + paquetes) ──────────
+// ── Resumen de sesiones (histórico completo, independiente del estado del paquete) ──
 router.get('/:pid/sesiones-resumen', auth, async (req, res) => {
   const pid = id(req.params.pid);
   if (!pid) return res.status(400).json({ error: 'ID inválido' });
   try {
-    const paquetes = await loadPacientePaquetes(pid);
-    const activo = paquetes.find((p) => p.estado === 'activo') || null;
-    if (activo) {
-      return res.json({
-        sesiones_registradas: activo.sesiones,
-        citas_tomadas: activo.sesiones_usadas,
-        pendientes: activo.sesiones_restantes,
-      });
-    }
-    // Fallback legacy
-    const [[legacy]] = await pool.execute(
-      'SELECT COALESCE(SUM(sesiones), 0) AS total FROM paciente_sesiones WHERE paciente_id = ?',
-      [pid]
-    );
-    const [[citasLegacy]] = await pool.execute(
-      `SELECT COUNT(*) AS total FROM citas
-       WHERE paciente_id = ? AND paciente_paquete_id IS NULL AND estado IN ('realizada','no_show')`,
-      [pid]
-    );
-    const sesionesLegacy = Number(legacy.total) || 0;
-    const citasLegacyUsadas = Number(citasLegacy.total) || 0;
-    res.json({
-      sesiones_registradas: sesionesLegacy,
-      citas_tomadas: citasLegacyUsadas,
-      pendientes: Math.max(0, sesionesLegacy - citasLegacyUsadas),
-    });
+    res.json(await getSesionesResumen(pid));
   } catch { res.status(500).json({ error: 'Error' }); }
 });
 

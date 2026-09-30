@@ -391,25 +391,46 @@ async function evaluateBooking(pacienteId) {
   return { ok: true, sesiones_disponibles: disponibles, paciente_paquete_id: null };
 }
 
+/**
+ * Resumen canónico de sesiones de un paciente.
+ *
+ * ÚNICA fuente de verdad: la consumen /pacientes/:pid/sesiones-resumen y la vista
+ * de agenda, de modo que ambas muestran exactamente los mismos números.
+ *
+ * No depende del estado del paquete. Un paquete agotado, vencido o reemplazado
+ * siguen apareciendo en el historial con sus cifras reales:
+ *   - sesiones_registradas: total de sesiones adquiridas (histórico, todos los paquetes)
+ *   - citas_tomadas:       sesiones consumidas (citas realizadas / no show)
+ *   - pendientes:          sesiones agendables ahora (solo si hay paquete vigente)
+ *
+ * @returns {Promise<{sesiones_registradas:number, citas_tomadas:number, pendientes:number, paquete_activo:string|null}>}
+ */
 async function getSesionesResumen(pacienteId) {
-  const paquete = await getActivePacientePaquete(pacienteId);
-  if (paquete) {
-    const citasActivas = await countCitasActivasForPaquete(paquete.id, dateStr(paquete.fecha_inicio));
-    return {
-      sesiones_total: paquete.sesiones,
-      citas_confirmadas: citasActivas,
-      paquete_nombre: paquete.nombre,
-    };
+  const paquetes = await loadPacientePaquetes(pacienteId);
+
+  // Total adquirido: histórico completo. Si nunca tuvo paquetes, usa el legacy.
+  const totalPaquetes = paquetes.reduce((acc, p) => acc + (Number(p.sesiones) || 0), 0);
+  let sesionesRegistradas = totalPaquetes;
+
+  if (!paquetes.length) {
+    const [[legacy]] = await pool.execute(
+      'SELECT COALESCE(SUM(sesiones), 0) AS total FROM paciente_sesiones WHERE paciente_id = ?',
+      [pacienteId]
+    );
+    sesionesRegistradas = Number(legacy?.total) || 0;
   }
-  const citasActivas = await countCitasActivas(pacienteId);
-  const [[legacy]] = await pool.execute(
-    `SELECT COALESCE((SELECT SUM(ps.sesiones) FROM paciente_sesiones ps WHERE ps.paciente_id = ?), 0) AS total`,
-    [pacienteId]
-  );
+
+  // Sesiones consumidas: historial completo, sin importar el paquete.
+  const citasTomadas = await countCitasActivas(pacienteId);
+
+  // Agendables: únicamente las del paquete vigente.
+  const vigente = paquetes.find((p) => p.estado === 'activo') || null;
+
   return {
-    sesiones_total: legacy?.total || 0,
-    citas_confirmadas: citasActivas,
-    paquete_nombre: null,
+    sesiones_registradas: sesionesRegistradas,
+    citas_tomadas: citasTomadas,
+    pendientes: vigente ? Number(vigente.sesiones_restantes) || 0 : 0,
+    paquete_activo: vigente ? vigente.nombre : null,
   };
 }
 
