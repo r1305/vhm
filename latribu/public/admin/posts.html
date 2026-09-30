@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Comunidad - Tribu Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/admin.css">
+  <script src="js/base.js"></script>
+</head>
+<body>
+  <div id="admin-root"><div id="page-main" style="display:none">
+    <div class="section-header">
+      <div>
+        <h2>💜 Comunidad</h2>
+        <p>Logros que los miembros comparten. Ocultar los que no correspondan o eliminarlos.</p>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <input type="search" id="input-buscar" placeholder="Buscar texto o autor..." style="padding:9px 12px;border-radius:10px;border:1px solid var(--line,#ddd);min-width:200px">
+        <select id="select-estado" style="padding:9px 12px;border-radius:10px;border:1px solid var(--line,#ddd)">
+          <option value="">Todos los estados</option>
+          <option value="1">🟢 Visibles</option>
+          <option value="0">🔴 Ocultos</option>
+        </select>
+        <button type="button" class="btn btn-outline btn-sm" id="btn-recargar">↻ Recargar</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-body">
+        <div class="table-desktop">
+          <table>
+            <thead><tr><th>Autor</th><th>Logro</th><th>Foto</th><th>Apoyos</th><th>Publicado</th><th>Estado</th><th>Acciones</th></tr></thead>
+            <tbody id="posts-body"></tbody>
+          </table>
+        </div>
+        <div class="mobile-cards" id="posts-mobile"></div>
+        <div id="posts-paginacion" style="display:flex;gap:8px;justify-content:center;align-items:center;margin-top:16px"></div>
+      </div>
+    </div>
+  </div></div>
+  <script src="js/api.js"></script><script src="js/auth.js"></script><script src="js/toast.js"></script><script src="js/utils.js"></script><script src="js/layout.js"></script><script src="js/posts.js"></script>
+</body>
+</html>

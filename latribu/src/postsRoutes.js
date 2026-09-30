@@ -218,9 +218,30 @@ router.get('/admin', authMiddleware, requireAdmin, async (req, res) => {
   }
 });
 
+// Un post moderado se oculta (activo = 0) o, si el moderador decide que no debe
+// existir, se borra junto con su foto.
+router.delete('/admin/:id', authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const [rows] = await pool.execute('SELECT id, foto_url FROM tribu_posts WHERE id = ? LIMIT 1', [id]);
+    if (!rows.length) return res.status(404).json({ error: 'Publicación no encontrada' });
+    if (rows[0].foto_url) borrarFoto(rows[0].foto_url);
+    await pool.execute('DELETE FROM tribu_posts WHERE id = ?', [id]);
+    res.json({ message: 'Publicación eliminada' });
+  } catch (err) {
+    console.error('[latribu] Error al eliminar post (admin):', err.message);
+    res.status(500).json({ error: 'Error al eliminar la publicación' });
+  }
+});
+
 router.put('/:id/moderar', authMiddleware, requireAdmin, async (req, res) => {
   try {
-    const activo = esTruthy(req.body.activo) ? 1 : 0;
+    // Sin esta comprobación, una petición sin el campo caía en "ocultar":
+    // esTruthy(undefined) es false y una publicación se tapaba en silencio.
+    const bruto = req.body?.activo;
+    if (bruto === undefined || bruto === null)
+      return res.status(400).json({ error: 'Indica si la publicación debe quedar visible u oculta' });
+    const activo = esTruthy(bruto) ? 1 : 0;
     const [result] = await pool.execute('UPDATE tribu_posts SET activo = ? WHERE id = ?', [activo, req.params.id]);
     if (result.affectedRows === 0) return res.status(404).json({ error: 'Publicación no encontrada' });
     res.json({ message: activo ? 'Publicación visible' : 'Publicación oculta', activo: !!activo });
