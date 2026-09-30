@@ -1,10 +1,11 @@
 const { Router } = require('express');
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcryptjs);
 const jwt = require('jsonwebtoken');
 const pool = require('./db');
 const { JWT_SECRET } = require('./auth');
 const { ensureSchema } = require('./schema');
 const { getAccesosForUser } = require('./lib/accesos');
+const { sendError, sendSuccess } = require('../lib/response');
 
 const router = Router();
 
@@ -35,29 +36,29 @@ router.post('/login', async (req, res) => {
     const record = getAttempts(ip);
     if (record && record.count >= MAX_ATTEMPTS) {
       const remaining = Math.ceil((WINDOW_MS - (Date.now() - record.start)) / 60000);
-      return res.status(429).json({ error: `Demasiados intentos. Intenta de nuevo en ${remaining} minuto(s).` });
+      return sendError(res, 429, `Demasiados intentos. Intenta de nuevo en ${remaining} minuto(s).`);
     }
 
     const { username, password } = req.body;
-    if (!username || !password) return res.status(400).json({ error: 'Usuario y contraseña requeridos' });
+    if (!username || !password) return sendError(res, 400, 'Usuario y contraseña requeridos');
 
     const [rows] = await pool.execute('SELECT * FROM tribu_admins WHERE username = ? AND activo = 1', [username]);
-    if (rows.length === 0) { recordAttempt(ip); return res.status(401).json({ error: 'Credenciales inválidas' }); }
+    if (rows.length === 0) { recordAttempt(ip); return sendError(res, 401, 'Credenciales inválidas'); }
 
     const user = rows[0];
     const valid = await bcrypt.compare(password, user.password);
-    if (!valid) { recordAttempt(ip); return res.status(401).json({ error: 'Credenciales inválidas' }); }
+    if (!valid) { recordAttempt(ip); return sendError(res, 401, 'Credenciales inválidas'); }
 
     resetAttempts(ip);
     const menuItems = await getAccesosForUser(user.id, user.rol);
     const token = jwt.sign({ id: user.id, username: user.username, rol: user.rol }, JWT_SECRET, { expiresIn: '8h' });
-    res.json({
+    return sendSuccess(res, {
       token,
       user: { id: user.id, username: user.username, nombre: user.nombre, rol: user.rol, menuItems },
     });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Error en el login' });
+    return sendError(res, 500, 'Error en el login');
   }
 });
 
