@@ -1,4 +1,8 @@
 require('dotenv').config();
+// Ensure APP_MOUNT_PATH is set; fallback to '/latribu' for development
+if (!process.env.APP_MOUNT_PATH) {
+  process.env.APP_MOUNT_PATH = '/latribu';
+}
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
@@ -161,6 +165,8 @@ app.get('/tarjetas', (req, res) => sendPublicHtml(res, 'tarjetas.html'));
 app.get('/encuesta/:slug', (req, res) => sendPublicHtml(res, 'encuesta.html'));
 app.get('/recursos', (req, res) => sendPublicHtml(res, 'recursos.html'));
 app.get('/calendario', (req, res) => sendPublicHtml(res, 'calendario.html'));
+app.get('/comunidad', (req, res) => sendPublicHtml(res, 'comunidad.html'));
+app.get('/comunidad.html', (req, res) => sendPublicHtml(res, 'comunidad.html'));
 
 // Static files
 app.use(express.static(path.join(__dirname, '../public'), { maxAge: '1d', index: false }));

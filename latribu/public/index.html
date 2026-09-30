@@ -1243,7 +1243,7 @@
           <div class="tribu-acceso-card-label">IA</div>
           <div class="tribu-acceso-card-hint">Tu aliada de bienestar</div>
         </a>
-        <a href="/comunidad" class="tribu-acceso-card">
+        <a href="comunidad" class="tribu-acceso-card">
           <div class="tribu-acceso-card-icon">🫂</div>
           <div class="tribu-acceso-card-label">Comunidad</div>
           <div class="tribu-acceso-card-hint">Conecta y comparte</div>
@@ -1728,6 +1728,9 @@ let videosData = [];
 let videoActual = null;
 let eventosMes = [];
 let tribuUser = null;
+// Estado del bloque de adquisición (VSL + beneficios + CTA de registro).
+let _tribuLandingCfg = null;
+let _tribuBeneficiosItems = null;
 let planActual = null;
 let planesCache = null;
 let videoPendiente = null;
@@ -1799,16 +1802,11 @@ function clearStaleLockUi() {
 }
 
 function renderNavAuth() {
+  syncTribuLandingBloque();
   const area = document.getElementById('navAuthArea');
   if (!area) return;
-  const joinWrap = document.getElementById('tribuJoinWrap');
-  const heroVideoWrap = document.getElementById('tribuHeroVideoWrap');
-  const beneficiosWrap = document.getElementById('tribuBeneficios');
   const accesoRapido = document.getElementById('tribuAccesoRapido');
   if (tribuUser) {
-    if (joinWrap) joinWrap.style.display = 'none';
-    if (heroVideoWrap) heroVideoWrap.hidden = true;
-    if (beneficiosWrap) beneficiosWrap.style.display = 'none';
     if (accesoRapido && accesoRapido.style.display === 'none') {
       accesoRapido.style.display = '';
       renderPerfilCard();
@@ -4016,6 +4014,44 @@ function tribuLandingTieneVideo(cfg) {
     || cfg.hero_video_embed);
 }
 
+// Regla única de negocio del bloque de adquisición.
+// El VSL, la lista de beneficios y el CTA de registro se muestran y ocultan
+// juntos: solo si hay un VSL configurado y el visitante no tiene sesión.
+function tribuLandingMuestraBloque() {
+  return tribuLandingTieneVideo(_tribuLandingCfg) && !tribuUser;
+}
+
+function syncTribuLandingBloque() {
+  const mostrar = tribuLandingMuestraBloque();
+  const heroWrap = document.getElementById('tribuHeroVideoWrap');
+  const benWrap = document.getElementById('tribuBeneficios');
+  const joinWrap = document.getElementById('tribuJoinWrap');
+  const items = _tribuBeneficiosItems;
+  const hayBeneficios = Array.isArray(items) && items.length > 0;
+  const visible = mostrar && hayBeneficios;
+
+  if (mostrar) {
+    // Solo (re)inicializa el video cuando estaba oculto, para no reiniciar
+    // la reproduccion en cada render de la nav.
+    if (heroWrap && heroWrap.hidden) mostrarTribuHeroVideo(_tribuLandingCfg);
+  } else if (heroWrap) {
+    heroWrap.hidden = true;
+  }
+
+  if (visible) {
+    if (benWrap) {
+      benWrap.innerHTML = '<div class="tribu-beneficios">' +
+        items.map(t => `<div class="tribu-beneficio-item">${escapeHtml(t)}</div>`).join('') +
+        '</div>';
+      benWrap.style.display = '';
+    }
+    if (joinWrap) joinWrap.style.display = '';
+  } else {
+    if (benWrap) benWrap.style.display = 'none';
+    if (joinWrap) joinWrap.style.display = 'none';
+  }
+}
+
 function mostrarTribuHeroVideo(cfg) {
   const wrap = document.getElementById('tribuHeroVideoWrap');
   const video = document.getElementById('tribuHeroVideo');
@@ -4083,6 +4119,7 @@ function mostrarTribuHeroVideo(cfg) {
   try {
     const res = await fetch(`${API}/videos/landing`);
     const cfg = await res.json();
+    _tribuLandingCfg = cfg;
     if (cfg.intro) document.getElementById('heroIntro') && (document.getElementById('heroIntro').textContent = cfg.intro);
     if (cfg.pacto) document.getElementById('heroPacto') && (document.getElementById('heroPacto').textContent = cfg.pacto);
     if (cfg.hero_title) {
@@ -4093,27 +4130,18 @@ function mostrarTribuHeroVideo(cfg) {
       const eyebrow = document.querySelector('.hero .eyebrow');
       if (eyebrow) eyebrow.textContent = cfg.hero_subtitle;
     }
-    if (tribuLandingTieneVideo(cfg) && !tribuUser) mostrarTribuHeroVideo(cfg);
-    else {
-      const wrap = document.getElementById('tribuHeroVideoWrap');
-      if (wrap) wrap.hidden = true;
-    }
   } catch {}
 
   // Beneficios
   try {
     const res = await fetch(`${API}/beneficios`);
     const items = await res.json();
-    const wrap = document.getElementById('tribuBeneficios');
-    const joinWrap = document.getElementById('tribuJoinWrap');
-    if (wrap && Array.isArray(items) && items.length) {
-      wrap.style.display = '';
-      wrap.innerHTML = '<div class="tribu-beneficios">' +
-        items.map(t => `<div class="tribu-beneficio-item">${escapeHtml(t)}</div>`).join('') +
-        '</div>';
-      if (joinWrap && !tribuUser) joinWrap.style.display = '';
-    }
+    _tribuBeneficiosItems = Array.isArray(items) ? items : [];
   } catch {}
+
+  // El bloque se aplica una sola vez con la regla compartida, despues de tener
+  // tanto la config del VSL como los beneficios.
+  syncTribuLandingBloque();
 })();
 
 </script>
