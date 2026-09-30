@@ -10,6 +10,7 @@ const {
   listSavedCards, getSavedCard, getDefaultSavedCard, setDefaultCard, deactivateSavedCard,
 } = require('./tribuSavedCards');
 const { JWT_SECRET } = require('./auth');
+const { sanitizeName, sanitizePhone, sanitizeEmail, toYmd } = require('../lib/validation');
 
 const router = Router();
 const BASE = (process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
@@ -37,44 +38,15 @@ const uploadAvatar = multer({
   },
 });
 
-function sanitizeName(str, max = 120) { return String(str || '').trim().slice(0, max); }
-function sanitizePhone(str) { return String(str || '').replace(/[^\d+]/g, '').slice(0, 30) || null; }
-function sanitizeEmail(str) {
-  const e = String(str || '').trim().toLowerCase().slice(0, 150);
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e) ? e : null;
-}
-
-function toYmd(val) {
-  if (val == null) return null;
-  if (val instanceof Date) {
-    return `${val.getFullYear()}-${String(val.getMonth()+1).padStart(2,'0')}-${String(val.getDate()).padStart(2,'0')}`;
-  }
-  const s = String(val);
-  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
-  const parsed = new Date(val);
-  if (!Number.isNaN(parsed.getTime())) {
-    return `${parsed.getFullYear()}-${String(parsed.getMonth()+1).padStart(2,'0')}-${String(parsed.getDate()).padStart(2,'0')}`;
-  }
-  return s.slice(0, 10);
-}
-
-function deleteFotoFile(fotoUrl) {
-  if (!fotoUrl) return;
-  const match = String(fotoUrl).match(/\/uploads\/tribu\/[^?#]+/);
-  if (!match) return;
-  const filePath = path.join(__dirname, '../public', match[0].replace(/^\//, ''));
-  fs.unlink(filePath, () => {});
-}
-
 async function syncSubscriptionAccess(userId) {
   await pool.execute(
     `UPDATE tribu_suscripciones SET activo = 0, auto_renovacion = 0
-     WHERE tribu_user_id = ? AND activo = 1 AND fecha_fin < CURDATE()`,
+      WHERE tribu_user_id = ? AND activo = 1 AND fecha_fin < CURDATE()`,
     [userId]
   );
   const [[row]] = await pool.execute(
     `SELECT COUNT(*) AS total FROM tribu_suscripciones
-     WHERE tribu_user_id = ? AND activo = 1 AND fecha_fin >= CURDATE()`,
+      WHERE tribu_user_id = ? AND activo = 1 AND fecha_fin >= CURDATE()`,
     [userId]
   );
   const subscribed = (row?.total || 0) > 0;
@@ -92,10 +64,10 @@ async function fetchUserPublic(id) {
   await syncSubscriptionAccess(id);
   const [sus] = await pool.execute(
     `SELECT ts.id, s.nombre, ts.fecha_fin
-     FROM tribu_suscripciones ts
-     JOIN suscripciones s ON s.id = ts.suscripcion_id
-     WHERE ts.tribu_user_id = ? AND ts.activo = 1 AND ts.fecha_fin >= CURDATE()
-     ORDER BY ts.fecha_fin DESC LIMIT 1`,
+      FROM tribu_suscripciones ts
+      JOIN suscripciones s ON s.id = ts.suscripcion_id
+      WHERE ts.tribu_user_id = ? AND ts.activo = 1 AND ts.fecha_fin >= CURDATE()
+      ORDER BY ts.fecha_fin DESC LIMIT 1`,
     [id]
   );
   user.suscripcion_activa = sus.length > 0
@@ -204,7 +176,7 @@ router.post('/registro', async (req, res) => {
     const hash = await bcrypt.hash(password, 12);
     const [result] = await pool.execute(
       `INSERT INTO tribu_users (nombre, apellido, email, password, psw_temp, is_suscribed, estado)
-       VALUES (?, ?, ?, ?, 0, 0, 'prospecto')`,
+        VALUES (?, ?, ?, ?, 0, 0, 'prospecto')`,
       [nombre.trim(), apellido.trim(), emailNorm, hash]
     );
     const user = { id: result.insertId, nombre: nombre.trim(), apellido: apellido.trim(), email: emailNorm };
@@ -357,7 +329,7 @@ router.put('/perfil', tribuAuthMiddleware, async (req, res) => {
     const user = await fetchUserPublic(req.tribuUser.id);
     const token = signToken(user);
     res.json({ user: userPayload(user), token });
-  } catch (err) { console.error(err); res.status(500).json({ error: 'Error al actualizar el perfil' }); }
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Error al actualizar el perfil' ); }
 });
 
 router.put('/perfil/comunidad', tribuAuthMiddleware, async (req, res) => {
@@ -421,12 +393,12 @@ router.get('/suscripciones', tribuAuthMiddleware, async (req, res) => {
               s.nombre, s.precio, s.descripcion, s.vigencia_dias,
               (ts.activo = 1 AND ts.fecha_fin >= CURDATE()) AS vigente,
               sc.last_four_digits
-       FROM tribu_suscripciones ts
-       JOIN suscripciones s ON s.id = ts.suscripcion_id
-       LEFT JOIN tribu_saved_cards sc
-         ON sc.tribu_user_id = ts.tribu_user_id AND sc.culqi_card_id = ts.culqi_card_id AND sc.activo = 1
-       WHERE ts.tribu_user_id = ?
-       ORDER BY ts.fecha_inicio DESC`,
+        FROM tribu_suscripciones ts
+        JOIN suscripciones s ON s.id = ts.suscripcion_id
+        LEFT JOIN tribu_saved_cards sc
+          ON sc.tribu_user_id = ts.tribu_user_id AND sc.culqi_card_id = ts.culqi_card_id AND sc.activo = 1
+        WHERE ts.tribu_user_id = ?
+        ORDER BY ts.fecha_inicio DESC`,
       [req.tribuUser.id]
     );
     const savedCards = await listSavedCards(req.tribuUser.id);
