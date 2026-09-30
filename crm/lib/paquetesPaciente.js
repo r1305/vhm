@@ -434,6 +434,72 @@ async function getSesionesResumen(pacienteId) {
   };
 }
 
+/**
+ * Fragmentos SQL canónicos de sesiones.
+ *
+ * Se interpolan en queries que ya tienen el alias `p` = pacientes. Existen para
+ * que el dashboard, el listado y el detalle usen EXACTAMENTE la misma definición
+ * y los números nunca diverjan entre vistas.
+ *
+ *   - SQL.sesionesTotal(p)      total adquirido (histórico; legacy solo si no hay paquetes)
+ *   - SQL.citasConfirmadas(p)   sesiones consumidas (citas realizadas / no show)
+ *   - SQL.sesionesPendientes(p) sesiones agendables ahora (solo paquete vigente)
+ *   - SQL.paqueteNombre(p)      nombre del paquete vigente, o NULL
+ */
+const SQL = {
+  sesionesTotal: (p = 'p') => `COALESCE(
+           (SELECT SUM(pp.sesiones) FROM paciente_paquetes pp WHERE pp.paciente_id = ${p}.id),
+           (SELECT SUM(ps.sesiones) FROM paciente_sesiones ps WHERE ps.paciente_id = ${p}.id),
+           0
+         )`,
+
+  citasConfirmadas: (p = 'p') => `(
+           SELECT COUNT(*) FROM citas c
+           WHERE c.paciente_id = ${p}.id AND c.estado IN ('realizada','no_show')
+         )`,
+
+  // Un paquete cuenta como vigente solo si está activo, no venció y ya empezó.
+  sesionesPendientes: (p = 'p') => `COALESCE(GREATEST(0, (
+           SELECT pp.sesiones - (
+             (SELECT COUNT(*) FROM citas c2
+              WHERE c2.paciente_paquete_id = pp.id
+                AND c2.estado IN ('realizada','no_show')
+                AND DATE(c2.fecha) >= DATE(pp.fecha_inicio))
+             + (SELECT COUNT(*) FROM citas c3
+                WHERE c3.paciente_id = ${p}.id AND c3.paciente_paquete_id IS NULL
+                  AND c3.estado IN ('realizada','no_show')
+                  AND DATE(c3.fecha) >= DATE(pp.fecha_inicio))
+           )
+           FROM paciente_paquetes pp
+           WHERE pp.paciente_id = ${p}.id AND pp.activo = 1
+             AND (pp.vence_at IS NULL OR pp.vence_at >= CURDATE())
+             AND DATE(pp.fecha_inicio) <= CURDATE()
+           ORDER BY pp.fecha_inicio ASC, pp.id ASC LIMIT 1
+         )), 0)`,
+
+  paqueteNombre: (p = 'p') => `(
+           SELECT pp.nombre FROM paciente_paquetes pp
+           WHERE pp.paciente_id = ${p}.id AND pp.activo = 1
+             AND (pp.vence_at IS NULL OR pp.vence_at >= CURDATE())
+             AND DATE(pp.fecha_inicio) <= CURDATE()
+           ORDER BY pp.fecha_inicio ASC, pp.id ASC LIMIT 1
+         )`,
+
+  // Nunca tuvo sesiones en ninguno de los dos sistemas.
+  sinSesiones: (p = 'p') => `(
+           NOT EXISTS (SELECT 1 FROM paciente_paquetes pp WHERE pp.paciente_id = ${p}.id)
+           AND NOT EXISTS (SELECT 1 FROM paciente_sesiones ps WHERE ps.paciente_id = ${p}.id)
+         )`,
+
+  // Pacientes que compraron 2+ paquetes (o 2+ registros legacy si nunca usaron el
+  // sistema de paquetes). Es la base de la tasa de retención.
+  paquetesComprados: (p = 'p') => `GREATEST(
+           (SELECT COUNT(*) FROM paciente_paquetes pp WHERE pp.paciente_id = ${p}.id),
+           CASE WHEN EXISTS (SELECT 1 FROM paciente_paquetes pp WHERE pp.paciente_id = ${p}.id)
+                THEN 0 ELSE (SELECT COUNT(*) FROM paciente_sesiones ps WHERE ps.paciente_id = ${p}.id) END
+         )`,
+};
+
 module.exports = {
   addDays,
   addMonths,
@@ -449,4 +515,5 @@ module.exports = {
   evaluateBooking,
   getSesionesResumen,
   computePackageEstado,
+  SQL,
 };
