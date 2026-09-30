@@ -1,14 +1,12 @@
 const { Router } = require('express');
-const path = require('path');
-const fs = require('fs');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
-const multer = require('multer');
 const pool = require('./db');
 const {
   listSavedCards, getSavedCard, getDefaultSavedCard, setDefaultCard, deactivateSavedCard,
 } = require('./tribuSavedCards');
+const { crearUploadImagen, guardarImagen, borrarImagen } = require('./lib/subidaImagen');
 const { JWT_SECRET } = require('./auth');
 const { sanitizeName, sanitizePhone, sanitizeEmail, toYmd } = require('../lib/validation');
 
@@ -16,27 +14,13 @@ const router = Router();
 const BASE = (process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
 const ASSET_BASE = (process.env.SITE_URL || '').replace(/\/$/, '') || BASE;
 
-const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
-const avatarStorage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
-    const dir = path.join(__dirname, '../public/uploads/tribu');
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    cb(null, dir);
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase() || '.jpg';
-    const uid = req.tribuUser?.id || 'x';
-    cb(null, `avatar_${uid}_${crypto.randomBytes(12).toString('hex')}${ext}`);
-  },
-});
-const uploadAvatar = multer({
-  storage: avatarStorage,
-  limits: { fileSize: 3 * 1024 * 1024 },
-  fileFilter: (_req, file, cb) => {
-    if (ALLOWED_MIME_TYPES.has(file.mimetype)) cb(null, true);
-    else cb(new Error('Solo se permiten imágenes (jpg, png, webp, gif)'));
-  },
-});
+// Los avatares viven en public/uploads/tribu/.
+const DESTINO_AVATAR = 'tribu';
+const uploadAvatar = crearUploadImagen({ limiteBytes: 3 * 1024 * 1024 });
+
+function deleteFotoFile(fotoUrl) {
+  borrarImagen(fotoUrl, DESTINO_AVATAR);
+}
 
 async function syncSubscriptionAccess(userId) {
   await pool.execute(
@@ -356,23 +340,36 @@ router.post('/perfil/foto', tribuAuthMiddleware, (req, res) => {
   uploadAvatar.single('foto')(req, res, async (err) => {
     if (err) return res.status(400).json({ error: err.message || 'Archivo no válido' });
     if (!req.file) return res.status(400).json({ error: 'Selecciona una imagen' });
+    let guardada = null;
     try {
       const [rows] = await pool.execute('SELECT foto_url FROM tribu_users WHERE id = ? LIMIT 1', [req.tribuUser.id]);
       const oldUrl = rows[0]?.foto_url;
-      const foto_url = `${ASSET_BASE}/uploads/tribu/${req.file.filename}`;
+      guardada = await guardarImagen(req.file, {
+        destino: DESTINO_AVATAR,
+        prefijo: `avatar_${req.tribuUser.id}`,
+        assetBase: ASSET_BASE,
+      });
+      const foto_url = guardada.url;
       await pool.execute('UPDATE tribu_users SET foto_url = ? WHERE id = ?', [foto_url, req.tribuUser.id]);
+      // El avatar anterior se borra despues del UPDATE: si este falla, el
+      // usuario sigue apuntando a una imagen que existe.
       if (oldUrl && oldUrl !== foto_url) deleteFotoFile(oldUrl);
       const user = await fetchUserPublic(req.tribuUser.id);
       res.json({ foto_url, user: userPayload(user) });
-    } catch (e) { console.error(e); res.status(500).json({ error: 'Error al subir la foto' }); }
+    } catch (e) {
+      if (guardada) deleteFotoFile(guardada.url);
+      if (e.status === 400) return res.status(400).json({ error: e.message });
+      console.error(e);
+      res.status(500).json({ error: 'Error al subir la foto' });
+    }
   });
 });
 
 router.delete('/perfil/foto', tribuAuthMiddleware, async (req, res) => {
   try {
     const [rows] = await pool.execute('SELECT foto_url FROM tribu_users WHERE id = ? LIMIT 1', [req.tribuUser.id]);
-    if (rows[0]?.foto_url) deleteFotoFile(rows[0].foto_url);
     await pool.execute('UPDATE tribu_users SET foto_url = NULL WHERE id = ?', [req.tribuUser.id]);
+    if (rows[0]?.foto_url) deleteFotoFile(rows[0].foto_url);
     const user = await fetchUserPublic(req.tribuUser.id);
     res.json({ user: userPayload(user) });
   } catch (err) { console.error(err); res.status(500).json({ error: 'Error al quitar la foto' }); }

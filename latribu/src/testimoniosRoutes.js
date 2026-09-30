@@ -1,34 +1,23 @@
 const { Router } = require('express');
-const path = require('path');
-const fs = require('fs');
-const crypto = require('crypto');
-const multer = require('multer');
 const pool = require('./db');
 const { authMiddleware } = require('./auth');
+const { crearUploadImagen, guardarImagen, borrarImagen } = require('./lib/subidaImagen');
 
 const router = Router();
 
-const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const dir = path.join(__dirname, '../public/uploads');
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    cb(null, dir);
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
-    cb(null, `testimonio_${crypto.randomBytes(16).toString('hex')}${ext}`);
-  }
-});
+// Las fotos viven en public/uploads/ sin subcarpeta, como antes.
+const DESTINO = '';
+const BASE = (process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
 
-const upload = multer({
-  storage,
-  limits: { fileSize: 5 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => {
-    if (ALLOWED_MIME_TYPES.has(file.mimetype)) cb(null, true);
-    else cb(new Error('Solo se permiten imágenes (jpg, png, webp, gif)'));
-  }
-});
+const upload = crearUploadImagen({ limiteBytes: 5 * 1024 * 1024 });
+
+// Multer avisa del error (tamaño excedido, varios archivos) por callback. Sin
+// esto Express lo escalaría al manejador genérico y el admin vería un 500.
+const uploadFoto = (req, res, next) =>
+  upload.single('foto')(req, res, (err) => {
+    if (err) return res.status(400).json({ error: err.message || 'Archivo no válido' });
+    next();
+  });
 
 // ADMIN y SUPER_ADMIN tienen los mismos permisos de escritura
 function requireAdmin(req, res, next) {
@@ -98,14 +87,18 @@ router.get('/admin', authMiddleware, requireAdmin, async (req, res) => {
 });
 
 // Crear
-router.post('/', authMiddleware, requireAdmin, upload.single('foto'), async (req, res) => {
+router.post('/', authMiddleware, requireAdmin, uploadFoto, async (req, res) => {
+  let guardada = null;
   try {
     const { autor, texto, activo } = req.body;
-    const BASE = (process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
-    const foto_url = req.file ? `${BASE}/uploads/${req.file.filename}` : null;
+    const foto_url = req.file ? (guardada = await guardarImagen(req.file, {
+      destino: DESTINO, prefijo: 'testimonio', assetBase: BASE
+    })).url : null;
 
-    if (!autor && !texto && !foto_url)
+    if (!autor && !texto && !foto_url) {
+      if (guardada) borrarImagen(guardada.url, DESTINO);
       return res.status(400).json({ error: 'Debe proporcionar al menos un campo (autor, texto o foto)' });
+    }
 
     const [result] = await pool.execute(
       'INSERT INTO testimonios (autor, texto, foto_url, activo, creado_por) VALUES (?, ?, ?, ?, ?)',
@@ -113,40 +106,37 @@ router.post('/', authMiddleware, requireAdmin, upload.single('foto'), async (req
     );
     res.status(201).json({ id: result.insertId, message: 'Testimonio creado' });
   } catch (err) {
+    if (guardada) borrarImagen(guardada.url, DESTINO);
+    if (err.status === 400) return res.status(400).json({ error: err.message });
     console.error(err);
     res.status(500).json({ error: 'Error al crear testimonio' });
   }
 });
 
 // Actualizar
-router.put('/:id', authMiddleware, requireAdmin, upload.single('foto'), async (req, res) => {
+router.put('/:id', authMiddleware, requireAdmin, uploadFoto, async (req, res) => {
+  let guardada = null;
   try {
     const { autor, texto, activo, eliminar_foto } = req.body;
     const [existing] = await pool.execute('SELECT foto_url FROM testimonios WHERE id = ?', [req.params.id]);
-    if (existing.length === 0) return res.status(404).json({ error: 'Testimonio no encontrado' });
+    if (existing.length === 0) {
+      // Con memoria el archivo no llegó al disco: no hay nada que deshacer.
+      return res.status(404).json({ error: 'Testimonio no encontrado' });
+    }
 
     let foto_url = existing[0].foto_url;
+    // La anterior se borra solo cuando el UPDATE ya funciono: si falla, el
+    // testimonio sigue apuntando a un archivo que sí existe.
+    let anteriorABorrar = null;
 
     if (req.file) {
-      if (foto_url) {
-        const match = foto_url.match(/\/uploads\/[^?#]+/);
-        if (match) {
-          const oldPath = path.join(__dirname, '../public', match[0]);
-          if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
-        }
-      }
-      const BASE = (process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
-      foto_url = `${BASE}/uploads/${req.file.filename}`;
+      guardada = await guardarImagen(req.file, { destino: DESTINO, prefijo: 'testimonio', assetBase: BASE });
+      foto_url = guardada.url;
+      if (existing[0].foto_url) anteriorABorrar = existing[0].foto_url;
     }
 
     if (eliminar_foto === 'true' || eliminar_foto === '1') {
-      if (foto_url) {
-        const match = foto_url.match(/\/uploads\/[^?#]+/);
-        if (match) {
-          const oldPath = path.join(__dirname, '../public', match[0]);
-          if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
-        }
-      }
+      if (foto_url && !anteriorABorrar) anteriorABorrar = foto_url;
       foto_url = null;
     }
 
@@ -154,9 +144,15 @@ router.put('/:id', authMiddleware, requireAdmin, upload.single('foto'), async (r
       'UPDATE testimonios SET autor = ?, texto = ?, foto_url = ?, activo = ? WHERE id = ?',
       [autor || null, texto || null, foto_url, activo === 'true' || activo === '1' ? 1 : 0, req.params.id]
     );
-    if (result.affectedRows === 0) return res.status(404).json({ error: 'Testimonio no encontrado' });
+    if (result.affectedRows === 0) {
+      if (guardada) borrarImagen(guardada.url, DESTINO);
+      return res.status(404).json({ error: 'Testimonio no encontrado' });
+    }
+    if (anteriorABorrar) borrarImagen(anteriorABorrar, DESTINO);
     res.json({ message: 'Testimonio actualizado' });
   } catch (err) {
+    if (guardada) borrarImagen(guardada.url, DESTINO);
+    if (err.status === 400) return res.status(400).json({ error: err.message });
     console.error(err);
     res.status(500).json({ error: 'Error al actualizar testimonio' });
   }
@@ -166,15 +162,11 @@ router.put('/:id', authMiddleware, requireAdmin, upload.single('foto'), async (r
 router.delete('/:id', authMiddleware, requireAdmin, async (req, res) => {
   try {
     const [existing] = await pool.execute('SELECT foto_url FROM testimonios WHERE id = ?', [req.params.id]);
-    if (existing.length > 0 && existing[0].foto_url) {
-      const match = existing[0].foto_url.match(/\/uploads\/[^?#]+/);
-      if (match) {
-        const filePath = path.join(__dirname, '../public', match[0]);
-        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-      }
-    }
     const [result] = await pool.execute('DELETE FROM testimonios WHERE id = ?', [req.params.id]);
     if (result.affectedRows === 0) return res.status(404).json({ error: 'Testimonio no encontrado' });
+    // La foto se borra despues del DELETE: si el borrado falla, el testimonio
+    // sigue existiendo y su imagen tambien.
+    if (existing.length > 0 && existing[0].foto_url) borrarImagen(existing[0].foto_url, DESTINO);
     res.json({ message: 'Testimonio eliminado' });
   } catch (err) {
     console.error(err);
