@@ -279,7 +279,8 @@ function tarjetaPost(p) {
   const foto = p.foto_url
     ? `<img class="comunidad-card-photo" src="${escapeHtml(p.foto_url)}" alt="" loading="lazy">`
     : '';
-  // "(Foto)" es el marcador que el backend guarda cuando no hay texto.
+  // Una publicacion puede no tener texto. "(Foto)" es el marcador que guardaba
+  // el backend antes; sigue sin mostrarse para no romper las filas antiguas.
   const texto = (p.contenido && p.contenido !== '(Foto)')
     ? `<p class="comunidad-card-text">${escapeHtml(p.contenido)}</p>` : '';
   const editado = p.mine_edit ? '<span class="comunidad-card-tag">editado</span>' : '';
