@@ -17,12 +17,48 @@
 
   function canSee(itemId) { return AdminAuth.hasAccess(itemId); }
 
+  /**
+   * Devuelve la pagina a la que puede ir el usuario, o null si no tiene ninguna.
+   *
+   * Antes caia en 'videos.html' como valor por defecto. Eso provocaba un bucle
+   * infinito: un usuario sin ningun permiso-era redireigido a videos.html, esa
+   * pagina comprobaba el permiso de 'videos', no lo tenia, y volvia a pedir
+   * firstAllowedHref(), que devolvia 'videos.html' otra vez. Sin mas.
+   */
   function firstAllowedHref() {
     for (let i = 0; i < NAV_ORDER.length; i++) {
       const id = NAV_ORDER[i];
       if (canSee(id) && NAV_META[id]) return NAV_META[id].href;
     }
-    return 'videos.html';
+    return null;
+  }
+
+  /**
+   * Redirige fuera de la pagina actual. Si el destino es la propia pagina se
+   * corta la redireccion, porque repetirla no lleva a ninguna parte.
+   */
+  function irA(target) {
+    if (!target) return false;
+    const actual = global.location.pathname.split('/').pop();
+    if (target === actual || target === global.location.href) return false;
+    global.location.href = target;
+    return true;
+  }
+
+  function sinPermisos() {
+    const main = document.getElementById('page-main');
+    if (!main) return;
+    main.innerHTML =
+      '<div style="text-align:center;padding:64px 24px;max-width:420px;margin:0 auto">' +
+        '<div style="font-size:3rem">🔒</div>' +
+        '<h2 style="margin:12px 0 8px">Sin permisos asignados</h2>' +
+        '<p style="color:var(--text-secondary);margin:0 0 24px">' +
+          'Tu cuenta no tiene ninguna seccion habilitada. Pide a un Super Admin que te asigne accesos.</p>' +
+        '<button type="button" class="btn btn-primary" id="btn-salir">Cerrar sesion</button>' +
+      '</div>';
+    main.style.display = '';
+    const btn = document.getElementById('btn-salir');
+    if (btn) btn.addEventListener('click', AdminAuth.logout);
   }
 
   async function init(options) {
@@ -33,12 +69,12 @@
     await AdminAuth.ensureMenuItems();
 
     if (options.requireSuperAdmin && !AdminAuth.isSuperAdmin()) {
-      global.location.href = firstAllowedHref();
+      if (!irA(firstAllowedHref())) sinPermisos();
       return false;
     }
     const page = options.page || '';
     if (page && !AdminAuth.hasAccess(page)) {
-      global.location.href = firstAllowedHref();
+      if (!irA(firstAllowedHref())) sinPermisos();
       return false;
     }
 
