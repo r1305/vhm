@@ -65,7 +65,13 @@
 
   function requireSuperAdmin() {
     if (!requireAuth()) return false;
-    if (!isSuperAdmin()) { global.location.href = AdminLayout.firstAllowedHref(); return false; }
+    // Si el usuario no tiene ninguna pagina permitida no se redirige: la vista
+    // muestra el aviso de sin permisos. Redirigir ahi seria un bucle.
+    if (!isSuperAdmin()) {
+      var target = AdminLayout.firstAllowedHref();
+      if (target) global.location.href = target;
+      return false;
+    }
     return true;
   }
 

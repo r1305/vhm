@@ -1,7 +1,8 @@
 (function () {
   AdminAuth.loadTheme();
   if (AdminAuth.state.token) {
-    location.href = AdminLayout.firstAllowedHref();
+    var destino = AdminLayout.firstAllowedHref();
+    if (destino) location.href = destino;
     return;
   }
 
@@ -27,7 +28,17 @@
     errEl.style.display = 'none';
     try {
       await AdminAuth.login(u, p);
-      location.href = AdminLayout.firstAllowedHref();
+      var destino = AdminLayout.firstAllowedHref();
+      if (destino) {
+        location.href = destino;
+      } else {
+        // Entro bien pero no tiene ninguna seccion habilitada: no hay pagina a
+        // la que enviarlo, asi que se lo decimos en vez de deixar la pagina en
+        // blanco o redirigir en bucle.
+        errEl.textContent = 'Tu cuenta no tiene ninguna seccion habilitada. Pide a un Super Admin que te asigne accesos.';
+        errEl.style.display = 'block';
+        AdminAuth.logout();
+      }
     } catch (e) {
       errEl.textContent = e.message;
       errEl.style.display = 'block';
