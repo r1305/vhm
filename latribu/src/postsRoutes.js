@@ -1,43 +1,34 @@
 const { Router } = require('express');
-const path = require('path');
-const fs = require('fs');
-const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
-const multer = require('multer');
 const pool = require('./db');
 const { authMiddleware, JWT_SECRET } = require('./auth');
 const { tribuAuthMiddleware, TRIBU_JWT_SECRET } = require('./tribuAuthRoutes');
+const {
+  crearUploadImagen, guardarImagen, borrarImagen,
+} = require('./lib/subidaImagen');
 
 const router = Router();
 
 const BASE = (process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
 const ASSET_BASE = (process.env.SITE_URL || '').replace(/\/$/, '') || BASE;
-const UPLOAD_DIR = path.join(__dirname, '../public/uploads/tribu/posts');
-const UPLOAD_URL_BASE = `${ASSET_BASE}/uploads/tribu/posts`;
+const DESTINO = 'tribu/posts';
+const UPLOAD_URL_BASE = `${ASSET_BASE}/uploads/${DESTINO}`;
 
 const MAX_CONTENIDO = 2000;
-const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
 
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
-    if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-    cb(null, UPLOAD_DIR);
-  },
-  filename: (req, file, cb) => {
-    const ext = (path.extname(file.originalname || '').toLowerCase() || '.jpg').replace(/[^a-z0-9.]/g, '');
-    const uid = req.tribuUser?.id || req.user?.id || 'x';
-    cb(null, `post_${uid}_${crypto.randomBytes(12).toString('hex')}${ext}`);
-  },
-});
+// Se valida la firma binaria del archivo, no el Content-Type que declara el
+// cliente: con diskStorage + fileFilter por mimetype se aceptaba un .html con
+// 'Content-Type: image/png', y como el directorio se sirve con express.static
+// el navegador lo ejecutaba en el dominio de la app (robo de los tokens de
+// localStorage). Ver lib/subidaImagen.js.
+const upload = crearUploadImagen({ limiteBytes: 5 * 1024 * 1024 });
 
-const upload = multer({
-  storage,
-  limits: { fileSize: 5 * 1024 * 1024, files: 1 },
-  fileFilter: (_req, file, cb) => {
-    if (ALLOWED_MIME_TYPES.has(file.mimetype)) cb(null, true);
-    else cb(new Error('Solo se permiten imágenes (jpg, png, webp, gif)'));
-  },
-});
+/** Persiste la foto subida y devuelve su URL, o null si no se envió ninguna. */
+async function persistirFoto(file) {
+  return guardarImagen(file, {
+    destino: DESTINO, prefijo: 'post', assetBase: ASSET_BASE,
+  });
+}
 
 // ── Anti-spam: máx. 5 publicaciones por usuario cada 5 minutos ──
 const MAX_PUBLICOS_POR_VENTANA = 5;
@@ -134,12 +125,7 @@ const SELECT_POST = `
   JOIN tribu_users u ON u.id = p.tribu_user_id`;
 
 function borrarFoto(fotoUrl) {
-  if (!fotoUrl) return;
-  const archivo = path.basename(String(fotoUrl).split('?')[0].split('#')[0]);
-  const filePath = path.join(UPLOAD_DIR, archivo);
-  if (filePath.startsWith(UPLOAD_DIR + path.sep) && fs.existsSync(filePath)) {
-    try { fs.unlinkSync(filePath); } catch (_) { /* noop */ }
-  }
+  borrarImagen(fotoUrl, DESTINO);
 }
 
 function esTruthy(v) {
@@ -264,15 +250,19 @@ router.post('/', postAuth, (req, res) => {
     return res.status(429).json({ error: 'Estás publicando muy rápido. Espera unos minutos.' });
 
   upload.single('foto')(req, res, async (err) => {
-    if (err) {
-      try { borrarFoto(`${UPLOAD_URL_BASE}/${req.file?.filename}`); } catch (_) { /* noop */ }
-      return res.status(400).json({ error: err.message || 'Archivo no válido' });
-    }
+    // Con memoryStorage el archivo no llega a tocarse el disco, asi que no hay
+    // nada que borrar cuando Multer aborta (tamano excedido, varios archivos).
+    if (err) return res.status(400).json({ error: err.message || 'Archivo no válido' });
+
+    let foto_url = null;
     try {
       const contenido = normalizarContenido(req.body?.contenido);
-      const foto_url = req.file ? `${UPLOAD_URL_BASE}/${req.file.filename}` : null;
+      if (req.file) {
+        const guardada = await persistirFoto(req.file);
+        foto_url = guardada.url;
+      }
       if (!contenido && !foto_url) {
-        if (req.file) borrarFoto(foto_url);
+        if (foto_url) borrarFoto(foto_url);
         return res.status(400).json({ error: 'Escribe algo o adjunta una foto para publicar' });
       }
 
@@ -283,8 +273,11 @@ router.post('/', postAuth, (req, res) => {
       const post = await obtenerPost(result.insertId, memberId);
       res.status(201).json({ message: 'Publicación compartida', post });
     } catch (e) {
+      if (foto_url) borrarFoto(foto_url);
+      // Un archivo que no es una imagen llega aqui con status 400: no es un
+      // fallo del servidor, es una entrada invalida.
+      if (e.status === 400) return res.status(400).json({ error: e.message });
       console.error('[latribu] Error al crear post:', e.message);
-      if (req.file) borrarFoto(`${UPLOAD_URL_BASE}/${req.file.filename}`);
       res.status(500).json({ error: 'Error al publicar' });
     }
   });
@@ -294,42 +287,53 @@ router.post('/', postAuth, (req, res) => {
 router.put('/:id', postAuth, (req, res) => {
   upload.single('foto')(req, res, async (err) => {
     if (err) return res.status(400).json({ error: err.message || 'Archivo no válido' });
+
+    const id = parseInt(req.params.id);
+    const [rows] = await pool.execute(
+      'SELECT id, tribu_user_id, contenido, foto_url FROM tribu_posts WHERE id = ? LIMIT 1', [id]);
+    if (!rows.length) return res.status(404).json({ error: 'Publicación no encontrada' });
+
+    const actual = rows[0];
+    const esDueño = req.tribuUser && Number(req.tribuUser.id) === Number(actual.tribu_user_id);
+    if (!esDueño && !esAdmin(req)) {
+      return res.status(403).json({ error: 'No puedes editar esta publicación' });
+    }
+
+    // Se guarda la foto nueva antes de tocar nada. Antes se borraba la vieja
+    // primero, y si el UPDATE fallaba el post quedaba apuntando a un archivo
+    // que ya no existia.
+    let fotoNueva = null;
+    if (req.file) {
+      try {
+        fotoNueva = (await persistirFoto(req.file)).url;
+      } catch (e) {
+        return res.status(400).json({ error: e.message || 'Archivo no válido' });
+      }
+    }
+
+    let contenido = normalizarContenido(req.body?.contenido);
+    if (!req.body || req.body.contenido === undefined) contenido = actual.contenido;
+
+    const foto_url = fotoNueva !== null ? fotoNueva
+      : esTruthy(req.body?.eliminar_foto) ? null
+      : actual.foto_url;
+
+    if (!String(contenido || '').trim() && !foto_url) {
+      if (fotoNueva) borrarFoto(fotoNueva);
+      return res.status(400).json({ error: 'La publicación no puede quedar vacía' });
+    }
+
     try {
-      const id = parseInt(req.params.id);
-      const [rows] = await pool.execute('SELECT id, tribu_user_id, contenido, foto_url FROM tribu_posts WHERE id = ? LIMIT 1', [id]);
-      if (!rows.length) {
-        if (req.file) borrarFoto(`${UPLOAD_URL_BASE}/${req.file.filename}`);
-        return res.status(404).json({ error: 'Publicación no encontrada' });
-      }
-      const actual = rows[0];
-      const esDueño = req.tribuUser && Number(req.tribuUser.id) === Number(actual.tribu_user_id);
-      if (!esDueño && !esAdmin(req)) {
-        if (req.file) borrarFoto(`${UPLOAD_URL_BASE}/${req.file.filename}`);
-        return res.status(403).json({ error: 'No puedes editar esta publicación' });
-      }
-
-      let contenido = normalizarContenido(req.body?.contenido);
-      if (!req.body || req.body.contenido === undefined) contenido = actual.contenido;
-      let foto_url = actual.foto_url;
-
-      if (req.file) {
-        if (foto_url) borrarFoto(foto_url);
-        foto_url = `${UPLOAD_URL_BASE}/${req.file.filename}`;
-      } else if (esTruthy(req.body?.eliminar_foto)) {
-        if (foto_url) borrarFoto(foto_url);
-        foto_url = null;
-      }
-
-      if (!String(contenido || '').trim() && !foto_url)
-        return res.status(400).json({ error: 'La publicación no puede quedar vacía' });
-
       await pool.execute(
         'UPDATE tribu_posts SET contenido = ?, foto_url = ?, editado = 1 WHERE id = ?',
         [String(contenido || '').trim() || '(Foto)', foto_url, id]
       );
+      // La foto que quedo desplazada se borra solo cuando el UPDATE funciono.
+      if (actual.foto_url && actual.foto_url !== foto_url) borrarFoto(actual.foto_url);
       const post = await obtenerPost(id, req.tribuUser?.id || null, false);
       res.json({ message: 'Publicación actualizada', post });
     } catch (e) {
+      if (fotoNueva) borrarFoto(fotoNueva);
       console.error('[latribu] Error al editar post:', e.message);
       res.status(500).json({ error: 'Error al actualizar la publicación' });
     }
