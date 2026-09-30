@@ -5,12 +5,13 @@
     plantillas:   { href: 'plantillas.html',  icon: '📝', label: 'Plantillas',       section: 'principal' },
     encuestas:    { href: 'encuestas.html',   icon: '📊', label: 'Encuestas',        section: 'principal' },
     testimonios:  { href: 'testimonios.html', icon: '⭐', label: 'Testimonios',      section: 'principal' },
+    posts:        { href: 'posts.html',       icon: '💜', label: 'Comunidad',       section: 'principal' },
     usuarios:     { href: 'usuarios.html',    icon: '👥', label: 'Administradores',  section: 'config' },
     config:       { href: 'config.html',      icon: '⚙️', label: 'Ajustes',          section: 'config' },
     accesos:      { href: 'accesos.html',     icon: '🔐', label: 'Accesos',          section: 'config' },
   };
 
-  const NAV_ORDER = ['videos', 'tribu-users', 'plantillas', 'encuestas', 'testimonios', 'usuarios', 'config', 'accesos'];
+  const NAV_ORDER = ['videos', 'tribu-users', 'plantillas', 'encuestas', 'testimonios', 'posts', 'usuarios', 'config', 'accesos'];
 
   function logoSrc() { return AdminApi.asset('logo_latribu.png') + '?' + Date.now(); }
 
