@@ -168,6 +168,18 @@ app.get('/calendario', (req, res) => sendPublicHtml(res, 'calendario.html'));
 app.get('/comunidad', (req, res) => sendPublicHtml(res, 'comunidad.html'));
 app.get('/comunidad.html', (req, res) => sendPublicHtml(res, 'comunidad.html'));
 
+// Segunda capa para /uploads: las imagenes se validan por contenido al
+// subirlas (lib/subidaImagen.js), pero un archivo antiguo o subido por otra
+// ruta no deberia poder ejecutarse en el origen si alguien lo abre directo.
+// nosniff evita que el navegador obedezca a un Content-Type ambiguo.
+app.use((req, res, next) => {
+  if (req.path.startsWith('/uploads/')) {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Content-Security-Policy', "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'");
+  }
+  next();
+});
+
 // Static files
 app.use(express.static(path.join(__dirname, '../public'), { maxAge: '1d', index: false }));
 
