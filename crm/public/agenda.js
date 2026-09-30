@@ -127,8 +127,10 @@
         api(`/citas?paciente_id=${pacienteId}`, { loaderMessage: 'Cargando citas…' }),
         api(`/pacientes/${pacienteId}/sesiones-resumen`, { loader: false }).catch(() => null),
       ]);
-      const total      = sesResumen ? sesResumen.sesiones_registradas : 0;
-      const realizadas = sesResumen ? sesResumen.citas_tomadas : 0;
+      // El historial y sus estadísticas se derivan SIEMPRE de las citas reales.
+      // sesResumen solo alimenta "Por agendar", que sí depende del paquete vigente.
+      const total      = citas.length;
+      const realizadas = citas.filter(c => ['realizada','no_show'].includes(c.estado)).length;
       const pendientes = citas.filter(c => ['pendiente','confirmada','reagendada'].includes(c.estado)).length;
       const porAgendar = sesResumen ? sesResumen.pendientes : 0;
       // Actualizar badge lateral con el valor real de sesiones pendientes
@@ -142,7 +144,7 @@
         if (!porMes[mesKey]) { porMes[mesKey] = []; ordenMes.push(mesKey); }
         porMes[mesKey].push(c);
       });
-      const timelineHTML = total
+      const timelineHTML = citas.length
         ? `<div class="ag-timeline">${ordenMes.map(mesKey => {
             const [anio,mes] = mesKey.split('-');
             const labelMes = mesKey==='sin-fecha' ? 'Sin fecha' : `${MESES_ES[parseInt(mes,10)-1]} ${anio}`;

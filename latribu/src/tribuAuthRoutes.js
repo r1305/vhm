@@ -492,4 +492,4 @@ router.put('/suscripciones/:id/auto-renovacion', tribuAuthMiddleware, async (req
   } catch (err) { console.error(err); res.status(500).json({ error: 'No se pudo actualizar la autorenovación' }); }
 });
 
-module.exports = { router, tribuAuthMiddleware };
+module.exports = { router, tribuAuthMiddleware, TRIBU_JWT_SECRET };

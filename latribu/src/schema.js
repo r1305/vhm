@@ -342,6 +342,37 @@ async function crearEsquema() {
   const [tcfg] = await pool.query('SELECT id FROM testimonios_config WHERE id = 1');
   if (tcfg.length === 0) await pool.query('INSERT INTO testimonios_config (id, seccion_activa) VALUES (1, TRUE)');
 
+  // ── Comunidad (posts) ──
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS tribu_posts (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      tribu_user_id INT NOT NULL,
+      contenido TEXT NOT NULL,
+      foto_url VARCHAR(500) NULL,
+      likes INT NOT NULL DEFAULT 0,
+      activo TINYINT(1) NOT NULL DEFAULT 1,
+      editado TINYINT(1) NOT NULL DEFAULT 0,
+      creado_por_admin INT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      KEY idx_posts_user (tribu_user_id),
+      KEY idx_posts_activo_created (activo, created_at),
+      CONSTRAINT fk_posts_user FOREIGN KEY (tribu_user_id) REFERENCES tribu_users(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS tribu_post_likes (
+      post_id INT NOT NULL,
+      tribu_user_id INT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (post_id, tribu_user_id),
+      KEY idx_ppl_user (tribu_user_id),
+      CONSTRAINT fk_ppl_post FOREIGN KEY (post_id) REFERENCES tribu_posts(id) ON DELETE CASCADE,
+      CONSTRAINT fk_ppl_user FOREIGN KEY (tribu_user_id) REFERENCES tribu_users(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+
   // ── Plantillas ──
   await pool.query(`
     CREATE TABLE IF NOT EXISTS plantilla_eventos (
