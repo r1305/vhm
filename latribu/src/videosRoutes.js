@@ -1,12 +1,9 @@
 const { Router } = require('express');
-const path = require('path');
-const fs = require('fs');
-const crypto = require('crypto');
 const { Readable } = require('stream');
 const { pipeline } = require('stream/promises');
-const multer = require('multer');
 const pool = require('./db');
 const { authMiddleware } = require('./auth');
+const { crearUploadImagen, guardarImagen, borrarImagen } = require('./lib/subidaImagen');
 const { LANDING_INTRO_DEFAULT, LANDING_PACTO_DEFAULT, ensureSchema: ensureVideoSchema } = require('./schema');
 
 function isDbUnreachable(err) {
@@ -206,28 +203,21 @@ function landingPayload(row) {
   };
 }
 
-// --- Subida de miniaturas con nombres aleatorios seguros ---
-const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const dir = path.join(__dirname, '../public/uploads');
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    cb(null, dir);
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
-    cb(null, `video_${crypto.randomBytes(16).toString('hex')}${ext}`);
-  }
-});
+// --- Subida de miniaturas con validación por contenido ---
+// Las miniaturas viven en public/uploads/ sin subcarpeta, como antes.
+const DESTINO_MINIATURA = '';
+const ASSET_BASE = (process.env.SITE_URL || process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
+const upload = crearUploadImagen({ limiteBytes: 5 * 1024 * 1024 });
 
-const upload = multer({
-  storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
-  fileFilter: (req, file, cb) => {
-    if (ALLOWED_MIME_TYPES.has(file.mimetype)) cb(null, true);
-    else cb(new Error('Solo se permiten imágenes (jpg, png, webp, gif)'));
-  }
-});
+const uploadMiniatura = (req, res, next) =>
+  upload.single('thumbnail')(req, res, (err) => {
+    if (err) return res.status(400).json({ error: err.message || 'Archivo no válido' });
+    next();
+  });
+
+async function guardarMiniatura(file) {
+  return (await guardarImagen(file, { destino: DESTINO_MINIATURA, prefijo: 'video', assetBase: ASSET_BASE })).url;
+}
 
 // Extrae el ID de un video de YouTube desde distintos formatos de URL
 function youtubeId(url) {
@@ -309,18 +299,10 @@ async function enriquecerMedia(videoUrl, { thumb, duracion, titulo } = {}) {
 }
 
 function eliminarArchivoLocal(thumbUrl) {
-  // Solo borra archivos subidos localmente, no URLs externas
-  const BASE = (process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
-  const prefix = BASE ? `${BASE}/uploads/` : '/uploads/';
-  if (thumbUrl && thumbUrl.includes('/uploads/')) {
-    // Extrae solo la parte /uploads/archivo.ext para buscar en el filesystem
-    const match = thumbUrl.match(/\/uploads\/[^?#]+/);
-    if (match) {
-      const filePath = path.join(__dirname, '../public', match[0]);
-      if (fs.existsSync(filePath)) {
-        try { fs.unlinkSync(filePath); } catch (_) { /* ignore */ }
-      }
-    }
+  // Solo borra archivos subidos localmente, no URLs externas: borrarImagen
+  // ignora en cuanto la URL no apunta a la carpeta de subidas.
+  if (thumbUrl && String(thumbUrl).includes('/uploads/')) {
+    borrarImagen(thumbUrl, DESTINO_MINIATURA);
   }
 }
 
@@ -589,15 +571,16 @@ router.get('/admin', authMiddleware, async (req, res) => {
   }
 });
 
-router.post('/', authMiddleware, requireAdmin, upload.single('thumbnail'), async (req, res) => {
+router.post('/', authMiddleware, requireAdmin, uploadMiniatura, async (req, res) => {
+  let guardada = null;
   try {
     const { categoria_id, titulo, subtitulo, descripcion, video_url, duracion, activo, thumbnail_url } = req.body;
     if (!video_url) return res.status(400).json({ error: 'El enlace del video es obligatorio' });
 
     // Prioridad: archivo subido > URL manual > miniatura/duración/título
     // automáticos del enlace (YouTube o Loom).
-    const ASSET_BASE = (process.env.SITE_URL || process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
-    const thumbInicial = req.file ? `${ASSET_BASE}/uploads/${req.file.filename}` : (thumbnail_url || null);
+    if (req.file) guardada = await guardarMiniatura(req.file);
+    const thumbInicial = guardada || (thumbnail_url || null);
     const media = await enriquecerMedia(video_url, {
       thumb: thumbInicial,
       duracion: duracion || null,
@@ -632,12 +615,15 @@ router.post('/', authMiddleware, requireAdmin, upload.single('thumbnail'), async
     );
     res.status(201).json({ id: result.insertId, message: 'Video creado' });
   } catch (err) {
+    if (guardada) eliminarArchivoLocal(guardada);
+    if (err.status === 400) return res.status(400).json({ error: err.message });
     console.error(err);
     res.status(500).json({ error: 'Error al crear video' });
   }
 });
 
-router.put('/:id', authMiddleware, requireAdmin, upload.single('thumbnail'), async (req, res) => {
+router.put('/:id', authMiddleware, requireAdmin, uploadMiniatura, async (req, res) => {
+  let guardada = null;
   try {
     const { categoria_id, titulo, subtitulo, descripcion, video_url, duracion, activo, thumbnail_url, eliminar_thumbnail } = req.body;
     if (!video_url) return res.status(400).json({ error: 'El enlace del video es obligatorio' });
@@ -646,16 +632,19 @@ router.put('/:id', authMiddleware, requireAdmin, upload.single('thumbnail'), asy
     if (existing.length === 0) return res.status(404).json({ error: 'Video no encontrado' });
 
     let thumb = existing[0].thumbnail_url;
+    // La miniatura que queda desplazada se borra solo cuando el UPDATE ya
+    // funciono; si falla, el video sigue apuntando a un archivo que existe.
+    let anteriorABorrar = null;
 
     if (req.file) {
-      eliminarArchivoLocal(thumb);
-      const ASSET_BASE = (process.env.SITE_URL || process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
-      thumb = `${ASSET_BASE}/uploads/${req.file.filename}`;
+      guardada = await guardarMiniatura(req.file);
+      thumb = guardada;
+      if (existing[0].thumbnail_url) anteriorABorrar = existing[0].thumbnail_url;
     } else if (eliminar_thumbnail === 'true' || eliminar_thumbnail === '1') {
-      eliminarArchivoLocal(thumb);
+      if (existing[0].thumbnail_url) anteriorABorrar = existing[0].thumbnail_url;
       thumb = autoThumbnail(video_url);
     } else if (thumbnail_url !== undefined && thumbnail_url !== '' && thumbnail_url !== thumb) {
-      eliminarArchivoLocal(thumb);
+      if (existing[0].thumbnail_url) anteriorABorrar = existing[0].thumbnail_url;
       thumb = thumbnail_url;
     }
 
@@ -696,9 +685,15 @@ router.put('/:id', authMiddleware, requireAdmin, upload.single('thumbnail'), asy
         req.params.id
       ]
     );
-    if (result.affectedRows === 0) return res.status(404).json({ error: 'Video no encontrado' });
+    if (result.affectedRows === 0) {
+      if (guardada) eliminarArchivoLocal(guardada);
+      return res.status(404).json({ error: 'Video no encontrado' });
+    }
+    if (anteriorABorrar) eliminarArchivoLocal(anteriorABorrar);
     res.json({ message: 'Video actualizado' });
   } catch (err) {
+    if (guardada) eliminarArchivoLocal(guardada);
+    if (err.status === 400) return res.status(400).json({ error: err.message });
     console.error(err);
     res.status(500).json({ error: 'Error al actualizar video' });
   }
@@ -707,9 +702,9 @@ router.put('/:id', authMiddleware, requireAdmin, upload.single('thumbnail'), asy
 router.delete('/:id', authMiddleware, requireAdmin, async (req, res) => {
   try {
     const [existing] = await pool.execute('SELECT thumbnail_url FROM videos WHERE id = ?', [req.params.id]);
-    if (existing.length > 0) eliminarArchivoLocal(existing[0].thumbnail_url);
     const [result] = await pool.execute('DELETE FROM videos WHERE id = ?', [req.params.id]);
     if (result.affectedRows === 0) return res.status(404).json({ error: 'Video no encontrado' });
+    if (existing.length > 0) eliminarArchivoLocal(existing[0].thumbnail_url);
     res.json({ message: 'Video eliminado' });
   } catch (err) {
     console.error(err);

@@ -78,7 +78,11 @@ function directorioUploads(destino) {
 }
 
 function urlUploads(destino, nombreArchivo, assetBase) {
-  return `${String(assetBase).replace(/\/$/, '')}/uploads/${destino}/${nombreArchivo}`;
+  // destino puede ir vacio (archivos que viven justo en uploads/), y sin esto
+  // la URL saldria con una doble barra.
+  const carpeta = String(destino || '').replace(/^\/+|\/+$/g, '');
+  const base = `${String(assetBase || '').replace(/\/$/, '')}/uploads`;
+  return carpeta ? `${base}/${carpeta}/${nombreArchivo}` : `${base}/${nombreArchivo}`;
 }
 
 /**
