@@ -12,11 +12,9 @@
     primera_vez: 'Primera consulta', seguimiento: 'Tratamiento',
     evaluacion: 'Seguimiento', urgencia: 'Urgencia',
   };
-  const MODALIDAD_LABEL = { presencial: 'Presencial', videollamada: 'Videollamada', telefono: 'Teléfono' };
+const MODALIDAD_LABEL = { presencial: 'Presencial', videollamada: 'Videollamada', telefono: 'Teléfono' };
 
-  function pacientesCache() { return window.CRM.pacientesCache || []; }
-
-  function fmtFecha(v) { return v ? String(v).slice(0, 10) : '—'; }
+function fmtFecha(v) { return v ? String(v).slice(0, 10) : '—'; }
   function fmtHora(v) { return v ? String(v).slice(0, 5) : '—'; }
   function lblEstado(v) { return ESTADO_CITA[v]?.label || v || '—'; }
   function lblTipo(v) { return TIPO_CITA[v] || v || '—'; }
@@ -103,14 +101,25 @@
     const dropdown = document.getElementById('f_paciente_dropdown');
     if (!dropdown) return;
 
-    function renderDropdown(q) {
-      const matches = pacientesCache().filter(p =>
-        fullName(p).toLowerCase().includes(q.toLowerCase()) ||
-        (p.telefono || '').includes(q) ||
-        (p.email || '').toLowerCase().includes(q.toLowerCase())
-      ).slice(0, 10);
+    // El autocompletado consulta al servidor en vez de filtrar window.CRM.pacientesCache.
+    // Ese cache lo sobrescribian las tres vistas con subconjuntos distintos (Agenda lo
+    // dejaba filtrado por terapeuta), asi que el mismo buscador mostraba pacientes
+    // distintos segun la pagina desde la que se abria la cita. El servidor ademas
+    // aplica ownerFilter y la busqueda real, en vez de los primeros 200 registros.
+    let searchSeq = 0;
+    async function renderDropdown(q) {
+      const seq = ++searchSeq;
+      let matches = [];
+      try {
+        matches = await api(`/pacientes?q=${encodeURIComponent(q)}`, { loader: false });
+      } catch {
+        if (seq === searchSeq) dropdown.style.display = 'none';
+        return;
+      }
+      // Si el usuario siguió escribiendo, esta respuesta ya no aplica.
+      if (seq !== searchSeq) return;
       if (!matches.length) { dropdown.style.display = 'none'; return; }
-      dropdown.innerHTML = matches.map(p =>
+      dropdown.innerHTML = matches.slice(0, 10).map(p =>
         `<div class="autocomplete-item" data-pid="${p.id}" data-tid="${p.terapeuta_id || ''}">
           <strong>${esc(fullName(p))}</strong>
           ${p.terapeuta_nombre ? `<span> — ${esc(p.terapeuta_nombre)}</span>` : ''}
@@ -129,14 +138,25 @@
       });
     }
 
+    // La busqueda va al servidor, asi que se espera a que el usuario deje de escribir
+    // para no lanzar una peticion por pulsacion. 220 ms es lo habitual en este tipo
+    // de autocompletado.
+    let searchTimer = null;
     searchInput.addEventListener('input', e => {
       hiddenId.value = '';
       const q = e.target.value.trim();
+      clearTimeout(searchTimer);
       if (q.length < 1) { dropdown.style.display = 'none'; return; }
-      renderDropdown(q);
+      searchTimer = setTimeout(() => renderDropdown(q), 220);
     });
     searchInput.addEventListener('focus', e => { if (e.target.value.trim()) renderDropdown(e.target.value.trim()); });
-    searchInput.addEventListener('blur', () => setTimeout(() => { dropdown.style.display = 'none'; }, 150));
+    // Al perder el foco se cancela la búsqueda pendiente y se invalida el contador de
+    // secuencia, para que una respuesta que llegue tarde no vuelva a abrir el desplegable.
+    searchInput.addEventListener('blur', () => {
+      clearTimeout(searchTimer);
+      searchSeq++;
+      setTimeout(() => { dropdown.style.display = 'none'; }, 150);
+    });
   }
 
   function showConfirmEliminarCita(citaId, onSuccess) {
@@ -250,11 +270,19 @@
     }, 0);
   }
 
-  function showNuevaCita(opts = {}) {
+  async function showNuevaCita(opts = {}) {
     const { paciente = null, pacienteId = null, onSuccess } = opts;
-    const preselected = paciente || (pacienteId
-      ? pacientesCache().find(p => String(p.id) === String(pacienteId))
-      : null);
+    // Antes se buscaba en window.CRM.pacientesCache, que cada vista sobrescribia con
+    // su propio subconjunto: si el paciente no estaba en ese listado, la
+    // preseleccion fallaba en silencio y el modal abria sin paciente bloqueado.
+    // Ahora se resuelve por id contra el servidor.
+    let preselected = paciente;
+    if (!preselected && pacienteId) {
+      try {
+        const [row] = await api(`/pacientes/${encodeURIComponent(pacienteId)}`, { loader: false });
+        preselected = row || null;
+      } catch { preselected = null; }
+    }
     // getFullYear/getMonth/getDate usan la zona del navegador. Lima es UTC-5, asi que
     // despues de las 19:00 devolarianan el dia siguiente. limaDateKey() fija Lima.
     const fechaISO = limaDateKey(new Date());

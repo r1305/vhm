@@ -1,6 +1,7 @@
 const { Router } = require('express');
 const pool = require('../lib/db');
 const { auth, authAdmin, ownerFilter } = require('../lib/auth');
+const { isStaffAdmin } = require('../lib/roles');
 
 const router = Router();
 const t = (v, max = 255) => v == null ? null : String(v).trim().slice(0, max) || null;
@@ -112,7 +113,9 @@ router.get('/:pid', auth, async (req, res) => {
       [req.params.pid]
     );
     if (!p) return res.status(404).json({ error: 'No encontrado' });
-    if (req.user.rol === 'terapeuta' && p.terapeuta_id !== req.user.id)
+    // isStaffAdmin en vez de comparar contra 'terapeuta': cualquier rol nuevo que no
+    // sea terapeuta debe quedar fuera, sin depender de tocar esta línea.
+    if (!isStaffAdmin(req.user?.rol) && p.terapeuta_id !== req.user.id)
       return res.status(403).json({ error: 'Sin acceso' });
     res.json(p);
   } catch { res.status(500).json({ error: 'Error' }); }
@@ -137,11 +140,23 @@ router.put('/:pid', authAdmin, async (req, res) => {
   } catch { res.status(500).json({ error: 'Error al actualizar' }); }
 });
 
+// Evita que un terapeuta consulte los datos de un paciente que no es suyo. El
+// listado ya aplica ownerFilter; estos endpoints por id no lo hacian, asi que
+// bastaba con conocer el id de otro paciente para ver sus paquetes y cuotas.
+async function puedeVerPaciente(req, pid) {
+  if (isStaffAdmin(req.user?.rol)) return true;
+  const [[p]] = await pool.execute(
+    'SELECT 1 AS ok FROM pacientes WHERE id = ? AND terapeuta_id = ?', [pid, req.user.id]
+  );
+  return !!p;
+}
+
 // ── Resumen de sesiones (histórico completo, independiente del estado del paquete) ──
 router.get('/:pid/sesiones-resumen', auth, async (req, res) => {
   const pid = id(req.params.pid);
   if (!pid) return res.status(400).json({ error: 'ID inválido' });
   try {
+    if (!await puedeVerPaciente(req, pid)) return res.status(403).json({ error: 'Sin acceso' });
     res.json(await getSesionesResumen(pid));
   } catch { res.status(500).json({ error: 'Error' }); }
 });
@@ -151,6 +166,7 @@ router.get('/:pid/paquetes-adquiridos', auth, async (req, res) => {
   const pid = id(req.params.pid);
   if (!pid) return res.status(400).json({ error: 'ID inválido' });
   try {
+    if (!await puedeVerPaciente(req, pid)) return res.status(403).json({ error: 'Sin acceso' });
     const paquetes = await loadPacientePaquetes(pid);
     res.json(paquetes);
   } catch {

@@ -8,7 +8,7 @@
 
   let terapeutaId        = document.getElementById('agendaTerapeuta')?.value || '';
   let pacientesCache     = [];
-  let citasCounts        = {};
+  let sesionesPorAgendar = {};
   let pacienteSeleccionado = null;
 
   const MESES_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -86,7 +86,7 @@
     if (!filtered.length) { list.innerHTML = '<div class="list-empty">Sin pacientes</div>'; return; }
 
     list.innerHTML = filtered.map(p => {
-      const count   = citasCounts[String(p.id)] || 0;
+      const count   = sesionesPorAgendar[String(p.id)] || 0;
       const inicial = (p.nombre?.[0]||'?').toUpperCase();
       const sub     = p.telefono || p.terapeuta_nombre || '';
       const active  = String(p.id) === String(pacienteSeleccionado) ? ' active' : '';
@@ -97,7 +97,7 @@
             <div class="ag-pac-name">${esc(fullName(p))}</div>
             ${sub ? `<div class="ag-pac-sub">${esc(sub)}</div>` : ''}
           </div>
-          ${count ? `<span class="ag-pac-badge">${count}</span>` : ''}
+          ${count ? `<span class="ag-pac-badge" title="${count} sesion${count === 1 ? '' : 'es'} por agendar">${count}</span>` : ''}
         </div>`;
     }).join('');
 
@@ -134,7 +134,7 @@
       const pendientes = citas.filter(c => ['pendiente','confirmada','reagendada'].includes(c.estado)).length;
       const porAgendar = sesResumen ? sesResumen.pendientes : 0;
       // Actualizar badge lateral con el valor real de sesiones pendientes
-      citasCounts[String(pacienteId)] = porAgendar;
+      sesionesPorAgendar[String(pacienteId)] = porAgendar;
       renderPacList();
       const inicial    = (p.nombre?.[0]||'?').toUpperCase();
       const metaParts  = [p.telefono, p.email, p.terapeuta_nombre].filter(Boolean);
@@ -161,10 +161,10 @@
           </div>
           <button type="button" class="btn btn-primary btn-sm ag-btn-nueva-cita" id="agBtnNuevaCita" title="Nueva Cita"><i class="fas fa-plus"></i><span class="ag-btn-label">Nueva Cita</span></button>
           <div class="ag-detail-stats">
-              <div class="ag-stat"><div class="ag-stat-val">${total}</div><div class="ag-stat-lbl">Total</div></div>
-              <div class="ag-stat"><div class="ag-stat-val">${realizadas}</div><div class="ag-stat-lbl">Realizadas</div></div>
-              <div class="ag-stat"><div class="ag-stat-val">${pendientes}</div><div class="ag-stat-lbl">Pendientes</div></div>
-              <div class="ag-stat ${porAgendar > 0 ? 'ag-stat-warn' : ''}"><div class="ag-stat-val">${porAgendar}</div><div class="ag-stat-lbl">Por agendar</div></div>
+              <div class="ag-stat"><div class="ag-stat-val">${total}</div><div class="ag-stat-lbl">Citas</div></div>
+              <div class="ag-stat"><div class="ag-stat-val">${realizadas}</div><div class="ag-stat-lbl">Citas realizadas</div></div>
+              <div class="ag-stat"><div class="ag-stat-val">${pendientes}</div><div class="ag-stat-lbl">Citas pendientes</div></div>
+              <div class="ag-stat ${porAgendar > 0 ? 'ag-stat-warn' : ''}"><div class="ag-stat-val">${porAgendar}</div><div class="ag-stat-lbl">Sesiones por agendar</div></div>
           </div>
         </div>
         ${timelineHTML}`;
@@ -188,13 +188,12 @@
       if (tid) qs.set('terapeuta_id', tid);
       const pacientes = await api(`/pacientes?${qs}`, { loaderMessage: 'Cargando agenda…' });
       pacientesCache = pacientes;
-      window.CRM.pacientesCache = pacientes;
-      citasCounts = {};
+      sesionesPorAgendar = {};
       // Badge = sesiones pendientes por agendar (las del paquete vigente).
       // El backend ya lo calcula en sesiones_pendientes con la misma regla.
       pacientes.forEach(p => {
         const porAgendar = Number(p.sesiones_pendientes) || 0;
-        if (porAgendar > 0) citasCounts[String(p.id)] = porAgendar;
+        if (porAgendar > 0) sesionesPorAgendar[String(p.id)] = porAgendar;
       });
       const sel = document.getElementById('agendaPaciente');
       if (sel) {
