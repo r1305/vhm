@@ -4,7 +4,7 @@
 (function () {
   'use strict';
 
-  const { api, toast, esc, fmtDate, badge, fullName,
+  const { api, toast, esc, fmtDate, badge, fullName, limaDateKey,
           openModal, closeModal, ESTADO_PACIENTE } = window.CRM;
   const isAdmin = ['superadmin', 'admin', 'recepcion'].includes(window.__USER_ROL__);
 
@@ -399,7 +399,9 @@
     } finally {
       window.hideCrmLoader?.();
     }
-    const hoy = new Date().toISOString().slice(0, 10);
+    // toISOString() devuelve la fecha en UTC. Lima es UTC-5, asi que despues de
+    // las 19:00 ya seria el dia siguiente. limaDateKey() resuelve en hora de Lima.
+    const hoy = limaDateKey(new Date());
     const paqueteActivo = paquetesPac.find((x) => x.estado === 'activo') || null;
     const bloquearCompra = paqueteActivo?.estado === 'activo';
     const fechaSugerida = hoy;
