@@ -198,6 +198,7 @@ const { router: tribuAuthRouter } = require('./tribuAuthRoutes');
 app.use('/api/tribu-auth', tribuAuthRouter);
 app.use('/api/tribu-pagos', require('./tribuPagosRoutes'));
 app.use('/api/tribu-catalogo', require('./tribuCatalogoRoutes'));
+app.use('/api/posts', require('./postsRoutes'));
 
 app.use((err, req, res, next) => {
   console.error('[latribu] Error no capturado:', err);
