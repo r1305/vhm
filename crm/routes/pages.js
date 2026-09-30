@@ -247,12 +247,14 @@ router.get('/dashboard', requireSession, (req, res, next) => {
     `);
 
     // Ocupación por terapeuta
+    // La tabla `terapeutas` también guarda admins y superadmins; sin el filtro de
+    // rol salían en la card con 0 pacientes. Mismo criterio que usa /calendario.
     const [ocupacion] = await db.execute(`
       SELECT t.id, t.nombre, t.apellido,
              COUNT(p.id) AS pacientes_asignados
       FROM terapeutas t
       LEFT JOIN pacientes p ON p.terapeuta_id = t.id AND p.estado = 'activo'
-      WHERE t.activo = 1
+      WHERE t.activo = 1 AND t.rol = 'terapeuta'
       GROUP BY t.id ORDER BY pacientes_asignados DESC
     `);
 
