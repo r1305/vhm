@@ -347,7 +347,7 @@ async function crearEsquema() {
     CREATE TABLE IF NOT EXISTS tribu_posts (
       id INT AUTO_INCREMENT PRIMARY KEY,
       tribu_user_id INT NOT NULL,
-      contenido TEXT NOT NULL,
+      contenido TEXT NULL,
       foto_url VARCHAR(500) NULL,
       likes INT NOT NULL DEFAULT 0,
       activo TINYINT(1) NOT NULL DEFAULT 1,
@@ -360,6 +360,9 @@ async function crearEsquema() {
       CONSTRAINT fk_posts_user FOREIGN KEY (tribu_user_id) REFERENCES tribu_users(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
+  // Una publicacion puede ser solo una foto, asi que el texto es opcional. La
+  // tabla ya existia con NOT NULL, por eso hace falta el MODIFY.
+  try { await pool.query('ALTER TABLE tribu_posts MODIFY COLUMN contenido TEXT NULL'); } catch (_) {}
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS tribu_post_likes (

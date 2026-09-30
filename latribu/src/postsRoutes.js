@@ -31,25 +31,21 @@ async function persistirFoto(file) {
 }
 
 // ── Anti-spam: máx. 5 publicaciones por usuario cada 5 minutos ──
+// El contador vive en la tabla, no en un Map del proceso: asi sobrevive a un
+// reinicio y es el mismo limite si la app corre en varias instancias.
+// Además, como solo cuenta filas realmente creadas, una publicación rechazada
+// por validación no consume cuota.
 const MAX_PUBLICOS_POR_VENTANA = 5;
-const VENTANA_MS = 5 * 60 * 1000;
-const publicos = new Map();
+const VENTANA_MINUTOS = 5;
 
-function exceededLimite(userId) {
-  const ahora = Date.now();
-  const prev = publicos.get(userId);
-  if (!prev || ahora - prev.start > VENTANA_MS) {
-    publicos.set(userId, { count: 1, start: ahora });
-    return false;
-  }
-  if (prev.count >= MAX_PUBLICOS_POR_VENTANA) return true;
-  prev.count++;
-  return false;
+async function excedeLimite(userId) {
+  const [[row]] = await pool.execute(
+    `SELECT COUNT(*) AS c FROM tribu_posts
+     WHERE tribu_user_id = ? AND created_at >= (NOW() - INTERVAL ? MINUTE)`,
+    [userId, VENTANA_MINUTOS]
+  );
+  return Number(row.c) >= MAX_PUBLICOS_POR_VENTANA;
 }
-setInterval(() => {
-  const ahora = Date.now();
-  for (const [k, v] of publicos) if (ahora - v.start > VENTANA_MS) publicos.delete(k);
-}, VENTANA_MS).unref();
 
 function esAdmin(req) {
   return !!(req.user && (req.user.rol === 'SUPER_ADMIN' || req.user.rol === 'ADMIN'));
@@ -80,7 +76,13 @@ function postAuth(req, res, next) {
 
 function normalizarContenido(raw) {
   const texto = String(raw == null ? '' : raw).replace(/\r\n/g, '\n').trim();
-  if (texto.length > MAX_CONTENIDO) return texto.slice(0, MAX_CONTENIDO);
+  // Antes se recortaba en silencio y la persona publicaba media frase sin
+  // enterarse. Ahora se rechaza y se le dice cuanto le sobra.
+  if (texto.length > MAX_CONTENIDO) {
+    const err = new Error(`Es demasiado largo. Máximo ${MAX_CONTENIDO} caracteres (te sobran ${texto.length - MAX_CONTENIDO}).`);
+    err.status = 400;
+    throw err;
+  }
   return texto;
 }
 
@@ -264,11 +266,19 @@ router.get('/:id', tribuAuthMiddleware, async (req, res) => {
 });
 
 // ── Crear ──
-router.post('/', postAuth, (req, res) => {
+router.post('/', postAuth, async (req, res) => {
   const memberId = req.tribuUser?.id;
   if (!memberId) return res.status(403).json({ error: 'Solo los miembros pueden publicar' });
-  if (exceededLimite(memberId))
-    return res.status(429).json({ error: 'Estás publicando muy rápido. Espera unos minutos.' });
+  try {
+    // Se comprueba antes para no guardar una foto que despues se rechaza. Como
+    // el limite se cuenta sobre las filas de la tabla, una peticion que luego
+    // falle la validacion no gasta cuota.
+    if (await excedeLimite(memberId))
+      return res.status(429).json({ error: 'Estás publicando muy rápido. Espera unos minutos.' });
+  } catch (e) {
+    // Si no se puede consultar, preferimos dejar publicar antes que bloquear.
+    console.error('[latribu] Error al comprobar el límite de publicaciones:', e.message);
+  }
 
   upload.single('foto')(req, res, async (err) => {
     // Con memoryStorage el archivo no llega a tocarse el disco, asi que no hay
@@ -289,7 +299,7 @@ router.post('/', postAuth, (req, res) => {
 
       const [result] = await pool.execute(
         'INSERT INTO tribu_posts (tribu_user_id, contenido, foto_url) VALUES (?, ?, ?)',
-        [memberId, contenido || '(Foto)', foto_url]
+        [memberId, contenido || null, foto_url]
       );
       const post = await obtenerPost(result.insertId, memberId);
       res.status(201).json({ message: 'Publicación compartida', post });
@@ -332,7 +342,14 @@ router.put('/:id', postAuth, (req, res) => {
       }
     }
 
-    let contenido = normalizarContenido(req.body?.contenido);
+    let contenido;
+    try {
+      contenido = normalizarContenido(req.body?.contenido);
+    } catch (e) {
+      // La foto nueva ya se habia guardado: hay que deshacerla.
+      if (fotoNueva) borrarFoto(fotoNueva);
+      return res.status(400).json({ error: e.message });
+    }
     if (!req.body || req.body.contenido === undefined) contenido = actual.contenido;
 
     const foto_url = fotoNueva !== null ? fotoNueva
@@ -347,7 +364,7 @@ router.put('/:id', postAuth, (req, res) => {
     try {
       await pool.execute(
         'UPDATE tribu_posts SET contenido = ?, foto_url = ?, editado = 1 WHERE id = ?',
-        [String(contenido || '').trim() || '(Foto)', foto_url, id]
+        [String(contenido || '').trim() || null, foto_url, id]
       );
       // La foto que quedo desplazada se borra solo cuando el UPDATE funciono.
       if (actual.foto_url && actual.foto_url !== foto_url) borrarFoto(actual.foto_url);
