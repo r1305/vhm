@@ -52,7 +52,6 @@
       if (filtroSinTel)   qs.set('sin_telefono', '1');
       if (filtroSinEmail) qs.set('sin_email', '1');
       const data = await api(`/pacientes?${qs}`, { loaderMessage: 'Cargando pacientes…' });
-      window.CRM.pacientesCache = data;
 
       document.getElementById('tablaPacientes').innerHTML = data.length
         ? data.map(p => {

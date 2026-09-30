@@ -333,7 +333,6 @@
     confirmDialog, promptDialog,
     ESTADO_PACIENTE, ESTADO_LEAD, FUENTE_ICON, ESTADO_CITA,
     estadoCitaOptionsHtml, estadoCitaSelectEntries,
-    pacientesCache: [],
   };
   window.showCrmLoader = showLoader;
   window.hideCrmLoader = hideLoader;

@@ -613,7 +613,9 @@
 
   /* ── Init: cargar terapeutas para el modal de bloqueo ── */
   api('/terapeutas?clinicos=1', { loader: false }).then(ts => { terapeutasCache = ts; }).catch(() => {});
-  api('/pacientes', { loader: false }).then(ps => { window.CRM.pacientesCache = ps; }).catch(() => {});
+  // Antes aquí se cargaban los 200 pacientes solo para llenar window.CRM.pacientesCache.
+  // El calendario no pinta ningún campo de la entidad paciente y el autocompletado de
+  // "Nueva cita" ya consulta al servidor, así que la petición era 100% descartada.
   loadCitas();
 
 })();
