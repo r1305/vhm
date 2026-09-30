@@ -47,7 +47,9 @@
     });
     let data;
     try { data = await res.json(); } catch { throw new Error('Error del servidor.'); }
-    if (!res.ok) throw new Error(data.error || 'Usuario o contraseña incorrectos');
+    if (!res.ok) throw new Error(data.error || data.message || 'Usuario o contraseña incorrectos');
+    // El backend devuelve { success: true, data: { token, user } }
+    if (data.data) data = data.data;
     localStorage.setItem('token', data.token);
     localStorage.setItem('user', JSON.stringify(data.user));
   }
