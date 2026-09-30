@@ -329,7 +329,7 @@ router.put('/perfil', tribuAuthMiddleware, async (req, res) => {
     const user = await fetchUserPublic(req.tribuUser.id);
     const token = signToken(user);
     res.json({ user: userPayload(user), token });
-  } catch (err) { console.error(err); res.status(500).json({ error: 'Error al actualizar el perfil' ); }
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Error al actualizar el perfil' }); }
 });
 
 router.put('/perfil/comunidad', tribuAuthMiddleware, async (req, res) => {
