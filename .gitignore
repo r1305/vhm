@@ -5,3 +5,10 @@ node_modules/
 *client_secret*.json
 tmp_check.js
 referencia_estilos.jpeg
+
+# Secretos y archivos de trabajo locales
+cookie.txt
+temp_*.txt
+temp_*.html
+temp_*.diff
+staged*.diff
