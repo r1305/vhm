@@ -262,7 +262,8 @@ function renderCpChips(containerId, options, selected, max, limitId) {
 
 /* ── Modal Completar Perfil (3 pasos) ── */
 async function abrirModalPerfil() {
-  if (!_cpCatalogo.intereses.length && !_cpCatalogo.objetivos.length) {
+  // Cargar catálogo faltante (intereses u objetivos) independientemente
+  if (!_chipsCatalogo.intereses.length || !_chipsCatalogo.objetivos.length) {
     await cargarCatalogoChips();
   }
   const u = window.tribuUser;
