@@ -284,6 +284,7 @@ async function abrirModalPerfil() {
   if (!_chipsCatalogo.intereses.length || !_chipsCatalogo.objetivos.length) {
     await cargarCatalogoChips();
   }
+  const u = window.tribuUser;
   // Usar _chipsSeleccionados que es la fuente de verdad tras guardar
   _cpInteresesSel = [...(_chipsSeleccionados.intereses || [])];
   _cpObjetivosSel = [...(_chipsSeleccionados.objetivos || [])];
