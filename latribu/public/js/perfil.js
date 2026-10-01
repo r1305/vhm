@@ -2,6 +2,7 @@
 
 let quillHobbies = null;
 let quillDedicas = null;
+let isEditMode = false;
 const EMOJIS = ['😊','😂','🥰','😎','🤩','🙌','💪','🎉','🔥','✨','💡','🎯','🌟','🚀','💼','📚','🎨','🎵','🏋️','🧘','🌿','🍀','🐾','✈️','🌍','🏠','❤️','💙','💚','💛','🧡','💜','🤝','👏','🙏','💬','📝','🎓','🏆','⭐'];
 
 /* ── Loader ── */
@@ -40,6 +41,25 @@ function initQuillEditors() {
       `<button type="button" onclick="insertEmoji('${id}','${e}')">${e}</button>`
     ).join('');
   });
+}
+
+/* ── View/Edit toggle ── */
+function setEditMode(edit) {
+  isEditMode = edit;
+  document.body.classList.toggle('edit-mode', edit);
+  document.body.classList.toggle('view-mode', !edit);
+  document.getElementById('profileActionsView').style.display = edit ? 'none' : 'flex';
+  document.getElementById('profileActionsEdit').style.display = edit ? 'flex' : 'none';
+  document.getElementById('chipsSection').style.display = edit ? 'none' : 'block';
+}
+
+function toggleEditMode() {
+  if (!isEditMode) {
+    // entrando a editar: sincronizar display -> quill
+    if (quillHobbies) quillHobbies.root.innerHTML = document.getElementById('displayHobbiesContent').innerHTML || '';
+    if (quillDedicas) quillDedicas.root.innerHTML = document.getElementById('displayDedicasContent').innerHTML || '';
+  }
+  setEditMode(!isEditMode);
 }
 
 function toggleEmojiPicker(id, e) {
@@ -146,10 +166,25 @@ function fillPerfilForm() {
   document.getElementById('pfCarrera').value = u.carrera || '';
   if (quillHobbies) quillHobbies.root.innerHTML = u.hobbies || '';
   if (quillDedicas) quillDedicas.root.innerHTML = u.a_que_te_dedicas || '';
+
+  // Display cards (modo lectura)
+  const hobbiesHtml = u.hobbies || '';
+  const dedicasHtml = u.a_que_te_dedicas || '';
+  document.getElementById('displayHobbiesContent').innerHTML = hobbiesHtml || '<span class="display-card-empty">Aún no has contado qué te apasiona</span>';
+  document.getElementById('displayDedicasContent').innerHTML = dedicasHtml || '<span class="display-card-empty">Aún no has contado a qué te dedicas</span>';
+
+  // Chips: intereses / objetivos
+  renderChips('chipsIntereses', u.intereses || [], 'intereses');
+  renderChips('chipsObjetivos', u.objetivos || [], 'objetivos');
+  document.getElementById('chipsSection').style.display = (u.intereses?.length || u.objetivos?.length) ? 'block' : 'none';
+
   document.getElementById('profileHeading').textContent = ((u.nombre || '') + ' ' + (u.apellido || '')).trim();
   renderAvatar();
   const msg = document.getElementById('pfMsg');
   if (msg) { msg.textContent = ''; msg.className = 'profile-msg'; }
+
+  // Iniciar en modo vista
+  setEditMode(false);
 }
 
 function setProfileMsg(text, ok) {
@@ -159,11 +194,38 @@ function setProfileMsg(text, ok) {
   el.className = 'profile-msg ' + (ok ? 'ok' : 'err');
 }
 
+function parseArray(val) {
+  if (!val) return [];
+  if (Array.isArray(val)) return val;
+  try { return JSON.parse(val); } catch { return []; }
+}
+
+function renderChips(containerId, items, tipo) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const arr = parseArray(items);
+  if (!arr.length) { container.innerHTML = ''; return; }
+  container.innerHTML = arr.map(item =>
+    `<span class="chip">${escapeHtml(item)}<button type="button" class="chip-remove" onclick="quitarChip('${tipo}','${escapeHtml(item).replace(/'/g, "\\'")}')" title="Quitar">✕</button></span>`
+  ).join('');
+}
+
+function quitarChip(tipo, valor) {
+  const u = window.tribuUser;
+  if (!u) return;
+  const arr = parseArray(u[tipo]).filter(v => v !== valor);
+  u[tipo] = arr;
+  setStoredUser(u);
+  renderChips(tipo === 'intereses' ? 'chipsIntereses' : 'chipsObjetivos', arr, tipo);
+  // Actualizar también en el servidor si se desea (opcional, por ahora solo local)
+}
+
 async function guardarPerfil() {
   const btn = document.getElementById('pfSaveBtn');
   btn.disabled = true;
   showLoader('Guardando perfil...');
   try {
+    const u = window.tribuUser;
     const res = await tribuFetch('/tribu-auth/perfil', {
       method: 'PUT',
       body: {
@@ -174,6 +236,8 @@ async function guardarPerfil() {
         carrera: document.getElementById('pfCarrera').value.trim(),
         hobbies: quillHobbies ? quillHobbies.root.innerHTML : '',
         a_que_te_dedicas: quillDedicas ? quillDedicas.root.innerHTML : '',
+        intereses: u?.intereses || [],
+        objetivos: u?.objetivos || [],
       },
     });
     const d = await res.json();
