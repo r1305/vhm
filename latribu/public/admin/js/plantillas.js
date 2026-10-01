@@ -272,7 +272,7 @@
             : '<button type="button" class="btn btn-outline btn-xs" data-foto-msg="' + m.id + '" data-ev="' + eventoId + '" title="Subir foto">📷 Foto</button>';
 
           return '<div class="plantilla-msg-card">' +
-            '<div class="plantilla-msg-title">' + AdminApi.escapeHtml(m.titulo) + '</div>' +
+            '<div class="plantilla-msg-title">' + AdminApi.escapeHtml(m.titulo) + (m.foto_url ? ' <span class="plantilla-msg-foto-badge" title="Tiene foto">🖼️</span>' : '') + '</div>' +
             (m.foto_url ? '<div style="margin:6px 0"><img src="' + AdminApi.escapeHtml(m.foto_url) + '" alt="foto" style="max-width:100%;max-height:120px;border-radius:6px;border:1px solid var(--border)"></div>' : '') +
             '<div class="plantilla-msg-body">' + WaEditor.waToHtml(m.cuerpo) + '</div>' +
             '<div class="plantilla-msg-actions">' +
