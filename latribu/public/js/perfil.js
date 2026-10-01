@@ -205,19 +205,31 @@ function setQuillReadonly(quill, readonly) {
 
 /* ── Chip Catalog & Editing ── */
 async function cargarCatalogoChips() {
+  // Datos por defecto (matching schema.js) como fallback si la API falla
+  const DEFAULT_INTERESES = ['Lectura','Viajes','Deportes','Cine','Música','Emprendimiento','Psicología','Crecimiento personal','Arte','Meditación','Cocina','Tecnología','Naturaleza','Yoga','Baile','Fotografía'];
+  const DEFAULT_OBJETIVOS = ['Conocer personas','Crecer personalmente','Apoyo emocional','Actividades grupales','Networking','Deporte y bienestar','Aprender cosas nuevas','Viajar y hacer planes'];
+
   try {
     const res = await fetch(`${API}/tribu-catalogo/intereses`);
     const d = await res.json();
-    if (d.activo) _chipsCatalogo.intereses = d.data || [];
+    if (d.activo && Array.isArray(d.data) && d.data.length) {
+      _chipsCatalogo.intereses = d.data;
+    } else {
+      _chipsCatalogo.intereses = DEFAULT_INTERESES;
+    }
   } catch {
-    _chipsCatalogo.intereses = [];
+    _chipsCatalogo.intereses = DEFAULT_INTERESES;
   }
   try {
     const res = await fetch(`${API}/tribu-catalogo/objetivos`);
     const d = await res.json();
-    if (d.activo) _chipsCatalogo.objetivos = d.data || [];
+    if (d.activo && Array.isArray(d.data) && d.data.length) {
+      _chipsCatalogo.objetivos = d.data;
+    } else {
+      _chipsCatalogo.objetivos = DEFAULT_OBJETIVOS;
+    }
   } catch {
-    _chipsCatalogo.objetivos = [];
+    _chipsCatalogo.objetivos = DEFAULT_OBJETIVOS;
   }
 }
 
