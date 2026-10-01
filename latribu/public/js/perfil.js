@@ -60,6 +60,9 @@ function setEditMode(edit) {
   document.getElementById('profileActionsView').style.display = edit ? 'none' : 'flex';
   document.getElementById('profileActionsEdit').style.display = edit ? 'flex' : 'none';
   document.getElementById('chipsSection').style.display = edit ? 'none' : 'block';
+  // Habilitar/deshabilitar editores Quill
+  setQuillReadonly(quillHobbies, !edit);
+  setQuillReadonly(quillDedicas, !edit);
 }
 
 function toggleEditMode() {
@@ -159,6 +162,17 @@ async function quitarFotoPerfil() {
   }
 }
 
+function setQuillReadonly(quill, readonly) {
+  if (!quill) return;
+  if (readonly) {
+    quill.enable(false);
+    quill.root.classList.add('quill-readonly');
+  } else {
+    quill.enable(true);
+    quill.root.classList.remove('quill-readonly');
+  }
+}
+
 /* ── Formulario ── */
 function fillPerfilForm() {
   const u = window.tribuUser;
@@ -170,9 +184,10 @@ function fillPerfilForm() {
   document.getElementById('pfCarrera').value = u.carrera || '';
   if (quillHobbies) setQuillHTML(quillHobbies, u.hobbies || '');
   if (quillDedicas) setQuillHTML(quillDedicas, u.a_que_te_dedicas || '');
-  // Vista modo lectura
-  document.getElementById('displayHobbiesContent').innerHTML = u.hobbies || '<span style="color:var(--muted);font-style:italic">Aún no has contado qué te apasiona</span>';
-  document.getElementById('displayDedicasContent').innerHTML = u.a_que_te_dedicas || '<span style="color:var(--muted);font-style:italic">Aún no has contado a qué te dedicas</span>';
+
+  // Iniciar en modo vista (readonly)
+  setQuillReadonly(quillHobbies, true);
+  setQuillReadonly(quillDedicas, true);
 
   // Chips: intereses / objetivos (solo visuales)
   renderChips('chipsIntereses', u.intereses || [], 'intereses');
@@ -184,7 +199,7 @@ function fillPerfilForm() {
   const msg = document.getElementById('pfMsg');
   if (msg) { msg.textContent = ''; msg.className = 'profile-msg'; }
 
-  // Iniciar en modo vista
+  // Iniciar en modo vista (readonly)
   setEditMode(false);
 }
 
