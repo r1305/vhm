@@ -245,8 +245,13 @@ function togglePerfilChip(btn, containerId, opt, max) {
   } else {
     return; // límite alcanzado
   }
-  // Actualizar display de chips seleccionados
+  // Actualizar display de chips seleccionados (perfil)
   renderChips(tipo === 'intereses' ? 'chipsIntereses' : 'chipsObjetivos', arr, tipo);
+  // Actualizar chips del modal (para que se vea selected y contador)
+  const containerId = tipo === 'intereses' ? 'cpInteresesChips' : 'cpObjetivosChips';
+  const limitId = tipo === 'intereses' ? 'cpInteresesLimit' : 'cpObjetivosLimit';
+  const max = tipo === 'intereses' ? 6 : 3;
+  renderCpChips(containerId, _chipsCatalogo[tipo], arr, max, limitId);
 }
 
 function renderCpChips(containerId, options, selected, max, limitId) {
