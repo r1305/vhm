@@ -5,6 +5,10 @@ let quillDedicas = null;
 let isEditMode = false;
 const EMOJIS = ['😊','😂','🥰','😎','🤩','🙌','💪','🎉','🔥','✨','💡','🎯','🌟','🚀','💼','📚','🎨','🎵','🏋️','🧘','🌿','🍀','🐾','✈️','🌍','🏠','❤️','💙','💚','💛','🧡','💜','🤝','👏','🙏','💬','📝','🎓','🏆','⭐'];
 
+// Catálogo de chips (intereses/objetivos) - se carga desde la API
+let _chipsCatalogo = { intereses: [], objetivos: [] };
+let _chipsSeleccionados = { intereses: [], objetivos: [] };
+
 function setQuillHTML(quill, html) {
   if (!quill) return;
   try {
@@ -53,7 +57,7 @@ function initQuillEditors() {
 }
 
 /* ── View/Edit toggle ── */
-function setEditMode(edit) {
+async function setEditMode(edit) {
   isEditMode = edit;
   document.body.classList.toggle('edit-mode', edit);
   document.body.classList.toggle('view-mode', !edit);
@@ -63,6 +67,26 @@ function setEditMode(edit) {
   // Habilitar/deshabilitar editores Quill
   setQuillReadonly(quillHobbies, !edit);
   setQuillReadonly(quillDedicas, !edit);
+
+  if (edit) {
+    // Entrando a editar: cargar catálogo si no está cargado y renderizar chips editables
+    if (!_chipsCatalogo.intereses.length && !_chipsCatalogo.objetivos.length) {
+      await cargarCatalogoChips();
+    }
+    const u = window.tribuUser;
+    _chipsSeleccionados.intereses = [...(u.intereses || [])];
+    _chipsSeleccionados.objetivos = [...(u.objetivos || [])];
+    renderEditChips('chipsIntereses', _chipsCatalogo.intereses, _chipsSeleccionados.intereses, 6, 'intereses');
+    renderEditChips('chipsObjetivos', _chipsCatalogo.objetivos, _chipsSeleccionados.objetivos, 3, 'objetivos');
+    document.getElementById('chipsSection').style.display = 'block';
+  } else {
+    // Saliendo de editar: chips vuelven a solo visuales (ya actualizados en _chipsSeleccionados)
+    document.getElementById('chipsSection').style.display = (_chipsSeleccionados.intereses.length || _chipsSeleccionados.objetivos.length) ? 'block' : 'none';
+  }
+}
+
+function toggleEditMode() {
+  setEditMode(!isEditMode);
 }
 
 function toggleEditMode() {
@@ -173,6 +197,52 @@ function setQuillReadonly(quill, readonly) {
   }
 }
 
+/* ── Chip Catalog & Editing ── */
+async function cargarCatalogoChips() {
+  try {
+    const res = await fetch(`${API}/tribu-catalogo/intereses`);
+    const d = await res.json();
+    if (d.activo) _chipsCatalogo.intereses = d.data || [];
+  } catch {
+    _chipsCatalogo.intereses = [];
+  }
+  try {
+    const res = await fetch(`${API}/tribu-catalogo/objetivos`);
+    const d = await res.json();
+    if (d.activo) _chipsCatalogo.objetivos = d.data || [];
+  } catch {
+    _chipsCatalogo.objetivos = [];
+  }
+}
+
+function renderEditChips(containerId, options, selected, max, tipo) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  container.innerHTML = options.map(opt =>
+    '<button type="button" class="tribu-cp-chip' + (selected.includes(opt) ? ' selected' : '') + '"' +
+    ' onclick="togglePerfilChip(this,\'' + containerId + '\',\'' + escapeHtml(opt) + '\',' + max + ')">' +
+    escapeHtml(opt) + '</button>'
+  ).join('');
+}
+
+function togglePerfilChip(btn, containerId, opt, max) {
+  const tipo = containerId === 'chipsIntereses' ? 'intereses' : 'objetivos';
+  const maxSel = tipo === 'intereses' ? 6 : 3;
+  const arr = _chipsSeleccionados[tipo];
+  const idx = arr.indexOf(opt);
+  if (idx >= 0) {
+    arr.splice(idx, 1);
+    btn.classList.remove('selected');
+  } else if (arr.length < maxSel) {
+    arr.push(opt);
+    btn.classList.add('selected');
+  } else {
+    return; // límite alcanzado
+  }
+  // Actualizar display de chips seleccionados
+  renderChips(tipo === 'intereses' ? 'chipsIntereses' : 'chipsObjetivos', arr, tipo);
+}
+
 /* ── Formulario ── */
 function fillPerfilForm() {
   const u = window.tribuUser;
@@ -235,7 +305,6 @@ async function guardarPerfil() {
   btn.disabled = true;
   showLoader('Guardando perfil...');
   try {
-    const u = window.tribuUser;
     const res = await tribuFetch('/tribu-auth/perfil', {
       method: 'PUT',
       body: {
@@ -246,8 +315,8 @@ async function guardarPerfil() {
         carrera: document.getElementById('pfCarrera').value.trim(),
         hobbies: quillHobbies ? quillHobbies.root.innerHTML : '',
         a_que_te_dedicas: quillDedicas ? quillDedicas.root.innerHTML : '',
-        intereses: u?.intereses || [],
-        objetivos: u?.objetivos || [],
+        intereses: _chipsSeleccionados.intereses,
+        objetivos: _chipsSeleccionados.objetivos,
       },
     });
     const d = await res.json();

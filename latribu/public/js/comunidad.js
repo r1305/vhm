@@ -199,7 +199,7 @@ function updateChips() {
       if (interes && interes.trim() !== '') {
         const chip = document.createElement('div');
         chip.className = 'comunidad-chip';
-        chip.innerHTML = `<span class="comunidad-chip-icon">🎯</span> ${interes.trim()}`;
+        chip.textContent = interes.trim();
         comunidadChips.appendChild(chip);
       }
     });
@@ -211,20 +211,20 @@ function updateChips() {
       if (objetivo && objetivo.trim() !== '') {
         const chip = document.createElement('div');
         chip.className = 'comunidad-chip';
-        chip.innerHTML = `<span class="comunidad-chip-icon">🏆</span> ${objetivo.trim()}`;
+        chip.textContent = objetivo.trim();
         comunidadChips.appendChild(chip);
       }
     });
   }
   
-// If no chips, show a message
-    if (comunidadChips.children.length === 0) {
-      const noChips = document.createElement('div');
-      noChips.className = 'comunidad-chip';
-      noChips.style.color = 'var(--muted)';
-      noChips.textContent = 'Aún no tienes intereses u objetivos definidos. Ve a tu perfil para agregarlos.';
-      comunidadChips.appendChild(noChips);
-    }
+  // If no chips, show a message
+  if (comunidadChips.children.length === 0) {
+    const noChips = document.createElement('div');
+    noChips.className = 'comunidad-chip';
+    noChips.style.color = 'var(--muted)';
+    noChips.textContent = 'Aún no tienes intereses u objetivos definidos. Ve a tu perfil para agregarlos.';
+    comunidadChips.appendChild(noChips);
+  }
 }
 
 // Show/hide loader
