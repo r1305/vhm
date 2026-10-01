@@ -158,7 +158,7 @@ function displayUserData() {
     userData.objetivos = [];
   }
   
-  // Update name
+// Update name
   const nombreCompleto = `${userData.nombre || ''} ${userData.apellido || ''}`.trim();
   comunidadNombre.textContent = nombreCompleto || 'Usuario';
   comunidadTitulo.textContent = 'Mi perfil en la comunidad';
@@ -176,6 +176,14 @@ function displayUserData() {
      comunidadAvatarCircle.textContent = initials;
      comunidadAvatarSmall.textContent = initials;
    }
+   
+  // Update display cards: ¿Qué te apasiona? / ¿A qué te dedicas?
+  const hobbiesHtml = userData.hobbies || '';
+  const dedicasHtml = userData.a_que_te_dedicas || '';
+  const hobbiesEl = document.getElementById('comunidadDisplayHobbiesContent');
+  const dedicasEl = document.getElementById('comunidadDisplayDedicasContent');
+  if (hobbiesEl) hobbiesEl.innerHTML = hobbiesHtml || '<span style="color:var(--muted);font-style:italic">Aún no has contado qué te apasiona</span>';
+  if (dedicasEl) dedicasEl.innerHTML = userData.a_que_te_dedicas || '<span style="color:var(--muted);font-style:italic">Aún no has contado a qué te dedicas</span>';
   
   // Update chips (intereses and objetivos)
   updateChips();
