@@ -148,6 +148,13 @@
     .comunidad-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: var(--surface-raised,#F0E0DA); border-radius: 20px; font-size: .88rem; font-weight: 600; color: var(--tribu-700,#8F4234); border: 1px solid rgba(168,79,62,.2); }
     .comunidad-chip-icon { font-size: 1rem; }
     
+    /* DISPLAY CARDS: ¿Qué te apasiona? / ¿A qué te dedicas? */
+    .comunidad-display-cards { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; }
+    .comunidad-display-card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; }
+    .comunidad-display-card-title { font-family: 'Fraunces',serif; font-size: 1rem; font-weight: 700; color: var(--tribu-600,#A84F3E); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+    .comunidad-display-card-content { color: var(--txt); line-height: 1.6; font-size: .95rem; min-height: 44px; }
+    .comunidad-display-card-empty { color: var(--muted); font-style: italic; font-size: .9rem; }
+    
     /* POST CREATION SECTION */
     .comunidad-post-section { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 24px; }
     .comunidad-post-header { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin-bottom: 20px; }
@@ -243,6 +250,18 @@
         <div class="comunidad-chips" id="comunidadChips">
           <!-- Chips will be inserted here -->
         </div>
+
+      <!-- DISPLAY CARDS: ¿Qué te apasiona? / ¿A qué te dedicas? -->
+      <div class="comunidad-display-cards" id="comunidadDisplayCards">
+        <div class="comunidad-display-card" id="comunidadDisplayHobbies">
+          <div class="comunidad-display-card-title">💚 ¿Qué te apasiona?</div>
+          <div class="comunidad-display-card-content" id="comunidadDisplayHobbiesContent"></div>
+        </div>
+        <div class="comunidad-display-card" id="comunidadDisplayDedicas">
+          <div class="comunidad-display-card-title">💼 ¿A qué te dedicas?</div>
+          <div class="comunidad-display-card-content" id="comunidadDisplayDedicasContent"></div>
+        </div>
+      </div>
       </section>
 
       <!-- POST CREATION SECTION -->
