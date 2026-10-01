@@ -217,7 +217,6 @@ function quitarChip(tipo, valor) {
   u[tipo] = arr;
   setStoredUser(u);
   renderChips(tipo === 'intereses' ? 'chipsIntereses' : 'chipsObjetivos', arr, tipo);
-  // Actualizar también en el servidor si se desea (opcional, por ahora solo local)
 }
 
 async function guardarPerfil() {
