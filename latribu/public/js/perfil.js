@@ -244,7 +244,8 @@ function renderEditChips(containerId, options, selected, max, tipo) {
 }
 
 function togglePerfilChip(btn, containerId, opt, max) {
-  const tipo = containerId === 'chipsIntereses' ? 'intereses' : 'objetivos';
+  // Determinar tipo por el catálogo al que pertenece la opción (funciona para ambos containers)
+  const tipo = _chipsCatalogo.intereses.includes(opt) ? 'intereses' : 'objetivos';
   const maxSel = tipo === 'intereses' ? 6 : 3;
   const arr = _chipsSeleccionados[tipo];
   const idx = arr.indexOf(opt);
