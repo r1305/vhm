@@ -147,6 +147,23 @@
       .account-tabs { overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; }
       .account-tabs::-webkit-scrollbar { display: none; }
     }
+
+    /* CHIPS - gustos/preferencias */
+    .chips-wrap { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .chip { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 999px; font-size: .78rem; font-weight: 700; color: #1a5c3a; background: #dcfce7; border: 1px solid #86efac; }
+    .chip-remove { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: rgba(26,92,58,.15); color: #1a5c3a; font-size: .7rem; line-height: 1; cursor: pointer; transition: background .15s; }
+    .chip-remove:hover { background: #1a5c3a; color: #fff; }
+
+    /* DISPLAY CARDS */
+    .display-card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; margin-bottom: 14px; }
+    .display-card-title { font-family: 'Fraunces',serif; font-size: 1rem; font-weight: 700; color: var(--tribu-600,#A84F3E); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+    .display-card-content { color: var(--txt); line-height: 1.6; font-size: .95rem; min-height: 44px; }
+    .display-card-empty { color: var(--muted); font-style: italic; font-size: .9rem; }
+
+    /* EDIT MODE: hide display cards when editing */
+    .edit-mode .display-card { display: none; }
+    .view-mode .ql-container { display: none; }
+    .view-mode .emoji-picker-wrap { display: none; }
   </style>
 </head>
 <body>
@@ -185,6 +202,26 @@
           <div style="color:var(--muted);font-size:.88rem;margin-top:4px">Cuéntanos sobre ti</div>
         </div>
       </div>
+
+      <!-- DISPLAY CARDS (modo lectura) -->
+      <div class="display-cards" id="displayCards">
+        <div class="display-card" id="displayHobbies">
+          <div class="display-card-title">💚 ¿Qué te apasiona?</div>
+          <div class="display-card-content" id="displayHobbiesContent"></div>
+        </div>
+        <div class="display-card" id="displayDedicas">
+          <div class="display-card-title">💼 ¿A qué te dedicas?</div>
+          <div class="display-card-content" id="displayDedicasContent"></div>
+        </div>
+      </div>
+
+      <!-- CHIPS: Gustos / Preferencias -->
+      <div class="profile-field" id="chipsSection" style="display:none">
+        <label>Gustos y preferencias</label>
+        <div class="chips-wrap" id="chipsIntereses"></div>
+        <div class="chips-wrap" id="chipsObjetivos"></div>
+      </div>
+
       <div class="tribu-form-grid-2">
         <div class="profile-field"><label>Nombre</label><input type="text" id="pfNombre" autocomplete="given-name"></div>
         <div class="profile-field"><label>Apellido</label><input type="text" id="pfApellido" autocomplete="family-name"></div>
@@ -212,8 +249,12 @@
         </label>
         <div id="pfDedicasEditor"></div>
       </div>
-      <div class="profile-actions">
+      <div class="profile-actions" id="profileActionsView">
+        <button type="button" class="profile-btn profile-btn-outline" id="pfEditBtn" onclick="toggleEditMode()">Editar perfil</button>
+      </div>
+      <div class="profile-actions" id="profileActionsEdit" style="display:none">
         <button type="button" class="profile-btn profile-btn-primary" id="pfSaveBtn" onclick="guardarPerfil()">Guardar</button>
+        <button type="button" class="profile-btn profile-btn-outline" id="pfCancelBtn" onclick="toggleEditMode()">Cancelar</button>
       </div>
       <div class="profile-msg" id="pfMsg"></div>
     </div>
