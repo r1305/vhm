@@ -249,6 +249,17 @@ function togglePerfilChip(btn, containerId, opt, max) {
   renderChips(tipo === 'intereses' ? 'chipsIntereses' : 'chipsObjetivos', arr, tipo);
 }
 
+function renderCpChips(containerId, options, selected, max, limitId) {
+  const box = document.getElementById(containerId);
+  if (!box) return;
+  box.innerHTML = options.map(opt =>
+    '<button type="button" class="tribu-cp-chip' + (selected.includes(opt) ? ' selected' : '') + '"' +
+    ' onclick="togglePerfilChip(this,\'' + containerId + '\',\'' + escapeHtml(opt) + '\',' + max + ')">' +
+    escapeHtml(opt) + '</button>'
+  ).join('');
+  document.getElementById(limitId).textContent = selected.length + ' / ' + max + ' seleccionados';
+}
+
 /* ── Modal Completar Perfil (3 pasos) ── */
 async function abrirModalPerfil() {
   if (!_cpCatalogo.intereses.length && !_cpCatalogo.objetivos.length) {
