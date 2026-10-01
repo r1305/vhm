@@ -284,9 +284,9 @@ async function abrirModalPerfil() {
   if (!_chipsCatalogo.intereses.length || !_chipsCatalogo.objetivos.length) {
     await cargarCatalogoChips();
   }
-  const u = window.tribuUser;
-  _cpInteresesSel = [...(u.intereses || [])];
-  _cpObjetivosSel = [...(u.objetivos || [])];
+  // Usar _chipsSeleccionados que es la fuente de verdad tras guardar
+  _cpInteresesSel = [...(_chipsSeleccionados.intereses || [])];
+  _cpObjetivosSel = [...(_chipsSeleccionados.objetivos || [])];
 
   // Paso 1: precargar datos
   document.getElementById('cpNombre').value = u.nombre || '';
@@ -461,10 +461,10 @@ function fillPerfilForm() {
   setQuillReadonly(quillHobbies, true);
   setQuillReadonly(quillDedicas, true);
 
-  // Chips: intereses / objetivos (solo visuales)
-  renderChips('chipsIntereses', u.intereses || [], 'intereses');
-  renderChips('chipsObjetivos', u.objetivos || [], 'objetivos');
-  document.getElementById('chipsSection').style.display = (u.intereses?.length || u.objetivos?.length) ? 'block' : 'none';
+  // Chips: intereses / objetivos (solo visuales) - usar _chipsSeleccionados que es la fuente de verdad tras guardar
+  renderChips('chipsIntereses', _chipsSeleccionados.intereses, 'intereses');
+  renderChips('chipsObjetivos', _chipsSeleccionados.objetivos, 'objetivos');
+  document.getElementById('chipsSection').style.display = (_chipsSeleccionados.intereses?.length || _chipsSeleccionados.objetivos?.length) ? 'block' : 'none';
 
   document.getElementById('profileHeading').textContent = ((u.nombre || '') + ' ' + (u.apellido || '')).trim();
   renderAvatar();
