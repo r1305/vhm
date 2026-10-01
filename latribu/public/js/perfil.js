@@ -5,8 +5,14 @@ let quillDedicas = null;
 let isEditMode = false;
 const EMOJIS = ['😊','😂','🥰','😎','🤩','🙌','💪','🎉','🔥','✨','💡','🎯','🌟','🚀','💼','📚','🎨','🎵','🏋️','🧘','🌿','🍀','🐾','✈️','🌍','🏠','❤️','💙','💚','💛','🧡','💜','🤝','👏','🙏','💬','📝','🎓','🏆','⭐'];
 
-/* ── Loader ── */
-function showLoader(text) {
+function setQuillHTML(quill, html) {
+  if (!quill) return;
+  try {
+    quill.clipboard.dangerouslyPasteHTML(html || '');
+  } catch {
+    quill.root.innerHTML = html || '';
+  }
+}
   const el = document.getElementById('pageLoader');
   const txt = document.getElementById('pageLoaderText');
   if (txt) txt.textContent = text || 'Cargando...';
@@ -55,9 +61,7 @@ function setEditMode(edit) {
 
 function toggleEditMode() {
   if (!isEditMode) {
-    // entrando a editar: sincronizar display -> quill
-    if (quillHobbies) quillHobbies.root.innerHTML = document.getElementById('displayHobbiesContent').innerHTML || '';
-    if (quillDedicas) quillDedicas.root.innerHTML = document.getElementById('displayDedicasContent').innerHTML || '';
+    // entrando a editar: no hay display cards en /perfil, los editores ya tienen el contenido guardado
   }
   setEditMode(!isEditMode);
 }
@@ -164,8 +168,8 @@ function fillPerfilForm() {
   document.getElementById('pfEmail').value = u.email || '';
   document.getElementById('pfTelefono').value = u.telefono || '';
   document.getElementById('pfCarrera').value = u.carrera || '';
-  if (quillHobbies) quillHobbies.root.innerHTML = u.hobbies || '';
-  if (quillDedicas) quillDedicas.root.innerHTML = u.a_que_te_dedicas || '';
+  if (quillHobbies) setQuillHTML(quillHobbies, u.hobbies || '');
+  if (quillDedicas) setQuillHTML(quillDedicas, u.a_que_te_dedicas || '');
 
   // Chips: intereses / objetivos (solo visuales)
   renderChips('chipsIntereses', u.intereses || [], 'intereses');
