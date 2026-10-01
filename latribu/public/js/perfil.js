@@ -371,7 +371,11 @@ async function cpGuardar() {
   btn.disabled = true;
   btn.textContent = 'Guardando...';
   try {
-    // Paso 1: guardar datos básicos
+    // Sincronizar arrays seleccionados con los del modal
+    _chipsSeleccionados.intereses = [..._cpInteresesSel];
+    _chipsSeleccionados.objetivos = [..._cpObjetivosSel];
+
+    // Paso 1: guardar datos básicos + hobbies/quill
     const r1 = await tribuFetch('/tribu-auth/perfil', {
       method: 'PUT',
       body: {
@@ -379,7 +383,10 @@ async function cpGuardar() {
         apellido: document.getElementById('cpApellido').value.trim(),
         ciudad: document.getElementById('cpCiudad').value.trim(),
         carrera: document.getElementById('cpCarrera').value.trim(),
-        // foto se sube por separado si hay cambio
+        hobbies: quillHobbies ? quillHobbies.root.innerHTML : '',
+        a_que_te_dedicas: quillDedicas ? quillDedicas.root.innerHTML : '',
+        intereses: _cpInteresesSel,
+        objetivos: _cpObjetivosSel,
       },
     });
     if (!r1.ok) throw new Error((await r1.json()).error || 'Error al guardar datos');
@@ -408,6 +415,10 @@ async function cpGuardar() {
     setProfileMsg('Perfil completado correctamente', true);
   } catch (err) {
     document.getElementById('cpErr1').textContent = err.message || 'Error al guardar';
+  } finally {
+    const btn = document.getElementById('cpSaveBtn');
+    btn.disabled = false;
+    btn.textContent = 'Guardar perfil';
   }
 }
 
