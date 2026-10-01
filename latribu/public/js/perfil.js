@@ -13,6 +13,9 @@ function setQuillHTML(quill, html) {
     quill.root.innerHTML = html || '';
   }
 }
+
+/* ── Loader ── */
+function showLoader(text) {
   const el = document.getElementById('pageLoader');
   const txt = document.getElementById('pageLoaderText');
   if (txt) txt.textContent = text || 'Cargando...';
@@ -60,9 +63,6 @@ function setEditMode(edit) {
 }
 
 function toggleEditMode() {
-  if (!isEditMode) {
-    // entrando a editar: no hay display cards en /perfil, los editores ya tienen el contenido guardado
-  }
   setEditMode(!isEditMode);
 }
 
