@@ -243,6 +243,161 @@ function togglePerfilChip(btn, containerId, opt, max) {
   renderChips(tipo === 'intereses' ? 'chipsIntereses' : 'chipsObjetivos', arr, tipo);
 }
 
+/* ── Modal Completar Perfil (3 pasos) ── */
+async function abrirModalPerfil() {
+  if (!_cpCatalogo.intereses.length && !_cpCatalogo.objetivos.length) {
+    await cargarCatalogoChips();
+  }
+  const u = window.tribuUser;
+  _cpInteresesSel = [...(u.intereses || [])];
+  _cpObjetivosSel = [...(u.objetivos || [])];
+
+  // Paso 1: precargar datos
+  document.getElementById('cpNombre').value = u.nombre || '';
+  document.getElementById('cpApellido').value = u.apellido || '';
+  document.getElementById('cpCiudad').value = u.ciudad || '';
+  document.getElementById('cpCarrera').value = u.carrera || '';
+  const avatarCircle = document.getElementById('cpAvatarCircle');
+  const avatarRemoveBtn = document.getElementById('cpAvatarRemoveBtn');
+  if (u.foto_url) {
+    avatarCircle.innerHTML = `<img src="${escapeHtml(u.foto_url)}" alt="Foto de perfil">`;
+    document.getElementById('cpAvatarRemoveBtn').style.display = 'flex';
+  } else {
+    const initial = escapeHtml((u.nombre || '?').charAt(0).toUpperCase());
+    avatarCircle.textContent = initial;
+    document.getElementById('cpAvatarRemoveBtn').style.display = 'none';
+  }
+
+  // Renderizar chips
+  renderCpChips('cpInteresesChips', _cpCatalogo.intereses, _cpInteresesSel, 6, 'cpInteresesLimit');
+  renderCpChips('cpObjetivosChips', _cpCatalogo.objetivos, _cpObjetivosSel, 3, 'cpObjetivosLimit');
+
+  // Reset a paso 1
+  _cpStep = 0;
+  cpShowStep(0);
+
+  document.getElementById('cpOverlay').classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+
+function cerrarCpModal() {
+  document.getElementById('cpOverlay').classList.remove('show');
+  document.body.style.overflow = '';
+  // Limpiar errores
+  document.getElementById('cpErr1').textContent = '';
+  document.getElementById('cpErr2').textContent = '';
+}
+
+function cpShowStep(step) {
+  _cpStep = step;
+  document.querySelectorAll('.tribu-cp-step-content').forEach((el, i) => {
+    el.style.display = i === step ? 'block' : 'none';
+  });
+  document.querySelectorAll('.tribu-cp-step-dot').forEach((dot, i) => {
+    dot.classList.toggle('active', i <= step);
+    dot.classList.toggle('done', i < step);
+  });
+  // Mostrar/ocultar botón volver
+  document.querySelectorAll('.tribu-cp-btn-back').forEach(btn => {
+    btn.style.display = step > 0 ? 'inline-flex' : 'none';
+  });
+}
+
+function cpNext(step) {
+  if (step === 0) {
+    // Validar paso 1
+    const nombre = document.getElementById('cpNombre').value.trim();
+    const apellido = document.getElementById('cpApellido').value.trim();
+    if (!nombre || !apellido) {
+      document.getElementById('cpErr1').textContent = 'Nombre y apellido son obligatorios';
+      return;
+    }
+    cpShowStep(1);
+  } else if (step === 1) {
+    if (_cpInteresesSel.length === 0) {
+      document.getElementById('cpErr1').textContent = 'Elige al menos un interés';
+      return;
+    }
+    cpShowStep(2);
+  }
+}
+
+function cpBack(step) {
+  cpShowStep(step - 1);
+}
+
+async function cpGuardar() {
+  if (_cpObjetivosSel.length === 0) {
+    document.getElementById('cpErr2').textContent = 'Elige al menos una opción';
+    return;
+  }
+  const btn = document.getElementById('cpSaveBtn');
+  btn.disabled = true;
+  btn.textContent = 'Guardando...';
+  try {
+    // Paso 1: guardar datos básicos
+    const r1 = await tribuFetch('/tribu-auth/perfil', {
+      method: 'PUT',
+      body: {
+        nombre: document.getElementById('cpNombre').value.trim(),
+        apellido: document.getElementById('cpApellido').value.trim(),
+        ciudad: document.getElementById('cpCiudad').value.trim(),
+        carrera: document.getElementById('cpCarrera').value.trim(),
+        // foto se sube por separado si hay cambio
+      },
+    });
+    if (!r1.ok) throw new Error((await r1.json()).error || 'Error al guardar datos');
+
+    // Paso 2+3: guardar ciudad, intereses, objetivos
+    const r2 = await tribuFetch('/tribu-auth/perfil/comunidad', {
+      method: 'PUT',
+      body: {
+        ciudad: document.getElementById('cpCiudad').value.trim(),
+        intereses: _cpInteresesSel,
+        objetivos: _cpObjetivosSel,
+      },
+    });
+    if (!r2.ok) throw new Error((await r2.json()).error || 'Error al guardar intereses/objetivos');
+    const d2 = await r2.json();
+    if (d2.token) setToken(d2.token);
+
+    // Actualizar estado local
+    window.tribuUser = normalizarSuscripcionUsuario(d2.user);
+    setStoredUser(window.tribuUser);
+    renderNavAuth();
+
+    // Recargar formulario para reflejar cambios
+    await fillPerfilForm();
+    cerrarCpModal();
+    setProfileMsg('Perfil completado correctamente', true);
+  } catch (err) {
+    document.getElementById('cpErr1').textContent = err.message || 'Error al guardar';
+  }
+}
+
+function onCpFotoSelected() {
+  const input = document.getElementById('cpFoto');
+  if (!input?.files?.length) return;
+  const file = input.files[0];
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('cpAvatarCircle').innerHTML = `<img src="${escapeHtml(e.target.result)}" alt="Vista previa">`;
+    document.getElementById('cpAvatarRemoveBtn').style.display = 'flex';
+  };
+  reader.readAsDataURL(file);
+}
+
+async function quitarCpFoto() {
+  try {
+    const res = await tribuFetch('/tribu-auth/perfil/foto', { method: 'DELETE' });
+    if (!res.ok) throw new Error('Error al quitar foto');
+    document.getElementById('cpAvatarCircle').textContent = escapeHtml((document.getElementById('cpNombre').value || '?').charAt(0).toUpperCase());
+    document.getElementById('cpAvatarRemoveBtn').style.display = 'none';
+  } catch {
+    // silencioso
+  }
+}
+
 /* ── Formulario ── */
 function fillPerfilForm() {
   const u = window.tribuUser;
@@ -351,6 +506,16 @@ async function guardarPerfil() {
       fillPerfilForm();
       renderNavAuth();
     }
+
+    // Event listeners para el modal de completar perfil
+    document.getElementById('cpCloseBtn')?.addEventListener('click', cerrarCpModal);
+    document.getElementById('cpOverlay')?.addEventListener('click', e => {
+      if (e.target.id === 'cpOverlay') cerrarCpModal();
+    });
+    document.getElementById('cpFoto')?.addEventListener('change', onCpFotoSelected);
+    document.getElementById('cpAvatarRemoveBtn')?.addEventListener('click', e => {
+      e.preventDefault(); e.stopPropagation(); quitarCpFoto();
+    });
   } finally {
     hideLoader();
   }

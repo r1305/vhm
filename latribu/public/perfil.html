@@ -136,6 +136,18 @@
     .tribu-confirm-btn.primary { border: none; color: #fff; background: linear-gradient(135deg,#A84F3E,#8F4234); }
 
     footer { margin-top: 0; background: #fff; color: var(--muted); text-align: center; padding: 32px 20px; font-size: .9rem; font-weight: 600; border-top: 1px solid var(--line); position: relative; }
+
+    /* AVATAR UPLOAD EN MODAL */
+    .avatar-upload { position: relative; width: 100px; height: 100px; flex-shrink: 0; cursor: pointer; }
+    .avatar-upload input[type=file] { display: none; }
+    .avatar-circle { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid rgba(168,79,62,.45); background: rgba(168,79,62,.15); display: flex; align-items: center; justify-content: center; font-size: 2.2rem; font-weight: 800; color: #fff; overflow: hidden; }
+    .avatar-circle img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; }
+    .avatar-overlay { position: absolute; inset: 0; border-radius: 50%; background: rgba(0,0,0,.45); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+    .avatar-upload:hover .avatar-overlay { opacity: 1; }
+    .avatar-overlay-icon { font-size: 1.4rem; line-height: 1; }
+    .avatar-overlay-text { font-size: .62rem; font-weight: 800; color: #fff; letter-spacing: .04em; text-transform: uppercase; }
+    .avatar-remove { position: absolute; top: 2px; right: 2px; width: 22px; height: 22px; border-radius: 50%; background: #fb7185; border: 2px solid #fff; color: #fff; font-size: .75rem; line-height: 1; display: none; align-items: center; justify-content: center; cursor: pointer; font-weight: 800; z-index: 2; }
+    .avatar-remove.show { display: flex; }
     footer::before { content: ''; position: absolute; top: -1px; left: 0; right: 0; height: 3px; background: linear-gradient(135deg,#A84F3E,#8F4234); }
 
     @media (max-width: 600px) {
@@ -164,6 +176,32 @@
     .ql-container.quill-readonly { background: var(--tribu-100,#F7ECE9); }
     .ql-container.quill-readonly .ql-editor { pointer-events: none; }
     .ql-container.quill-readonly .ql-toolbar { display: none; }
+
+    /* MODAL COMPLETAR PERFIL */
+    .tribu-cp-progress { display:flex; gap:8px; justify-content:center; margin-bottom:20px; }
+    .tribu-cp-step-dot { width:10px; height:10px; border-radius:50%; background:#d1d5db; transition:all .2s; }
+    .tribu-cp-step-dot.active { background:#A84F3E; transform:scale(1.2); }
+    .tribu-cp-step-dot.done { background:#2dd4bf; }
+    .tribu-cp-eyebrow { font-size:.72rem; letter-spacing:.14em; text-transform:uppercase; font-weight:800; color:var(--muted); margin:0 0 6px; }
+    .tribu-cp-title { font-family:'Fraunces',serif; font-size:1.35rem; font-weight:700; color:var(--txt); margin:0 0 4px; }
+    .tribu-cp-hint { font-size:.85rem; color:var(--muted); margin:0 0 18px; line-height:1.4; }
+    .tribu-cp-field { margin-bottom:14px; }
+    .tribu-cp-field label { display:block; font-size:.82rem; font-weight:800; color:var(--muted); margin-bottom:6px; }
+    .tribu-cp-field input { width:100%; padding:11px 12px; border-radius:10px; border:1px solid var(--line); background:var(--surface,var(--panel)); color:var(--txt); font-family:inherit; font-size:.95rem; }
+    .tribu-cp-field input:focus { outline:none; border-color:rgba(168,79,62,.55); box-shadow:0 0 0 3px rgba(168,79,62,.12); }
+    .tribu-form-grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .tribu-cp-chips { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+    .tribu-cp-chip { padding:8px 14px; border-radius:999px; border:1px solid rgba(168,79,62,.2); background:var(--surface-raised,#F0E0DA); color:var(--tribu-700,#8F4234); font-size:.85rem; font-weight:700; cursor:pointer; transition:all .15s; }
+    .tribu-cp-chip:hover { background:#dcfce7; border-color:#86efac; color:#1a5c3a; }
+    .tribu-cp-chip.selected { background:#A84F3E; border-color:#A84F3E; color:#fff; }
+    .tribu-cp-chip-limit { font-size:.78rem; font-weight:700; color:var(--muted); margin-top:8px; }
+    .tribu-cp-err { color:#fb7185; font-size:.8rem; font-weight:700; min-height:20px; margin:8px 0; }
+    .tribu-cp-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:20px; flex-wrap:wrap; }
+    .tribu-cp-btn-back { padding:11px 20px; border-radius:30px; border:none; font-weight:800; font-family:inherit; cursor:pointer; font-size:.9rem; background:transparent; border:1px solid rgba(168,79,62,.45); color:var(--tribu-700,#8F4234); transition:opacity .2s, transform .15s; }
+    .tribu-cp-btn-back:hover { opacity:.9; transform:translateY(-1px); }
+    .tribu-cp-btn-next { padding:11px 20px; border-radius:30px; border:none; font-weight:800; font-family:inherit; cursor:pointer; font-size:.9rem; transition:opacity .2s, transform .15s; background:linear-gradient(135deg,#A84F3E,#8F4234); color:#fff; }
+    .tribu-cp-btn-next:hover { opacity:.9; transform:translateY(-1px); }
+    .tribu-cp-btn-next:disabled { opacity:.5; cursor:not-allowed; transform:none; }
   </style>
 </head>
 <body>
@@ -239,6 +277,7 @@
       </div>
       <div class="profile-actions" id="profileActionsView">
         <button type="button" class="profile-btn profile-btn-outline" id="pfEditBtn" onclick="toggleEditMode()">Editar perfil</button>
+        <button type="button" class="profile-btn profile-btn-primary" id="pfCompleteBtn" onclick="abrirModalPerfil()">Completar perfil</button>
       </div>
       <div class="profile-actions" id="profileActionsEdit" style="display:none">
         <button type="button" class="profile-btn profile-btn-primary" id="pfSaveBtn" onclick="guardarPerfil()">Guardar</button>
@@ -272,21 +311,68 @@
   </div>
 </div>
 
-<!-- Modal confirm -->
-<div class="auth-overlay" id="tribuConfirmOverlay" role="dialog" aria-modal="true">
-  <div class="auth-box tribu-confirm-box">
-    <div class="tribu-feedback-icon warn" id="tribuConfirmIcon">?</div>
-    <div class="tribu-feedback-eyebrow">La Tribu</div>
-    <div class="auth-title" id="tribuConfirmTitle" style="text-align:center;font-size:1.15rem;font-weight:800;color:var(--txt);margin-bottom:4px"></div>
-    <p class="tribu-feedback-msg" id="tribuConfirmMsg"></p>
-    <div class="tribu-confirm-actions">
-      <button type="button" class="tribu-confirm-btn outline" id="tribuConfirmCancel">Volver</button>
-      <button type="button" class="tribu-confirm-btn danger" id="tribuConfirmOk">Confirmar</button>
+<!-- Modal completar perfil (3 pasos) -->
+<div class="auth-overlay" id="cpOverlay" role="dialog" aria-modal="true">
+  <div class="auth-box" style="max-width:600px;width:100%">
+    <button class="auth-close" id="cpCloseBtn" onclick="cerrarCpModal()">&times;</button>
+    <div class="tribu-cp-progress" id="cpProgress">
+      <div class="tribu-cp-step-dot" data-step="1"></div>
+      <div class="tribu-cp-step-dot" data-step="2"></div>
+      <div class="tribu-cp-step-dot" data-step="3"></div>
+    </div>
+    <div id="cpStep1" class="tribu-cp-step-content">
+      <div class="tribu-cp-eyebrow">Paso 1 de 3 · Tu identidad</div>
+      <div class="tribu-cp-title">Cuéntanos quién eres</div>
+      <div class="tribu-cp-hint">Esta información ayuda a otros a conocerte mejor.</div>
+      <div class="tribu-form-grid-2">
+        <div class="tribu-cp-field"><label>Nombre</label><input type="text" id="cpNombre" autocomplete="given-name" maxlength="120"></div>
+        <div class="tribu-cp-field"><label>Apellido</label><input type="text" id="cpApellido" autocomplete="family-name" maxlength="120"></div>
+      </div>
+      <div class="tribu-cp-field"><label>Ciudad</label><input type="text" id="cpCiudad" placeholder="Ej: Lima, Cusco, Arequipa..." maxlength="120"></div>
+      <div class="tribu-cp-field"><label>Carrera / Profesión</label><input type="text" id="cpCarrera" placeholder="Ej: Psicóloga, Ingeniera, Coach..." maxlength="200"></div>
+      <div class="tribu-cp-field">
+        <label>Foto de perfil</label>
+        <label class="avatar-upload" id="cpAvatarUploadLabel" title="Cambiar foto">
+          <input type="file" id="cpFoto" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none" onchange="onCpFotoSelected()">
+          <div class="avatar-circle" id="cpAvatarCircle"></div>
+          <div class="avatar-overlay"><span class="avatar-overlay-icon">📷</span><span class="avatar-overlay-text">Cambiar</span></div>
+          <button type="button" class="avatar-remove" id="cpAvatarRemoveBtn" onclick="event.preventDefault();event.stopPropagation();quitarCpFoto()" title="Quitar foto" style="display:none">✕</button>
+        </label>
+      </div>
+      <div class="tribu-cp-err" id="cpErr1"></div>
+      <div class="tribu-cp-actions">
+        <button type="button" class="tribu-cp-btn-back" onclick="cpBack(1)" style="display:none">&larr; Volver</button>
+        <button type="button" class="tribu-cp-btn-next" onclick="cpNext(1)">Siguiente &rarr;</button>
+      </div>
+    </div>
+    <div id="cpStep2" class="tribu-cp-step-content" style="display:none">
+      <div class="tribu-cp-eyebrow">Paso 2 de 3 · Tus intereses</div>
+      <div class="tribu-cp-title">¿Qué te apasiona?</div>
+      <div class="tribu-cp-hint">“Esto nos ayuda a mostrarte personas y actividades afines.” Elige hasta 6.</div>
+      <div class="tribu-cp-chips" id="cpInteresesChips"></div>
+      <div class="tribu-cp-chip-limit" id="cpInteresesLimit">0 / 6 seleccionados</div>
+      <div class="tribu-cp-err" id="cpErr1"></div>
+      <div class="tribu-cp-actions">
+        <button type="button" class="tribu-cp-btn-back" onclick="cpBack(2)">&larr; Volver</button>
+        <button type="button" class="tribu-cp-btn-next" onclick="cpNext(2)">Siguiente &rarr;</button>
+      </div>
+    </div>
+    <div id="cpStep3" class="tribu-cp-step-content" style="display:none">
+      <div class="tribu-cp-eyebrow">Paso 3 de 3 · ¿Qué buscas?</div>
+      <div class="tribu-cp-title">¿Qué te trajo a La Tribu?</div>
+      <div class="tribu-cp-hint">“No todos llegan por lo mismo.” Elige 1 a 3.</div>
+      <div class="tribu-cp-chips" id="cpObjetivosChips"></div>
+      <div class="tribu-cp-chip-limit" id="cpObjetivosLimit">0 / 3 seleccionados</div>
+      <div class="tribu-cp-err" id="cpErr2"></div>
+      <div class="tribu-cp-actions">
+        <button type="button" class="tribu-cp-btn-back" onclick="cpBack(3)">&larr; Volver</button>
+        <button type="button" class="tribu-cp-btn-next" id="cpSaveBtn" onclick="cpGuardar()">Guardar perfil</button>
+      </div>
     </div>
   </div>
 </div>
 
-<script src="vendor/quill.min.js"></script>
+<!-- Modal feedback -->
 <script src="js/tribu-common.js"></script>
 <script src="js/perfil.js"></script>
 </body>
