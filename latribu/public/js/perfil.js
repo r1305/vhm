@@ -167,13 +167,7 @@ function fillPerfilForm() {
   if (quillHobbies) quillHobbies.root.innerHTML = u.hobbies || '';
   if (quillDedicas) quillDedicas.root.innerHTML = u.a_que_te_dedicas || '';
 
-  // Display cards (modo lectura)
-  const hobbiesHtml = u.hobbies || '';
-  const dedicasHtml = u.a_que_te_dedicas || '';
-  document.getElementById('displayHobbiesContent').innerHTML = hobbiesHtml || '<span class="display-card-empty">Aún no has contado qué te apasiona</span>';
-  document.getElementById('displayDedicasContent').innerHTML = dedicasHtml || '<span class="display-card-empty">Aún no has contado a qué te dedicas</span>';
-
-  // Chips: intereses / objetivos
+  // Chips: intereses / objetivos (solo visuales)
   renderChips('chipsIntereses', u.intereses || [], 'intereses');
   renderChips('chipsObjetivos', u.objetivos || [], 'objetivos');
   document.getElementById('chipsSection').style.display = (u.intereses?.length || u.objetivos?.length) ? 'block' : 'none';
@@ -206,17 +200,12 @@ function renderChips(containerId, items, tipo) {
   const arr = parseArray(items);
   if (!arr.length) { container.innerHTML = ''; return; }
   container.innerHTML = arr.map(item =>
-    `<span class="chip">${escapeHtml(item)}<button type="button" class="chip-remove" onclick="quitarChip('${tipo}','${escapeHtml(item).replace(/'/g, "\\'")}')" title="Quitar">✕</button></span>`
+    `<span class="chip">${escapeHtml(item)}</span>`
   ).join('');
 }
 
 function quitarChip(tipo, valor) {
-  const u = window.tribuUser;
-  if (!u) return;
-  const arr = parseArray(u[tipo]).filter(v => v !== valor);
-  u[tipo] = arr;
-  setStoredUser(u);
-  renderChips(tipo === 'intereses' ? 'chipsIntereses' : 'chipsObjetivos', arr, tipo);
+  // Chips son solo visuales en perfil; la gestión se hace en el modal de onboarding (cpModal)
 }
 
 async function guardarPerfil() {
