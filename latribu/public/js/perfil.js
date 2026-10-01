@@ -9,10 +9,6 @@ const EMOJIS = ['😊','😂','🥰','😎','🤩','🙌','💪','🎉','🔥','
 let _chipsCatalogo = { intereses: [], objetivos: [] };
 let _chipsSeleccionados = { intereses: [], objetivos: [] };
 
-// Alias para compatibilidad con el modal de completar perfil (funciones cp*)
-const _cpCatalogo = _chipsCatalogo;
-let _cpInteresesSel = _chipsSeleccionados.intereses;
-let _cpObjetivosSel = _chipsSeleccionados.objetivos;
 let _cpStep = 0;
 
 function setQuillHTML(quill, html) {
@@ -89,10 +85,6 @@ async function setEditMode(edit) {
     // Saliendo de editar: chips vuelven a solo visuales (ya actualizados en _chipsSeleccionados)
     document.getElementById('chipsSection').style.display = (_chipsSeleccionados.intereses.length || _chipsSeleccionados.objetivos.length) ? 'block' : 'none';
   }
-}
-
-function toggleEditMode() {
-  setEditMode(!isEditMode);
 }
 
 function toggleEditMode() {
@@ -285,9 +277,9 @@ async function abrirModalPerfil() {
     await cargarCatalogoChips();
   }
   const u = window.tribuUser;
-  // Usar _chipsSeleccionados que es la fuente de verdad tras guardar
-  _cpInteresesSel = [...(_chipsSeleccionados.intereses || [])];
-  _cpObjetivosSel = [...(_chipsSeleccionados.objetivos || [])];
+  // Precargar desde el usuario si _chipsSeleccionados está vacío
+  if (!_chipsSeleccionados.intereses.length && u.intereses) _chipsSeleccionados.intereses = [...parseArray(u.intereses)];
+  if (!_chipsSeleccionados.objetivos.length && u.objetivos) _chipsSeleccionados.objetivos = [...parseArray(u.objetivos)];
 
   // Paso 1: precargar datos
   document.getElementById('cpNombre').value = u.nombre || '';
@@ -306,8 +298,8 @@ async function abrirModalPerfil() {
   }
 
   // Renderizar chips
-  renderCpChips('cpInteresesChips', _cpCatalogo.intereses, _cpInteresesSel, 6, 'cpInteresesLimit');
-  renderCpChips('cpObjetivosChips', _cpCatalogo.objetivos, _cpObjetivosSel, 3, 'cpObjetivosLimit');
+  renderCpChips('cpInteresesChips', _chipsCatalogo.intereses, _chipsSeleccionados.intereses, 6, 'cpInteresesLimit');
+  renderCpChips('cpObjetivosChips', _chipsCatalogo.objetivos, _chipsSeleccionados.objetivos, 3, 'cpObjetivosLimit');
 
   // Reset a paso 1
   _cpStep = 0;
@@ -351,7 +343,7 @@ function cpNext(step) {
     }
     cpShowStep(1);
   } else if (step === 1) {
-    if (_cpInteresesSel.length === 0) {
+    if (_chipsSeleccionados.intereses.length === 0) {
       document.getElementById('cpErr1').textContent = 'Elige al menos un interés';
       return;
     }
@@ -364,7 +356,7 @@ function cpBack(step) {
 }
 
 async function cpGuardar() {
-  if (_cpObjetivosSel.length === 0) {
+  if (_chipsSeleccionados.objetivos.length === 0) {
     document.getElementById('cpErr2').textContent = 'Elige al menos una opción';
     return;
   }
@@ -372,11 +364,7 @@ async function cpGuardar() {
   btn.disabled = true;
   btn.textContent = 'Guardando...';
   try {
-    // Sincronizar arrays seleccionados con los del modal
-    _chipsSeleccionados.intereses = [..._cpInteresesSel];
-    _chipsSeleccionados.objetivos = [..._cpObjetivosSel];
-
-    // Paso 1: guardar datos básicos + hobbies/quill
+    // Paso 1: guardar datos básicos
     const r1 = await tribuFetch('/tribu-auth/perfil', {
       method: 'PUT',
       body: {
@@ -386,8 +374,6 @@ async function cpGuardar() {
         carrera: document.getElementById('cpCarrera').value.trim(),
         hobbies: quillHobbies ? quillHobbies.root.innerHTML : '',
         a_que_te_dedicas: quillDedicas ? quillDedicas.root.innerHTML : '',
-        intereses: _cpInteresesSel,
-        objetivos: _cpObjetivosSel,
       },
     });
     if (!r1.ok) throw new Error((await r1.json()).error || 'Error al guardar datos');
@@ -397,8 +383,8 @@ async function cpGuardar() {
       method: 'PUT',
       body: {
         ciudad: document.getElementById('cpCiudad').value.trim(),
-        intereses: _cpInteresesSel,
-        objetivos: _cpObjetivosSel,
+        intereses: _chipsSeleccionados.intereses,
+        objetivos: _chipsSeleccionados.objetivos,
       },
     });
     if (!r2.ok) throw new Error((await r2.json()).error || 'Error al guardar intereses/objetivos');
@@ -450,6 +436,9 @@ async function quitarCpFoto() {
 function fillPerfilForm() {
   const u = window.tribuUser;
   if (!u) return;
+  // Sincronizar chips desde el usuario (fuente de verdad al cargar)
+  _chipsSeleccionados.intereses = parseArray(u.intereses);
+  _chipsSeleccionados.objetivos = parseArray(u.objetivos);
   document.getElementById('pfNombre').value = u.nombre || '';
   document.getElementById('pfApellido').value = u.apellido || '';
   document.getElementById('pfEmail').value = u.email || '';
