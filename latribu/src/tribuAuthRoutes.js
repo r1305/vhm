@@ -63,6 +63,12 @@ async function fetchUserPublic(id) {
 }
 
 function userPayload(user) {
+  // MySQL JSON columns pueden venir como strings; parsear si es string válido
+  const parseJSON = (val) => {
+    if (!val) return null;
+    if (Array.isArray(val)) return val;
+    try { return JSON.parse(val); } catch { return null; }
+  };
   return {
     id: user.id, nombre: user.nombre, apellido: user.apellido,
     email: user.email, telefono: user.telefono || null,
@@ -71,8 +77,8 @@ function userPayload(user) {
     carrera: user.carrera || null,
     hobbies: user.hobbies || null,
     a_que_te_dedicas: user.a_que_te_dedicas || null,
-    intereses: user.intereses || null,
-    objetivos: user.objetivos || null,
+    intereses: parseJSON(user.intereses),
+    objetivos: parseJSON(user.objetivos),
     ciudad: user.ciudad || null,
   };
 }
