@@ -170,6 +170,9 @@ function fillPerfilForm() {
   document.getElementById('pfCarrera').value = u.carrera || '';
   if (quillHobbies) setQuillHTML(quillHobbies, u.hobbies || '');
   if (quillDedicas) setQuillHTML(quillDedicas, u.a_que_te_dedicas || '');
+  // Vista modo lectura
+  document.getElementById('displayHobbiesContent').innerHTML = u.hobbies || '<span style="color:var(--muted);font-style:italic">Aún no has contado qué te apasiona</span>';
+  document.getElementById('displayDedicasContent').innerHTML = u.a_que_te_dedicas || '<span style="color:var(--muted);font-style:italic">Aún no has contado a qué te dedicas</span>';
 
   // Chips: intereses / objetivos (solo visuales)
   renderChips('chipsIntereses', u.intereses || [], 'intereses');

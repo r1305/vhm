@@ -164,6 +164,8 @@
     .edit-mode .display-card { display: none; }
     .view-mode .ql-container { display: none; }
     .view-mode .emoji-picker-wrap { display: none; }
+    .view-mode .view-mode-content { display: block; }
+    .edit-mode .view-mode-content { display: none; }
   </style>
 </head>
 <body>
@@ -225,6 +227,7 @@
             <div class="emoji-grid" id="hobbiesEmoji"></div>
           </span>
         </label>
+        <div class="view-mode-content" id="displayHobbiesContent"></div>
         <div id="pfHobbiesEditor"></div>
       </div>
       <div class="profile-field">
@@ -235,6 +238,7 @@
             <div class="emoji-grid" id="dedicasEmoji"></div>
           </span>
         </label>
+        <div class="view-mode-content" id="displayDedicasContent"></div>
         <div id="pfDedicasEditor"></div>
       </div>
       <div class="profile-actions" id="profileActionsView">
