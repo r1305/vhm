@@ -9,6 +9,12 @@ const EMOJIS = ['😊','😂','🥰','😎','🤩','🙌','💪','🎉','🔥','
 let _chipsCatalogo = { intereses: [], objetivos: [] };
 let _chipsSeleccionados = { intereses: [], objetivos: [] };
 
+// Alias para compatibilidad con el modal de completar perfil (funciones cp*)
+const _cpCatalogo = _chipsCatalogo;
+let _cpInteresesSel = _chipsSeleccionados.intereses;
+let _cpObjetivosSel = _chipsSeleccionados.objetivos;
+let _cpStep = 0;
+
 function setQuillHTML(quill, html) {
   if (!quill) return;
   try {
