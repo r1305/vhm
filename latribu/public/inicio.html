@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="es" data-product="tribu">
+<head>
+  <meta charset="UTF-8">
+  <script>(function(){var t=localStorage.getItem('tribu-theme');if(t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme:dark)').matches))document.documentElement.setAttribute('data-theme','dark');})();</script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Inicio — La Tribu</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Fraunces:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/vhm-design-tokens-v1.css">
+  <link rel="stylesheet" href="css/latribu-public-theme.css">
+  <link rel="stylesheet" href="css/member-app.css">
+  <link rel="stylesheet" href="css/member-inicio.css">
+</head>
+<body class="member-start">
+<main class="member-start-main no-trial" data-member-main>
+  <div class="member-start-trial" id="memberTrialStrip" hidden></div>
+
+  <!-- Guía #home — inicio del miembro (onboarding completado) -->
+  <div id="memberHomeView" hidden>
+    <header class="member-start-hero">
+      <p class="member-start-eyebrow">Un espacio para volver a ti</p>
+      <h1 id="homeSaludoHome">Buenas tardes.</h1>
+      <p id="homeSubHome">Aquí tienes algo para continuar hoy.</p>
+    </header>
+
+    <h2 class="member-home-section-title">Continúa donde lo dejaste.</h2>
+    <div style="margin-bottom:28px;">
+      <section class="member-home-continue">
+        <div class="member-start-resource-card" id="homeContinueCover" aria-hidden="true">
+          <span class="res-kicker" id="homeContinueKicker">La Tribu · Guía práctica</span>
+          <span class="res-title" id="homeContinueTitle">Vuelve al presente</span>
+        </div>
+        <p class="member-start-resource-desc" id="homeContinueDesc">Un pequeño espacio para salir del piloto automático.</p>
+        <p class="side-note" id="homeContinueProgress" style="margin:0 0 10px;font-size:.78rem;color:var(--text-secondary);"></p>
+        <div class="member-home-progress" id="homeProgressBar" hidden><span></span></div>
+        <a class="member-start-btn-primary" id="homeContinueBtn" href="./recursos">Continuar</a>
+      </section>
+    </div>
+
+    <h2 class="member-home-section-title">Recomendado para ti.</h2>
+    <div class="member-home-rec-grid" id="homeRecGrid"></div>
+
+    <section class="member-home-teaser">
+      <h3>Una conversación puede ser un comienzo.</h3>
+      <p>Comparte un avance, una pregunta o simplemente acompaña a alguien.</p>
+      <a class="member-start-btn-ghost" href="./comunidad">Ver conversaciones</a>
+    </section>
+    <section class="member-home-teaser">
+      <h3>¿Qué hiciste hoy por ti?</h3>
+      <p>Aunque parezca pequeño, merece un lugar.</p>
+      <a class="member-start-btn-ghost" href="./perfil">Registrar mi logro</a>
+    </section>
+
+  </div>
+
+  <!-- Guía #start — empieza por aquí (onboarding) -->
+  <div id="memberStartView">
+    <header class="member-start-hero">
+      <p class="member-start-eyebrow" id="startEyebrow">3 de 3 · Tu primer camino</p>
+      <h1 id="homeSaludo">Empieza por aquí.</h1>
+      <p id="homeSub">No necesitas tenerlo todo claro. Puedes empezar por algo pequeño. Estas tres acciones son una invitación, a tu ritmo.</p>
+    </header>
+
+    <div class="member-start-grid">
+      <div class="member-start-col-main">
+        <section class="member-start-primary">
+          <p class="member-start-label">Para ti</p>
+          <h2>Empieza con este recurso.</h2>
+          <div class="member-start-resource-card" id="startResourceCard">
+            <span class="res-kicker">La Tribu · Guía práctica</span>
+            <span class="res-title" id="startResourceTitle">Cargando…</span>
+            <span class="res-meta" id="startResourceMeta"></span>
+          </div>
+          <p class="member-start-resource-desc" id="startResourceDesc">Un pequeño espacio para salir del piloto automático.</p>
+          <a class="member-start-btn-primary" id="startResourceBtn" href="./recursos">Comenzar</a>
+        </section>
+
+        <footer class="member-start-foot">
+          <a class="member-start-foot-explore" href="./recursos" id="startExplore">Explorar mi inicio</a>
+        </footer>
+      </div>
+
+      <div class="member-start-side">
+        <section class="member-start-side-card" id="startEventCard">
+          <p class="side-kicker">Tu próximo encuentro</p>
+          <h3 id="startEventTitle">Conecta fuera de la pantalla</h3>
+          <p class="side-detail" id="startEventDetail">Revisa el calendario para reservar tu lugar en un encuentro en vivo.</p>
+          <p class="side-note" id="startEventNote" hidden></p>
+          <a class="member-start-btn-ghost" id="startEventBtn" href="./calendario">Ver calendario</a>
+        </section>
+        <section class="member-start-side-card">
+          <p class="side-kicker">Conoce La Tribu</p>
+          <h3>Cuéntanos algo de ti.</h3>
+          <p class="side-detail">Una presentación breve es suficiente. Puedes hacerlo cuando te sientas preparado.</p>
+          <a class="member-start-btn-ghost" id="startCommunityBtn" href="./comunidad">Presentarme</a>
+        </section>
+      </div>
+    </div>
+  </div>
+</main>
+<script src="js/funnel-utils.js"></script>
+<script src="js/tribu-common.js"></script>
+<script src="js/tribu-contenido.js"></script>
+<script src="js/member-app.js"></script>
+<script src="js/inicio.js"></script>
+</body>
+</html>
