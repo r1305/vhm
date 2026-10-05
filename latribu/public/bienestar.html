@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="es" data-product="tribu">
+<head>
+  <meta charset="UTF-8">
+  <script>(function(){var t=localStorage.getItem('tribu-theme');if(t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme:dark)').matches))document.documentElement.setAttribute('data-theme','dark');})();</script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>IA de bienestar — La Tribu</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Fraunces:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/vhm-design-tokens-v1.css">
+  <link rel="stylesheet" href="css/latribu-public-theme.css">
+  <link rel="stylesheet" href="css/member-app.css">
+  <link rel="stylesheet" href="css/member-inicio.css">
+  <style>
+    .bienestar-shell { display: flex; flex-direction: column; min-height: 100vh; }
+    .bienestar-intro { padding: 80px 20px 24px; text-align: center; }
+    .bienestar-intro h1 { font-family: 'Fraunces', serif; font-size: clamp(1.6rem,4vw,2.2rem); font-weight: 700; margin: 8px 0 10px; color: var(--txt); }
+    .bienestar-intro p { color: var(--muted); font-size: .92rem; max-width: 480px; margin: 0 auto; line-height: 1.6; }
+
+    .clara-card-wrap { flex: 1; display: flex; align-items: flex-start; justify-content: center; padding: 0 16px 48px; }
+    .clara-card {
+      width: 100%; max-width: 600px;
+      background: var(--panel, #fff);
+      border: 1px solid var(--line, #D9E1DE);
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 12px 40px rgba(14,23,20,.1);
+      display: flex; flex-direction: column;
+    }
+    .clara-card-head {
+      padding: 16px 18px;
+      display: flex; align-items: center; gap: 12px;
+      background: linear-gradient(135deg,#A84F3E,#8F4234 60%,#E58B78);
+    }
+    .clara-card-head .ch-name { font-weight: 800; font-size: 1rem; color: #fff; line-height: 1.1; }
+    .clara-card-head .ch-sub { font-size: .75rem; color: rgba(255,255,255,.9); display: flex; align-items: center; gap: 6px; margin-top: 3px; }
+    .clara-card-head .ch-dot { width: 8px; height: 8px; border-radius: 50%; background: #34d399; box-shadow: 0 0 0 3px rgba(52,211,153,.3); flex-shrink: 0; }
+    .clara-card-body {
+      flex: 1; padding: 20px 18px 16px;
+      display: flex; flex-direction: column; gap: 12px;
+      background: #F7F8F7;
+      min-height: 180px;
+    }
+    .clara-card-msg {
+      max-width: 84%; padding: 11px 14px; border-radius: 16px;
+      font-size: .92rem; line-height: 1.5;
+      background: #fff; border: 1px solid #D9E1DE; border-bottom-left-radius: 5px;
+      color: #18211E; align-self: flex-start;
+    }
+    .clara-card-foot {
+      padding: 12px 14px;
+      border-top: 1px solid var(--line, #D9E1DE);
+      background: var(--panel, #fff);
+    }
+    .clara-card-input-wrap {
+      display: flex; gap: 8px; align-items: flex-end;
+    }
+    .clara-card-input {
+      flex: 1; resize: none; min-height: 44px; max-height: 96px;
+      padding: 11px 14px; border-radius: 12px;
+      border: 1px solid var(--line, #D9E1DE);
+      background: var(--panel, #fff); color: var(--txt, #18211E);
+      font-family: inherit; font-size: .92rem; outline: none;
+      cursor: pointer;
+      transition: border-color .15s;
+    }
+    .clara-card-input:focus { border-color: #8F4234; cursor: text; }
+    .clara-card-send {
+      width: 44px; height: 44px; flex-shrink: 0;
+      border: none; border-radius: 12px; cursor: pointer; color: #fff;
+      background: linear-gradient(135deg,#A84F3E,#8F4234);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem;
+    }
+    .clara-card-send:disabled { opacity: .5; cursor: default; }
+    .clara-card-disclaimer {
+      font-size: .68rem; color: var(--muted); text-align: center;
+      margin-top: 8px; line-height: 1.4;
+    }
+  </style>
+</head>
+<body class="member-start bienestar-shell">
+<div class="bienestar-intro no-trial" data-member-main>
+  <div class="member-start-trial" id="memberTrialStrip" hidden></div>
+  <p class="member-hero-kicker">IA de bienestar</p>
+  <h1>Clara · IA de bienestar</h1>
+  <p>Ordena ideas, explora recursos y encuentra un primer paso. No reemplaza atención profesional.</p>
+</div>
+
+<div class="clara-card-wrap">
+  <div class="clara-card">
+    <div class="clara-card-head">
+      <span style="font-size:1.5rem;line-height:1">&#x1F6D6;</span>
+      <div>
+        <div class="ch-name">Clara</div>
+        <div class="ch-sub"><span class="ch-dot"></span> Tu Guía 24/7 · by Ps. Guillermo</div>
+      </div>
+    </div>
+    <div class="clara-card-body" id="claraCardBody">
+      <div class="clara-card-msg">Hola, soy Clara, tu guía de acompañamiento emocional. Estoy aquí para escucharte y orientarte, las 24 horas. 💜</div>
+    </div>
+    <div class="clara-card-foot">
+      <div class="clara-card-input-wrap">
+        <textarea class="clara-card-input" id="claraCardInput" rows="1" placeholder="Escribe tu mensaje a Clara..." maxlength="2000" readonly></textarea>
+        <button class="clara-card-send" id="claraCardSend" aria-label="Enviar">&#10148;</button>
+      </div>
+      <div class="clara-card-disclaimer">Clara es una IA de acompañamiento y no sustituye atención psicológica profesional.</div>
+    </div>
+  </div>
+</div>
+
+<script src="js/funnel-utils.js"></script>
+<script src="js/tribu-common.js"></script>
+<script src="js/tribu-contenido.js"></script>
+<script src="js/member-app.js"></script>
+<script src="clara-chat.js"></script>
+<script>
+var CLARA_URL = 'https://chatgpt.com/g/g-68fbdd94f4908191bf4bc65b8e92d540-clara-tu-guia-24-7-by-ps-guillermo';
+var _claraApiEnabled = false;
+var _claraReady = false;
+var _claraMensajes = [];
+
+function claraAbrirPopup() {
+  var w = 440, h = 760;
+  var left = Math.max(0, (window.screen.width || 1280) - w - 30);
+  var top = Math.max(0, ((window.screen.height || 800) - h) / 2);
+  window.open(CLARA_URL, 'ClaraChat',
+    'width=' + w + ',height=' + h + ',left=' + left + ',top=' + top +
+    ',menubar=no,toolbar=no,location=yes,status=no,resizable=yes,scrollbars=yes');
+}
+
+function claraAddMsg(text, who) {
+  var body = document.getElementById('claraCardBody');
+  var m = document.createElement('div');
+  m.className = 'clara-card-msg' + (who === 'user' ? ' user' : '');
+  if (who === 'user') {
+    m.style.cssText = 'align-self:flex-end;background:linear-gradient(135deg,#A84F3E,#8F4234);color:#fff;border-bottom-left-radius:16px;border-bottom-right-radius:5px;border:none;';
+  }
+  m.textContent = text;
+  body.appendChild(m);
+  body.scrollTop = body.scrollHeight;
+  return m;
+}
+
+function claraEnviarApi(texto) {
+  var input = document.getElementById('claraCardInput');
+  var send = document.getElementById('claraCardSend');
+  var body = document.getElementById('claraCardBody');
+  claraAddMsg(texto, 'user');
+  _claraMensajes.push({ role: 'user', content: texto });
+  send.disabled = true; input.disabled = true;
+  var typing = document.createElement('div');
+  typing.className = 'clara-card-msg';
+  typing.innerHTML = '<span style="opacity:.5">Clara está escribiendo…</span>';
+  body.appendChild(typing); body.scrollTop = body.scrollHeight;
+  var headers = { 'Content-Type': 'application/json' };
+  var t = typeof getToken === 'function' ? getToken() : '';
+  if (t) headers['Authorization'] = 'Bearer ' + t;
+  fetch((window.__APP_BASE__ || '') + '/api/clara/chat', {
+    method: 'POST', headers: headers,
+    body: JSON.stringify({ mensajes: _claraMensajes })
+  }).then(function(r){ return r.json().then(function(d){ return { ok: r.ok, d: d }; }); })
+    .then(function(res){
+      typing.remove();
+      var reply = res.ok && res.d.respuesta ? res.d.respuesta : (res.d.error || 'Lo siento, ahora mismo no puedo responder.');
+      claraAddMsg(reply, 'bot');
+      _claraMensajes.push({ role: 'assistant', content: reply });
+    }).catch(function(){
+      typing.remove();
+      claraAddMsg('Hubo un problema de conexión. Por favor, inténtalo de nuevo.', 'bot');
+    }).then(function(){
+      send.disabled = false; input.disabled = false; input.focus();
+    });
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  const ok = await MemberApp.init({ requireSub: true, layout: 'funnel' });
+  if (!ok) return;
+
+  if (typeof TribuContenido !== 'undefined') {
+    const c = await TribuContenido.load('member_bienestar');
+    if (c) {
+      TribuContenido.setText(document.querySelector('.member-hero-kicker'), c.eyebrow);
+      TribuContenido.setText(document.querySelector('.bienestar-intro h1'), c.titulo);
+      TribuContenido.setText(document.querySelector('.bienestar-intro p'), c.lead);
+    }
+  }
+
+  // Detectar si la API de Clara está habilitada
+  try {
+    const t = typeof getToken === 'function' ? getToken() : '';
+    const headers = t ? { Authorization: 'Bearer ' + t } : {};
+    const cfg = await fetch((window.__APP_BASE__ || '') + '/api/clara/config', { headers }).then(r => r.json());
+    _claraApiEnabled = !!(cfg && cfg.enabled);
+  } catch (_) { _claraApiEnabled = false; }
+  _claraReady = true;
+
+  const input = document.getElementById('claraCardInput');
+  const send = document.getElementById('claraCardSend');
+
+  function autosize() { input.style.height = 'auto'; input.style.height = Math.min(input.scrollHeight, 96) + 'px'; }
+
+  function handleEnviar() {
+    if (!_claraApiEnabled) { claraAbrirPopup(); return; }
+    const texto = input.value.trim();
+    if (!texto) return;
+    input.value = ''; autosize();
+    claraEnviarApi(texto);
+  }
+
+  // Click o focus en el input: si es modo popup, abrir directamente
+  input.addEventListener('click', function() {
+    if (!_claraApiEnabled) { claraAbrirPopup(); return; }
+    input.removeAttribute('readonly');
+    input.focus();
+  });
+  input.addEventListener('focus', function() {
+    if (_claraApiEnabled) input.removeAttribute('readonly');
+  });
+  input.addEventListener('input', autosize);
+  input.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleEnviar(); }
+  });
+  send.addEventListener('click', handleEnviar);
+});
+</script>
+</body>
+</html>
