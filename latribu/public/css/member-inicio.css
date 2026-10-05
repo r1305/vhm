@@ -381,7 +381,6 @@ body.member-start .member-top-nav a.active {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  max-width: 480px;
 }
 .member-home-continue .member-start-btn-primary {
   max-width: 220px;
