@@ -61,30 +61,23 @@ function initQuillEditors() {
 /* ── View/Edit toggle ── */
 async function setEditMode(edit) {
   isEditMode = edit;
-  document.body.classList.toggle('edit-mode', edit);
-  document.body.classList.toggle('view-mode', !edit);
-  document.body.classList.toggle('profile-editing', edit);
-  const actionsEdit = document.getElementById('profileActionsEdit');
-  if (actionsEdit) actionsEdit.style.display = edit ? 'flex' : 'none';
-  document.getElementById('chipsSection').style.display = edit ? 'none' : 'block';
-  // Habilitar/deshabilitar editores Quill
-  setQuillReadonly(quillHobbies, !edit);
-  setQuillReadonly(quillDedicas, !edit);
-
+  const overlay = document.getElementById('editPerfilOverlay');
   if (edit) {
-    // Entrando a editar: cargar catálogo si no está cargado y renderizar chips editables
     if (!_chipsCatalogo.intereses.length && !_chipsCatalogo.objetivos.length) {
       await cargarCatalogoChips();
     }
     const u = window.tribuUser;
-    _chipsSeleccionados.intereses = [...(u.intereses || [])];
-    _chipsSeleccionados.objetivos = [...(u.objetivos || [])];
+    _chipsSeleccionados.intereses = [...parseArray(u.intereses || [])];
+    _chipsSeleccionados.objetivos = [...parseArray(u.objetivos || [])];
     renderEditChips('chipsIntereses', _chipsCatalogo.intereses, _chipsSeleccionados.intereses, 6, 'intereses');
     renderEditChips('chipsObjetivos', _chipsCatalogo.objetivos, _chipsSeleccionados.objetivos, 3, 'objetivos');
-    document.getElementById('chipsSection').style.display = 'block';
+    setQuillReadonly(quillHobbies, false);
+    setQuillReadonly(quillDedicas, false);
+    if (overlay) { overlay.classList.add('show'); document.body.style.overflow = 'hidden'; }
   } else {
-    // Saliendo de editar: chips vuelven a solo visuales (ya actualizados en _chipsSeleccionados)
-    document.getElementById('chipsSection').style.display = (_chipsSeleccionados.intereses.length || _chipsSeleccionados.objetivos.length) ? 'block' : 'none';
+    if (overlay) { overlay.classList.remove('show'); document.body.style.overflow = ''; }
+    setQuillReadonly(quillHobbies, true);
+    setQuillReadonly(quillDedicas, true);
   }
 }
 
@@ -459,11 +452,6 @@ function fillPerfilForm() {
 
   renderAvatar();
   renderProfileView();
-  const msg = document.getElementById('pfMsg');
-  if (msg) { msg.textContent = ''; msg.className = 'profile-msg'; }
-
-  // Iniciar en modo vista (readonly)
-  setEditMode(false);
 }
 
 function setProfileMsg(text, ok) {
@@ -719,6 +707,10 @@ async function initPerfilPage() {
     await cargarLogrosPerfil();
     initLogroModal();
 
+    document.getElementById('editPerfilCloseBtn')?.addEventListener('click', () => setEditMode(false));
+    document.getElementById('editPerfilOverlay')?.addEventListener('click', e => {
+      if (e.target.id === 'editPerfilOverlay') setEditMode(false);
+    });
     document.getElementById('cpCloseBtn')?.addEventListener('click', cerrarCpModal);
     document.getElementById('cpOverlay')?.addEventListener('click', e => {
       if (e.target.id === 'cpOverlay') cerrarCpModal();
