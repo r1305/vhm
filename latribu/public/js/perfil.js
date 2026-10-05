@@ -63,8 +63,9 @@ async function setEditMode(edit) {
   isEditMode = edit;
   document.body.classList.toggle('edit-mode', edit);
   document.body.classList.toggle('view-mode', !edit);
-  document.getElementById('profileActionsView').style.display = edit ? 'none' : 'flex';
-  document.getElementById('profileActionsEdit').style.display = edit ? 'flex' : 'none';
+  document.body.classList.toggle('profile-editing', edit);
+  const actionsEdit = document.getElementById('profileActionsEdit');
+  if (actionsEdit) actionsEdit.style.display = edit ? 'flex' : 'none';
   document.getElementById('chipsSection').style.display = edit ? 'none' : 'block';
   // Habilitar/deshabilitar editores Quill
   setQuillReadonly(quillHobbies, !edit);
@@ -456,8 +457,8 @@ function fillPerfilForm() {
   renderChips('chipsObjetivos', _chipsSeleccionados.objetivos, 'objetivos');
   document.getElementById('chipsSection').style.display = (_chipsSeleccionados.intereses?.length || _chipsSeleccionados.objetivos?.length) ? 'block' : 'none';
 
-  document.getElementById('profileHeading').textContent = ((u.nombre || '') + ' ' + (u.apellido || '')).trim();
   renderAvatar();
+  renderProfileView();
   const msg = document.getElementById('pfMsg');
   if (msg) { msg.textContent = ''; msg.className = 'profile-msg'; }
 
@@ -476,6 +477,176 @@ function parseArray(val) {
   if (!val) return [];
   if (Array.isArray(val)) return val;
   try { return JSON.parse(val); } catch { return []; }
+}
+
+function stripHtml(html) {
+  const d = document.createElement('div');
+  d.innerHTML = html || '';
+  return (d.textContent || d.innerText || '').trim();
+}
+
+function setViewText(id, text, fallback) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const t = String(text || '').trim();
+  if (t) {
+    el.textContent = t;
+    el.classList.remove('empty');
+  } else {
+    el.textContent = fallback;
+    el.classList.add('empty');
+  }
+}
+
+function renderProfileView() {
+  const u = window.tribuUser;
+  if (!u) return;
+  const nombre = (u.nombre || '').trim();
+  const displayName = document.getElementById('pfDisplayName');
+  if (displayName) displayName.textContent = nombre || 'Tu perfil';
+
+  const bioEl = document.getElementById('pfDisplayBio');
+  const bio = (u.carrera || '').trim();
+  if (bioEl) {
+    bioEl.textContent = bio || 'Aprendiendo a vivir con más calma y a conectar con personas que también están creciendo.';
+  }
+
+  setViewText('viewPasion', stripHtml(u.hobbies), 'Aún no has contado qué te apasiona.');
+  setViewText('viewTrabajo', stripHtml(u.a_que_te_dedicas), 'Puedes compartir un foco personal, no hace falta tu profesión.');
+
+  const objetivos = parseArray(u.objetivos);
+  let conectar = '';
+  if (objetivos.length) {
+    conectar = objetivos.length === 1
+      ? objetivos[0]
+      : objetivos.slice(0, -1).join(', ') + ' y ' + objetivos[objetivos.length - 1];
+  }
+  setViewText('viewConectar', conectar, 'Elige objetivos en editar perfil para completar esta invitación.');
+
+  const intereses = parseArray(u.intereses);
+  const chipsBox = document.getElementById('viewInteresesChips');
+  if (chipsBox) {
+    chipsBox.innerHTML = intereses.length
+      ? intereses.map(i => `<span class="chip">${escapeHtml(i)}</span>`).join('')
+      : '<span class="chip is-empty">Sin intereses aún</span>';
+  }
+}
+
+function encodeLogroContenido(body, shareInCommunity) {
+  const tipo = shareInCommunity ? 'logro' : 'logro_privado';
+  return `#tipo:${tipo}\n${String(body || '').trim()}`;
+}
+
+function parseLogroTipo(contenido) {
+  const m = String(contenido || '').match(/^#tipo:([a-z_]+)/);
+  return m ? m[1] : 'avance';
+}
+
+function openLogroModal() {
+  const overlay = document.getElementById('logroOverlay');
+  const ta = document.getElementById('logroText');
+  const msg = document.getElementById('logroModalMsg');
+  if (!overlay) return;
+  if (ta) ta.value = '';
+  if (msg) { msg.textContent = ''; msg.className = 'logro-modal-msg'; }
+  const share = document.getElementById('logroShareCommunity');
+  if (share) share.checked = false;
+  overlay.classList.add('show');
+  ta?.focus();
+}
+
+function closeLogroModal() {
+  document.getElementById('logroOverlay')?.classList.remove('show');
+}
+
+function setLogroModalMsg(text, ok) {
+  const el = document.getElementById('logroModalMsg');
+  if (!el) return;
+  el.textContent = text;
+  el.className = 'logro-modal-msg ' + (ok ? 'ok' : 'err');
+}
+
+async function guardarLogroModal() {
+  const ta = document.getElementById('logroText');
+  const share = document.getElementById('logroShareCommunity');
+  const btn = document.getElementById('logroSaveBtn');
+  const body = ta?.value.trim() || '';
+  if (!body) {
+    setLogroModalMsg('Escribe algo sobre tu avance', false);
+    return;
+  }
+  if (body.length > 2000) {
+    setLogroModalMsg('Máximo 2000 caracteres', false);
+    return;
+  }
+  const shareCommunity = share ? share.checked : false;
+  btn.disabled = true;
+  const saveLabel = 'Guardar mi logro';
+  btn.textContent = 'Guardando…';
+  try {
+    const res = await tribuFetch('/posts', {
+      method: 'POST',
+      body: { contenido: encodeLogroContenido(body, shareCommunity) },
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(json.error || 'No se pudo guardar');
+    closeLogroModal();
+    await cargarLogrosPerfil();
+    if (typeof mostrarTribuFeedback === 'function') {
+      mostrarTribuFeedback({
+        title: 'Logro guardado',
+        message: shareCommunity
+          ? 'Tu avance ya está en tu perfil y en la comunidad.'
+          : 'Tu avance quedó en tu perfil.',
+      });
+    }
+  } catch (e) {
+    setLogroModalMsg(e.message || 'Error al guardar', false);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = saveLabel;
+  }
+}
+
+function initLogroModal() {
+  document.getElementById('btnAddLogro')?.addEventListener('click', openLogroModal);
+  document.getElementById('btnAddLogroMore')?.addEventListener('click', openLogroModal);
+  document.getElementById('logroCloseBtn')?.addEventListener('click', closeLogroModal);
+  document.getElementById('logroSaveBtn')?.addEventListener('click', guardarLogroModal);
+  document.getElementById('logroOverlay')?.addEventListener('click', (e) => {
+    if (e.target.id === 'logroOverlay') closeLogroModal();
+  });
+}
+
+async function cargarLogrosPerfil() {
+  const list = document.getElementById('profileLogrosList');
+  const empty = document.getElementById('profileLogrosEmpty');
+  const addMore = document.getElementById('btnAddLogroMore');
+  if (!list || !getToken()) return;
+  try {
+    const res = await tribuFetch('/posts?mine=1&limit=10');
+    const json = await res.json();
+    if (!res.ok) return;
+    const posts = (json.data || []).filter(p => {
+      const tipo = parseLogroTipo(p.contenido);
+      return tipo === 'logro' || tipo === 'logro_privado' || tipo === 'avance';
+    });
+    if (!posts.length) {
+      list.innerHTML = '';
+      if (empty) empty.style.display = 'block';
+      if (addMore) addMore.style.display = 'none';
+      return;
+    }
+    if (empty) empty.style.display = 'none';
+    if (addMore) addMore.style.display = 'inline-flex';
+    list.innerHTML = posts.slice(0, 5).map(p => {
+      const body = String(p.contenido || '').replace(/^#tipo:[a-z_]+\n?/, '').trim();
+      const when = p.created_at
+        ? new Date(p.created_at).toLocaleDateString('es-PE', { timeZone: 'America/Lima', day: 'numeric', month: 'short' })
+        : '';
+      return `<article class="profile-logro-item">${escapeHtml(body || 'Avance compartido')}<time>${escapeHtml(when)}</time></article>`;
+    }).join('');
+  } catch (_) {}
 }
 
 function renderChips(containerId, items, tipo) {
@@ -527,13 +698,15 @@ async function guardarPerfil() {
   }
 }
 
-/* ── Init ── */
-(async () => {
+async function initPerfilPage() {
   if (!requireAuth()) return;
   showLoader('Cargando perfil...');
   try {
     const ok = await verificarSesion();
-    if (!ok) { window.location.href = BASE + '/?login=1'; return; }
+    if (!ok) {
+      window.location.href = BASE + '/camino?login=1';
+      return;
+    }
     initQuillEditors();
     fillPerfilForm();
     const res = await tribuFetch('/tribu-auth/me');
@@ -543,8 +716,9 @@ async function guardarPerfil() {
       fillPerfilForm();
       renderNavAuth();
     }
+    await cargarLogrosPerfil();
+    initLogroModal();
 
-    // Event listeners para el modal de completar perfil
     document.getElementById('cpCloseBtn')?.addEventListener('click', cerrarCpModal);
     document.getElementById('cpOverlay')?.addEventListener('click', e => {
       if (e.target.id === 'cpOverlay') cerrarCpModal();
@@ -556,4 +730,4 @@ async function guardarPerfil() {
   } finally {
     hideLoader();
   }
-})();
+}
