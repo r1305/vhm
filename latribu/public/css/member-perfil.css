@@ -282,11 +282,13 @@ body.member-profile .profile-intereses-chips .chip.is-empty {
   padding: 11px 12px;
   border-radius: 10px;
   border: 1px solid var(--tribu-line, #d9e1de);
-  background: #fff;
-  color: var(--tribu-chocolate);
+  background: #fff !important;
+  color: #2a1915 !important;
   font-family: inherit;
   font-size: .95rem;
+  box-sizing: border-box;
 }
+.profile-edit-modal .profile-field input::placeholder { color: #a08070 !important; }
 .profile-edit-modal .profile-field input:focus {
   outline: none;
   border-color: rgba(168,79,62,.55);
@@ -299,11 +301,17 @@ body.member-profile .profile-intereses-chips .chip.is-empty {
 }
 .profile-edit-modal .profile-actions {
   display: flex;
+  flex-direction: row;
+  align-items: center;
   gap: 10px;
-  flex-wrap: wrap;
   margin-top: 8px;
 }
+.profile-edit-modal .profile-actions .logro-modal-save {
+  flex: 1;
+  width: auto;
+}
 .profile-edit-modal .profile-actions .profile-btn-ghost {
+  flex-shrink: 0;
   padding: 13px 20px;
   border-radius: var(--radius-button, 13px);
   border: 1px solid rgba(168,79,62,.4);
@@ -316,6 +324,7 @@ body.member-profile .profile-intereses-chips .chip.is-empty {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  white-space: nowrap;
 }
 .profile-edit-modal .profile-actions .profile-btn-ghost:hover {
   background: rgba(168,79,62,.07);

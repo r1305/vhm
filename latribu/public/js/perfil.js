@@ -227,6 +227,8 @@ function renderEditChips(containerId, options, selected, max, tipo) {
     ' data-chip-tipo="' + tipo + '" data-chip-opt="' + escapeHtml(opt) + '">' +
     escapeHtml(opt) + '</button>'
   ).join('');
+  if (container.dataset.chipsBound) return;
+  container.dataset.chipsBound = '1';
   container.addEventListener('click', function(e) {
     const btn = e.target.closest('[data-chip-opt]');
     if (!btn) return;
@@ -242,7 +244,7 @@ function renderEditChips(containerId, options, selected, max, tipo) {
       arr.push(o);
       btn.classList.add('selected');
     }
-  }, { once: false });
+  });
 }
 
 function togglePerfilChip() {} // legacy no-op
