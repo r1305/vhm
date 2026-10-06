@@ -1212,7 +1212,7 @@
 <body>
 
 <nav class="site-nav" aria-label="Navegación principal">
-  <span class="tribu-brand" aria-current="page">La Tribu</span>
+  <a href="/inicio" class="tribu-brand" style="text-decoration:none">La Tribu</a>
   <div class="site-nav-end" id="navAuthArea"></div>
 </nav>
 
@@ -1294,7 +1294,7 @@
     </header>
     <div class="tribu-account-tabs" role="navigation" aria-label="Secciones de tu cuenta">
       <button type="button" class="tribu-account-tab active" data-tab="perfil" onclick="switchTribuTab('perfil')">Mi perfil</button>
-      <button type="button" class="tribu-account-tab" data-tab="suscripciones" onclick="switchTribuTab('suscripciones')">Suscripciones</button>
+      <button type="button" class="tribu-account-tab" data-tab="suscripciones" onclick="navToSuscripciones()">Mi membresía</button>
       <button type="button" class="tribu-account-tab" data-tab="tarjetas" onclick="switchTribuTab('tarjetas')">Mis tarjetas</button>
     </div>
     <div class="tribu-account-body">
@@ -1836,7 +1836,7 @@ function renderNavAuth() {
             <div class="user-menu-head-email">${escapeHtml(tribuUser.email || '')}</div>
           </div>
           <button type="button" class="user-menu-item" role="menuitem" onclick="navToPerfil()"><span class="mi">👤</span> Mi perfil</button>
-          <button type="button" class="user-menu-item" role="menuitem" onclick="navToSuscripciones()"><span class="mi">📋</span> Suscripciones</button>
+          <button type="button" class="user-menu-item" role="menuitem" onclick="navToSuscripciones()"><span class="mi">📋</span> Mi membresía</button>
           <button type="button" class="user-menu-item" role="menuitem" onclick="navToTarjetas()"><span class="mi">💳</span> Mis tarjetas</button>
           <div class="user-menu-divider"></div>
           <button type="button" class="user-menu-item danger" role="menuitem" onclick="navLogout()"><span class="mi">⎋</span> Cerrar sesión</button>
@@ -1918,7 +1918,7 @@ function navToPerfil() {
 
 function navToSuscripciones() {
   closeUserMenu();
-  window.location.href = BASE + '/suscripciones';
+  window.location.href = BASE + '/membresia';
 }
 
 function navToTarjetas() {
@@ -2477,7 +2477,7 @@ async function doCambiarPasswordTemp() {
   finally { btn.disabled = false; btn.textContent = 'Guardar contrasena'; }
 }
 
-function doLogout() { clearToken(); tribuUser = null; renderNavAuth(); syncClaraWidget(); cargar(); }
+function doLogout() { clearToken(); tribuUser = null; window.location.href = BASE + '/'; }
 
 
 document.getElementById('authOverlay').addEventListener('keydown', e => {
@@ -3233,6 +3233,14 @@ async function afterAuthSuccess() {
   clearStaleLockUi();
   cerrarAuth();
   try {
+    if (tribuUser && typeof tieneSuscripcion === 'function' && tieneSuscripcion()) {
+      if (!tribuUser.onboarding_completado) {
+        window.location.href = BASE + '/empezar/que-buscas';
+        return;
+      }
+      window.location.href = BASE + '/inicio';
+      return;
+    }
     await switchTribuTab('camino');
   } finally {
     hidePageLoader();
@@ -3889,7 +3897,11 @@ document.getElementById('cpOverlay')?.addEventListener('keydown', e => {
   if (e.key === 'Escape') cerrarCpModal();
 });
 
-verificarSesion().then(cargar);
+verificarSesion().then(() => {
+  const params = new URLSearchParams(location.search);
+  if (params.get('login') === '1') abrirLoginAuth();
+  cargar();
+});
 cargarCatalogo();
 
 async function cargarRecursosPerfil() {
