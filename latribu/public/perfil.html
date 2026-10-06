@@ -15,8 +15,22 @@
   <link rel="stylesheet" href="css/member-perfil.css">
   <link rel="stylesheet" href="vendor/quill.snow.css">
   <script src="vendor/quill.min.js"></script>
+  <style>
+    .page-loader { display: none; position: fixed; inset: 0; z-index: 9000; background: rgba(14,23,20,.38); backdrop-filter: blur(4px); align-items: center; justify-content: center; }
+    .page-loader.show { display: flex; }
+    .page-loader-box { background: #fff9f4; border: 1px solid #d9e1de; border-radius: 18px; padding: 24px 32px; text-align: center; }
+    .page-loader-spinner { width: 36px; height: 36px; border-radius: 50%; border: 3px solid rgba(168,79,62,.2); border-top-color: #A84F3E; animation: mpSpin .75s linear infinite; margin: 0 auto 10px; }
+    .page-loader-text { font-family: Inter, sans-serif; font-size: .88rem; font-weight: 700; color: #77645a; }
+    @keyframes mpSpin { to { transform: rotate(360deg); } }
+  </style>
 </head>
 <body class="member-start member-profile view-mode">
+<div class="page-loader show" id="pageLoader">
+  <div class="page-loader-box">
+    <div class="page-loader-spinner"></div>
+    <div class="page-loader-text" id="pageLoaderText">Cargando…</div>
+  </div>
+</div>
 
 <div class="profile-funnel no-trial" data-member-main>
   <div class="member-start-trial" id="memberTrialStrip" hidden></div>
@@ -122,13 +136,6 @@
   </div>
 </div>
 
-<div class="page-loader" id="pageLoader">
-  <div class="page-loader-box">
-    <div class="page-loader-spinner"></div>
-    <div class="page-loader-text" id="pageLoaderText">Cargando…</div>
-  </div>
-</div>
-
 <div class="auth-overlay logro-overlay" id="logroOverlay" role="dialog" aria-modal="true" aria-labelledby="logroModalTitle">
   <div class="profile-logro-modal" role="document">
     <button type="button" class="logro-modal-close" id="logroCloseBtn" aria-label="Cerrar">&times;</button>
@@ -221,11 +228,6 @@
 </div>
 
 <style>
-.page-loader { display: none; position: fixed; inset: 0; z-index: 9000; background: rgba(14,23,20,.38); backdrop-filter: blur(4px); align-items: center; justify-content: center; }
-.page-loader.show { display: flex; }
-.page-loader-box { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 24px 32px; text-align: center; }
-.page-loader-spinner { width: 36px; height: 36px; border-radius: 50%; border: 3px solid rgba(168,79,62,.2); border-top-color: #A84F3E; animation: mpSpin .75s linear infinite; margin: 0 auto 10px; }
-@keyframes mpSpin { to { transform: rotate(360deg); } }
 .auth-overlay { display: none; position: fixed; inset: 0; background: rgba(12,18,16,.48); z-index: 2000; padding: 20px; align-items: center; justify-content: center; }
 .auth-overlay.show { display: flex; }
 .auth-box { background: var(--panel); border: 1px solid var(--line); border-radius: 20px; padding: 28px 24px; }
