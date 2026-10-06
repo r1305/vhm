@@ -224,34 +224,28 @@ function renderEditChips(containerId, options, selected, max, tipo) {
   if (!container) return;
   container.innerHTML = options.map(opt =>
     '<button type="button" class="tribu-cp-chip' + (selected.includes(opt) ? ' selected' : '') + '"' +
-    ' onclick="togglePerfilChip(this,\'' + containerId + '\',\'' + escapeHtml(opt) + '\',' + max + ')">' +
+    ' data-chip-tipo="' + tipo + '" data-chip-opt="' + escapeHtml(opt) + '">' +
     escapeHtml(opt) + '</button>'
   ).join('');
+  container.addEventListener('click', function(e) {
+    const btn = e.target.closest('[data-chip-opt]');
+    if (!btn) return;
+    const t = btn.dataset.chipTipo;
+    const o = btn.dataset.chipOpt;
+    const maxSel = t === 'intereses' ? 6 : 3;
+    const arr = _chipsSeleccionados[t];
+    const idx = arr.indexOf(o);
+    if (idx >= 0) {
+      arr.splice(idx, 1);
+      btn.classList.remove('selected');
+    } else if (arr.length < maxSel) {
+      arr.push(o);
+      btn.classList.add('selected');
+    }
+  }, { once: false });
 }
 
-function togglePerfilChip(btn, containerId, opt, max) {
-  // Determinar tipo por el catálogo al que pertenece la opción (funciona para ambos containers)
-  const tipo = _chipsCatalogo.intereses.includes(opt) ? 'intereses' : 'objetivos';
-  const maxSel = tipo === 'intereses' ? 6 : 3;
-  const arr = _chipsSeleccionados[tipo];
-  const idx = arr.indexOf(opt);
-  if (idx >= 0) {
-    arr.splice(idx, 1);
-    btn.classList.remove('selected');
-  } else if (arr.length < maxSel) {
-    arr.push(opt);
-    btn.classList.add('selected');
-  } else {
-    return; // límite alcanzado
-  }
-  // Actualizar display de chips seleccionados (perfil)
-  renderChips(tipo === 'intereses' ? 'chipsIntereses' : 'chipsObjetivos', arr, tipo);
-  // Actualizar chips del modal (para que se vea selected y contador)
-  const modalContainerId = tipo === 'intereses' ? 'cpInteresesChips' : 'cpObjetivosChips';
-  const limitId = tipo === 'intereses' ? 'cpInteresesLimit' : 'cpObjetivosLimit';
-  const maxAllowed = tipo === 'intereses' ? 6 : 3;
-  renderCpChips(modalContainerId, _chipsCatalogo[tipo], arr, maxAllowed, limitId);
-}
+function togglePerfilChip() {} // legacy no-op
 
 function renderCpChips(containerId, options, selected, max, limitId) {
   const box = document.getElementById(containerId);

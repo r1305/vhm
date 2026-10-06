@@ -303,6 +303,23 @@ body.member-profile .profile-intereses-chips .chip.is-empty {
   flex-wrap: wrap;
   margin-top: 8px;
 }
+.profile-edit-modal .profile-actions .profile-btn-ghost {
+  padding: 13px 20px;
+  border-radius: var(--radius-button, 13px);
+  border: 1px solid rgba(168,79,62,.4);
+  background: transparent;
+  color: #8F4234;
+  font-weight: 700;
+  font-size: .95rem;
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.profile-edit-modal .profile-actions .profile-btn-ghost:hover {
+  background: rgba(168,79,62,.07);
+}
 .profile-edit-modal .profile-msg {
   font-size: .85rem;
   font-weight: 700;
