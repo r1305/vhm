@@ -344,10 +344,22 @@ body.member-profile .profile-intereses-chips .chip.is-empty {
   background: #fff !important;
   color: #2a1915 !important;
 }
+.profile-edit-modal .ql-container.ql-snow {
+  border: 1px solid #d9e1de !important;
+  border-top: none !important;
+  border-radius: 0 0 10px 10px !important;
+  outline: none !important;
+}
+.profile-edit-modal .ql-toolbar.ql-snow {
+  border: 1px solid #d9e1de !important;
+  border-radius: 10px 10px 0 0 !important;
+}
 .profile-edit-modal .ql-editor {
   background: #fff !important;
   color: #2a1915 !important;
   min-height: 80px;
+  outline: none !important;
+  box-shadow: none !important;
 }
 .profile-edit-modal .ql-editor.ql-blank::before {
   color: #a08070 !important;

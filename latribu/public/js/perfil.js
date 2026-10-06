@@ -78,6 +78,9 @@ async function setEditMode(edit) {
     if (overlay) { overlay.classList.remove('show'); document.body.style.overflow = ''; }
     setQuillReadonly(quillHobbies, true);
     setQuillReadonly(quillDedicas, true);
+    // Re-renderizar chips en modo vista al cerrar
+    renderChips('chipsIntereses', _chipsSeleccionados.intereses, 'intereses');
+    renderChips('chipsObjetivos', _chipsSeleccionados.objetivos, 'objetivos');
   }
 }
 
@@ -441,10 +444,14 @@ function fillPerfilForm() {
   setQuillReadonly(quillHobbies, true);
   setQuillReadonly(quillDedicas, true);
 
-  // Chips: intereses / objetivos (solo visuales) - usar _chipsSeleccionados que es la fuente de verdad tras guardar
-  renderChips('chipsIntereses', _chipsSeleccionados.intereses, 'intereses');
-  renderChips('chipsObjetivos', _chipsSeleccionados.objetivos, 'objetivos');
-  document.getElementById('chipsSection').style.display = (_chipsSeleccionados.intereses?.length || _chipsSeleccionados.objetivos?.length) ? 'block' : 'none';
+  // Chips: intereses / objetivos (solo visuales en modo vista)
+  // Solo renderizar si el modal de edición NO está abierto,
+  // para no pisar los botones interactivos de renderEditChips
+  if (!isEditMode) {
+    renderChips('chipsIntereses', _chipsSeleccionados.intereses, 'intereses');
+    renderChips('chipsObjetivos', _chipsSeleccionados.objetivos, 'objetivos');
+    document.getElementById('chipsSection').style.display = (_chipsSeleccionados.intereses?.length || _chipsSeleccionados.objetivos?.length) ? 'block' : 'none';
+  }
 
   renderAvatar();
   renderProfileView();
