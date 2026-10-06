@@ -222,12 +222,12 @@ async function cargarCatalogoChips() {
 function renderEditChips(containerId, options, selected, max, tipo) {
   const container = document.getElementById(containerId);
   if (!container) return;
+  delete container.dataset.chipsBound;
   container.innerHTML = options.map(opt =>
     '<button type="button" class="tribu-cp-chip' + (selected.includes(opt) ? ' selected' : '') + '"' +
     ' data-chip-tipo="' + tipo + '" data-chip-opt="' + escapeHtml(opt) + '">' +
     escapeHtml(opt) + '</button>'
   ).join('');
-  if (container.dataset.chipsBound) return;
   container.dataset.chipsBound = '1';
   container.addEventListener('click', function(e) {
     const btn = e.target.closest('[data-chip-opt]');

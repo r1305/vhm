@@ -338,6 +338,23 @@ body.member-profile .profile-intereses-chips .chip.is-empty {
 .profile-edit-modal .profile-msg.ok { color: #1a5c3a; }
 .profile-edit-modal .profile-msg.err { color: #be123c; }
 
+/* Quill dentro del modal — forzar fondo y texto claros */
+.profile-edit-modal .ql-container,
+.profile-edit-modal .ql-toolbar {
+  background: #fff !important;
+  color: #2a1915 !important;
+}
+.profile-edit-modal .ql-editor {
+  background: #fff !important;
+  color: #2a1915 !important;
+  min-height: 80px;
+}
+.profile-edit-modal .ql-editor.ql-blank::before {
+  color: #a08070 !important;
+}
+.profile-edit-modal .ql-snow .ql-stroke { stroke: #444 !important; }
+.profile-edit-modal .ql-snow .ql-fill  { fill:   #444 !important; }
+
 /* Chips editables dentro del modal */
 .chips-edit-wrap {
   display: flex;
