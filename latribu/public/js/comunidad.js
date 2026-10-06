@@ -1,471 +1,322 @@
-// Wait for DOM to load
-document.addEventListener('DOMContentLoaded', function() {
-  // Initialize components
-  initAvatarUpload();
-  initPostEditor();
-  initPostPhotoUpload();
-  initPublicar();
-  initFeed();
-  initConfirmDialog();
-  loadUserData();
-  verificarSesion();
-});
+(function () {
+  const BASE = typeof TribuFunnel !== 'undefined' ? TribuFunnel.base() : (window.__APP_BASE__ || '').replace(/\/+$/, '');
 
-// DOM Elements
-const pageLoader = document.getElementById('pageLoader');
-const comunidadAvatarCircle = document.getElementById('comunidadAvatarCircle');
-const comunidadAvatarSmall = document.getElementById('comunidadAvatarSmall');
-const comunidadNombre = document.getElementById('comunidadNombre');
-const comunidadTitulo = document.getElementById('comunidadTitulo');
-const comunidadChips = document.getElementById('comunidadChips');
-const comunidadFotoInput = document.getElementById('comunidadFoto');
-const comunidadPostEditor = document.getElementById('comunidadPostEditor');
-const comunidadPostBtn = document.getElementById('comunidadPostBtn');
-const comunidadFotoBtn = document.getElementById('comunidadFotoBtn');
-const comunidadPostFotoInput = document.getElementById('comunidadPostFoto');
-const comunidadPostInput = document.getElementById('comunidadPostInput');
-const comunidadPostFilename = document.getElementById('comunidadPostFilename');
-const comunidadPostClearBtn = document.getElementById('comunidadPostClearBtn');
-const comunidadPostMsg = document.getElementById('comunidadPostMsg');
-const comunidadFeed = document.getElementById('comunidadFeed');
-const comunidadFeedMore = document.getElementById('comunidadFeedMore');
-const comunidadFeedOrden = document.getElementById('comunidadFeedOrden');
+  const TIPOS = [
+    { id: 'avance', label: 'Compartir avance', composeLabel: 'Compartir avance', placeholder: 'Una idea, una pregunta o un pequeño avance…' },
+    { id: 'pregunta', label: 'Hacer una pregunta', composeLabel: 'Tu pregunta', placeholder: '¿Qué te gustaría preguntar a la tribu?' },
+    { id: 'apoyo', label: 'Pedir apoyo', composeLabel: 'Pedir apoyo', placeholder: 'Cuéntanos en qué te gustaría sentir apoyo…' },
+    { id: 'compartir', label: 'Compartir algo', composeLabel: 'Compartir algo', placeholder: 'Algo que tengas en mente, en tus propias palabras…' },
+    { id: 'logro', label: 'Celebrar un logro', composeLabel: 'Celebrar un logro', placeholder: 'Un avance pequeño que quieras celebrar…' },
+  ];
 
-// State
-let waPostEditor = null;
-let selectedPostPhoto = null;
-let userData = null;
-const feed = { page: 1, totalPages: 1, orden: 'recientes', cargando: false };
+  const TIPO_LABEL = Object.fromEntries(TIPOS.map(t => [t.id, t.label]));
 
-const MAX_FOTO_BYTES = 5 * 1024 * 1024;
+  const FEED_TABS = [
+    { id: 'para_ti', label: 'Para ti' },
+    { id: 'recientes', label: 'Recientes' },
+    { id: 'logros', label: 'Logros' },
+    { id: 'preguntas', label: 'Preguntas' },
+    { id: 'actividades', label: 'Actividades' },
+  ];
 
-// Initialize avatar upload functionality
-function initAvatarUpload() {
-  // Click on avatar to open file picker
-  comunidadAvatarCircle.addEventListener('click', function() {
-    comunidadFotoInput.click();
-  });
-  
-  // Handle file selection
-  comunidadFotoInput.addEventListener('change', function(e) {
-    const file = e.target.files[0];
-    if (file) {
-      // Show preview
-      const reader = new FileReader();
-      reader.onload = function(event) {
-        comunidadAvatarCircle.innerHTML = `<img src="${event.target.result}" alt="Avatar">`;
-        comunidadAvatarSmall.innerHTML = `<img src="${event.target.result}" alt="Avatar">`;
-      };
-      reader.readAsDataURL(file);
-      
-      // In a real app, you would upload this to the server here
-      showMessage('Foto seleccionada. En una implementación completa, se subiría al servidor.', 'info');
+  const pageLoader = document.getElementById('pageLoader');
+  const postInput = document.getElementById('communityPostInput');
+  const postBtn = document.getElementById('communityPostBtn');
+  const postMsg = document.getElementById('communityPostMsg');
+  const composeLabel = document.getElementById('communityComposeLabel');
+  const intentChips = document.getElementById('communityIntentChips');
+  const feedTabs = document.getElementById('communityFeedTabs');
+  const feedEl = document.getElementById('communityFeed');
+  const feedMore = document.getElementById('communityFeedMore');
+  let selectedTipo = 'avance';
+  let feedTab = 'para_ti';
+  const feed = { page: 1, totalPages: 1, orden: 'recientes', cargando: false, cache: [] };
+
+  function encodeContenido(tipo, body) {
+    const t = String(body || '').trim();
+    return `#tipo:${tipo}\n${t}`;
+  }
+
+  function parseContenido(raw) {
+    const s = String(raw == null ? '' : raw);
+    const m = s.match(/^#tipo:([a-z_]+)\n([\s\S]*)$/);
+    if (m) return { tipo: m[1], body: m[2].trim() };
+    return { tipo: 'avance', body: s.trim() };
+  }
+
+  function tipoMatchesTab(tipo, tab) {
+    if (tab === 'para_ti' || tab === 'recientes') return true;
+    if (tab === 'logros') return tipo === 'logro' || tipo === 'avance';
+    if (tab === 'preguntas') return tipo === 'pregunta';
+    if (tab === 'actividades') return tipo === 'apoyo' || tipo === 'compartir';
+    return true;
+  }
+
+  function showLoader(show) {
+    pageLoader?.classList.toggle('show', !!show);
+  }
+
+  function showMessage(message, type) {
+    if (!postMsg) return;
+    postMsg.textContent = message;
+    postMsg.className = 'community-post-msg ' + (type || 'info');
+    postMsg.hidden = false;
+    if (type === 'success' || type === 'info') {
+      setTimeout(() => { postMsg.hidden = true; }, 5000);
     }
-  });
-}
-
-// Initialize WhatsApp-style editor for post creation
-function initPostEditor() {
-  if (waPostEditor) return;
-  waPostEditor = WaEditor.create(comunidadPostEditor, {
-    placeholder: 'Comparte algo con la comunidad...',
-  });
-}
-
-// Initialize post photo upload functionality
-function initPostPhotoUpload() {
-  comunidadFotoBtn.addEventListener('click', function() {
-    comunidadPostFotoInput.click();
-  });
-  
-  comunidadPostFotoInput.addEventListener('change', function(e) {
-    const file = e.target.files[0];
-    if (file) {
-      // Comprobación rápida para dar feedback inmediato; el servidor valida los
-      // bytes de verdad, así que esto no es la barrera de seguridad.
-      if (!file.type.match('image.*')) {
-        showMessage('Por favor selecciona un archivo de imagen válido', 'error');
-        return;
-      }
-      if (file.size > MAX_FOTO_BYTES) {
-        showMessage('La foto supera los 5 MB. Elige una más liviana.', 'error');
-        comunidadPostFotoInput.value = '';
-        return;
-      }
-
-      comunidadPostFilename.value = file.name;
-      selectedPostPhoto = file;
-      comunidadPostInput.style.display = 'flex';
-
-      showMessage(`Foto seleccionada: ${file.name}`, 'success');
-    }
-  });
-  
-  comunidadPostClearBtn.addEventListener('click', function() {
-    comunidadPostFotoInput.value = '';
-    comunidadPostFilename.value = '';
-    selectedPostPhoto = null;
-    comunidadPostInput.style.display = 'none';
-    showMessage('Foto eliminada', 'info');
-  });
-}
-
-// Load user data from API
-async function loadUserData() {
-  const loaderText = document.getElementById('pageLoaderText');
-  if (loaderText) loaderText.textContent = 'Cargando perfil...';
-  showLoader(true);
-  
-  try {
-    const response = await tribuFetch('/tribu-auth/me');
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-    const user = await response.json();
-    userData = user;
-    displayUserData();
-    
-  } catch (error) {
-    console.error('Error loading user data:', error);
-    showMessage('Error al cargar los datos del usuario. Por favor intenta de nuevo.', 'error');
-  } finally {
-    showLoader(false);
   }
-}
 
-// Display user data in the UI
-function displayUserData() {
-  if (!userData) return;
-  // Parse intereses and objetivos if they are strings
-  if (typeof userData.intereses === 'string') {
-    try {
-      userData.intereses = JSON.parse(userData.intereses);
-    } catch (e) {
-      console.warn('Failed to parse intereses', e);
-      userData.intereses = [];
-    }
-  } else if (!Array.isArray(userData.intereses)) {
-    userData.intereses = [];
+  function tiempoRelativo(iso) {
+    const t = new Date(iso).getTime();
+    if (!t || Number.isNaN(t)) return '';
+    const mins = Math.round((Date.now() - t) / 60000);
+    if (mins < 1) return 'ahora';
+    if (mins < 60) return `hace ${mins} min`;
+    const hs = Math.round(mins / 60);
+    if (hs < 24) return `hace ${hs} h`;
+    const ds = Math.round(hs / 24);
+    if (ds === 1) return 'ayer';
+    if (ds < 30) return `hace ${ds} días`;
+    return new Date(iso).toLocaleDateString('es-PE', { timeZone: 'America/Lima', day: 'numeric', month: 'short' });
   }
-  if (typeof userData.objetivos === 'string') {
-    try {
-      userData.objetivos = JSON.parse(userData.objetivos);
-    } catch (e) {
-      console.warn('Failed to parse objetivos', e);
-      userData.objetivos = [];
-    }
-  } else if (!Array.isArray(userData.objetivos)) {
-    userData.objetivos = [];
+
+  function avatarAutor(autor) {
+    if (autor.foto_url) return `<img src="${escapeHtml(autor.foto_url)}" alt="">`;
+    return escapeHtml(autor.iniciales || '?');
   }
-  
-// Update name
-  const nombreCompleto = `${userData.nombre || ''} ${userData.apellido || ''}`.trim();
-  comunidadNombre.textContent = nombreCompleto || 'Usuario';
-  comunidadTitulo.textContent = 'Mi perfil en la comunidad';
-  
-// Update avatar
-   if (userData.foto_url) {
-     const avatarImg = `<img src="${userData.foto_url}" alt="Avatar de ${userData.nombre}">`;
-     comunidadAvatarCircle.innerHTML = avatarImg;
-     comunidadAvatarSmall.innerHTML = avatarImg;
-   } else {
-     // Show initials
-     const nombreFirst = userData.nombre && userData.nombre.length > 0 ? userData.nombre[0] : '';
-     const apellidoFirst = userData.apellido && userData.apellido.length > 0 ? userData.apellido[0] : '';
-     const initials = (nombreFirst + apellidoFirst).toUpperCase() || '?';
-     comunidadAvatarCircle.textContent = initials;
-     comunidadAvatarSmall.textContent = initials;
-   }
-   
-  // Update display cards: ¿Qué te apasiona? / ¿A qué te dedicas?
-  const hobbiesHtml = userData.hobbies || '';
-  const dedicasHtml = userData.a_que_te_dedicas || '';
-  const hobbiesEl = document.getElementById('comunidadDisplayHobbiesContent');
-  const dedicasEl = document.getElementById('comunidadDisplayDedicasContent');
-  if (hobbiesEl) hobbiesEl.innerHTML = hobbiesHtml || '<span style="color:var(--muted);font-style:italic">Aún no has contado qué te apasiona</span>';
-  if (dedicasEl) dedicasEl.innerHTML = userData.a_que_te_dedicas || '<span style="color:var(--muted);font-style:italic">Aún no has contado a qué te dedicas</span>';
-  
-  // Update chips (intereses and objetivos)
-  updateChips();
-}
 
-// Update intereses and objetivos chips
-function updateChips() {
-  comunidadChips.innerHTML = '';
-  
-  // Add intereses chips
-  if (userData.intereses && Array.isArray(userData.intereses)) {
-    userData.intereses.forEach(interes => {
-      if (interes && interes.trim() !== '') {
-        const chip = document.createElement('div');
-        chip.className = 'comunidad-chip';
-        chip.textContent = interes.trim();
-        comunidadChips.appendChild(chip);
-      }
-    });
-  }
-  
-  // Add objetivos chips
-  if (userData.objetivos && Array.isArray(userData.objetivos)) {
-    userData.objetivos.forEach(objetivo => {
-      if (objetivo && objetivo.trim() !== '') {
-        const chip = document.createElement('div');
-        chip.className = 'comunidad-chip';
-        chip.textContent = objetivo.trim();
-        comunidadChips.appendChild(chip);
-      }
-    });
-  }
-  
-  // If no chips, show a message
-  if (comunidadChips.children.length === 0) {
-    const noChips = document.createElement('div');
-    noChips.className = 'comunidad-chip';
-    noChips.style.color = 'var(--muted)';
-    noChips.textContent = 'Aún no tienes intereses u objetivos definidos. Ve a tu perfil para agregarlos.';
-    comunidadChips.appendChild(noChips);
-  }
-}
-
-// Show/hide loader
-function showLoader(show) {
-  if (show) {
-    pageLoader.classList.add('show');
-  } else {
-    pageLoader.classList.remove('show');
-  }
-}
-
-// Show message in post section
-function showMessage(message, type = 'info') {
-  comunidadPostMsg.textContent = message;
-  comunidadPostMsg.className = `comunidad-post-msg ${type}`;
-  comunidadPostMsg.style.display = 'block';
-  
-  // Hide after 5 seconds for success/info messages
-  if (type === 'success' || type === 'info') {
-    setTimeout(() => {
-      comunidadPostMsg.style.display = 'none';
-    }, 5000);
-  }
-}
-
-// El overlay de confirmacion vive en el HTML y cada pagina lo enlaza por su
-// cuenta; sin esto mostrarTribuConfirm se queda esperando para siempre.
-function initConfirmDialog() {
-  document.getElementById('tribuConfirmCancel')?.addEventListener('click', () => cerrarTribuConfirm(false));
-  document.getElementById('tribuConfirmOk')?.addEventListener('click', () => cerrarTribuConfirm(true));
-  document.getElementById('tribuConfirmOverlay')?.addEventListener('click', (e) => {
-    if (e.target.id === 'tribuConfirmOverlay') cerrarTribuConfirm(false);
-  });
-}
-
-/** "hace 5 min", "ayer", etc. relative to now. */
-function tiempoRelativo(iso) {
-  const t = new Date(iso).getTime();
-  if (!t || Number.isNaN(t)) return '';
-  const mins = Math.round((Date.now() - t) / 60000);
-  if (mins < 1) return 'ahora';
-  if (mins < 60) return `hace ${mins} min`;
-  const hs = Math.round(mins / 60);
-  if (hs < 24) return `hace ${hs} h`;
-  const ds = Math.round(hs / 24);
-  if (ds === 1) return 'ayer';
-  if (ds < 30) return `hace ${ds} días`;
-  return new Date(iso).toLocaleDateString('es-PE', { timeZone: 'America/Lima', day: 'numeric', month: 'short' });
-}
-
-/** Avatar del autor; si no tiene foto, sus iniciales. */
-function avatarAutor(autor) {
-  if (autor.foto_url) return `<img src="${escapeHtml(autor.foto_url)}" alt="">`;
-  return escapeHtml(autor.iniciales || '?');
-}
-
-// El contenido llega como texto plano desde el textarea del editor, asi que se
-// escapa siempre. No se usa innerHTML con lo que escribe el usuario.
-function tarjetaPost(p) {
-  const foto = p.foto_url
-    ? `<img class="comunidad-card-photo" src="${escapeHtml(p.foto_url)}" alt="" loading="lazy">`
-    : '';
-  // Una publicacion puede no tener texto. "(Foto)" es el marcador que guardaba
-  // el backend antes; sigue sin mostrarse para no romper las filas antiguas.
-  const texto = (p.contenido && p.contenido !== '(Foto)')
-    ? `<p class="comunidad-card-text">${escapeHtml(p.contenido)}</p>` : '';
-  const editado = p.mine_edit ? '<span class="comunidad-card-tag">editado</span>' : '';
-  const borrar = p.mine
-    ? `<button type="button" class="comunidad-card-del" data-del="${p.id}">Eliminar</button>` : '';
-  return `<article class="comunidad-card" data-post="${p.id}">
-      <div class="comunidad-card-head">
-        <div class="comunidad-card-avatar">${avatarAutor(p.autor)}</div>
-        <div class="comunidad-card-meta">
-          <span class="comunidad-card-name">${escapeHtml(p.autor.nombre_completo || 'Miembro')}</span>
-          <span class="comunidad-card-time">${escapeHtml(tiempoRelativo(p.created_at))}</span>
+  function tarjetaPost(p) {
+    const parsed = parseContenido(p.contenido);
+    const tipoNombre = TIPO_LABEL[parsed.tipo] || 'Compartir avance';
+    const foto = p.foto_url
+      ? `<img class="community-post-photo" src="${escapeHtml(p.foto_url)}" alt="" loading="lazy">`
+      : '';
+    const body = parsed.body && parsed.body !== '(Foto)'
+      ? `<div class="community-post-body">${escapeHtml(parsed.body)}</div>` : '';
+    const perfilHref = BASE + '/perfil';
+    const borrar = p.mine
+      ? `<button type="button" class="community-delete" data-del="${p.id}">Eliminar</button>` : '';
+    return `<article class="community-post-card" data-post="${p.id}" data-tipo="${escapeHtml(parsed.tipo)}">
+      <div class="community-post-card-head">
+        <div class="community-post-avatar">${avatarAutor(p.autor)}</div>
+        <div class="community-post-meta">
+          <button type="button" class="community-post-author" data-perfil="${p.autor.id || ''}">${escapeHtml(p.autor.nombre_completo || 'Miembro')}</button>
+          <div class="community-post-sub">${escapeHtml(tiempoRelativo(p.created_at))} · ${escapeHtml(tipoNombre)}</div>
         </div>
-        ${editado}
       </div>
-      ${texto}
+      ${body}
       ${foto}
-      <div class="comunidad-card-actions">
-        <button type="button" class="comunidad-like${p.liked ? ' is-liked' : ''}" data-like="${p.id}" aria-pressed="${p.liked}">
-          <span aria-hidden="true">${p.liked ? '💜' : '🤍'}</span>
-          <span class="comunidad-like-count">${p.likes || 0}</span>
-          <span class="comunidad-like-label">${p.liked ? 'Apoyado' : 'Apoyar'}</span>
-        </button>
+      <div class="community-post-actions">
+        <button type="button" class="community-like${p.liked ? ' on' : ''}" data-like="${p.id}" aria-pressed="${p.liked}">♡ ${p.liked ? 'Apoyado' : 'Apoyar'}</button>
+        <button type="button" class="community-conversar" data-conversar="${p.autor.id || ''}">Conversar</button>
+        <button type="button" class="community-report" data-report="${p.id}">Reportar</button>
         ${borrar}
       </div>
     </article>`;
-}
-
-function pintarFeed(posts, { reemplazar }) {
-  if (reemplazar) comunidadFeed.innerHTML = '';
-  if (!posts.length && reemplazar) {
-    comunidadFeed.innerHTML = '<div class="comunidad-feed-empty">Todavía no hay logros publicados. Sé la primera persona en compartir.</div>';
-    return;
   }
-  comunidadFeed.insertAdjacentHTML('beforeend', posts.map(tarjetaPost).join(''));
-}
 
-async function cargarFeed({ reemplazar = true } = {}) {
-  if (feed.cargando) return;
-  if (!getToken()) {
-    comunidadFeed.innerHTML = '<div class="comunidad-feed-empty">Inicia sesión para ver los logros de la comunidad.</div>';
-    return;
-  }
-  feed.cargando = true;
-  try {
-    const qs = new URLSearchParams({ page: String(feed.page), limit: '10', orden: feed.orden });
-    const res = await tribuFetch(`/posts?${qs}`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const json = await res.json();
-    feed.totalPages = json.totalPages || 1;
-    pintarFeed(json.data || [], { reemplazar });
-    comunidadFeedMore.style.display = feed.page < feed.totalPages ? 'inline-flex' : 'none';
-  } catch (error) {
-    console.error('Error al cargar el feed:', error);
-    if (reemplazar) {
-      comunidadFeed.innerHTML = '<div class="comunidad-feed-empty">No pudimos cargar los logros. Recarga la página para intentarlo de nuevo.</div>';
-    }
-  } finally {
-    feed.cargando = false;
-  }
-}
-
-function initFeed() {
-  comunidadFeedMore?.addEventListener('click', () => { feed.page++; cargarFeed({ reemplazar: false }); });
-  comunidadFeedOrden?.addEventListener('change', () => {
-    feed.orden = comunidadFeedOrden.value;
-    feed.page = 1;
-    cargarFeed({ reemplazar: true });
-  });
-
-  // Un solo delegado para like y eliminar, en vez de uno por tarjeta.
-  comunidadFeed?.addEventListener('click', async (ev) => {
-    const btnLike = ev.target.closest('[data-like]');
-    const btnDel = ev.target.closest('[data-del]');
-
-    if (btnLike) {
-      const id = btnLike.dataset.like;
-      // Optimista: el contador se mueve ya y se revierte si el servidor dice que no.
-      const previoLiked = btnLike.classList.contains('is-liked');
-      const previoNum = Number(btnLike.querySelector('.comunidad-like-count').textContent) || 0;
-      btnLike.classList.toggle('is-liked', !previoLiked);
-      btnLike.querySelector('.comunidad-like-count').textContent = String(previoNum + (previoLiked ? -1 : 1));
-      btnLike.querySelector('.comunidad-like-label').textContent = previoLiked ? 'Apoyar' : 'Apoyado';
-      btnLike.disabled = true;
-      try {
-        const res = await tribuFetch(`/posts/${id}/like`, { method: 'POST' });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const json = await res.json();
-        btnLike.classList.toggle('is-liked', json.liked);
-        btnLike.setAttribute('aria-pressed', String(json.liked));
-        btnLike.querySelector('.comunidad-like-count').textContent = String(json.likes);
-        btnLike.querySelector('.comunidad-like-label').textContent = json.liked ? 'Apoyado' : 'Apoyar';
-      } catch (error) {
-        console.error('Error al dar apoyo:', error);
-        btnLike.classList.toggle('is-liked', previoLiked);
-        btnLike.querySelector('.comunidad-like-count').textContent = String(previoNum);
-        btnLike.querySelector('.comunidad-like-label').textContent = previoLiked ? 'Apoyado' : 'Apoyar';
-      } finally {
-        btnLike.disabled = false;
-      }
+  function pintarFeed(posts, { reemplazar }) {
+    const filtered = posts.filter(p => tipoMatchesTab(parseContenido(p.contenido).tipo, feedTab));
+    if (reemplazar) feedEl.innerHTML = '';
+    if (!filtered.length && reemplazar) {
+      feedEl.innerHTML = '<div class="community-feed-empty">Aún no hay publicaciones en este filtro. Sé la primera persona en compartir algo pequeño.</div>';
       return;
     }
+    feedEl.insertAdjacentHTML('beforeend', filtered.map(tarjetaPost).join(''));
+  }
 
-    if (btnDel) {
-      const id = btnDel.dataset.del;
-      const ok = await mostrarTribuConfirm({
-        title: 'Eliminar publicación',
-        message: 'Esta acción no se puede deshacer. ¿Quieres continuar?',
-        confirmText: 'Eliminar', danger: true,
+  function renderIntentChips() {
+    if (!intentChips) return;
+    intentChips.innerHTML = TIPOS.map(t =>
+      `<button type="button" class="community-intent-chip${t.id === selectedTipo ? ' on' : ''}" data-tipo="${t.id}" role="tab">${escapeHtml(t.label)}</button>`
+    ).join('');
+    intentChips.querySelectorAll('[data-tipo]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        selectedTipo = btn.getAttribute('data-tipo');
+        renderIntentChips();
+        const def = TIPOS.find(x => x.id === selectedTipo);
+        if (composeLabel && def) composeLabel.textContent = def.composeLabel;
+        if (postInput && def?.placeholder) postInput.placeholder = def.placeholder;
+        postInput?.focus();
       });
-      if (!ok) return;
-      try {
-        const res = await tribuFetch(`/posts/${id}`, { method: 'DELETE' });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        comunidadFeed.querySelector(`[data-post="${id}"]`)?.remove();
-        if (!comunidadFeed.querySelector('.comunidad-card')) {
-          feed.page = 1;
-          cargarFeed({ reemplazar: true });
-        }
-      } catch (error) {
-        console.error('Error al eliminar:', error);
-        showMessage('No se pudo eliminar la publicación.', 'error');
-      }
-    }
-  });
+    });
+  }
 
-  cargarFeed({ reemplazar: true });
-}
+  function renderFeedTabs() {
+    if (!feedTabs) return;
+    feedTabs.innerHTML = FEED_TABS.map(t =>
+      `<button type="button" class="community-feed-tab${t.id === feedTab ? ' on' : ''}" data-tab="${t.id}" role="tab">${escapeHtml(t.label)}</button>`
+    ).join('');
+    feedTabs.querySelectorAll('[data-tab]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        feedTab = btn.getAttribute('data-tab');
+        feed.page = 1;
+        renderFeedTabs();
+        if (feedTab === 'recientes') feed.orden = 'recientes';
+        else feed.orden = 'recientes';
+        cargarFeed({ reemplazar: true });
+      });
+    });
+  }
 
-// Limpia el compositor tras publicar.
-function limpiarComposer() {
-  waPostEditor?.setValue('');
-  comunidadPostFotoInput.value = '';
-  comunidadPostFilename.value = '';
-  selectedPostPhoto = null;
-  comunidadPostInput.style.display = 'none';
-}
-
-// Handle post submission: publica de verdad contra POST /posts.
-function initPublicar() {
-  comunidadPostBtn.addEventListener('click', async function() {
-    const contenido = waPostEditor ? waPostEditor.getValue().trim() : '';
-    if (!contenido && !selectedPostPhoto) {
-      showMessage('Escribe algo o adjunta una foto para publicar', 'error');
-      return;
-    }
+  async function cargarFeed({ reemplazar }) {
+    if (feed.cargando) return;
     if (!getToken()) {
-      requireAuth();
+      feedEl.innerHTML = '<div class="community-feed-empty">Inicia sesión para ver la comunidad.</div>';
       return;
     }
-    if (contenido.length > 2000) {
-      showMessage(`Tu publicación tiene ${contenido.length} caracteres y el máximo es 2000.`, 'error');
-      return;
-    }
-
-    const form = new FormData();
-    form.append('contenido', contenido);
-    if (selectedPostPhoto) form.append('foto', selectedPostPhoto, selectedPostPhoto.name);
-
-    comunidadPostBtn.disabled = true;
-    const textoBoton = comunidadPostBtn.textContent;
-    comunidadPostBtn.textContent = 'Publicando...';
+    feed.cargando = true;
     try {
-      const res = await tribuFetch('/posts', { method: 'POST', body: form });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
-
-      limpiarComposer();
-      showMessage('¡Logro compartido con la comunidad!', 'success');
-      // El post nuevo se inserta al principio en vez de recargar la pagina.
-      if (json.post) pintarFeed([json.post], { reemplazar: false });
-      comunidadFeed.firstElementChild?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    } catch (error) {
-      console.error('Error al publicar:', error);
-      showMessage(error.message || 'Error al publicar. Por favor intenta de nuevo.', 'error');
+      const qs = new URLSearchParams({ page: String(feed.page), limit: '10', orden: feed.orden });
+      const res = await tribuFetch('/posts?' + qs);
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Error');
+      let rows = json.data || [];
+      rows = rows.filter(p => parseContenido(p.contenido).tipo !== 'logro_privado');
+      if (reemplazar) feed.cache = rows;
+      else feed.cache = feed.cache.concat(rows);
+      feed.totalPages = json.totalPages || 1;
+      feedMore.style.display = feed.page < feed.totalPages ? 'inline-flex' : 'none';
+      pintarFeed(reemplazar ? rows : rows, { reemplazar });
+    } catch (e) {
+      console.error(e);
+      if (reemplazar) {
+        feedEl.innerHTML = '<div class="community-feed-empty">No pudimos cargar las publicaciones. Recarga la página.</div>';
+      }
     } finally {
-      comunidadPostBtn.disabled = false;
-      comunidadPostBtn.textContent = textoBoton;
+      feed.cargando = false;
     }
+  }
+
+  function initConfirmDialog() {
+    document.getElementById('tribuConfirmCancel')?.addEventListener('click', () => cerrarTribuConfirm(false));
+    document.getElementById('tribuConfirmOk')?.addEventListener('click', () => cerrarTribuConfirm(true));
+    document.getElementById('tribuConfirmOverlay')?.addEventListener('click', (e) => {
+      if (e.target.id === 'tribuConfirmOverlay') cerrarTribuConfirm(false);
+    });
+  }
+
+  function initFeedInteractions() {
+    feedMore?.addEventListener('click', () => {
+      feed.page++;
+      cargarFeed({ reemplazar: false });
+    });
+
+    feedEl?.addEventListener('click', async (ev) => {
+      const btnLike = ev.target.closest('[data-like]');
+      const btnDel = ev.target.closest('[data-del]');
+      const btnReport = ev.target.closest('[data-report]');
+      const btnPerfil = ev.target.closest('.community-post-author');
+      const btnConv = ev.target.closest('[data-conversar]');
+
+      if (btnPerfil) {
+        location.href = BASE + '/perfil';
+        return;
+      }
+      if (btnConv) {
+        showMessage('Pronto podrás enviar mensajes directos. Por ahora, apoya o responde en el feed.', 'info');
+        return;
+      }
+      if (btnReport) {
+        const ok = await mostrarTribuConfirm({
+          title: 'Reportar publicación',
+          message: '¿Quieres avisar al equipo de La Tribu sobre este contenido?',
+        });
+        if (ok) showMessage('Gracias. Revisaremos este contenido.', 'success');
+        return;
+      }
+      if (btnLike) {
+        const id = btnLike.getAttribute('data-like');
+        btnLike.disabled = true;
+        try {
+          const res = await tribuFetch(`/posts/${id}/like`, { method: 'POST' });
+          const json = await res.json();
+          if (!res.ok) throw new Error(json.error);
+          btnLike.classList.toggle('on', !!json.liked);
+          btnLike.setAttribute('aria-pressed', json.liked ? 'true' : 'false');
+          btnLike.textContent = json.liked ? '♡ Apoyado' : '♡ Apoyar';
+        } catch (err) {
+          showMessage(err.message || 'No se pudo registrar tu apoyo', 'error');
+        } finally {
+          btnLike.disabled = false;
+        }
+        return;
+      }
+      if (btnDel) {
+        const id = btnDel.getAttribute('data-del');
+        const ok = await mostrarTribuConfirm({
+          title: 'Eliminar publicación',
+          message: '¿Eliminar tu publicación?',
+        });
+        if (!ok) return;
+        try {
+          const res = await tribuFetch(`/posts/${id}`, { method: 'DELETE' });
+          if (!res.ok) throw new Error();
+          feedEl.querySelector(`[data-post="${id}"]`)?.remove();
+          if (!feedEl.querySelector('.community-post-card')) {
+            feedEl.innerHTML = '<div class="community-feed-empty">Aún no hay publicaciones en este filtro.</div>';
+          }
+        } catch {
+          showMessage('No se pudo eliminar', 'error');
+        }
+      }
+    });
+  }
+
+  function limpiarComposer() {
+    if (postInput) postInput.value = '';
+  }
+
+  function initPublicar() {
+    postBtn?.addEventListener('click', async () => {
+      const body = postInput?.value.trim() || '';
+      if (!body) {
+        showMessage('Escribe algo antes de compartir', 'error');
+        return;
+      }
+      if (!getToken()) {
+        requireAuth();
+        return;
+      }
+      if (body.length > 2000) {
+        showMessage('Máximo 2000 caracteres', 'error');
+        return;
+      }
+
+      const payload = { contenido: encodeContenido(selectedTipo, body) };
+
+      postBtn.disabled = true;
+      const prev = postBtn.textContent;
+      postBtn.textContent = 'Compartiendo…';
+      try {
+        const res = await tribuFetch('/posts', { method: 'POST', body: payload });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+        limpiarComposer();
+        showMessage('Compartido con la comunidad', 'success');
+        if (json.post) {
+          feed.page = 1;
+          await cargarFeed({ reemplazar: true });
+          feedEl.firstElementChild?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      } catch (err) {
+        showMessage(err.message || 'Error al publicar', 'error');
+      } finally {
+        postBtn.disabled = false;
+        postBtn.textContent = prev;
+      }
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    const ok = await MemberApp.init({ requireSub: true, layout: 'funnel' });
+    if (!ok) return;
+    initConfirmDialog();
+    renderIntentChips();
+    renderFeedTabs();
+    initPublicar();
+    initFeedInteractions();
+    await cargarFeed({ reemplazar: true });
   });
-}
+})();

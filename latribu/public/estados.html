@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="es" data-product="tribu">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Estados de UI — La Tribu</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Fraunces:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/vhm-design-tokens-v1.css">
+  <link rel="stylesheet" href="css/latribu-public-theme.css">
+  <link rel="stylesheet" href="css/funnel.css">
+</head>
+<body>
+<main class="funnel-step-shell" style="max-width:640px;">
+  <h1 style="font-family:'Fraunces',serif;margin-bottom:8px;">Estados de interfaz</h1>
+  <p style="color:var(--muted);margin-bottom:24px;">Referencia rápida para vacíos y errores (pantalla 16 del funnel).</p>
+  <div class="funnel-card" style="margin-bottom:12px;text-align:center;padding:28px;">
+    <div style="font-size:2rem;margin-bottom:8px;">📭</div>
+    <strong>Sin resultados</strong>
+    <p style="color:var(--muted);font-size:.9rem;margin-top:6px;">Aún no hay contenido aquí. Vuelve más tarde o explora otra sección.</p>
+  </div>
+  <div class="funnel-card" style="margin-bottom:12px;text-align:center;padding:28px;">
+    <div style="font-size:2rem;margin-bottom:8px;">⚠️</div>
+    <strong>No se pudo cargar</strong>
+    <p style="color:var(--muted);font-size:.9rem;margin-top:6px;">Revisa tu conexión e intenta de nuevo.</p>
+    <button type="button" class="funnel-btn outline" style="margin-top:12px;" onclick="location.reload()">Reintentar</button>
+  </div>
+  <p style="margin-top:20px;font-size:.88rem;">
+    <a href="./guia" style="color:var(--primary);font-weight:700;">Mapa del funnel (QA)</a>
+    · <a href="./" style="color:var(--muted);font-weight:700;">Landing</a>
+  </p>
+</main>
+</body>
+</html>

@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Contenido — La Tribu Admin</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/admin.css">
+  <script src="js/base.js"></script>
+</head>
+<body>
+  <div id="admin-root"><div id="page-main" style="display:none">
+    <div class="section-header">
+      <div><h2>📄 Contenido del sitio</h2><p>Textos de la landing y pantallas del miembro (JSON por sección)</p></div>
+    </div>
+    <div style="display:grid;grid-template-columns:minmax(220px,280px) 1fr;gap:20px;align-items:start">
+      <div class="card"><div class="card-body" style="padding:12px">
+        <div id="contenido-slugs" style="display:flex;flex-direction:column;gap:4px"></div>
+      </div></div>
+      <div class="card"><div class="card-body">
+        <h3 id="contenido-slug-title" style="margin:0 0 8px;font-size:1rem">—</h3>
+        <p id="contenido-slug-hint" style="font-size:.82rem;color:var(--text-muted);margin:0 0 12px"></p>
+        <textarea id="contenido-json" rows="22" style="width:100%;font-family:ui-monospace,monospace;font-size:.78rem;padding:12px;border-radius:10px;border:1px solid var(--border-color);background:var(--bg-input);color:var(--text-primary);box-sizing:border-box"></textarea>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:14px">
+          <button type="button" class="btn btn-primary" id="btn-contenido-guardar">💾 Guardar</button>
+          <button type="button" class="btn btn-outline" id="btn-contenido-formatear">Formatear JSON</button>
+          <button type="button" class="btn btn-outline" id="btn-contenido-restaurar">Restaurar default</button>
+        </div>
+        <div class="msg-box" id="contenido-msg" style="margin-top:12px"></div>
+      </div></div>
+    </div>
+  </div></div>
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/toast.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/layout.js"></script>
+  <script src="js/contenido.js"></script>
+</body>
+</html>

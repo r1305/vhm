@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es" data-product="tribu">
+<head>
+  <meta charset="UTF-8">
+  <script>(function(){var t=localStorage.getItem('tribu-theme');if(t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme:dark)').matches))document.documentElement.setAttribute('data-theme','dark');})();</script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Recordatorio — La Tribu</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Fraunces:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/vhm-design-tokens-v1.css">
+  <link rel="stylesheet" href="css/latribu-public-theme.css">
+  <link rel="stylesheet" href="css/member-app.css">
+  <link rel="stylesheet" href="css/member-inicio.css">
+</head>
+<body class="member-start">
+<main class="member-main no-trial" data-member-main style="max-width:560px;">
+  <div class="member-start-trial" id="memberTrialStrip" hidden></div>
+  <section class="member-hero">
+    <p class="member-hero-kicker">Día 6 · Recordatorio</p>
+    <h1>Mañana termina tu prueba gratuita</h1>
+    <p id="recordatorioBody">Si La Tribu te está acompañando, no tienes que hacer nada: mañana se renovará tu membresía con el cobro acordado. Si prefieres no continuar, cancela hoy desde Mi membresía.</p>
+  </section>
+  <a class="member-start-btn-primary" href="./membresia" style="display:flex;width:100%;text-align:center;justify-content:center;text-decoration:none;box-sizing:border-box;">Gestionar membresía</a>
+  <a class="member-start-btn-ghost" href="./mi-prueba" style="display:flex;width:100%;text-align:center;justify-content:center;text-decoration:none;box-sizing:border-box;margin-top:10px;">Ver los 7 días</a>
+</main>
+<script src="js/funnel-utils.js"></script>
+<script src="js/tribu-common.js"></script>
+<script src="js/tribu-contenido.js"></script>
+<script src="js/member-app.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+  const ok = await MemberApp.init({ requireSub: true, layout: 'funnel' });
+  if (!ok) return;
+  let cfg = null;
+  if (typeof TribuContenido !== 'undefined') {
+    cfg = await TribuContenido.load('member_recordatorio');
+    if (cfg) {
+      TribuContenido.setText(document.querySelector('.member-hero-kicker'), cfg.kicker);
+      TribuContenido.setText(document.querySelector('.member-hero h1'), cfg.titulo);
+      TribuContenido.setText(document.getElementById('recordatorioBody'), cfg.body);
+    }
+  }
+  const sub = window.tribuUser?.suscripcion_activa;
+  const body = document.getElementById('recordatorioBody');
+  if (!sub?.fecha_fin || !body) return;
+  const left = MemberApp.daysUntil(sub.fecha_fin);
+  if (left != null && left > 2) {
+    const tpl = cfg?.body_early || 'Tu prueba aún tiene {dias} días. Este recordatorio aplica cuando falte un día para el fin de la prueba.';
+    body.textContent = tpl.replace('{dias}', String(left));
+  }
+});
+</script>
+</body>
+</html>

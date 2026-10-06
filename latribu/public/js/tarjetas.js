@@ -11,7 +11,7 @@ function renderTarjetasHtml(tarjetas) {
       '<div class="cards-empty-icon">💳</div>' +
       '<p>Aún no tienes tarjetas guardadas.</p>' +
       '<p class="cards-empty-hint">Al pagar un plan con renovación automática, tu tarjeta aparecerá aquí.</p>' +
-      '<a href="' + BASE + '/suscripciones" class="profile-btn profile-btn-primary" style="display:inline-block;text-decoration:none">Ver suscripciones</a>' +
+      '<a href="' + BASE + '/membresia" class="funnel-btn" style="display:inline-block;text-decoration:none;margin-top:8px">Ir a mi membresía</a>' +
     '</div>';
   }
   return '<div class="cards-list">' + tarjetas.map(t => {
@@ -90,7 +90,7 @@ async function marcarTarjetaDefault(cardId) {
   showLoader('Cargando tarjetas...');
   try {
     const ok = await verificarSesion();
-    if (!ok) { window.location.href = BASE + '/?login=1'; return; }
+    if (!ok) { window.location.href = BASE + '/camino?login=1'; return; }
     await cargarMisTarjetas();
   } finally {
     hideLoader();

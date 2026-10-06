@@ -1,0 +1,188 @@
+/* Crear contraseña — guía #account (paso 1 de 3) */
+body.cuenta-funnel {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--tribu-cream, #f6efe8);
+  color: var(--tribu-chocolate, #2a1915);
+  font-family: var(--font-ui);
+  font-size: 16px;
+  line-height: 1.65;
+}
+
+.cuenta-page {
+  min-height: 100vh;
+  padding: 28px 24px 60px;
+}
+
+.cuenta-top {
+  max-width: 1050px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+}
+
+.cuenta-top .cuenta-logo {
+  font-family: var(--font-display, 'Fraunces', Georgia, serif);
+  font-size: 1.65rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  text-decoration: none;
+  color: var(--tribu-chocolate);
+}
+
+.cuenta-top .cuenta-logo em {
+  font-style: normal;
+  color: var(--primary);
+}
+
+.cuenta-top .cuenta-login {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.cuenta-onboarding {
+  max-width: 690px;
+  margin: clamp(36px, 8vw, 55px) auto 0;
+}
+
+.cuenta-step-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--primary);
+  margin-bottom: 16px;
+}
+
+.cuenta-progress {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 30px;
+}
+
+.cuenta-progress i {
+  height: 4px;
+  border-radius: 3px;
+  background: #ded0c2;
+  flex: 1;
+  display: block;
+}
+
+.cuenta-progress i.done {
+  background: var(--primary);
+}
+
+.cuenta-onboarding h1 {
+  font-family: var(--font-display, 'Fraunces', Georgia, serif);
+  font-size: clamp(2rem, 5vw, 2.85rem);
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  margin: 0 0 16px;
+}
+
+.cuenta-onboarding .cuenta-lead {
+  font-size: 16px;
+  color: var(--text-secondary, #77645a);
+  margin: 0 0 28px;
+  max-width: 520px;
+}
+
+.cuenta-form-card {
+  background: #fffdf9;
+  border: 1px solid #e2d4c8;
+  border-radius: 20px;
+  padding: 30px;
+}
+
+.cuenta-form-card label {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  margin: 16px 0 7px;
+  color: var(--tribu-chocolate);
+}
+
+.cuenta-form-card label:first-of-type {
+  margin-top: 0;
+}
+
+.cuenta-form-card input {
+  width: 100%;
+  border: 1px solid #d5c3b2;
+  border-radius: 12px;
+  background: #fffdf9;
+  min-height: 50px;
+  padding: 12px 14px;
+  color: #2a1915;
+  font: inherit;
+  box-sizing: border-box;
+}
+
+.cuenta-form-card input[readonly] {
+  background: #f0e6dc;
+  color: #6a5547;
+}
+
+.cuenta-form-card input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: var(--focus-ring);
+}
+
+.cuenta-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  margin: 18px 0 0;
+  cursor: pointer;
+}
+
+.cuenta-check input {
+  width: 18px;
+  min-height: 18px;
+  margin-top: 3px;
+  flex-shrink: 0;
+  accent-color: var(--primary);
+}
+
+.cuenta-error {
+  font-size: 13px;
+  color: #a43723;
+  padding: 12px;
+  background: #fce5dd;
+  border-radius: 9px;
+  margin: 14px 0 0;
+}
+
+.cuenta-error:empty {
+  display: none;
+  padding: 0;
+  background: none;
+}
+
+.cuenta-form-card .funnel-btn {
+  width: 100%;
+  margin-top: 22px;
+}
+
+.cuenta-foot {
+  font-size: 12px;
+  line-height: 1.6;
+  color: #79645a;
+  margin: 16px 0 0;
+}
+
+@media (max-width: 760px) {
+  .cuenta-onboarding h1 { font-size: 2.3rem; }
+  .cuenta-form-card { padding: 22px; }
+}

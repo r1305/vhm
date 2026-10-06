@@ -521,6 +521,9 @@
     document.getElementById('ef-hora_inicio').value = '';
     document.getElementById('ef-hora_fin').value = '';
     document.getElementById('ef-lugar').value = '';
+    document.getElementById('ef-descripcion').value = '';
+    document.getElementById('ef-facilitador').value = '';
+    document.getElementById('ef-tipo').value = 'sesiones';
     document.getElementById('ef-ubicacion').value = '';
     document.getElementById('ef-activo').value = '1';
   }
@@ -544,6 +547,9 @@
     document.getElementById('ef-hora_inicio').value = fmtHora(e.hora_inicio);
     document.getElementById('ef-hora_fin').value = e.hora_fin ? fmtHora(e.hora_fin) : '';
     document.getElementById('ef-lugar').value = e.lugar || '';
+    document.getElementById('ef-descripcion').value = e.descripcion || '';
+    document.getElementById('ef-facilitador').value = e.facilitador || '';
+    document.getElementById('ef-tipo').value = e.tipo || 'sesiones';
     document.getElementById('ef-ubicacion').value = e.ubicacion || '';
     document.getElementById('ef-activo').value = e.activo ? '1' : '0';
     AdminUtils.showModal('modal-evento');
@@ -557,6 +563,9 @@
     document.getElementById('ef-hora_inicio').value = fmtHora(e.hora_inicio);
     document.getElementById('ef-hora_fin').value = e.hora_fin ? fmtHora(e.hora_fin) : '';
     document.getElementById('ef-lugar').value = e.lugar || '';
+    document.getElementById('ef-descripcion').value = e.descripcion || '';
+    document.getElementById('ef-facilitador').value = e.facilitador || '';
+    document.getElementById('ef-tipo').value = e.tipo || 'sesiones';
     document.getElementById('ef-ubicacion').value = e.ubicacion || '';
     document.getElementById('ef-activo').value = e.activo ? '1' : '0';
     AdminUtils.showModal('modal-evento');
@@ -578,6 +587,9 @@
       hora_inicio: horaInicio,
       hora_fin: horaFin || null,
       lugar: lugar,
+      descripcion: document.getElementById('ef-descripcion').value.trim() || null,
+      facilitador: document.getElementById('ef-facilitador').value.trim() || null,
+      tipo: document.getElementById('ef-tipo').value,
       ubicacion: ubicacion || null,
       activo: document.getElementById('ef-activo').value === '1',
     };

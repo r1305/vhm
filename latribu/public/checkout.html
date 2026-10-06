@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="es" data-product="tribu">
+<head>
+  <meta charset="UTF-8">
+  <script>(function(){document.documentElement.removeAttribute('data-theme');})();</script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Checkout — La Tribu</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Fraunces:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/vhm-design-tokens-v1.css">
+  <link rel="stylesheet" href="css/latribu-public-theme.css">
+  <link rel="stylesheet" href="css/funnel.css">
+  <link rel="stylesheet" href="css/checkout-funnel.css">
+</head>
+<body class="checkout-funnel">
+
+<div class="co-page">
+  <header class="co-top">
+    <a class="co-logo" href="./">La <em>Tribu</em></a>
+    <a class="co-login" href="./camino?login=1">¿Ya eres miembro? Inicia sesión</a>
+  </header>
+
+  <div class="co-layout">
+    <div class="co-intro">
+      <span class="co-eyebrow">Tu lugar en La Tribu</span>
+      <h1>Estás a un paso de entrar a La Tribu.</h1>
+      <p class="co-lead">Empieza hoy. Tus primeros <span id="trialDaysLabel">7</span> días son gratuitos.</p>
+
+      <div class="co-summary">
+        <div class="co-billing">
+          <article>
+            <span>Hoy</span>
+            <strong>S/0</strong>
+          </article>
+          <article>
+            <span id="billingRenewCaption">Al terminar la prueba</span>
+            <strong id="billingRenewAmount">S/39.90</strong>
+          </article>
+        </div>
+        <p class="co-summary-renew" id="checkoutRenewLine">Después, S/39.90 al mes con renovación automática.</p>
+        <p class="co-micro">Cancela cuando quieras desde Mi membresía. Te avisaremos antes de terminar tu prueba.</p>
+
+        <h3 class="co-unlock-title">Hoy desbloqueas</h3>
+        <ul class="co-offer-list">
+          <li>Comunidad</li>
+          <li>Sesiones</li>
+          <li>Biblioteca</li>
+          <li>Calendario</li>
+          <li>IA de bienestar</li>
+          <li>Actividades</li>
+        </ul>
+      </div>
+    </div>
+
+    <form id="coForm" class="co-form-card" novalidate>
+      <h2>Empieza con <span id="trialDaysLabel2">7</span> días gratis.</h2>
+
+      <p id="coSandboxHint" class="co-demo-line" style="display:none">Modo prueba Culqi: puedes usar 4111 1111 1111 1111, CVC 123 y vencimiento futuro.</p>
+
+      <div class="co-field">
+        <label for="coNombre">Nombre</label>
+        <input id="coNombre" name="nombre" autocomplete="name" required maxlength="45" placeholder="Tu nombre">
+      </div>
+      <div class="co-field">
+        <label for="coEmail">Correo electrónico</label>
+        <input id="coEmail" name="email" type="email" autocomplete="email" required placeholder="tu@correo.com">
+      </div>
+
+      <section class="co-card-block" aria-labelledby="coCardTitle">
+        <h3 id="coCardTitle">Información de tarjeta</h3>
+        <div class="co-field">
+          <label for="coCardNumber">Número de tarjeta</label>
+          <input id="coCardNumber" class="funnel-input-card" inputmode="numeric" autocomplete="cc-number" placeholder="0000 0000 0000 0000" maxlength="23">
+        </div>
+        <div class="co-field-row">
+          <div class="co-field">
+            <label for="coExp">Vencimiento</label>
+            <input id="coExp" inputmode="numeric" autocomplete="cc-exp" placeholder="MM / AA" maxlength="7">
+          </div>
+          <div class="co-field">
+            <label for="coCvc">CVC</label>
+            <input id="coCvc" inputmode="numeric" autocomplete="cc-csc" placeholder="123" maxlength="4">
+          </div>
+        </div>
+        <p class="co-pci-note">Los datos de tarjeta se envían cifrados a Culqi. La Tribu no guarda tu número completo ni el CVC.</p>
+      </section>
+
+      <label class="co-check">
+        <input type="checkbox" id="coTerms" required>
+        <span id="coTermsText">Entiendo que hoy pago S/0 y que la renovación automática mensual comenzará al terminar mi prueba. Puedo cancelar antes desde Mi membresía.</span>
+      </label>
+
+      <p id="coError" class="co-error" role="alert"></p>
+
+      <button type="submit" class="funnel-btn" id="coSubmit">Empezar mis 7 días gratis</button>
+      <p class="co-form-foot">Sin cobro hoy · Cancela cuando quieras<br>Pago seguro con Culqi</p>
+    </form>
+  </div>
+</div>
+
+<script src="js/funnel-utils.js"></script>
+<script src="js/tribu-contenido.js"></script>
+<script src="js/checkout.js"></script>
+</body>
+</html>

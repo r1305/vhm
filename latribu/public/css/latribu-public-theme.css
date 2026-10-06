@@ -1,5 +1,6 @@
 /* La Tribu — tokens por producto (PDF §04), sin base compartida */
 @import url('vhm-design-tokens-v1.css');
+@import url('latribu-design-system.css');
 
 :root,
 [data-product="tribu"] {

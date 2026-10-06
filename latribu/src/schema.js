@@ -319,6 +319,30 @@ async function crearEsquema() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
 
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS tribu_contenido_paginas (
+      slug VARCHAR(64) NOT NULL PRIMARY KEY,
+      datos JSON NOT NULL,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+
+  try { await pool.query('ALTER TABLE tribu_eventos ADD COLUMN descripcion TEXT NULL'); } catch (_) {}
+  try { await pool.query('ALTER TABLE tribu_eventos ADD COLUMN facilitador VARCHAR(120) NULL'); } catch (_) {}
+  try { await pool.query("ALTER TABLE tribu_eventos ADD COLUMN tipo VARCHAR(32) NULL DEFAULT 'sesiones'"); } catch (_) {}
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS tribu_evento_reservas (
+      evento_id INT NOT NULL,
+      tribu_user_id INT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (evento_id, tribu_user_id),
+      KEY idx_reservas_user (tribu_user_id),
+      CONSTRAINT fk_reserva_evento FOREIGN KEY (evento_id) REFERENCES tribu_eventos(id) ON DELETE CASCADE,
+      CONSTRAINT fk_reserva_user FOREIGN KEY (tribu_user_id) REFERENCES tribu_users(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+
   // ── Testimonios ──
   await pool.query(`
     CREATE TABLE IF NOT EXISTS testimonios (
@@ -529,6 +553,14 @@ async function crearEsquema() {
     await pool.query('ALTER TABLE tribu_users ADD COLUMN objetivos JSON NULL AFTER intereses');
   if (!colNames.includes('ciudad'))
     await pool.query('ALTER TABLE tribu_users ADD COLUMN ciudad VARCHAR(120) NULL AFTER objetivos');
+  if (!colNames.includes('onboarding_completado'))
+    await pool.query('ALTER TABLE tribu_users ADD COLUMN onboarding_completado TINYINT(1) NOT NULL DEFAULT 0 AFTER ciudad');
+  if (!colNames.includes('como_empezar'))
+    await pool.query("ALTER TABLE tribu_users ADD COLUMN como_empezar VARCHAR(80) NULL AFTER onboarding_completado");
+
+  try {
+    await pool.query('ALTER TABLE tribu_suscripciones ADD COLUMN es_prueba TINYINT(1) NOT NULL DEFAULT 0 AFTER auto_renovacion');
+  } catch (_) {}
 
   await ensureAccesosSchema();
   await backfillAccesos();

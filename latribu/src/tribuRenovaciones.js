@@ -2,6 +2,7 @@
  * Suscripciones La Tribu: activación, renovación automática (Culqi + tarjeta guardada).
  */
 const pool = require('./db');
+const { newTrialChargeRef, trialDaysFromEnv } = require('../lib/tribuFunnel');
 const {
   getCulqiConfig,
   buildRenewExternalRef,
@@ -78,6 +79,46 @@ async function activateNewSubscription({
   await pool.execute('UPDATE tribu_users SET is_suscribed = 1 WHERE id = ?', [userId]);
   await recordPaymentEvent(ref, result.insertId);
   return result.insertId;
+}
+
+/** Prueba gratuita: guarda tarjeta, sin cobro hoy; renovación al vencer fecha_fin. */
+async function activateTrialSubscription({
+  userId,
+  planId,
+  trialDays = trialDaysFromEnv(),
+  customerId = null,
+  cardId = null,
+  cardBrand = null,
+}) {
+  if (!cardId) throw new Error('Tarjeta requerida para la prueba');
+  const chargeId = newTrialChargeRef();
+  const dias = trialDays || trialDaysFromEnv();
+  const autoOn = customerId && cardId ? 1 : 0;
+
+  await pool.execute(
+    'UPDATE tribu_suscripciones SET activo = 0, auto_renovacion = 0 WHERE tribu_user_id = ? AND suscripcion_id = ?',
+    [userId, planId]
+  );
+  const [result] = await pool.execute(
+    `INSERT INTO tribu_suscripciones
+      (tribu_user_id, suscripcion_id, activo, fecha_inicio, fecha_fin,
+       culqi_charge_id, auto_renovacion, es_prueba, renovacion_intentos,
+       culqi_customer_id, culqi_card_id, culqi_card_brand)
+     VALUES (?, ?, 1, CURDATE(), DATE_ADD(CURDATE(), INTERVAL ? DAY), ?, ?, 1, 0, ?, ?, ?)`,
+    [
+      userId,
+      planId,
+      dias,
+      chargeId,
+      autoOn,
+      customerId ? String(customerId) : null,
+      cardId ? String(cardId) : null,
+      cardBrand ? String(cardBrand).slice(0, 32) : null,
+    ]
+  );
+  await pool.execute('UPDATE tribu_users SET is_suscribed = 1, estado = ? WHERE id = ?', ['activo', userId]);
+  await recordPaymentEvent(chargeId, result.insertId);
+  return { tribuSuscripcionId: result.insertId, chargeId, trialDays: dias };
 }
 
 async function extendSubscriptionRenewal(tribuSubId, chargeId, vigenciaDias) {
@@ -259,6 +300,7 @@ async function runRenovacionesSuscripciones() {
 
 module.exports = {
   activateNewSubscription,
+  activateTrialSubscription,
   extendSubscriptionRenewal,
   applyApprovedCharge,
   runRenovacionesSuscripciones,

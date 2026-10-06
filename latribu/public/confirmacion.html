@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="es" data-product="tribu">
+<head>
+  <meta charset="UTF-8">
+  <script>(function(){document.documentElement.removeAttribute('data-theme');})();</script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>¡Bienvenido! — La Tribu</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Fraunces:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/vhm-design-tokens-v1.css">
+  <link rel="stylesheet" href="css/latribu-public-theme.css">
+  <link rel="stylesheet" href="css/funnel.css">
+  <link rel="stylesheet" href="css/confirmacion-funnel.css">
+</head>
+<body class="confirmacion-funnel">
+
+<div class="cf-page">
+  <header class="cf-top">
+    <a class="cf-logo" href="./">La <em>Tribu</em></a>
+    <a class="cf-login" href="./camino?login=1">¿Ya eres miembro? Inicia sesión</a>
+  </header>
+
+  <section class="cf-celebrate" aria-labelledby="confTitle">
+    <span class="cf-tag">Prueba activada</span>
+    <div class="cf-big-check" aria-hidden="true">✓</div>
+    <h1 id="confTitle">Ya estás dentro de La Tribu.</h1>
+    <p class="cf-lead">Vamos a hacer que tus primeros 5 minutos valgan la pena.</p>
+
+    <div class="cf-steps" aria-hidden="true">
+      <span><b>1</b>Tu cuenta</span>
+      <span><b>2</b>Conocerte</span>
+      <span><b>3</b>Tu primer camino</span>
+    </div>
+
+    <a class="funnel-btn" href="./empezar/que-buscas" id="confNext">Empezar</a>
+
+    <p class="cf-micro" id="confMicro">Tu prueba termina pronto. Después se renovará tu membresía, salvo que canceles antes desde Mi membresía.</p>
+
+    <p class="cf-secondary">
+      <a href="./inicio" id="confInicioLink">Ir al inicio del miembro</a>
+      · <a href="./membresia">Ver mi membresía</a>
+    </p>
+  </section>
+</div>
+
+<script src="js/funnel-utils.js"></script>
+<script src="js/tribu-common.js"></script>
+<script src="js/tribu-contenido.js"></script>
+<script src="js/confirmacion.js"></script>
+</body>
+</html>

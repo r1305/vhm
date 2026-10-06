@@ -1,0 +1,293 @@
+/* La Tribu — sistema visual (guía #system)
+   Landing luminosa · plataforma miembro recogida · mismos CTAs y radios */
+
+[data-product="tribu"] {
+  --txt: var(--text);
+  --panel: var(--surface);
+  --line: var(--border);
+  --muted: var(--text-secondary);
+}
+
+[data-product="tribu"] body {
+  font-family: var(--font-ui);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  color: var(--text);
+  background: var(--bg);
+}
+
+[data-product="tribu"] h1,
+[data-product="tribu"] h2,
+[data-product="tribu"] .member-page-hero h1,
+[data-product="tribu"] .member-start-hero h1,
+[data-product="tribu"] .funnel-hero h1,
+[data-product="tribu"] .funnel-section h2 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+[data-product="tribu"] :focus-visible {
+  outline: 3px solid var(--tribu-terra-soft, #d97862);
+  outline-offset: 3px;
+}
+
+/* —— Plataforma miembro (fondo chocolate) —— */
+[data-product="tribu"] body.member-start,
+[data-product="tribu"] body.member-page,
+[data-product="tribu"] body.member-body,
+[data-product="tribu"] body.bienestar-shell {
+  --bg: var(--tribu-chocolate);
+  --surface: var(--tribu-deep);
+  --panel: var(--tribu-deep);
+  --surface-subtle: #3c2b23;
+  --surface-raised: #614233;
+  --border: #654337;
+  --line: #654337;
+  --text: var(--tribu-ivory);
+  --txt: var(--tribu-ivory);
+  --text-secondary: #cdb5a6;
+  --muted: #cdb5a6;
+  --primary: #ac4b38;
+  --primary-hover: #923b2b;
+  --on-primary: #fff;
+  --primary-soft: rgba(217, 120, 98, 0.16);
+  --shadow-card: 0 12px 36px rgba(0, 0, 0, 0.22);
+  background: var(--bg);
+  color: var(--tribu-cream);
+}
+
+[data-product="tribu"] body.member-start .member-top,
+[data-product="tribu"] body.member-page .member-top,
+[data-product="tribu"] body.member-body .member-top,
+[data-product="tribu"] body.bienestar-shell .member-top {
+  background: color-mix(in srgb, var(--tribu-chocolate) 92%, transparent);
+  border-bottom-color: #55392e;
+}
+
+[data-product="tribu"] body.member-start .member-top-brand,
+[data-product="tribu"] body.member-page .member-top-brand {
+  color: #fff9f4;
+}
+
+[data-product="tribu"] body.member-start .member-top-nav a,
+[data-product="tribu"] body.member-page .member-top-link {
+  color: #cdb5a6;
+}
+
+[data-product="tribu"] body.member-start .member-top-nav a:hover,
+[data-product="tribu"] body.member-start .member-top-nav a.active {
+  color: #fff9f4;
+  background: rgba(255, 249, 244, 0.08);
+}
+
+[data-product="tribu"] body.member-start .member-start-eyebrow,
+[data-product="tribu"] body.member-start .community-funnel-hero .eyebrow,
+[data-product="tribu"] body.member-page .member-page-eyebrow {
+  color: var(--tribu-terra-soft, #d97862);
+}
+
+[data-product="tribu"] body.member-start .member-start-trial {
+  background: #3c2b23;
+  border-color: #725145;
+  color: #e3ccbd;
+  border-radius: 12px;
+  text-align: center;
+}
+
+[data-product="tribu"] body.member-start .member-top-membership {
+  min-height: 0;
+  padding: 9px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: var(--radius-button, 13px);
+  background: var(--primary, #ac4b38);
+  color: #fff9f4;
+  box-shadow: none;
+}
+
+[data-product="tribu"] body.member-start .member-start-trial strong {
+  color: #fff9f4;
+}
+
+/* Islas claras (compositor, modales) sobre plataforma oscura */
+[data-product="tribu"] .community-compose,
+[data-product="tribu"] .profile-logro-modal,
+[data-product="tribu"] body.member-start .profile-edit-sheet,
+[data-product="tribu"] .auth-overlay .auth-box {
+  --panel: var(--tribu-ivory, #fff9f4);
+  --surface: var(--tribu-ivory, #fff9f4);
+  --txt: var(--tribu-chocolate, #2a1915);
+  --text: var(--tribu-chocolate, #2a1915);
+  --muted: #77645a;
+  --text-secondary: #77645a;
+  --line: #e4d8cd;
+  --border: #e4d8cd;
+  background: var(--tribu-ivory, #fff9f4);
+  color: var(--tribu-chocolate, #2a1915);
+}
+
+/* —— Botones (CTA 13px · min 52px) —— */
+[data-product="tribu"] .funnel-btn,
+[data-product="tribu"] .auth-btn,
+[data-product="tribu"] .btn-primary,
+[data-product="tribu"] .lock-btn-primary,
+[data-product="tribu"] .plan-adquirir,
+[data-product="tribu"] .profile-btn-primary {
+  border-radius: var(--radius-button);
+  min-height: var(--control-min-h);
+  padding: 13px 23px;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+  transition: background 0.18s, transform 0.18s, opacity 0.18s;
+}
+
+[data-product="tribu"] .funnel-btn:hover,
+[data-product="tribu"] .auth-btn:hover {
+  transform: translateY(-1px);
+  opacity: 1;
+}
+
+[data-product="tribu"] .funnel-btn:active,
+[data-product="tribu"] .auth-btn:active {
+  transform: translateY(1px);
+}
+
+[data-product="tribu"] .funnel-btn.outline,
+[data-product="tribu"] .profile-btn-outline,
+[data-product="tribu"] .profile-btn-ghost,
+[data-product="tribu"] .lock-btn,
+[data-product="tribu"] .account-tab {
+  border-radius: var(--radius-button);
+  min-height: var(--control-min-h-secondary);
+}
+
+[data-product="tribu"] .member-start-btn-primary,
+[data-product="tribu"] .member-start-btn-ghost {
+  border-radius: var(--radius-button, 13px);
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
+[data-product="tribu"] body.member-start .member-start-btn-ghost,
+[data-product="tribu"] body.member-page .member-start-btn-ghost {
+  border-color: #8b6452;
+  color: #eee2d7;
+}
+
+[data-product="tribu"] body.member-start .member-start-btn-ghost:hover {
+  background: #5e3f32;
+}
+
+/* —— Chips (radio 40px) —— */
+[data-product="tribu"] .community-intent-chip,
+[data-product="tribu"] .funnel-chip,
+[data-product="tribu"] .chip,
+[data-product="tribu"] .account-tab {
+  border-radius: var(--radius-chip);
+  min-height: 40px;
+  align-items: center;
+}
+
+[data-product="tribu"] .community-compose .community-intent-chip {
+  background: var(--tribu-cream);
+  border: 1px solid var(--tribu-line);
+  color: var(--tribu-chocolate);
+}
+
+[data-product="tribu"] .community-compose .community-intent-chip.on {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--on-primary);
+}
+
+[data-product="tribu"] body.member-start .community-post-card {
+  background: var(--surface);
+  border-color: var(--border);
+  box-shadow: var(--shadow-card);
+}
+
+[data-product="tribu"] body.member-start .community-feed-tab.on {
+  background: var(--surface-raised);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+/* —— Tarjetas —— */
+[data-product="tribu"] .funnel-card,
+[data-product="tribu"] .member-surface,
+[data-product="tribu"] .member-card,
+[data-product="tribu"] .member-start-side-card,
+[data-product="tribu"] .member-start-primary,
+[data-product="tribu"] .community-post,
+[data-product="tribu"] .profile-funnel-card,
+[data-product="tribu"] .member-membership-card,
+[data-product="tribu"] .subs-card,
+[data-product="tribu"] .cards-item,
+[data-product="tribu"] .plan-card,
+[data-product="tribu"] .profile-card,
+[data-product="tribu"] .funnel-checkout-aside,
+[data-product="tribu"] .funnel-card-section,
+[data-product="tribu"] .funnel-faq details {
+  border-radius: var(--radius-card);
+}
+
+[data-product="tribu"] .funnel-field input,
+[data-product="tribu"] .funnel-field select,
+[data-product="tribu"] .profile-field input,
+[data-product="tribu"] .community-compose textarea,
+[data-product="tribu"] .auth-box input,
+[data-product="tribu"] .auth-box textarea {
+  border-radius: var(--radius-field);
+  border-color: var(--tribu-line, var(--border));
+}
+
+/* —— Funnel público (marfil / crema) —— */
+[data-product="tribu"] body:not(.member-start):not(.member-page):not(.member-body) {
+  background: var(--tribu-ivory, #fff9f4);
+}
+
+[data-product="tribu"] .funnel-nav {
+  border-bottom-color: var(--tribu-line);
+  background: color-mix(in srgb, var(--tribu-ivory) 92%, transparent);
+}
+
+[data-product="tribu"] .funnel-nav-brand {
+  color: var(--tribu-chocolate);
+}
+
+[data-product="tribu"] .funnel-checkout-aside,
+[data-product="tribu"] .funnel-checkout .summary {
+  background: var(--tribu-nude);
+  border-color: var(--tribu-line);
+}
+
+[data-product="tribu"] .funnel-checkout,
+[data-product="tribu"] .funnel-hero,
+[data-product="tribu"] .onboarding-wrap {
+  background: transparent;
+}
+
+[data-product="tribu"] body:has(.funnel-checkout),
+[data-product="tribu"] body:has(.funnel-hero) {
+  background: var(--tribu-ivory);
+}
+
+[data-product="tribu"] .funnel-sticky-cta {
+  background: color-mix(in srgb, var(--tribu-ivory) 96%, transparent);
+  border-top-color: var(--tribu-line);
+}
+
+[data-product="tribu"] .final-cta,
+[data-product="tribu"] .funnel-section.alt-cream {
+  background: #ebddd1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-product="tribu"] .funnel-btn,
+  [data-product="tribu"] .auth-btn,
+  [data-product="tribu"] .member-start-btn-primary {
+    transition: none;
+  }
+}

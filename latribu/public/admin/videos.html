@@ -311,6 +311,19 @@
             <div class="form-group"><label>Hora fin <span class="optional">(opcional)</span></label><input type="time" id="ef-hora_fin"></div>
           </div>
           <div class="form-group"><label>Lugar</label><input type="text" id="ef-lugar" placeholder="Centro VHM, Sala principal"></div>
+          <div class="form-group"><label>Descripción <span class="optional">(calendario / landing)</span></label><textarea id="ef-descripcion" rows="3" placeholder="Texto corto del encuentro"></textarea></div>
+          <div class="form-group"><label>Facilitador</label><input type="text" id="ef-facilitador" placeholder="Nombre o equipo" maxlength="120"></div>
+          <div class="form-group">
+            <label>Tipo (filtro calendario)</label>
+            <select id="ef-tipo">
+              <option value="sesiones">Sesiones</option>
+              <option value="social">Social</option>
+              <option value="bienestar">Bienestar</option>
+              <option value="actividad">Actividad</option>
+              <option value="aprendizaje">Aprendizaje</option>
+              <option value="otro">Otro</option>
+            </select>
+          </div>
           <div class="form-group"><label>Link <span class="optional">(opcional)</span></label><input type="url" id="ef-ubicacion" placeholder="https://maps.google.com/..."></div>
           <div class="form-group">
             <label>Estado</label>

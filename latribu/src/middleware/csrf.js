@@ -45,13 +45,15 @@ function createCsrfMiddleware() {
         '/api/tribu-auth/cambiar-password-temp',
         '/api/tribu-pagos/webhook', '/api/tribu-pagos/procesar-pago',
         '/api/tribu-pagos/cron-renovaciones',
+        '/api/tribu-pagos/iniciar-prueba',
+        '/api/tribu-auth/definir-contrasena',
       ];
       const isPublicEncuestaPost = req.method === 'POST' && /^\/api\/encuestas\/public\/[^/]+\/responder$/.test(req.path);
       const isPublicPost = req.method === 'POST' && publicPostPaths.some(p => req.path === p);
       const isPublicVideoAction = req.method === 'POST' && req.path.startsWith('/api/videos/') && (req.path.endsWith('/vista') || req.path.endsWith('/like'));
       const isTribuBearer = req.headers.authorization?.startsWith('Bearer ') &&
         (req.path.startsWith('/api/tribu-auth/') || req.path.startsWith('/api/tribu-pagos/') ||
-         req.path.startsWith('/api/posts'));
+         req.path.startsWith('/api/posts') || req.path.startsWith('/api/eventos'));
       
       if (!isPublicPost && !isPublicEncuestaPost && !isPublicVideoAction && !isTribuBearer) {
         const headerToken = req.headers['x-csrf-token'] || req.headers['csrf-token'];

@@ -86,54 +86,74 @@
   --focus-ring: 0 0 0 3px rgba(100, 181, 206, 0.28);
 }
 
-/* —— Tribu (PDF §04) —— */
+/* —— Tribu (guía funnel #system + PDF §04) —— */
 [data-product="tribu"] {
-  --primary: #A84F3E;
-  --primary-hover: #8F4234;
-  --primary-soft: #F7ECE9;
-  --accent-dark: #E58B78;
-  --accent-dark-tint: #31211E;
-  --on-primary: #FFFFFF;
-  --on-accent: #0E1714;
-  --link: #A84F3E;
+  --tribu-chocolate: #2A1915;
+  --tribu-deep: #3A231D;
+  --tribu-terra-base: #B95743;
+  --tribu-terra-soft: #D97862;
+  --tribu-cream: #F6EFE8;
+  --tribu-ivory: #FFF9F4;
+  --tribu-nude: #E9D1C5;
+  --tribu-sage: #A6B79A;
+  --tribu-line: #E4D8CD;
 
-  --bg: #F7ECE9;
-  --surface: #FFFFFF;
-  --surface-subtle: #F7ECE9;
-  --surface-raised: #F0E0DA;
-  --border: rgba(168, 79, 62, 0.18);
-  --text: #0E1714;
-  --text-secondary: #6B4A42;
-  --text-tertiary: #8A655C;
-  --text-muted: #6B4A42;
-  --selection: rgba(168, 79, 62, 0.14);
-  --shadow-card: 0 8px 24px rgba(168, 79, 62, 0.06);
-  --focus-ring: 0 0 0 3px rgba(168, 79, 62, 0.22);
+  --primary: #AC4B38;
+  --primary-hover: #923B2B;
+  --primary-soft: #F6EFE8;
+  --accent-dark: #D97862;
+  --accent-dark-tint: #2A1915;
+  --on-primary: #FFFFFF;
+  --on-accent: #2A1915;
+  --link: #AC4B38;
+
+  --bg: #FFF9F4;
+  --surface: #FFF9F4;
+  --surface-subtle: #F6EFE8;
+  --surface-raised: #E9D1C5;
+  --border: #E4D8CD;
+  --text: #2A1915;
+  --text-secondary: #77645A;
+  --text-tertiary: #8B7363;
+  --text-muted: #77645A;
+  --selection: rgba(172, 75, 56, 0.14);
+  --shadow-card: 0 10px 40px rgba(42, 25, 21, 0.08);
+  --focus-ring: 0 0 0 3px rgba(217, 120, 98, 0.45);
+
+  --radius-field: 12px;
+  --radius-button: 13px;
+  --radius-card: 22px;
+  --radius-modal: 20px;
+  --radius-chip: 40px;
+  --control-min-h: 52px;
+  --control-min-h-secondary: 44px;
+  --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
+  --line-height-body: 1.65;
 }
 
 [data-theme="dark"][data-product="tribu"],
 [data-product="tribu"][data-theme="dark"] {
-  --primary: #A84F3E;
-  --primary-hover: #8F4234;
-  --primary-soft: rgba(168, 79, 62, 0.16);
-  --accent-dark: #E58B78;
-  --accent-dark-tint: #31211E;
+  --primary: #AC4B38;
+  --primary-hover: #923B2B;
+  --primary-soft: rgba(217, 120, 98, 0.14);
+  --accent-dark: #D97862;
+  --accent-dark-tint: #2A1915;
   --on-primary: #FFFFFF;
-  --on-accent: #0E1714;
-  --link: #E58B78;
+  --on-accent: #FFF9F4;
+  --link: #D97862;
 
-  --bg: #31211E;
-  --surface: #3C2924;
-  --surface-subtle: #47322C;
-  --surface-raised: #523B34;
-  --border: rgba(229, 139, 120, 0.22);
-  --text: #F5EBE8;
-  --text-secondary: #D4B5AB;
-  --text-tertiary: #B89588;
-  --text-muted: #D4B5AB;
-  --selection: rgba(229, 139, 120, 0.2);
+  --bg: #2A1915;
+  --surface: #3A271F;
+  --surface-subtle: #3C2B23;
+  --surface-raised: #614233;
+  --border: #654337;
+  --text: #FFF9F4;
+  --text-secondary: #CDB5A6;
+  --text-tertiary: #B99B88;
+  --text-muted: #CDB5A6;
+  --selection: rgba(217, 120, 98, 0.2);
   --shadow-card: none;
-  --focus-ring: 0 0 0 3px rgba(229, 139, 120, 0.28);
+  --focus-ring: 0 0 0 3px rgba(217, 120, 98, 0.35);
 }
 
 /* —— Agenda clínica (PDF §05) —— */

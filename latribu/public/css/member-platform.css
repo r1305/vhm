@@ -1,0 +1,144 @@
+/* Plataforma miembro — shell, hero y contenedores (guía #start, #library, #calendar, …) */
+
+body.member-start {
+  background: var(--bg);
+  min-height: 100vh;
+}
+body.member-start.member-body {
+  padding-bottom: 40px;
+}
+body.member-start .member-bottom-nav {
+  display: none !important;
+}
+
+/* Contenedores principales */
+body.member-start .member-start-main,
+body.member-start .member-main,
+body.member-start .member-membership-main,
+body.member-start .account-layout,
+body.member-start .member-page-shell,
+body.member-start .community-funnel,
+body.member-start .profile-funnel {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 12px 20px 48px;
+  box-sizing: border-box;
+}
+body.member-start .member-page-shell.library {
+  max-width: 1100px;
+}
+body.member-start .member-membership-main {
+  max-width: 740px;
+}
+body.member-start .account-layout {
+  max-width: 720px;
+}
+
+body.member-start .no-trial,
+body.member-start [data-member-main].no-trial {
+  padding-top: 76px;
+}
+body.member-start .with-trial,
+body.member-start [data-member-main].with-trial {
+  padding-top: 12px;
+}
+
+/* Hero compartido */
+body.member-start .member-start-eyebrow,
+body.member-start .member-page-eyebrow,
+body.member-start .member-hero-kicker {
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--tribu-terra-soft, #d97862);
+  margin: 0 0 10px;
+}
+body.member-start .member-start-hero h1,
+body.member-start .member-page-hero h1,
+body.member-start .member-hero h1 {
+  font-family: var(--font-display, 'Fraunces', serif);
+  font-size: clamp(1.85rem, 4.5vw, 2.55rem);
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  margin: 0 0 12px;
+  color: var(--text);
+}
+body.member-start .member-page-lead,
+body.member-start .member-hero p {
+  color: var(--text-secondary);
+  font-size: .95rem;
+  line-height: 1.6;
+  max-width: 560px;
+  margin: 0 0 24px;
+}
+body.member-start .member-page-hero {
+  margin-bottom: 22px;
+}
+
+/* Tarjetas sobre fondo chocolate */
+body.member-start .member-surface,
+body.member-start .member-card,
+body.member-start .library .card,
+body.member-start .library .cat-accordion {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+
+body.member-start .member-empty,
+body.member-start .empty {
+  background: var(--surface);
+  border: 1px dashed var(--border);
+  color: var(--text-secondary);
+}
+
+/* Cuenta / tabs */
+body.member-start .account-tab {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--text-secondary);
+  border-radius: var(--radius-chip);
+}
+body.member-start .account-tab:hover {
+  background: var(--primary-soft);
+  color: var(--text);
+}
+body.member-start .account-tab.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--on-primary);
+}
+
+body.member-start .member-surface-flat,
+body.member-start .profile-card {
+  background: var(--surface);
+  border-color: var(--border);
+}
+
+/* Bienestar */
+body.member-start.bienestar-shell .bienestar-intro {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 12px 20px 16px;
+}
+body.member-start.bienestar-shell .bienestar-intro.no-trial {
+  padding-top: 76px;
+}
+body.member-start.bienestar-shell .bienestar-intro.with-trial {
+  padding-top: 12px;
+}
+body.member-start.bienestar-shell .bienestar-intro h1 {
+  font-family: var(--font-display, 'Fraunces', serif);
+  font-size: clamp(1.5rem, 4vw, 2rem);
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+body.member-start.bienestar-shell .bienestar-intro p {
+  color: var(--text-secondary);
+  font-size: .92rem;
+  line-height: 1.55;
+}

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es" data-product="tribu">
+<head>
+  <meta charset="UTF-8">
+  <script>(function(){document.documentElement.removeAttribute('data-theme');})();</script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Encuentra tu camino — La Tribu</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Fraunces:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/vhm-design-tokens-v1.css">
+  <link rel="stylesheet" href="css/latribu-public-theme.css">
+  <link rel="stylesheet" href="css/funnel.css">
+  <link rel="stylesheet" href="css/empezar-funnel.css">
+</head>
+<body class="empezar-funnel">
+
+<div class="empezar-page">
+  <header class="empezar-top">
+    <a class="empezar-logo" href="./">La <em>Tribu</em></a>
+    <a class="empezar-login" href="./camino?login=1">¿Ya eres miembro? Inicia sesión</a>
+  </header>
+
+  <div class="empezar-onboarding">
+    <span class="empezar-step-label" id="obStepLabel">1 de 3 · ¿Qué buscas?</span>
+    <div class="empezar-progress" id="prog" aria-hidden="true">
+      <i class="done"></i><i></i><i></i>
+    </div>
+
+    <section id="step0">
+      <h1>¿Qué te gustaría encontrar en La Tribu?</h1>
+      <p class="empezar-lead">Puedes elegir varias opciones. No tienes que tenerlo todo claro.</p>
+      <p class="empezar-micro">Tus elecciones ayudan a recomendar recursos; no son una evaluación psicológica.</p>
+      <div class="empezar-chips" id="chipsObjetivos"></div>
+      <div class="empezar-actions">
+        <button type="button" class="empezar-skip" data-next="1">Omitir por ahora</button>
+        <button type="button" class="funnel-btn empezar-cta" data-next="1">Continuar</button>
+      </div>
+    </section>
+
+    <section id="step1" hidden>
+      <h1>¿Cómo prefieres empezar?</h1>
+      <p class="empezar-lead">Puedes empezar observando. La participación social es opcional.</p>
+      <p class="empezar-micro">Tus elecciones ayudan a recomendar recursos; no son una evaluación psicológica.</p>
+      <div class="empezar-chips" id="chipsComo"></div>
+      <div class="empezar-actions">
+        <button type="button" class="empezar-skip" data-next="2">Omitir por ahora</button>
+        <button type="button" class="funnel-btn empezar-cta" data-next="2">Continuar</button>
+      </div>
+    </section>
+
+    <section id="step2" hidden>
+      <h1>Queremos recomendarte algo que realmente te sirva.</h1>
+      <p class="empezar-lead">Elige hasta 3 intereses. Puedes cambiarlos más adelante.</p>
+      <p class="empezar-count" id="interesesCount" aria-live="polite">0 de 3 intereses seleccionados</p>
+      <p class="empezar-micro">Tus elecciones ayudan a recomendar recursos; no son una evaluación psicológica.</p>
+      <div class="empezar-chips wrap" id="chipsIntereses"></div>
+      <p class="empezar-limit-msg" id="interesesLimitMsg" hidden>Ya elegiste 3. Puedes desmarcar uno para cambiar.</p>
+      <div class="empezar-actions">
+        <button type="button" class="empezar-skip" data-finish="1">Omitir por ahora</button>
+        <button type="button" class="funnel-btn empezar-cta" data-finish="1">Ver mi primer camino</button>
+      </div>
+    </section>
+
+    <p id="obErr" class="empezar-error" role="alert"></p>
+  </div>
+</div>
+
+<script src="js/funnel-utils.js"></script>
+<script src="js/tribu-common.js"></script>
+<script src="js/tribu-contenido.js"></script>
+<script src="js/empezar.js"></script>
+</body>
+</html>

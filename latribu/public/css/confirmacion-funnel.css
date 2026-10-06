@@ -1,0 +1,146 @@
+/* Confirmación — paridad guía #confirmation */
+body.confirmacion-funnel {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--tribu-cream, #f6efe8);
+  color: var(--tribu-chocolate, #2a1915);
+  font-family: var(--font-ui);
+  font-size: 16px;
+  line-height: 1.65;
+}
+
+.cf-page {
+  min-height: 100vh;
+  padding: 28px 24px 60px;
+}
+
+.cf-top {
+  max-width: 1050px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+}
+
+.cf-top .cf-logo {
+  font-family: var(--font-display, 'Fraunces', Georgia, serif);
+  font-size: 1.65rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  text-decoration: none;
+  color: var(--tribu-chocolate);
+}
+
+.cf-top .cf-logo em {
+  font-style: normal;
+  color: var(--primary);
+}
+
+.cf-top .cf-login {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.cf-celebrate {
+  text-align: center;
+  max-width: 600px;
+  margin: clamp(48px, 10vw, 65px) auto 0;
+}
+
+.cf-tag {
+  font-size: 11px;
+  display: inline-flex;
+  border-radius: 30px;
+  padding: 5px 12px;
+  background: #e6eadf;
+  color: #46553d;
+  line-height: 1.5;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.cf-big-check {
+  font-family: var(--font-display, Georgia, serif);
+  font-size: clamp(3rem, 10vw, 3.75rem);
+  color: #677554;
+  margin: 16px 0 8px;
+  line-height: 1;
+}
+
+.cf-celebrate h1 {
+  font-family: var(--font-display, 'Fraunces', Georgia, serif);
+  font-size: clamp(2.25rem, 6vw, 3.5rem);
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  margin: 0 0 16px;
+  color: var(--tribu-chocolate);
+}
+
+.cf-celebrate .cf-lead {
+  font-size: 16px;
+  color: var(--text-secondary, #77645a);
+  margin: 0 0 28px;
+  line-height: 1.65;
+}
+
+.cf-steps {
+  display: flex;
+  justify-content: center;
+  gap: clamp(16px, 5vw, 28px);
+  font-size: 12px;
+  color: #796354;
+  margin: 0 0 32px;
+  flex-wrap: wrap;
+}
+
+.cf-steps span b {
+  display: block;
+  color: var(--primary);
+  font-family: var(--font-display, Georgia, serif);
+  font-size: 1.55rem;
+  font-weight: 600;
+  margin-bottom: 5px;
+}
+
+body.confirmacion-funnel .funnel-btn {
+  min-height: 0;
+  padding: 12px 26px;
+  font-size: 14px;
+  width: auto;
+  max-width: 100%;
+  text-decoration: none;
+}
+
+.cf-celebrate .funnel-btn {
+  min-width: 0;
+}
+
+.cf-micro {
+  font-size: 12px;
+  line-height: 1.65;
+  color: #79645a;
+  margin: 24px 0 0;
+}
+
+.cf-secondary {
+  margin-top: 20px;
+  font-size: 13px;
+}
+
+.cf-secondary a {
+  color: var(--primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.cf-secondary a:hover { text-decoration: underline; }
+
+@media (max-width: 760px) {
+  .cf-celebrate { margin-top: 40px; }
+}

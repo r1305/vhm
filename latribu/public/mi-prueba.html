@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="es" data-product="tribu">
+<head>
+  <meta charset="UTF-8">
+  <script>(function(){var t=localStorage.getItem('tribu-theme');if(t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme:dark)').matches))document.documentElement.setAttribute('data-theme','dark');})();</script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Tu prueba de 7 días — La Tribu</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Fraunces:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/vhm-design-tokens-v1.css">
+  <link rel="stylesheet" href="css/latribu-public-theme.css">
+  <link rel="stylesheet" href="css/member-app.css">
+  <link rel="stylesheet" href="css/member-inicio.css">
+</head>
+<body class="member-start">
+<main class="member-main no-trial" data-member-main>
+  <div class="member-start-trial" id="memberTrialStrip" hidden></div>
+  <section class="member-hero">
+    <p class="member-hero-kicker">Tu prueba</p>
+    <h1>Tus 7 días de prueba</h1>
+    <p id="trialIntro">Acceso completo a La Tribu. Te avisaremos antes del primer cobro.</p>
+  </section>
+  <div class="member-card">
+    <h2 style="font-family:var(--font-display,'Fraunces',serif);font-size:1.1rem;margin:0 0 12px;">Calendario de la prueba</h2>
+    <ol class="trial-timeline" id="trialTimeline"></ol>
+  </div>
+  <footer class="member-start-foot" style="margin-top:24px;">
+    <a class="member-start-foot-link" href="./membresia">Gestionar membresía</a>
+    <a class="member-start-foot-link" href="./inicio">Volver al inicio</a>
+  </footer>
+</main>
+<script src="js/funnel-utils.js"></script>
+<script src="js/tribu-common.js"></script>
+<script src="js/tribu-contenido.js"></script>
+<script src="js/member-app.js"></script>
+<script src="js/mi-prueba.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => MemberApp.init({ requireSub: true, layout: 'funnel' }));
+</script>
+</body>
+</html>

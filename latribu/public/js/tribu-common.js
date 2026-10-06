@@ -88,8 +88,7 @@ function escapeHtml(s) {
 }
 
 function hoyYmdLocal() {
-  const t = new Date();
-  return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
 }
 
 function formatYmd(val) {
@@ -166,14 +165,14 @@ function renderNavAuth() {
           <a href="${BASE}/perfil" class="user-menu-item${p.endsWith('/perfil') ? ' active' : ''}" role="menuitem"><span class="mi">👤</span> Mi perfil</a>
           <a href="${BASE}/recursos" class="user-menu-item${p.endsWith('/recursos') ? ' active' : ''}" role="menuitem"><span class="mi">📚</span> Recursos</a>
           <a href="${BASE}/calendario" class="user-menu-item${p.endsWith('/calendario') ? ' active' : ''}" role="menuitem"><span class="mi">📅</span> Calendario</a>
-          <a href="${BASE}/suscripciones" class="user-menu-item${p.endsWith('/suscripciones') ? ' active' : ''}" role="menuitem"><span class="mi">📋</span> Suscripciones</a>
+          <a href="${BASE}/membresia" class="user-menu-item${p.endsWith('/membresia') || p.endsWith('/suscripciones') ? ' active' : ''}" role="menuitem"><span class="mi">📋</span> Mi membresía</a>
           <a href="${BASE}/tarjetas" class="user-menu-item${p.endsWith('/tarjetas') ? ' active' : ''}" role="menuitem"><span class="mi">💳</span> Mis tarjetas</a>
           <div class="user-menu-divider"></div>
           <button type="button" class="user-menu-item danger" role="menuitem" onclick="doLogout()"><span class="mi">⎋</span> Cerrar sesión</button>
         </div>
       </div>`;
   } else {
-    area.innerHTML = `<button type="button" class="nav-login-link" onclick="window.location.href='${BASE}/?login=1'">Iniciar sesión</button>`;
+    area.innerHTML = `<button type="button" class="nav-login-link" onclick="window.location.href='${BASE}/camino?login=1'">Iniciar sesión</button>`;
   }
 }
 
@@ -224,7 +223,7 @@ async function verificarSesion() {
 }
 
 function requireAuth() {
-  if (!getToken()) { window.location.href = BASE + '/?login=1'; return false; }
+  if (!getToken()) { window.location.href = BASE + '/camino?login=1'; return false; }
   return true;
 }
 

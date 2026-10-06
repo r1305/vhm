@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="es" data-product="tribu">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mapa del funnel — La Tribu</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Fraunces:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/vhm-design-tokens-v1.css">
+  <link rel="stylesheet" href="css/latribu-public-theme.css">
+  <link rel="stylesheet" href="css/funnel.css">
+  <style>
+    .guia-list { list-style: none; margin: 0; padding: 0; max-width: 640px; }
+    .guia-list li { display: flex; gap: 12px; align-items: baseline; padding: 12px 0; border-bottom: 1px solid var(--line); }
+    .guia-list code { font-size: .78rem; color: var(--muted); min-width: 2.5rem; }
+    .guia-list a { font-weight: 700; color: var(--primary); }
+  </style>
+</head>
+<body>
+<main class="funnel-section" style="padding-top:48px;">
+  <h1 style="font-family:'Fraunces',serif;margin-bottom:8px;">Mapa del funnel (QA)</h1>
+  <p class="sub" style="margin-bottom:28px;">Rutas implementadas en <code>/latribu</code>. Referencia pantallas 00–18 de la guía de producto.</p>
+  <ul class="guia-list">
+    <li><code>00</code><a href="./guia">Mapa del funnel</a></li>
+    <li><code>01</code><a href="./">Landing</a></li>
+    <li><code>02</code><a href="./checkout">Checkout (prueba + tarjeta)</a></li>
+    <li><code>03</code><a href="./confirmacion">Confirmación</a></li>
+    <li><code>04</code><a href="./crear-contrasena">Crear contraseña</a></li>
+    <li><code>05</code><a href="./empezar/que-buscas">Onboarding · Qué buscas</a></li>
+    <li><code>06</code><a href="./empezar/como-empezar">Onboarding · Cómo empezar</a></li>
+    <li><code>07</code><a href="./empezar/intereses">Onboarding · Intereses</a> (Ver mi primer camino → biblioteca / calendario / comunidad)</li>
+    <li><code>08</code><a href="./inicio">Inicio miembro</a></li>
+    <li><code>09</code><a href="./biblioteca">Biblioteca</a></li>
+    <li><code>10</code><a href="./calendario">Calendario</a></li>
+    <li><code>11</code><a href="./comunidad">Comunidad / logros</a></li>
+    <li><code>12</code><a href="./perfil">Perfil</a></li>
+    <li><code>13</code><a href="./bienestar">IA Clara</a></li>
+    <li><code>14</code><a href="./membresia">Mi membresía</a></li>
+    <li><code>15</code><a href="./estados">Estados UI</a></li>
+    <li><code>16</code><a href="./recordatorio">Recordatorio día 6</a></li>
+    <li><code>17</code><a href="./mi-prueba">Timeline 7 días</a></li>
+    <li><code>—</code><a href="./camino?login=1">Camino Interior (legacy + login)</a></li>
+    <li><code>—</code><a href="./tarjetas">Tarjetas guardadas</a></li>
+  </ul>
+  <p style="margin-top:28px;"><a href="./" class="funnel-btn outline">Volver al landing</a></p>
+</main>
+</body>
+</html>

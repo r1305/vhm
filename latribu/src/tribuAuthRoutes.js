@@ -40,14 +40,14 @@ async function syncSubscriptionAccess(userId) {
 
 async function fetchUserPublic(id) {
   const [rows] = await pool.execute(
-    'SELECT id, nombre, apellido, email, telefono, foto_url, carrera, hobbies, a_que_te_dedicas, intereses, objetivos, ciudad, psw_temp, is_suscribed FROM tribu_users WHERE id = ? LIMIT 1',
+    'SELECT id, nombre, apellido, email, telefono, foto_url, carrera, hobbies, a_que_te_dedicas, intereses, objetivos, ciudad, onboarding_completado, como_empezar, psw_temp, is_suscribed FROM tribu_users WHERE id = ? LIMIT 1',
     [id]
   );
   if (!rows.length) return null;
   const user = rows[0];
   await syncSubscriptionAccess(id);
   const [sus] = await pool.execute(
-    `SELECT ts.id, s.nombre, ts.fecha_fin
+    `SELECT ts.id, s.nombre, s.precio, ts.fecha_inicio, ts.fecha_fin, ts.es_prueba
       FROM tribu_suscripciones ts
       JOIN suscripciones s ON s.id = ts.suscripcion_id
       WHERE ts.tribu_user_id = ? AND ts.activo = 1 AND ts.fecha_fin >= CURDATE()
@@ -55,7 +55,13 @@ async function fetchUserPublic(id) {
     [id]
   );
   user.suscripcion_activa = sus.length > 0
-    ? { nombre: sus[0].nombre, fecha_fin: toYmd(sus[0].fecha_fin) }
+    ? {
+      nombre: sus[0].nombre,
+      precio: sus[0].precio,
+      fecha_inicio: toYmd(sus[0].fecha_inicio),
+      fecha_fin: toYmd(sus[0].fecha_fin),
+      es_prueba: !!sus[0].es_prueba,
+    }
     : null;
   user.psw_temp = !!user.psw_temp;
   user.is_suscribed = !!user.suscripcion_activa;
@@ -80,7 +86,15 @@ function userPayload(user) {
     intereses: parseJSON(user.intereses),
     objetivos: parseJSON(user.objetivos),
     ciudad: user.ciudad || null,
+    onboarding_completado: !!user.onboarding_completado,
+    como_empezar: user.como_empezar || null,
   };
+}
+
+async function issueSessionForUserId(userId) {
+  const profile = await fetchUserPublic(userId);
+  if (!profile) return null;
+  return { token: signToken(profile), user: userPayload(profile) };
 }
 
 const TRIBU_JWT_SECRET = JWT_SECRET + '_tribu';
@@ -210,6 +224,66 @@ router.post('/recuperar', async (req, res) => {
     const tempPassword = await ensureTempPasswordPlain(user.id, user.password_plain);
     res.json({ temp: true, tempPassword, message: 'Esta es tu contraseña temporal. Ingrésala a continuación y crea una nueva contraseña.' });
   } catch (err) { console.error(err); res.status(500).json({ error: 'Error al procesar la solicitud' }); }
+});
+
+router.post('/definir-contrasena', tribuAuthMiddleware, async (req, res) => {
+  try {
+    const { newPassword } = req.body;
+    if (!newPassword || String(newPassword).length < 6)
+      return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
+    const [[row]] = await pool.execute(
+      'SELECT id, psw_temp FROM tribu_users WHERE id = ? LIMIT 1', [req.tribuUser.id]
+    );
+    if (!row) return res.status(404).json({ error: 'Usuario no encontrado' });
+    if (!row.psw_temp) return res.status(400).json({ error: 'Tu cuenta ya tiene contraseña definida' });
+    const hash = await bcrypt.hash(String(newPassword), 12);
+    await pool.execute(
+      'UPDATE tribu_users SET password = ?, psw_temp = 0, password_plain = NULL WHERE id = ?',
+      [hash, row.id]
+    );
+    const session = await issueSessionForUserId(row.id);
+    res.json({ message: 'Contraseña creada', ...session });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al guardar la contraseña' });
+  }
+});
+
+router.put('/onboarding', tribuAuthMiddleware, async (req, res) => {
+  try {
+    const {
+      nombre, apellido, ciudad, carrera, intereses, objetivos, como_empezar, completado,
+    } = req.body;
+    const sets = [];
+    const params = [];
+    if (nombre) { sets.push('nombre = ?'); params.push(sanitizeName(nombre)); }
+    if (apellido) { sets.push('apellido = ?'); params.push(sanitizeName(apellido)); }
+    if (ciudad !== undefined) { sets.push('ciudad = ?'); params.push(ciudad ? String(ciudad).trim().slice(0, 120) : null); }
+    if (carrera !== undefined) { sets.push('carrera = ?'); params.push(carrera ? String(carrera).trim().slice(0, 200) : null); }
+    if (Array.isArray(intereses)) {
+      sets.push('intereses = ?');
+      params.push(JSON.stringify(intereses.slice(0, 6)));
+    }
+    if (Array.isArray(objetivos)) {
+      sets.push('objetivos = ?');
+      params.push(JSON.stringify(objetivos.slice(0, 3)));
+    }
+    if (como_empezar !== undefined) {
+      sets.push('como_empezar = ?');
+      params.push(como_empezar ? String(como_empezar).trim().slice(0, 80) : null);
+    }
+    if (completado === true || completado === 1 || completado === '1') {
+      sets.push('onboarding_completado = 1');
+    }
+    if (!sets.length) return res.status(400).json({ error: 'Nada que actualizar' });
+    params.push(req.tribuUser.id);
+    await pool.execute(`UPDATE tribu_users SET ${sets.join(', ')} WHERE id = ?`, params);
+    const session = await issueSessionForUserId(req.tribuUser.id);
+    res.json(session);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al guardar onboarding' });
+  }
 });
 
 router.post('/cambiar-password-temp', async (req, res) => {
@@ -391,7 +465,7 @@ function cardLabelFromRow(brand, lastFour) {
 router.get('/suscripciones', tribuAuthMiddleware, async (req, res) => {
   try {
     const [rows] = await pool.execute(
-      `SELECT ts.id, ts.fecha_inicio, ts.fecha_fin, ts.activo, ts.auto_renovacion,
+      `SELECT ts.id, ts.fecha_inicio, ts.fecha_fin, ts.activo, ts.auto_renovacion, ts.es_prueba,
               ts.culqi_card_id, ts.culqi_card_brand, ts.cancelada_at,
               s.nombre, s.precio, s.descripcion, s.vigencia_dias,
               (ts.activo = 1 AND ts.fecha_fin >= CURDATE()) AS vigente,
@@ -413,7 +487,7 @@ router.get('/suscripciones', tribuAuthMiddleware, async (req, res) => {
         id: r.id, nombre: r.nombre, precio: r.precio, descripcion: r.descripcion,
         vigencia_dias: r.vigencia_dias,
         fecha_inicio: toYmd(r.fecha_inicio), fecha_fin: toYmd(r.fecha_fin),
-        activo: vigente, auto_renovacion: autoOn,
+        activo: vigente, es_prueba: !!r.es_prueba, auto_renovacion: autoOn,
         tarjeta_label: cardLabelFromRow(r.culqi_card_brand, r.last_four_digits),
         puede_cancelar_autorenovacion: autoOn,
         puede_activar_autorenovacion: vigente && !autoOn && savedCards.length > 0,
@@ -495,4 +569,4 @@ router.put('/suscripciones/:id/auto-renovacion', tribuAuthMiddleware, async (req
   } catch (err) { console.error(err); res.status(500).json({ error: 'No se pudo actualizar la autorenovación' }); }
 });
 
-module.exports = { router, tribuAuthMiddleware, TRIBU_JWT_SECRET };
+module.exports = { router, tribuAuthMiddleware, TRIBU_JWT_SECRET, issueSessionForUserId, userPayload, fetchUserPublic };

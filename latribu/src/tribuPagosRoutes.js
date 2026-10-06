@@ -7,9 +7,12 @@ const {
   fetchCulqiCharge, resolveChargeOutcome, validateCulqiCredentials,
   validateWebhookSignature, vaultCustomerCardSafe, extractVaultFromCharge,
 } = require('./tribuCulqi');
+const bcrypt = require('bcryptjs');
 const {
-  activateNewSubscription, applyApprovedCharge, runRenovacionesSuscripciones,
+  activateNewSubscription, activateTrialSubscription, applyApprovedCharge, runRenovacionesSuscripciones,
 } = require('./tribuRenovaciones');
+const { splitDisplayName, trialDaysFromEnv, formatRenewalDateLima } = require('../lib/tribuFunnel');
+const { issueSessionForUserId } = require('./tribuAuthRoutes');
 const { recordCulqiTransaction } = require('./tribuCulqiTransactionLog');
 const { getSavedCard, upsertSavedCard } = require('./tribuSavedCards');
 const { authMiddleware } = require('./auth');
@@ -59,6 +62,143 @@ async function fetchTribuUser(userId) {
   return user || {};
 }
 
+async function findOrCreateTrialUser(nombreDisplay, emailNorm) {
+  const { nombre, apellido } = splitDisplayName(nombreDisplay);
+  const [rows] = await pool.execute(
+    'SELECT id, psw_temp FROM tribu_users WHERE email = ? LIMIT 1', [emailNorm]
+  );
+  if (rows.length) {
+    await pool.execute(
+      'UPDATE tribu_users SET nombre = ?, apellido = ?, estado = ?, consentimiento = 1, consentimiento_at = COALESCE(consentimiento_at, NOW()) WHERE id = ?',
+      [nombre, apellido, 'activo', rows[0].id]
+    );
+    return { userId: rows[0].id, isNew: false, hadTempPassword: !!rows[0].psw_temp };
+  }
+
+  const randomSecret = require('crypto').randomBytes(24).toString('hex');
+  const hash = await bcrypt.hash(randomSecret, 12);
+  const [result] = await pool.execute(
+    `INSERT INTO tribu_users (nombre, apellido, email, password, psw_temp, is_suscribed, estado, consentimiento, consentimiento_at)
+     VALUES (?, ?, ?, ?, 1, 0, 'activo', 1, NOW())`,
+    [nombre, apellido, emailNorm, hash]
+  );
+  return { userId: result.insertId, isNew: true, hadTempPassword: true };
+}
+
+async function userHasActiveSubscription(userId) {
+  const [[row]] = await pool.execute(
+    `SELECT COUNT(*) AS total FROM tribu_suscripciones
+     WHERE tribu_user_id = ? AND activo = 1 AND fecha_fin >= CURDATE()`,
+    [userId]
+  );
+  return (row?.total || 0) > 0;
+}
+
+router.post('/iniciar-prueba', async (req, res) => {
+  try {
+    const {
+      nombre, email, suscripcion_id: planIdRaw, terms_accepted: termsRaw, utm_source, utm_campaign,
+      ...rawForm
+    } = req.body;
+    if (!nombre || !email) return res.status(400).json({ error: 'Nombre y correo son obligatorios' });
+    const termsOk = termsRaw === true || termsRaw === 1 || termsRaw === '1' || termsRaw === 'on';
+    if (!termsOk) return res.status(400).json({ error: 'Debes aceptar los términos para continuar' });
+
+    const emailNorm = String(email).trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailNorm))
+      return res.status(400).json({ error: 'Correo electrónico inválido' });
+
+    const cfg = await getCulqiConfig();
+    validateCulqiConfig(cfg);
+
+    const checkout = extractCheckoutPayload(rawForm);
+    if (!checkout.tokenId) return res.status(400).json({ error: 'Token de pago requerido' });
+
+    let planId = planIdRaw ? parseInt(String(planIdRaw), 10) : null;
+    if (!planId) {
+      const [plans] = await pool.execute(
+        'SELECT id FROM suscripciones ORDER BY precio ASC, id ASC LIMIT 1'
+      );
+      planId = plans[0]?.id;
+    }
+    if (!planId) return res.status(503).json({ error: 'No hay plan de membresía configurado' });
+
+    const [[plan]] = await pool.execute(
+      'SELECT id, nombre, precio, vigencia_dias FROM suscripciones WHERE id = ?', [planId]
+    );
+    if (!plan) return res.status(404).json({ error: 'Plan no encontrado' });
+
+    const userInfo = await findOrCreateTrialUser(nombre, emailNorm);
+    const userId = userInfo.userId;
+    if (await userHasActiveSubscription(userId)) {
+      return res.status(409).json({ error: 'Este correo ya tiene una membresía activa. Inicia sesión en Mi Tribu.' });
+    }
+
+    const tribuUser = await fetchTribuUser(userId);
+    const identification = checkout.identificationType && checkout.identificationNumber
+      ? { type: checkout.identificationType, number: String(checkout.identificationNumber).trim() }
+      : null;
+    const payerEmail = resolvePayerEmail(checkout.email, emailNorm, cfg.modo, null);
+
+    const vaultResult = await vaultCustomerCardSafe({
+      secretKey: cfg.secret_key,
+      email: payerEmail,
+      tokenId: checkout.tokenId,
+      user: tribuUser,
+      identification,
+    });
+    if (!vaultResult.ok || !vaultResult.vault?.cardId) {
+      const msg = vaultResult.errorMessage || 'No se pudo validar la tarjeta';
+      return res.status(400).json({ error: msg });
+    }
+
+    try { await upsertSavedCard(userId, vaultResult.vault); } catch (e) {
+      console.error('[tribu-pagos] guardar tarjeta trial', e.message);
+    }
+    await savePayerProfile(userId, checkout.identificationType, checkout.identificationNumber, cfg.modo === 'produccion' ? payerEmail : null);
+
+    const trialDays = trialDaysFromEnv();
+    const trial = await activateTrialSubscription({
+      userId,
+      planId: plan.id,
+      trialDays,
+      customerId: vaultResult.vault.customerId,
+      cardId: vaultResult.vault.cardId,
+      cardBrand: vaultResult.vault.cardBrand,
+    });
+
+    if (utm_source || utm_campaign) {
+      try {
+        await pool.execute(
+          'UPDATE tribu_users SET fuente = ?, fuente_detalle = ? WHERE id = ?',
+          [String(utm_source || 'utm').slice(0, 80), String(utm_campaign || '').slice(0, 200), userId]
+        );
+      } catch (_) {}
+    }
+
+    const session = await issueSessionForUserId(userId);
+    if (!session) return res.status(500).json({ error: 'No se pudo iniciar sesión tras la prueba' });
+
+    const needsPassword = userInfo.isNew || userInfo.hadTempPassword || !!session.user?.psw_temp;
+
+    res.status(201).json({
+      ...session,
+      trial: {
+        dias: trialDays,
+        fecha_renovacion: formatRenewalDateLima(trialDays),
+        precio_mensual: Number(plan.precio),
+        plan_nombre: plan.nombre,
+        tribu_suscripcion_id: trial.tribuSuscripcionId,
+      },
+      needs_password: needsPassword,
+    });
+  } catch (err) {
+    const msg = mapCulqiError(err);
+    console.error('[tribu-pagos iniciar-prueba]', msg, err.message || '');
+    res.status(httpStatusForError(err)).json({ error: msg });
+  }
+});
+
 router.post('/procesar-pago', tribuAuthMiddleware, async (req, res) => {
   try {
     const { suscripcion_id, billing_email: billingEmailRaw, auto_renovacion: autoRenovacionRaw, tarjeta_id: tarjetaIdRaw, ...rawForm } = req.body;
@@ -87,10 +227,9 @@ router.post('/procesar-pago', tribuAuthMiddleware, async (req, res) => {
       if (!checkout.tokenId) return res.status(400).json({ error: 'Token de Culqi requerido' });
     }
 
-    if (!checkout.identificationType || !checkout.identificationNumber)
-      return res.status(400).json({ error: 'Documento de identidad requerido (DNI, CE o RUC)' });
-
-    const identification = { type: checkout.identificationType, number: String(checkout.identificationNumber).trim() };
+    const identification = checkout.identificationType && checkout.identificationNumber
+      ? { type: checkout.identificationType, number: String(checkout.identificationNumber).trim() }
+      : null;
     const email = resolvePayerEmail(checkout.email, req.tribuUser.email, cfg.modo, billingEmailRaw);
     const externalRef = buildExternalRef(req.tribuUser.id, plan.id);
 

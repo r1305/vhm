@@ -1,7 +1,10 @@
-/* recursos.js */
+/* recursos.js — biblioteca guía #library */
 
 let videosData = [];
+let categoriasData = [];
 let videoActual = null;
+let filtroCategoria = 'all';
+let busqueda = '';
 
 function getLikedSet() {
   try { return new Set(JSON.parse(localStorage.getItem('vhm_liked_videos') || '[]')); } catch { return new Set(); }
@@ -19,39 +22,30 @@ function buildEmbed(url) {
   return { type: 'video', src: url };
 }
 
-function cardHtml(v) {
-  const liked = esLiked(v.id);
-  return `<div class="card" onclick="abrirVideo(${v.id})">
-    <div class="thumb">
-      ${v.thumbnail_url ? `<img src="${escapeHtml(v.thumbnail_url)}" alt="${escapeHtml(v.titulo)}" loading="lazy">` : ''}
-      <div class="play"><span>&#9654;</span></div>
-      ${v.duracion ? `<div class="dur">${escapeHtml(v.duracion)}</div>` : ''}
-    </div>
-    <div class="card-body">
-      <h3>${escapeHtml(v.titulo)}</h3>
-      <div class="sub">${escapeHtml(v.subtitulo || '')}</div>
-      <div class="card-meta">
-        <span>👁️ ${v.vistas} vistas</span>
-        <button class="like-btn ${liked ? 'liked' : ''}" onclick="event.stopPropagation();likeRapido(${v.id},this)">
-          ${liked ? '❤️' : '🤍'} <span>${v.likes}</span>
-        </button>
-      </div>
-    </div>
-  </div>`;
+function duracionLabel(d) {
+  const s = String(d || '').trim();
+  if (!s) return '';
+  if (/min/i.test(s)) return s;
+  if (/^\d+$/.test(s)) return s + ' min';
+  return s;
 }
 
-function categoriaHtml(titulo, descripcion, videosHtml, count) {
-  const id = 'cat-' + Math.random().toString(36).slice(2, 8);
-  return `<div class="cat-accordion">
-    <button type="button" class="cat-accordion-trigger" aria-expanded="false" aria-controls="${id}">
-      <span class="cat-title-main">${escapeHtml(titulo)}<span class="cat-accordion-count">${count} recurso${count === 1 ? '' : 's'}</span></span>
-      <span class="cat-accordion-chevron" aria-hidden="true">▾</span>
-    </button>
-    <div class="cat-accordion-panel" id="${id}">
-      ${descripcion ? `<p class="cat-desc">${escapeHtml(descripcion)}</p>` : ''}
-      <div class="grid ${tieneSuscripcion() ? '' : 'tribu-locked'}">${videosHtml}</div>
+function guideCardHtml(v) {
+  const cat = escapeHtml((v.categoria_nombre || 'La Tribu').toUpperCase());
+  const dur = escapeHtml(duracionLabel(v.duracion) || '');
+  const meta = [dur, cat].filter(Boolean).join(' · ');
+  const sub = escapeHtml(v.subtitulo || String(v.descripcion || '').slice(0, 120));
+  return `<button type="button" class="lib-guide-card" onclick="abrirVideo(${v.id})">
+    <div class="lib-guide-cover">
+      <span class="lib-guide-cover-kicker">La Tribu · Guía práctica</span>
+      <span class="lib-guide-cover-title">${escapeHtml(v.titulo || 'Recurso')}</span>
     </div>
-  </div>`;
+    <div class="lib-guide-body">
+      ${meta ? `<div class="lib-guide-meta">${meta}</div>` : ''}
+      <h3>${escapeHtml(v.titulo || '')}</h3>
+      <p>${sub || 'Contenido para acompañarte en tu camino.'}</p>
+    </div>
+  </button>`;
 }
 
 function bannerSinSuscripcion() {
@@ -62,46 +56,96 @@ function bannerSinSuscripcion() {
     <p>${logueado ? `Hola ${escapeHtml(window.tribuUser.nombre)}, tu cuenta no tiene una suscripción activa.` : 'Inicia sesión o crea una cuenta para acceder a todos los recursos de La Tribu.'}</p>
     <div class="lock-btns">
       ${logueado
-        ? `<button class="lock-btn lock-btn-primary" onclick="window.location.href='${BASE}/suscripciones'">Ver planes</button>`
-        : `<button class="lock-btn lock-btn-primary" onclick="window.location.href='${BASE}/?login=1'">Iniciar sesión</button>`
+        ? `<button type="button" class="lock-btn" onclick="window.location.href='${BASE}/membresia'">Gestionar membresía</button>`
+        : `<button type="button" class="lock-btn" onclick="window.location.href='${BASE}/camino?login=1'">Iniciar sesión</button>`
       }
     </div>
   </div>`;
 }
 
+function videosFiltrados() {
+  const q = busqueda.trim().toLowerCase();
+  return videosData.filter(v => {
+    if (filtroCategoria !== 'all' && String(v.categoria_id) !== String(filtroCategoria)) return false;
+    if (!q) return true;
+    const blob = `${v.titulo} ${v.subtitulo} ${v.descripcion || ''} ${v.categoria_nombre || ''}`.toLowerCase();
+    return blob.includes(q);
+  });
+}
+
+function renderFiltros() {
+  const wrap = document.getElementById('libFilters');
+  if (!wrap) return;
+  const chips = [{ id: 'all', label: 'Todo' }].concat(
+    categoriasData.map(c => ({ id: String(c.id), label: c.nombre }))
+  );
+  wrap.innerHTML = chips.map(c =>
+    `<button type="button" class="lib-guide-filter${filtroCategoria === c.id ? ' on' : ''}" data-cat="${escapeHtml(c.id)}" role="tab">${escapeHtml(c.label)}</button>`
+  ).join('');
+  wrap.querySelectorAll('[data-cat]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      filtroCategoria = btn.getAttribute('data-cat');
+      renderFiltros();
+      pintarGrid();
+    });
+  });
+}
+
+function pintarGrid() {
+  const cont = document.getElementById('contenido');
+  if (!cont) return;
+  const rows = videosFiltrados();
+  if (!rows.length) {
+    cont.innerHTML = '<div class="member-empty">No hay recursos con este filtro. Prueba otra búsqueda o explora Todo.</div>';
+    return;
+  }
+  const locked = !tieneSuscripcion();
+  cont.innerHTML =
+    `<div class="lib-guide-grid ${locked ? 'tribu-locked' : ''}">${rows.map(guideCardHtml).join('')}</div>`;
+}
+
+async function applyBibliotecaCopy() {
+  if (typeof TribuContenido === 'undefined') return;
+  const c = await TribuContenido.load('member_biblioteca');
+  if (!c) return;
+  TribuContenido.setText(document.querySelector('.member-page-eyebrow'), c.eyebrow);
+  TribuContenido.setText(document.querySelector('.member-page-hero h1'), c.titulo);
+  TribuContenido.setText(document.querySelector('.member-page-lead'), c.lead);
+  TribuContenido.setText(document.querySelector('.lib-guide-section h2'), c.section_titulo);
+  TribuContenido.setText(document.querySelector('.lib-guide-note'), c.nota);
+  const lbl = document.querySelector('.lib-guide-search-label');
+  const inp = document.getElementById('libSearch');
+  if (lbl && c.search_label) lbl.textContent = c.search_label;
+  if (inp && c.search_placeholder) inp.placeholder = c.search_placeholder;
+}
+
 async function cargar() {
+  await applyBibliotecaCopy();
   const cont = document.getElementById('contenido');
   window._tribuLoaderStart();
   try {
     const [vRes, cRes] = await Promise.all([fetch(`${API}/videos`), fetch(`${API}/videos/categorias`)]);
     if (!vRes.ok) throw new Error();
     videosData = await vRes.json();
-    const categorias = cRes.ok ? await cRes.json() : [];
+    categoriasData = cRes.ok ? await cRes.json() : [];
+    if (!Array.isArray(videosData)) videosData = [];
+    if (!Array.isArray(categoriasData)) categoriasData = [];
 
     if (!videosData.length) {
       cont.innerHTML = '<div class="empty">Próximamente nuevos recursos disponibles.</div>';
       return;
     }
 
-    let html = '';
-    categorias.forEach(cat => {
-      const vids = videosData.filter(v => v.categoria_id === cat.id);
-      if (!vids.length) return;
-      html += categoriaHtml(cat.nombre, cat.descripcion || '', vids.map(cardHtml).join(''), vids.length);
-    });
-    const sinCat = videosData.filter(v => !v.categoria_id);
-    if (sinCat.length) html += categoriaHtml('Otros recursos', '', sinCat.map(cardHtml).join(''), sinCat.length);
-
-    cont.innerHTML = html;
-    cont.querySelectorAll('.cat-accordion-trigger').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const acc = btn.closest('.cat-accordion');
-        const open = !acc.classList.contains('is-open');
-        acc.classList.toggle('is-open', open);
-        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-      });
-    });
-    if (!tieneSuscripcion()) cont.insertAdjacentHTML('afterbegin', bannerSinSuscripcion());
+    renderFiltros();
+    pintarGrid();
+    if (!tieneSuscripcion()) {
+      cont.insertAdjacentHTML('beforebegin', bannerSinSuscripcion());
+    }
+    const playId = new URLSearchParams(location.search).get('play');
+    if (playId) {
+      const pid = parseInt(playId, 10);
+      if (Number.isFinite(pid)) abrirVideo(pid);
+    }
   } catch {
     cont.innerHTML = '<div class="empty">No se pudieron cargar los recursos.</div>';
   } finally {
@@ -110,11 +154,13 @@ async function cargar() {
 }
 
 async function abrirVideo(id) {
-  if (!window.tribuUser) { window.location.href = `${BASE}/?login=1`; return; }
+  if (!window.tribuUser) { window.location.href = `${BASE}/camino?login=1`; return; }
   if (!tieneSuscripcion()) {
     const cont = document.getElementById('contenido');
-    if (!cont.querySelector('.lock-banner')) cont.insertAdjacentHTML('afterbegin', bannerSinSuscripcion());
-    cont.querySelector('.lock-banner').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (cont && !cont.parentElement.querySelector('.lock-banner')) {
+      cont.parentElement.insertAdjacentHTML('afterbegin', bannerSinSuscripcion());
+    }
+    document.querySelector('.lock-banner')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     return;
   }
   const v = videosData.find(x => x.id === id);
@@ -143,7 +189,7 @@ function cerrarPlayer() {
   document.getElementById('playerOverlay').classList.remove('show');
   document.body.style.overflow = '';
   videoActual = null;
-  cargar();
+  pintarGrid();
 }
 
 function actualizarBotonLike() {
@@ -169,25 +215,11 @@ async function toggleLike() {
   } catch {}
 }
 
-async function likeRapido(id, btn) {
-  const v = videosData.find(x => x.id === id);
-  if (!v) return;
-  const set = getLikedSet();
-  const yaLiked = set.has(id);
-  window._tribuLoaderStart();
-  try {
-    const res = await fetch(`${API}/videos/${id}/like`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ quitar: yaLiked }) });
-    const d = await res.json();
-    if (d.likes != null) v.likes = d.likes;
-    if (yaLiked) set.delete(id); else set.add(id);
-    saveLikedSet(set);
-    btn.classList.toggle('liked', !yaLiked);
-    btn.childNodes[0].nodeValue = (!yaLiked ? '❤️' : '🤍') + ' ';
-    btn.querySelector('span').textContent = v.likes;
-  } catch {}
-  finally { window._tribuLoaderEnd(); }
-}
-
 document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarPlayer(); });
 
-verificarSesion().then(cargar);
+document.getElementById('libSearch')?.addEventListener('input', (e) => {
+  busqueda = e.target.value;
+  pintarGrid();
+});
+
+window.cargarRecursosBiblioteca = cargar;

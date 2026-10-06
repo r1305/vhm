@@ -7,12 +7,13 @@ const CATALOG_SEED = [
   { clave: 'encuestas', nombre: 'Encuestas', descripcion: 'Encuestas con enlace compartible', seccion: 'principal', orden: 4 },
   { clave: 'testimonios', nombre: 'Testimonios', descripcion: 'Gestión de testimonios', seccion: 'principal', orden: 5 },
   { clave: 'posts', nombre: 'Comunidad', descripcion: 'Moderación de logros publicados', seccion: 'principal', orden: 6 },
-  { clave: 'usuarios', nombre: 'Administradores', descripcion: 'Usuarios del panel admin', seccion: 'config', orden: 7 },
-  { clave: 'config', nombre: 'Ajustes', descripcion: 'Configuración de La Tribu', seccion: 'config', orden: 8 },
-  { clave: 'accesos', nombre: 'Accesos', descripcion: 'Permisos de vistas por usuario', seccion: 'config', orden: 9 },
+  { clave: 'contenido', nombre: 'Contenido', descripcion: 'Textos landing y plataforma miembro', seccion: 'principal', orden: 7 },
+  { clave: 'usuarios', nombre: 'Administradores', descripcion: 'Usuarios del panel admin', seccion: 'config', orden: 8 },
+  { clave: 'config', nombre: 'Ajustes', descripcion: 'Configuración de La Tribu', seccion: 'config', orden: 9 },
+  { clave: 'accesos', nombre: 'Accesos', descripcion: 'Permisos de vistas por usuario', seccion: 'config', orden: 10 },
 ];
 
-const DEFAULTS_ADMIN = ['videos', 'tribu-users', 'plantillas', 'encuestas', 'testimonios', 'posts', 'usuarios'];
+const DEFAULTS_ADMIN = ['videos', 'tribu-users', 'plantillas', 'encuestas', 'testimonios', 'posts', 'contenido', 'usuarios'];
 
 async function ensureAccesosSchema() {
   await pool.query(`

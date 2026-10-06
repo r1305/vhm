@@ -54,7 +54,7 @@ function inlineAppConfig(base) {
 }
 
 const ADMIN_DIR = path.join(__dirname, '../public/admin');
-const ADMIN_PAGES = ['login.html', 'videos.html', 'tribu-users.html', 'plantillas.html', 'encuestas.html', 'testimonios.html', 'usuarios.html', 'config.html', 'accesos.html', 'index.html'];
+const ADMIN_PAGES = ['login.html', 'videos.html', 'tribu-users.html', 'plantillas.html', 'encuestas.html', 'testimonios.html', 'posts.html', 'contenido.html', 'usuarios.html', 'config.html', 'accesos.html', 'index.html'];
 
 function sendAdminHtml(res, filename) {
   const base = ((res.locals && res.locals.basePath) || process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
@@ -157,10 +157,37 @@ app.get(['/admin', '/admin/'], (req, res) => {
   res.redirect(base + '/admin/login.html');
 });
 
-// Public pages
-app.get('/', (req, res) => sendPublicHtml(res, 'index.html'));
+// Public pages — funnel de conversión
+app.get('/', (req, res) => sendPublicHtml(res, 'landing.html'));
+app.get('/inicio', (req, res) => sendPublicHtml(res, 'inicio.html'));
+app.get('/camino', (req, res) => sendPublicHtml(res, 'index.html'));
+app.get('/checkout', (req, res) => sendPublicHtml(res, 'checkout.html'));
+app.get('/confirmacion', (req, res) => sendPublicHtml(res, 'confirmacion.html'));
+app.get('/crear-contrasena', (req, res) => sendPublicHtml(res, 'crear-contrasena.html'));
+app.get('/empezar', (req, res) => {
+  const base = (res.locals.basePath || process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
+  res.redirect(base + '/empezar/que-buscas');
+});
+app.get('/empezar/que-buscas', (req, res) => sendPublicHtml(res, 'empezar.html'));
+app.get('/empezar/como-empezar', (req, res) => sendPublicHtml(res, 'empezar.html'));
+app.get('/empezar/intereses', (req, res) => sendPublicHtml(res, 'empezar.html'));
+app.get('/empezar/primer-paso', (req, res) => {
+  const base = (res.locals.basePath || process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
+  res.redirect(302, base + '/inicio');
+});
+app.get('/bienestar', (req, res) => sendPublicHtml(res, 'bienestar.html'));
+app.get('/mi-prueba', (req, res) => sendPublicHtml(res, 'mi-prueba.html'));
+app.get('/recordatorio', (req, res) => sendPublicHtml(res, 'recordatorio.html'));
+app.get('/estados', (req, res) => sendPublicHtml(res, 'estados.html'));
+app.get('/biblioteca', (req, res) => sendPublicHtml(res, 'recursos.html'));
+app.get('/membresia', (req, res) => sendPublicHtml(res, 'suscripciones.html'));
+app.get('/suscripciones', (req, res) => {
+  const base = (res.locals.basePath || process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
+  res.redirect(301, base + '/membresia');
+});
+
+app.get('/guia', (req, res) => sendPublicHtml(res, 'guia-funnel.html'));
 app.get('/perfil', (req, res) => sendPublicHtml(res, 'perfil.html'));
-app.get('/suscripciones', (req, res) => sendPublicHtml(res, 'suscripciones.html'));
 app.get('/tarjetas', (req, res) => sendPublicHtml(res, 'tarjetas.html'));
 app.get('/encuesta/:slug', (req, res) => sendPublicHtml(res, 'encuesta.html'));
 app.get('/recursos', (req, res) => sendPublicHtml(res, 'recursos.html'));
@@ -210,6 +237,7 @@ const { router: tribuAuthRouter } = require('./tribuAuthRoutes');
 app.use('/api/tribu-auth', tribuAuthRouter);
 app.use('/api/tribu-pagos', require('./tribuPagosRoutes'));
 app.use('/api/tribu-catalogo', require('./tribuCatalogoRoutes'));
+app.use('/api/contenido', require('./contenidoRoutes'));
 app.use('/api/posts', require('./postsRoutes'));
 
 app.use((err, req, res, next) => {
