@@ -4,7 +4,9 @@ const path    = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 const express = require('express');
 const cors    = require('cors');
+const helmet  = require('helmet');
 const session = require('express-session');
+const { rateLimit } = require('express-rate-limit');
 
 const { ensureSchema } = require('./schema');
 const { getHomePath } = require('./lib/crmNav');
@@ -19,12 +21,29 @@ app.set('views', path.join(__dirname, 'views'));
 app.locals.BASE = BASE;
 app.locals.assetVersion = ASSET_VERSION;
 
+// Cabeceras de seguridad (A1). CSP deshabilitada por ahora para no romper el
+// front (inline scripts / assets); activar con una política propia cuando se
+// revise el HTML. CORP en 'cross-origin' para no bloquear la carga de assets
+// desde otros orígenes permitidos.
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+}));
+
 try { app.use(require('compression')({ threshold: 1024 })); } catch (_) {}
 
-// CORS
+// CORS (A3) — lista fija de orígenes. Nunca '*' junto con credentials:true.
+const frontendUrl = String(process.env.FRONTEND_URL || '').trim().replace(/\/+$/, '');
+if (!frontendUrl) {
+  console.warn('[crm/cors] FRONTEND_URL no definida — se usa la lista fija de orígenes permitidos');
+} else if (frontendUrl === '*') {
+  console.warn('[crm/cors] FRONTEND_URL="*" no permitido con credentials — ignorado');
+}
 const allowedOrigins = [
   'https://vhm.com.pe',
   'https://www.vhm.com.pe',
+  ...(frontendUrl && frontendUrl !== '*' && frontendUrl !== 'null' ? [frontendUrl] : []),
   'http://localhost:3001',
   'http://localhost:3000',
   'http://127.0.0.1:3001',
@@ -53,6 +72,35 @@ app.use(session({
 }));
 
 app.use(BASE, express.static(path.join(__dirname, 'public'), { maxAge: '1h', index: false }));
+
+// Rate limiting (C2). Van DESPUÉS del static: los assets existentes se sirven
+// arriba y no consumen presupuesto; solo se limitan páginas y API.
+// Nota: el contador es por IP (trust proxy = 1). Varias personas detrás de la
+// misma IP de oficina comparten presupuesto: subir RATE_LIMIT_MAX si hace falta.
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: Number(process.env.AUTH_RATE_LIMIT_MAX) || 10,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { error: 'Demasiados intentos. Espera 15 minutos.' },
+});
+
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: Number(process.env.RATE_LIMIT_MAX) || 100,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { error: 'Demasiadas solicitudes. Intenta de nuevo en unos minutos.' },
+});
+
+app.use([
+  `${BASE}/api/auth/login`,
+  `${BASE}/api/auth/register`,
+  `${BASE}/api/auth/forgot-password`,
+  `${BASE}/api/auth/reset-password`,
+  `${BASE}/login`,
+], authLimiter);
+app.use(BASE, apiLimiter);
 
 function sendHtml(res, file) {
   const fs = require('fs');

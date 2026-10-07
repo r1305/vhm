@@ -1,4 +1,5 @@
 const { Router } = require('express');
+const path = require('path');
 const multer = require('multer');
 const pool = require('../lib/db');
 const { auth } = require('../lib/auth');
@@ -28,10 +29,52 @@ const {
   resolveChatJidForConv,
 } = require('../lib/waChatJid');
 
+const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
+
+// Tipos permitidos para enviar por WhatsApp (A5) — mimetype + extensión
+const UPLOAD_MIMES = new Set([
+  'image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/heic', 'image/heif',
+  'audio/mpeg', 'audio/mp4', 'audio/aac', 'audio/ogg', 'audio/amr', 'audio/opus',
+  'video/mp4', 'video/3gpp', 'video/quicktime', 'video/x-m4v',
+  'application/pdf',
+]);
+const UPLOAD_EXTS = new Set([
+  'jpg', 'jpeg', 'png', 'webp', 'gif', 'heic', 'heif',
+  'mp3', 'm4a', 'aac', 'ogg', 'opus', 'amr',
+  'mp4', '3gp', 'mov', 'm4v', 'pdf',
+]);
+
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 50 * 1024 * 1024 },
+  limits: { fileSize: MAX_UPLOAD_BYTES, files: 1, fields: 5, fieldSize: 64 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const mime = String(file.mimetype || '').toLowerCase();
+    const ext = path.extname(String(file.originalname || '')).slice(1).toLowerCase();
+    if (!UPLOAD_MIMES.has(mime) || !UPLOAD_EXTS.has(ext)) {
+      const err = new Error('Tipo de archivo no permitido');
+      err.status = 415;
+      return cb(err);
+    }
+    cb(null, true);
+  },
 });
+
+// Envuelve multer para devolver errores en JSON (413 por tamaño, 415 por tipo)
+const uploadMedia = (req, res, next) => {
+  upload.single('file')(req, res, (err) => {
+    if (!err) return next();
+    if (err.code === 'LIMIT_FILE_SIZE')
+      return res.status(413).json({ error: 'Archivo demasiado grande (máximo 50MB)' });
+    if (err.status === 415) return res.status(415).json({ error: err.message });
+    return respondRouteError(res, err);
+  });
+};
+
+// Nombre de archivo sin rutas ni caracteres peligrosos (A5)
+function safeUploadName(name) {
+  const base = path.basename(String(name || '')).replace(/[^\w.\-]+/g, '_').replace(/^\.+/, '');
+  return (base || 'archivo').slice(0, 120);
+}
 
 function respondRouteError(res, err) {
   const status = err.status && err.status >= 400 && err.status < 600 ? err.status : 500;
@@ -1096,7 +1139,7 @@ router.post('/conversaciones/:id/mensajes', authWhatsApp, async (req, res) => {
 });
 
 // ── Enviar imagen / video / audio / documento ───────────────────
-router.post('/conversaciones/:id/mensajes/media', authWhatsApp, upload.single('file'), async (req, res) => {
+router.post('/conversaciones/:id/mensajes/media', authWhatsApp, uploadMedia, async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'Archivo requerido' });
     if (!isOpenwaConfigured()) return res.status(400).json({ error: 'OpenWA no configurado' });
@@ -1112,7 +1155,7 @@ router.post('/conversaciones/:id/mensajes/media', authWhatsApp, upload.single('f
     const result = await sendWhatsAppMedia({
       to: destino,
       buffer: req.file.buffer,
-      originalname: req.file.originalname,
+      originalname: safeUploadName(req.file.originalname),
       mimetype: req.file.mimetype,
       caption,
       duration,

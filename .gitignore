@@ -1,6 +1,12 @@
 node_modules/
 .env
 .env.local
+# Secretos (C1) — ningún .env real en todo el repo, solo plantillas .env.example
+.env.*
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.*.example
 *.log
 *client_secret*.json
 tmp_check.js

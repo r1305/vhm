@@ -12,6 +12,10 @@ if (!SECRET) {
 }
 const FINAL_SECRET = process.env.JWT_SECRET;
 
+// TODO(A4): el JWT viaja en el header Authorization (Bearer) y no en cookie.
+// La cookie de sesión ya es httpOnly (app.js), pero si algún día se sirve el
+// JWT en cookie hay que configurarla httpOnly + secure (COOKIE_SECURE) + sameSite.
+// Mantener expiresIn por debajo de 24h; nunca 'never'.
 function signToken(payload) {
   return jwt.sign(payload, FINAL_SECRET, { expiresIn: '10h' });
 }
