@@ -1,7 +1,7 @@
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
-const { rewriteRootPaths } = require('../lib/mount');
+const { rewriteRootPaths } = require('../../lib/mount');
 
 const router = express.Router();
 

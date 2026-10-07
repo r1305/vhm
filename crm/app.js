@@ -46,7 +46,7 @@ app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'crm_session_secret_change_me',
+  secret: process.env.SESSION_SECRET || (process.env.NODE_ENV === 'production' ? (() => { throw new Error('FATAL: SESSION_SECRET not defined in production'); })() : 'crm_session_secret_change_me'),
   resave: false,
   saveUninitialized: false,
   cookie: { httpOnly: true, maxAge: 10 * 60 * 60 * 1000 }, // 10h

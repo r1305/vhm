@@ -25,7 +25,8 @@ const TITLES = {
   calendario:      'Calendario',
   disponibilidad:  'Mi disponibilidad',
   permisos_menu:        'Permisos de menú',
-  reporte_financiero:   'Reporte Financiero',
+  reporte_financiero:   'Reporte Financiero · Dashboard',
+  reporte_financiero_detalles: 'Reporte Financiero · Detalles',
 };
 
 const ESTADO_CITA_CSS = {
@@ -169,95 +170,95 @@ router.get('/dashboard', requireSession, (req, res, next) => {
 }, requireAdmin, async (req, res) => {
   const user = req.session.user;
   try {
-    const [[{ pacientes_activos }]] = await db.execute("SELECT COUNT(*) AS pacientes_activos FROM pacientes WHERE estado = 'activo'");
-    const [[{ retenidos }]]         = await db.execute(`SELECT COUNT(*) AS retenidos FROM pacientes p WHERE p.estado='activo' AND ${SQL.paquetesComprados('p')} >= 2`);
-    const [[{ altas_mes }]]         = await db.execute("SELECT COUNT(*) AS altas_mes FROM pacientes WHERE estado='alta' AND DATE_FORMAT(updated_at,'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')");
-    const [[{ sin_paquete }]]       = await db.execute(`SELECT COUNT(*) AS sin_paquete FROM pacientes p WHERE p.estado='activo' AND ${SQL.sinSesiones('p')}`);
-    const [[{ leads_mes }]]         = await db.execute("SELECT COUNT(*) AS leads_mes FROM leads WHERE DATE_FORMAT(created_at,'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')");
-    const [[{ convertidos_mes }]]   = await db.execute("SELECT COUNT(*) AS convertidos_mes FROM leads WHERE estado='convertido' AND DATE_FORMAT(updated_at,'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')");
-    const [[{ no_show_mes }]]       = await db.execute("SELECT COUNT(*) AS no_show_mes FROM citas WHERE estado='no_show' AND DATE_FORMAT(fecha,'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')");
-    const [[{ citas_mes }]]         = await db.execute("SELECT COUNT(*) AS citas_mes FROM citas WHERE estado IN ('realizada','no_show') AND DATE_FORMAT(fecha,'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')");
-    const [[{ lista_espera }]]      = await db.execute('SELECT COUNT(*) AS lista_espera FROM lista_espera WHERE activo=1');
+    const [
+      [ [{ pacientes_activos }] ],
+      [ [{ retenidos }] ],
+      [ [{ altas_mes }] ],
+      [ [{ sin_paquete }] ],
+      [ [{ leads_mes }] ],
+      [ [{ convertidos_mes }] ],
+      [ [{ no_show_mes }] ],
+      [ [{ citas_mes }] ],
+      [ [{ lista_espera }] ],
+      [ proximosAgotar ],
+      [ enRiesgo ],
+      [ sinPaquete ],
+      [ packVencidos ],
+      [ ocupacion ]
+    ] = await Promise.all([
+      db.execute("SELECT COUNT(*) AS pacientes_activos FROM pacientes WHERE estado = 'activo'"),
+      db.execute(`SELECT COUNT(*) AS retenidos FROM pacientes p WHERE p.estado='activo' AND ${SQL.paquetesComprados('p')} >= 2`),
+      db.execute("SELECT COUNT(*) AS altas_mes FROM pacientes WHERE estado='alta' AND DATE_FORMAT(updated_at,'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')"),
+      db.execute(`SELECT COUNT(*) AS sin_paquete FROM pacientes p WHERE p.estado='activo' AND ${SQL.sinSesiones('p')}`),
+      db.execute("SELECT COUNT(*) AS leads_mes FROM leads WHERE DATE_FORMAT(created_at,'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')"),
+      db.execute("SELECT COUNT(*) AS convertidos_mes FROM leads WHERE estado='convertido' AND DATE_FORMAT(updated_at,'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')"),
+      db.execute("SELECT COUNT(*) AS no_show_mes FROM citas WHERE estado='no_show' AND DATE_FORMAT(fecha,'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')"),
+      db.execute("SELECT COUNT(*) AS citas_mes FROM citas WHERE estado IN ('realizada','no_show') AND DATE_FORMAT(fecha,'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')"),
+      db.execute('SELECT COUNT(*) AS lista_espera FROM lista_espera WHERE activo=1'),
+      db.execute(`
+        SELECT p.id, p.nombre, p.apellido, p.telefono, t.nombre AS terapeuta_nombre,
+               ${SQL.sesionesTotal('p')}          AS sesiones_total,
+               ${SQL.citasConfirmadas('p')}       AS sesiones_usadas,
+               ${SQL.sesionesPendientes('p')}     AS sesiones_restantes,
+               ${SQL.paqueteNombre('p')}          AS paquete_nombre
+        FROM pacientes p LEFT JOIN terapeutas t ON p.terapeuta_id = t.id
+        WHERE p.estado = 'activo'
+          AND ${SQL.paqueteNombre('p')} IS NOT NULL
+          AND ${SQL.sesionesPendientes('p')} <= 2
+        ORDER BY ${SQL.sesionesPendientes('p')} ASC, p.nombre ASC
+        LIMIT 15
+      `),
+      db.execute(`
+        SELECT p.id, p.nombre, p.apellido, p.telefono, t.nombre AS terapeuta_nombre,
+               MAX(c.fecha) AS ultima_cita
+        FROM pacientes p
+        LEFT JOIN terapeutas t ON t.id = p.terapeuta_id
+        LEFT JOIN citas c ON c.paciente_id = p.id AND c.estado = 'realizada'
+        WHERE p.estado = 'activo'
+        GROUP BY p.id
+        HAVING ultima_cita IS NULL OR ultima_cita < DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+        ORDER BY ultima_cita ASC
+        LIMIT 15
+      `),
+      db.execute(`
+        SELECT p.id, p.nombre, p.apellido, p.telefono, t.nombre AS terapeuta_nombre,
+               p.created_at
+        FROM pacientes p LEFT JOIN terapeutas t ON t.id = p.terapeuta_id
+        WHERE p.estado = 'activo' AND ${SQL.sinSesiones('p')}
+        ORDER BY p.created_at DESC LIMIT 10
+      `),
+      db.execute(`
+        SELECT p.id, p.nombre, p.apellido, p.telefono, t.nombre AS terapeuta_nombre,
+               pp.nombre AS pack_nombre, pp.vence_at,
+               (pp.sesiones - (
+                 SELECT COUNT(*) FROM citas c
+                 WHERE c.paciente_id = p.id AND c.estado IN ('realizada','no_show')
+                   AND DATE(c.fecha) >= DATE(pp.fecha_inicio)
+               )) AS sesiones_restantes
+        FROM paciente_paquetes pp
+        JOIN pacientes p ON p.id = pp.paciente_id
+        LEFT JOIN terapeutas t ON t.id = p.terapeuta_id
+        WHERE pp.vence_at < CURDATE()
+          AND (pp.sesiones - (
+            SELECT COUNT(*) FROM citas c
+            WHERE c.paciente_id = p.id AND c.estado IN ('realizada','no_show')
+              AND DATE(c.fecha) >= DATE(pp.fecha_inicio)
+          )) > 0
+        ORDER BY pp.vence_at ASC LIMIT 10
+      `),
+      db.execute(`
+        SELECT t.id, t.nombre, t.apellido,
+               COUNT(p.id) AS pacientes_asignados
+        FROM terapeutas t
+        LEFT JOIN pacientes p ON p.terapeuta_id = t.id AND p.estado = 'activo'
+        WHERE t.activo = 1 AND t.rol = 'terapeuta'
+        GROUP BY t.id ORDER BY pacientes_asignados DESC
+      `)
+    ]);
 
     const tasaRetencion   = pacientes_activos > 0 ? Math.round((retenidos / pacientes_activos) * 100) : 0;
     const tasaConversion  = leads_mes > 0 ? Math.round((convertidos_mes / leads_mes) * 100) : 0;
     const tasaNoShow      = citas_mes > 0 ? Math.round((no_show_mes / citas_mes) * 100) : 0;
-    // Próximos a agotar: pacientes con paquete vigente y ≤2 sesiones agendables.
-    // Usa el mismo `sesiones_pendientes` que las tarjetas de paciente, de modo que
-    // el número coincide con el que se ve al abrir el detalle.
-    const [proximosAgotar] = await db.execute(`
-      SELECT p.id, p.nombre, p.apellido, p.telefono, t.nombre AS terapeuta_nombre,
-             ${SQL.sesionesTotal('p')}          AS sesiones_total,
-             ${SQL.citasConfirmadas('p')}       AS sesiones_usadas,
-             ${SQL.sesionesPendientes('p')}     AS sesiones_restantes,
-             ${SQL.paqueteNombre('p')}          AS paquete_nombre
-      FROM pacientes p LEFT JOIN terapeutas t ON p.terapeuta_id = t.id
-      WHERE p.estado = 'activo'
-        AND ${SQL.paqueteNombre('p')} IS NOT NULL
-        AND ${SQL.sesionesPendientes('p')} <= 2
-      ORDER BY ${SQL.sesionesPendientes('p')} ASC, p.nombre ASC
-      LIMIT 15
-    `);
-
-    // En riesgo de abandono: activos sin cita realizada en 30+ días
-    const [enRiesgo] = await db.execute(`
-      SELECT p.id, p.nombre, p.apellido, p.telefono, t.nombre AS terapeuta_nombre,
-             MAX(c.fecha) AS ultima_cita
-      FROM pacientes p
-      LEFT JOIN terapeutas t ON p.terapeuta_id = t.id
-      LEFT JOIN citas c ON c.paciente_id = p.id AND c.estado = 'realizada'
-      WHERE p.estado = 'activo'
-      GROUP BY p.id
-      HAVING ultima_cita IS NULL OR ultima_cita < DATE_SUB(CURDATE(), INTERVAL 30 DAY)
-      ORDER BY ultima_cita ASC
-      LIMIT 15
-    `);
-
-    // Activos que nunca han adquirido sesiones (ni en paquetes ni en el legacy)
-    const [sinPaquete] = await db.execute(`
-      SELECT p.id, p.nombre, p.apellido, p.telefono, t.nombre AS terapeuta_nombre,
-             p.created_at
-      FROM pacientes p LEFT JOIN terapeutas t ON p.terapeuta_id = t.id
-      WHERE p.estado = 'activo' AND ${SQL.sinSesiones('p')}
-      ORDER BY p.created_at DESC LIMIT 10
-    `);
-
-    // Paquetes vencidos con sesiones sin usar.
-    // Antes consultaba la tabla `packs`, que está vacía: la card nunca mostraba nada.
-    // Ahora sale de paciente_paquetes, la fuente real de paquetes.
-    // Sin filtro `activo = 1`: al vencer, syncPackageLifecycle ya marca el paquete
-    // como inactivo, así que exigirlo haría que la card quedara siempre vacía.
-    const [packVencidos] = await db.execute(`
-      SELECT p.id, p.nombre, p.apellido, p.telefono, t.nombre AS terapeuta_nombre,
-             pp.nombre AS pack_nombre, pp.vence_at,
-             (pp.sesiones - (
-               SELECT COUNT(*) FROM citas c
-               WHERE c.paciente_id = p.id AND c.estado IN ('realizada','no_show')
-                 AND DATE(c.fecha) >= DATE(pp.fecha_inicio)
-             )) AS sesiones_restantes
-      FROM paciente_paquetes pp
-      JOIN pacientes p ON p.id = pp.paciente_id
-      LEFT JOIN terapeutas t ON t.id = p.terapeuta_id
-      WHERE pp.vence_at < CURDATE()
-        AND (pp.sesiones - (
-          SELECT COUNT(*) FROM citas c
-          WHERE c.paciente_id = p.id AND c.estado IN ('realizada','no_show')
-            AND DATE(c.fecha) >= DATE(pp.fecha_inicio)
-        )) > 0
-      ORDER BY pp.vence_at ASC LIMIT 10
-    `);
-
-    // Ocupación por terapeuta
-    // La tabla `terapeutas` también guarda admins y superadmins; sin el filtro de
-    // rol salían en la card con 0 pacientes. Mismo criterio que usa /calendario.
-    const [ocupacion] = await db.execute(`
-      SELECT t.id, t.nombre, t.apellido,
-             COUNT(p.id) AS pacientes_asignados
-      FROM terapeutas t
-      LEFT JOIN pacientes p ON p.terapeuta_id = t.id AND p.estado = 'activo'
-      WHERE t.activo = 1 AND t.rol = 'terapeuta'
-      GROUP BY t.id ORDER BY pacientes_asignados DESC
-    `);
 
     const kpis = [
       { label: 'Pacientes activos',   value: pacientes_activos, sub: null, state: null },
@@ -378,114 +379,79 @@ router.get('/integraciones', requireSession, requireAdmin, async (req, res) => {
 // ── REPORTE FINANCIERO ──────────────────────────────────────────
 router.get('/reporte-financiero', requireSession, requireAdmin, async (req, res) => {
   try {
-    // ── Ingresos totales (cuotas pagadas) ──────────────────────────
-    const [[{ ingreso_total }]] = await db.execute(
-      `SELECT COALESCE(SUM(c.monto),0) AS ingreso_total
-       FROM paciente_paquete_cuotas c WHERE c.pagado = 1`
-    );
-    // ── Ingresos del mes actual ────────────────────────────────────
-    const [[{ ingreso_mes }]] = await db.execute(
-      `SELECT COALESCE(SUM(c.monto),0) AS ingreso_mes
-       FROM paciente_paquete_cuotas c
-       WHERE c.pagado = 1 AND DATE_FORMAT(c.pagado_at,'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')`
-    );
-    // ── Ingresos del mes anterior ──────────────────────────────────
-    const [[{ ingreso_mes_anterior }]] = await db.execute(
-      `SELECT COALESCE(SUM(c.monto),0) AS ingreso_mes_anterior
-       FROM paciente_paquete_cuotas c
-       WHERE c.pagado = 1
-         AND DATE_FORMAT(c.pagado_at,'%Y-%m') = DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 1 MONTH),'%Y-%m')`
-    );
-    // ── Deuda pendiente (cuotas no pagadas de paquetes activos) ────
-    const [[{ deuda_pendiente }]] = await db.execute(
-      `SELECT COALESCE(SUM(c.monto),0) AS deuda_pendiente
-       FROM paciente_paquete_cuotas c
-       INNER JOIN paciente_paquetes pp ON pp.id = c.paciente_paquete_id
-       WHERE c.pagado = 0`
-    );
-    // ── Ticket promedio por paquete ────────────────────────────────
-    const [[{ ticket_promedio }]] = await db.execute(
-      `SELECT COALESCE(AVG(pp.precio),0) AS ticket_promedio FROM paciente_paquetes pp`
-    );
-    // ── Total paquetes vendidos ────────────────────────────────────
-    const [[{ paquetes_vendidos }]] = await db.execute(
-      `SELECT COUNT(*) AS paquetes_vendidos FROM paciente_paquetes`
-    );
-    // ── Paquetes vendidos este mes ─────────────────────────────────
-    const [[{ paquetes_mes }]] = await db.execute(
-      `SELECT COUNT(*) AS paquetes_mes FROM paciente_paquetes
-       WHERE DATE_FORMAT(created_at,'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')`
-    );
-    // ── Paquetes con pago parcial pendiente ───────────────────────
-    const [[{ pago_parcial_pendiente }]] = await db.execute(
-      `SELECT COUNT(DISTINCT pp.id) AS pago_parcial_pendiente
-       FROM paciente_paquetes pp
-       INNER JOIN paciente_paquete_cuotas c ON c.paciente_paquete_id = pp.id
-       WHERE pp.tipo_pago = 'parcial' AND c.pagado = 0`
-    );
-    // ── Tasa de cobro (cuotas pagadas / total cuotas) ─────────────
-    const [[{ total_cuotas, cuotas_pagadas }]] = await db.execute(
-      `SELECT COUNT(*) AS total_cuotas, SUM(pagado) AS cuotas_pagadas FROM paciente_paquete_cuotas`
-    );
-    const tasa_cobro = total_cuotas > 0 ? Math.round((cuotas_pagadas / total_cuotas) * 100) : 0;
+    const esFecha = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s || '');
+    const desde = req.query.desde;
+    const hasta = req.query.hasta;
+    const hayRango = esFecha(desde) && esFecha(hasta) && desde <= hasta;
+    const filterDate = (col) => {
+      if (!hayRango) return '';
+      return ` AND ${col} BETWEEN ${db.escape(desde + ' 00:00:00')} AND ${db.escape(hasta + ' 23:59:59')}`;
+    };
+    const fechaCobro = 'COALESCE(c.pagado_at, c.fecha_pago)';
+    const desdeSeisMeses = `AND pp.created_at >= DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 5 MONTH), '%Y-%m-01')`;
+    const cobroSeisMeses = `AND ${fechaCobro} >= DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 5 MONTH), '%Y-%m-01')`;
 
-    // ── Ingresos por mes (últimos 6 meses) ────────────────────────
-    const [ingresosPorMes] = await db.execute(
-      `SELECT DATE_FORMAT(c.pagado_at,'%Y-%m') AS mes,
-              COALESCE(SUM(c.monto),0) AS total
-       FROM paciente_paquete_cuotas c
-       WHERE c.pagado = 1 AND c.pagado_at >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
-       GROUP BY mes ORDER BY mes ASC`
-    );
+    const mesKey = (y, m) => `${y}-${String(m).padStart(2, '0')}`;
+    const spineMeses = () => {
+      const out = [];
+      if (hayRango) {
+        let [y, m] = desde.slice(0, 7).split('-').map(Number);
+        const [y2, m2] = hasta.slice(0, 7).split('-').map(Number);
+        while ((y < y2 || (y === y2 && m <= m2)) && out.length <= 72) {
+          out.push(mesKey(y, m));
+          m += 1; if (m > 12) { m = 1; y += 1; }
+        }
+      } else {
+        const now = new Date();
+        let y = now.getFullYear(), m = now.getMonth() + 1;
+        for (let i = 0; i < 6; i++) {
+          out.unshift(mesKey(y, m));
+          m -= 1; if (m < 1) { m = 12; y -= 1; }
+        }
+      }
+      return out;
+    };
 
-    // ── Ingresos por paquete (top 10) ─────────────────────────────
-    const [ingresosPorPaquete] = await db.execute(
-      `SELECT pp.nombre,
-              COUNT(*) AS veces_vendido,
-              COALESCE(SUM(pp.precio),0) AS ingreso_bruto,
-              COALESCE(SUM(CASE WHEN c.pagado=1 THEN c.monto ELSE 0 END),0) AS ingreso_cobrado
-       FROM paciente_paquetes pp
-       LEFT JOIN paciente_paquete_cuotas c ON c.paciente_paquete_id = pp.id
-       GROUP BY pp.nombre ORDER BY ingreso_cobrado DESC LIMIT 10`
-    );
+    const [
+      [ [{ ingreso_total }] ],
+      [ [{ ingreso_mes }] ],
+      [ [{ ingreso_mes_anterior }] ],
+      [ [{ deuda_pendiente }] ],
+      [ [{ ticket_promedio }] ],
+      [ [{ paquetes_vendidos }] ],
+      [ [{ paquetes_mes }] ],
+      [ [{ pago_parcial_pendiente }] ],
+      [ [{ total_cuotas, cuotas_pagadas }] ],
+      [ vendidosPorMes ],
+      [ cobradosPorMes ],
+      [ ingresosPorPaquete ],
+      [ ingresosPorTerapeuta ]
+    ] = await Promise.all([
+      db.execute(`SELECT COALESCE(SUM(c.monto),0) AS ingreso_total FROM paciente_paquete_cuotas c WHERE c.pagado = 1 ${filterDate(fechaCobro)}`),
+      db.execute(`SELECT COALESCE(SUM(c.monto),0) AS ingreso_mes FROM paciente_paquete_cuotas c WHERE c.pagado = 1 AND DATE_FORMAT(${fechaCobro},'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')`),
+      db.execute(`SELECT COALESCE(SUM(c.monto),0) AS ingreso_mes_anterior FROM paciente_paquete_cuotas c WHERE c.pagado = 1 AND DATE_FORMAT(${fechaCobro},'%Y-%m') = DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 1 MONTH),'%Y-%m')`),
+      db.execute(`SELECT COALESCE(SUM(c.monto),0) AS deuda_pendiente FROM paciente_paquete_cuotas c INNER JOIN paciente_paquetes pp ON pp.id = c.paciente_paquete_id WHERE c.pagado = 0`),
+      db.execute(`SELECT COALESCE(AVG(pp.precio),0) AS ticket_promedio FROM paciente_paquetes pp`),
+      db.execute(`SELECT COUNT(*) AS paquetes_vendidos FROM paciente_paquetes WHERE 1=1 ${filterDate('created_at')}`),
+      db.execute(`SELECT COUNT(*) AS paquetes_mes FROM paciente_paquetes WHERE DATE_FORMAT(created_at,'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')`),
+      db.execute(`SELECT COUNT(DISTINCT pp.id) AS pago_parcial_pendiente FROM paciente_paquetes pp INNER JOIN paciente_paquete_cuotas c ON c.paciente_paquete_id = pp.id WHERE pp.tipo_pago = 'parcial' AND c.pagado = 0`),
+      db.execute(`SELECT COUNT(*) AS total_cuotas, SUM(pagado) AS cuotas_pagadas FROM paciente_paquete_cuotas`),
+      db.execute(`SELECT DATE_FORMAT(pp.created_at,'%Y-%m') AS mes, COALESCE(SUM(pp.precio),0) AS total FROM paciente_paquetes pp WHERE 1=1 ${filterDate('pp.created_at') || desdeSeisMeses} GROUP BY mes`),
+      db.execute(`SELECT DATE_FORMAT(${fechaCobro},'%Y-%m') AS mes, COALESCE(SUM(c.monto),0) AS total FROM paciente_paquete_cuotas c WHERE c.pagado = 1 ${filterDate(fechaCobro) || cobroSeisMeses} GROUP BY mes`),
+      db.execute(`SELECT pp.nombre, COUNT(*) AS veces_vendido, COALESCE(SUM(pp.precio),0) AS ingreso_bruto, COALESCE(SUM(CASE WHEN c.pagado=1 THEN c.monto ELSE 0 END),0) AS ingreso_cobrado FROM paciente_paquetes pp LEFT JOIN paciente_paquete_cuotas c ON c.paciente_paquete_id = pp.id ${filterDate('pp.created_at')} GROUP BY pp.nombre ORDER BY ingreso_cobrado DESC LIMIT 10`),
+      db.execute(`SELECT t.nombre, t.apellido, COUNT(DISTINCT pp.id) AS paquetes, COALESCE(SUM(pp.precio),0) AS ingreso_bruto, COALESCE(SUM(CASE WHEN c.pagado=1 THEN c.monto ELSE 0 END),0) AS ingreso_cobrado FROM paciente_paquetes pp INNER JOIN pacientes p ON p.id = pp.paciente_id LEFT JOIN terapeutas t ON t.id = p.terapeuta_id LEFT JOIN paciente_paquete_cuotas c ON c.paciente_paquete_id = pp.id ${filterDate('pp.created_at')} GROUP BY t.id ORDER BY ingreso_cobrado DESC`)
+    ]);
 
-    // ── Ingresos por terapeuta ─────────────────────────────────────
-    const [ingresosPorTerapeuta] = await db.execute(
-      `SELECT t.nombre, t.apellido,
-              COUNT(DISTINCT pp.id) AS paquetes,
-              COALESCE(SUM(pp.precio),0) AS ingreso_bruto,
-              COALESCE(SUM(CASE WHEN c.pagado=1 THEN c.monto ELSE 0 END),0) AS ingreso_cobrado
-       FROM paciente_paquetes pp
-       INNER JOIN pacientes p ON p.id = pp.paciente_id
-       LEFT JOIN terapeutas t ON t.id = p.terapeuta_id
-       LEFT JOIN paciente_paquete_cuotas c ON c.paciente_paquete_id = pp.id
-       GROUP BY t.id ORDER BY ingreso_cobrado DESC`
-    );
+    const vendidoMap = Object.fromEntries(vendidosPorMes.map(r => [r.mes, Number(r.total)]));
+    const cobradoMap = Object.fromEntries(cobradosPorMes.map(r => [r.mes, Number(r.total)]));
+    const ingresosPorMes = spineMeses().map(mes => ({
+      mes,
+      vendido: vendidoMap[mes] || 0,
+      cobrado: cobradoMap[mes] || 0,
+    }));
 
-    // ── Cuotas vencidas sin pagar (fecha_pago < hoy) ──────────────
-    const [cuotasVencidas] = await db.execute(
-      `SELECT p.nombre, p.apellido, p.telefono,
-              pp.nombre AS paquete_nombre,
-              c.numero AS cuota_num, c.monto, c.fecha_pago
-       FROM paciente_paquete_cuotas c
-       INNER JOIN paciente_paquetes pp ON pp.id = c.paciente_paquete_id
-       INNER JOIN pacientes p ON p.id = pp.paciente_id
-       WHERE c.pagado = 0 AND c.fecha_pago < CURDATE()
-       ORDER BY c.fecha_pago ASC LIMIT 20`
-    );
-
-    // ── Próximas cuotas a vencer (próximos 14 días) ───────────────
-    const [cuotasProximas] = await db.execute(
-      `SELECT p.nombre, p.apellido, p.telefono,
-              pp.nombre AS paquete_nombre,
-              c.numero AS cuota_num, c.monto, c.fecha_pago
-       FROM paciente_paquete_cuotas c
-       INNER JOIN paciente_paquetes pp ON pp.id = c.paciente_paquete_id
-       INNER JOIN pacientes p ON p.id = pp.paciente_id
-       WHERE c.pagado = 0
-         AND c.fecha_pago BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 14 DAY)
-       ORDER BY c.fecha_pago ASC LIMIT 20`
-    );
+    const fmtFecha = (s) => `${s.slice(8, 10)}/${s.slice(5, 7)}/${s.slice(0, 4)}`;
+    const rangoTexto = hayRango ? `del ${fmtFecha(desde)} al ${fmtFecha(hasta)}` : 'últimos 6 meses';
 
     const variacion_mes = ingreso_mes_anterior > 0
       ? Math.round(((ingreso_mes - ingreso_mes_anterior) / ingreso_mes_anterior) * 100)
@@ -495,10 +461,77 @@ router.get('/reporte-financiero', requireSession, requireAdmin, async (req, res)
       user: req.session.user,
       ingreso_total, ingreso_mes, ingreso_mes_anterior, variacion_mes,
       deuda_pendiente, ticket_promedio, paquetes_vendidos, paquetes_mes,
-      pago_parcial_pendiente, tasa_cobro, total_cuotas, cuotas_pagadas,
-      ingresosPorMes, ingresosPorPaquete, ingresosPorTerapeuta,
-      cuotasVencidas, cuotasProximas,
-      scripts: '',
+      pago_parcial_pendiente, tasa_cobro: total_cuotas > 0 ? Math.round((cuotas_pagadas / total_cuotas) * 100) : 0, total_cuotas, cuotas_pagadas,
+      ingresosPorMes, rangoTexto, ingresosPorPaquete, ingresosPorTerapeuta,
+      desde: hayRango ? desde : '',
+      hasta: hayRango ? hasta : '',
+      scripts: `<script src="${req.app.locals.BASE}/reportes.js"></script>`,
+    });
+  } catch (err) { res.status(500).send(err.message); }
+});
+
+// ── REPORTE FINANCIERO · DETALLES (paquetes paginados) ─────────
+router.get('/reporte-financiero/detalles', requireSession, requireAdmin, async (req, res) => {
+  try {
+    const esFecha = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s || '');
+    const desde = req.query.desde;
+    const hasta = req.query.hasta;
+    const hayRango = esFecha(desde) && esFecha(hasta) && desde <= hasta;
+    const filterDate = (col) => {
+      if (!hayRango) return '';
+      return ` AND ${col} BETWEEN ${db.escape(desde + ' 00:00:00')} AND ${db.escape(hasta + ' 23:59:59')}`;
+    };
+    const desdeSeisMeses = `AND pp.created_at >= DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 5 MONTH), '%Y-%m-01')`;
+    const where = `WHERE 1=1 ${filterDate('pp.created_at') || desdeSeisMeses}`;
+
+    const pageSize = 25;
+    const pagina = Math.max(1, parseInt(req.query.pagina, 10) || 1);
+
+    const [[{ total, vendido, cobrado }]] = await db.execute(`
+      SELECT COUNT(*) AS total,
+             COALESCE(SUM(t.vendido),0) AS vendido,
+             COALESCE(SUM(t.cobrado),0) AS cobrado
+      FROM (
+        SELECT pp.id, MAX(pp.precio) AS vendido,
+               COALESCE(SUM(CASE WHEN c.pagado = 1 THEN c.monto ELSE 0 END),0) AS cobrado
+        FROM paciente_paquetes pp
+        LEFT JOIN paciente_paquete_cuotas c ON c.paciente_paquete_id = pp.id
+        ${where}
+        GROUP BY pp.id
+      ) t`);
+
+    const totalPaginas = Math.max(1, Math.ceil(total / pageSize));
+    const paginaAjustada = Math.min(pagina, totalPaginas);
+
+    const [[detalleVentas], [cuotasVencidas], [cuotasProximas]] = await Promise.all([
+      db.execute(
+        `SELECT pp.id, pp.nombre AS paquete, p.nombre AS paciente_nombre, p.apellido AS paciente_apellido,
+          DATE(pp.created_at) AS fecha_registro, DATE(pp.fecha_inicio) AS fecha_activacion,
+          pp.precio, pp.tipo_pago, COUNT(c.id) AS cuotas_total, COALESCE(SUM(c.pagado),0) AS cuotas_pagadas,
+          COALESCE(SUM(CASE WHEN c.pagado = 1 THEN c.monto ELSE 0 END),0) AS cobrado
+          FROM paciente_paquetes pp
+          INNER JOIN pacientes p ON p.id = pp.paciente_id
+          LEFT JOIN paciente_paquete_cuotas c ON c.paciente_paquete_id = pp.id
+          ${where}
+          GROUP BY pp.id, p.id
+          ORDER BY pp.created_at DESC
+          LIMIT ${pageSize} OFFSET ${(paginaAjustada - 1) * pageSize}`
+      ),
+      db.execute(`SELECT p.nombre, p.apellido, p.telefono, pp.nombre AS paquete_nombre, c.numero AS cuota_num, c.monto, c.fecha_pago FROM paciente_paquete_cuotas c INNER JOIN paciente_paquetes pp ON pp.id = c.paciente_paquete_id INNER JOIN pacientes p ON p.id = pp.paciente_id WHERE c.pagado = 0 AND c.fecha_pago < CURDATE() ORDER BY c.fecha_pago ASC LIMIT 20`),
+      db.execute(`SELECT p.nombre, p.apellido, p.telefono, pp.nombre AS paquete_nombre, c.numero AS cuota_num, c.monto, c.fecha_pago FROM paciente_paquete_cuotas c INNER JOIN paciente_paquetes pp ON pp.id = c.paciente_paquete_id INNER JOIN pacientes p ON p.id = pp.paciente_id WHERE c.pagado = 0 AND c.fecha_pago BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 14 DAY) ORDER BY c.fecha_pago ASC LIMIT 20`)
+    ]);
+
+    const fmtFechaTexto = (s) => `${s.slice(8, 10)}/${s.slice(5, 7)}/${s.slice(0, 4)}`;
+    const rangoTexto = hayRango ? `del ${fmtFechaTexto(desde)} al ${fmtFechaTexto(hasta)}` : 'últimos 6 meses';
+
+    render(res, 'reporte_financiero_detalles', {
+      user: req.session.user,
+      detalleVentas, total, vendido, cobrado,
+      pagina: paginaAjustada, totalPaginas,
+      cuotasVencidas, cuotasProximas, rangoTexto,
+      desde: hayRango ? desde : '',
+      hasta: hayRango ? hasta : '',
+      scripts: `<script src="${req.app.locals.BASE}/reportes.js"></script>`,
     });
   } catch (err) { res.status(500).send(err.message); }
 });

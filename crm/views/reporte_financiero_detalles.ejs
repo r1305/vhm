@@ -1,0 +1,165 @@
+<%
+function sol(n) {
+  return 'S/ ' + Number(n).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function fmtFecha(d) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('es-PE',{day:'2-digit',month:'short',year:'numeric', timeZone:'America/Lima'});
+}
+const linkPagina = (p) => {
+  const params = new URLSearchParams();
+  if (desde) { params.set('desde', desde); params.set('hasta', hasta); }
+  if (p > 1) params.set('pagina', String(p));
+  const qs = params.toString();
+  return `${BASE}/reporte-financiero/detalles${qs ? '?' + qs : ''}`;
+};
+%>
+
+<div class="card" style="margin-bottom:16px">
+  <div class="card-body" style="padding:14px 18px">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:8px">
+        <label class="form-label" style="margin:0;white-space:nowrap">Desde</label>
+        <input type="date" class="form-control" id="rfDesde" style="width:150px" value="<%= typeof desde !== 'undefined' ? desde : '' %>">
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <label class="form-label" style="margin:0;white-space:nowrap">Hasta</label>
+        <input type="date" class="form-control" id="rfHasta" style="width:150px" value="<%= typeof hasta !== 'undefined' ? hasta : '' %>">
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-outline btn-sm" data-rf-preset="hoy">Hoy</button>
+        <button class="btn btn-outline btn-sm" data-rf-preset="semana">Esta semana</button>
+        <button class="btn btn-outline btn-sm" data-rf-preset="mes">Este mes</button>
+        <button class="btn btn-outline btn-sm" data-rf-preset="mes3">3 meses</button>
+      </div>
+      <button class="btn btn-primary btn-sm" id="btnAplicarFiltroRF"><i class="fas fa-search"></i> Aplicar</button>
+    </div>
+  </div>
+</div>
+
+<%/* ── Resumen del rango ── */%>
+<div class="rf-resumen">
+  <div class="rf-resumen-item">
+    <span class="rf-resumen-label"><i class="fas fa-receipt"></i> Paquetes</span>
+    <span class="rf-resumen-val"><%= total %></span>
+  </div>
+  <div class="rf-resumen-item">
+    <span class="rf-resumen-label"><i class="fas fa-arrow-trend-up"></i> Vendido</span>
+    <span class="rf-resumen-val"><%= sol(vendido) %></span>
+  </div>
+  <div class="rf-resumen-item">
+    <span class="rf-resumen-label"><i class="fas fa-circle-check"></i> Cobrado</span>
+    <span class="rf-resumen-val rf-ok"><%= sol(cobrado) %></span>
+  </div>
+  <div class="rf-resumen-item">
+    <span class="rf-resumen-label"><i class="fas fa-hourglass-half"></i> Por cobrar</span>
+    <span class="rf-resumen-val <%= vendido - cobrado > 0 ? 'rf-warn' : '' %>"><%= sol(vendido - cobrado) %></span>
+  </div>
+</div>
+
+<%/* ── Detalle de paquetes vendidos (paginado) ── */%>
+<div class="card rf-section">
+  <div class="card-header">
+    <span><i class="fas fa-list"></i> Paquetes vendidos · <%= rangoTexto %></span>
+    <span class="rf-legend">Página <%= pagina %> de <%= totalPaginas %></span>
+  </div>
+  <% if (detalleVentas.length) { %>
+  <div class="rf-table-wrap">
+    <table class="rf-table">
+      <thead>
+        <tr>
+          <th>Paquete</th>
+          <th>Paciente</th>
+          <th>Registro</th>
+          <th>Inicio</th>
+          <th class="rf-num">Vendido</th>
+          <th class="rf-num">Cobrado</th>
+          <th>Pago</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% detalleVentas.forEach(r => { const pagadas = Number(r.cuotas_pagadas) || 0; const cuotasTotal = Number(r.cuotas_total) || 0; %>
+        <tr>
+          <td><%= r.paquete %></td>
+          <td><%= r.paciente_nombre %> <%= r.paciente_apellido %></td>
+          <td><%= fmtFecha(r.fecha_registro) %></td>
+          <td><%= fmtFecha(r.fecha_activacion) %></td>
+          <td class="rf-num"><%= sol(r.precio) %></td>
+          <td class="rf-num <%= Number(r.cobrado) > 0 ? 'rf-ok' : '' %>"><%= sol(r.cobrado) %></td>
+          <td>
+            <% if (cuotasTotal > 0 && pagadas === cuotasTotal) { %>
+              <span class="rf-estado rf-estado-pagado">Pagado</span>
+            <% } else if (pagadas > 0) { %>
+              <span class="rf-estado rf-estado-parcial">Parcial (<%= pagadas %>/<%= cuotasTotal %>)</span>
+            <% } else { %>
+              <span class="rf-estado rf-estado-pendiente">Pendiente</span>
+            <% } %>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <% if (totalPaginas > 1) { %>
+  <div class="rf-pager">
+    <% if (pagina > 1) { %>
+    <a class="btn btn-outline btn-sm" href="<%= linkPagina(pagina - 1) %>"><i class="fas fa-chevron-left"></i> Anterior</a>
+    <% } %>
+    <span class="rf-pager-info"><%= total %> paquete<%= total === 1 ? '' : 's' %> en el rango</span>
+    <% if (pagina < totalPaginas) { %>
+    <a class="btn btn-outline btn-sm" href="<%= linkPagina(pagina + 1) %>">Siguiente <i class="fas fa-chevron-right"></i></a>
+    <% } %>
+  </div>
+  <% } %>
+  <% } else { %>
+  <div class="list-empty">Sin ventas en el rango</div>
+  <% } %>
+</div>
+
+<div class="rf-grid-2">
+
+  <%/* ── Cuotas vencidas sin pagar ── */%>
+  <div class="card">
+    <div class="card-header">
+      <span><i class="fas fa-triangle-exclamation"></i> Cuotas vencidas sin pagar</span>
+      <span class="dash-badge dash-badge-red"><%= cuotasVencidas.length %></span>
+    </div>
+    <% if (cuotasVencidas.length) { %>
+    <div class="dash-list">
+      <% cuotasVencidas.forEach(c => { %>
+      <div class="list-item">
+        <div class="list-icon"><i class="fas fa-circle-exclamation"></i></div>
+        <div style="flex:1">
+          <div class="list-title"><%= c.nombre %> <%= c.apellido %></div>
+          <div class="list-meta"><%= c.paquete_nombre %> · Cuota <%= c.cuota_num %> · <%= c.telefono || 'Sin tel.' %></div>
+        </div>
+        <span class="badge-riesgo"><%= sol(c.monto) %><br><small><%= fmtFecha(c.fecha_pago) %></small></span>
+      </div>
+      <% }) %>
+    </div>
+    <% } else { %><div class="list-empty">Sin cuotas vencidas</div><% } %>
+  </div>
+
+  <%/* ── Próximas cuotas a vencer ── */%>
+  <div class="card">
+    <div class="card-header">
+      <span><i class="fas fa-calendar-clock"></i> Próximas cuotas (14 días)</span>
+      <span class="dash-badge"><%= cuotasProximas.length %></span>
+    </div>
+    <% if (cuotasProximas.length) { %>
+    <div class="dash-list">
+      <% cuotasProximas.forEach(c => { %>
+      <div class="list-item">
+        <div class="list-icon"><i class="fas fa-calendar-check"></i></div>
+        <div style="flex:1">
+          <div class="list-title"><%= c.nombre %> <%= c.apellido %></div>
+          <div class="list-meta"><%= c.paquete_nombre %> · Cuota <%= c.cuota_num %> · <%= c.telefono || 'Sin tel.' %></div>
+        </div>
+        <span class="badge-sesiones"><%= sol(c.monto) %><br><small><%= fmtFecha(c.fecha_pago) %></small></span>
+      </div>
+      <% }) %>
+    </div>
+    <% } else { %><div class="list-empty">Sin cuotas próximas</div><% } %>
+  </div>
+
+</div>

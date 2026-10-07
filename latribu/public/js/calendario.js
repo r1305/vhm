@@ -483,6 +483,12 @@ function initWeekUi() {
 }
 
 async function init() {
+  if (typeof window._tribuLoaderStart === 'function') window._tribuLoaderStart('Cargando calendario...');
+  const loading = document.getElementById('calLoading');
+  if (loading) {
+    loading.style.display = 'block';
+    loading.textContent = 'Cargando eventos…';
+  }
   const logueado = await verificarSesion();
   if (!logueado) {
     document.getElementById('calLockBanner').style.display = 'block';
@@ -492,8 +498,8 @@ async function init() {
       <p>Inicia sesión para ver el calendario de eventos.</p>
       <div class="lock-btns"><button type="button" class="lock-btn" onclick="window.location.href='${BASE}/camino?login=1'">Iniciar sesión</button></div>
     </div>`;
-    const loading = document.getElementById('calLoading');
     if (loading) loading.style.display = 'none';
+    if (typeof window._tribuLoaderEnd === 'function') window._tribuLoaderEnd();
     return;
   }
   if (!tieneSuscripcion()) {
@@ -504,8 +510,8 @@ async function init() {
       <p>Hola ${escapeHtml(window.tribuUser.nombre)}, activa tu suscripción para ver el calendario.</p>
       <div class="lock-btns"><button type="button" class="lock-btn" onclick="window.location.href='${BASE}/membresia'">Gestionar membresía</button></div>
     </div>`;
-    const loading = document.getElementById('calLoading');
     if (loading) loading.style.display = 'none';
+    if (typeof window._tribuLoaderEnd === 'function') window._tribuLoaderEnd();
     return;
   }
   if (typeof TribuContenido !== 'undefined') {
@@ -534,6 +540,8 @@ async function init() {
   calMonth = mo - 1;
   await cargarReservas();
   await ensureWeekEventsLoaded();
+  if (loading) loading.style.display = 'none';
+  if (typeof window._tribuLoaderEnd === 'function') window._tribuLoaderEnd();
 }
 
 window.initCalendarioMiembro = init;

@@ -12,6 +12,7 @@ const {
   createPacientePaquete,
   deletePacientePaquete,
   markCuotaPagada,
+  syncCuotasForPaquete,
   getSesionesResumen,
   SQL,
 } = require('../lib/paquetesPaciente');
@@ -34,6 +35,8 @@ router.get('/', auth, async (req, res) => {
     const tid = id(req.query.terapeuta_id);
     const sinTel   = req.query.sin_telefono === '1';
     const sinEmail = req.query.sin_email    === '1';
+    const limit = Math.min(id(req.query.limit) || 50, 500);
+    const offset = Math.max(id(req.query.offset) || 0, 0);
     const of = ownerFilter(req, 'p');
     let sql = `SELECT p.*, t.nombre AS terapeuta_nombre,
                ${SQL.sesionesTotal('p')}      AS sesiones_total,
@@ -49,7 +52,8 @@ router.get('/', auth, async (req, res) => {
     if (sinTel)   sql += ' AND (p.telefono IS NULL OR p.telefono = "")';
     if (sinEmail) sql += ' AND (p.email IS NULL OR p.email = "")';
     sql += of.sql; params.push(...of.params);
-    sql += ' ORDER BY p.updated_at DESC LIMIT 200';
+    sql += ' ORDER BY p.updated_at DESC LIMIT ? OFFSET ?';
+    params.push(limit, offset);
     const [rows] = await pool.execute(sql, params);
     try {
       await tribuProvision.attachTribuFlagsToPacientes(rows);
@@ -107,16 +111,15 @@ router.post('/', authAdmin, async (req, res) => {
 
 router.get('/:pid', auth, async (req, res) => {
   try {
+    const pid = id(req.params.pid);
+    if (!pid) return res.status(400).json({ error: 'ID inválido' });
+    if (!await puedeVerPaciente(req, pid)) return res.status(403).json({ error: 'Sin acceso' });
     const [[p]] = await pool.execute(
       `SELECT p.*, t.nombre AS terapeuta_nombre, t.apellido AS terapeuta_apellido
        FROM pacientes p LEFT JOIN terapeutas t ON p.terapeuta_id = t.id WHERE p.id = ?`,
-      [req.params.pid]
+      [pid]
     );
     if (!p) return res.status(404).json({ error: 'No encontrado' });
-    // isStaffAdmin en vez de comparar contra 'terapeuta': cualquier rol nuevo que no
-    // sea terapeuta debe quedar fuera, sin depender de tocar esta línea.
-    if (!isStaffAdmin(req.user?.rol) && p.terapeuta_id !== req.user.id)
-      return res.status(403).json({ error: 'Sin acceso' });
     res.json(p);
   } catch { res.status(500).json({ error: 'Error' }); }
 });
@@ -140,15 +143,20 @@ router.put('/:pid', authAdmin, async (req, res) => {
   } catch { res.status(500).json({ error: 'Error al actualizar' }); }
 });
 
-// Evita que un terapeuta consulte los datos de un paciente que no es suyo. El
-// listado ya aplica ownerFilter; estos endpoints por id no lo hacian, asi que
-// bastaba con conocer el id de otro paciente para ver sus paquetes y cuotas.
 async function puedeVerPaciente(req, pid) {
   if (isStaffAdmin(req.user?.rol)) return true;
   const [[p]] = await pool.execute(
     'SELECT 1 AS ok FROM pacientes WHERE id = ? AND terapeuta_id = ?', [pid, req.user.id]
   );
   return !!p;
+}
+
+async function authPaciente(req, res, next) {
+  const pid = id(req.params.pid);
+  if (!pid) return res.status(400).json({ error: 'ID inválido' });
+  if (!await puedeVerPaciente(req, pid)) return res.status(403).json({ error: 'Sin acceso' });
+  req.pid = pid; // Attach pid for later use
+  next();
 }
 
 // ── Resumen de sesiones (histórico completo, independiente del estado del paquete) ──
@@ -205,6 +213,9 @@ router.patch('/:pid/paquetes-adquiridos/:pkgId', authAdmin, async (req, res) => 
     if (!fields.length) return res.status(400).json({ error: 'Nada que actualizar' });
     vals.push(pkgId);
     await pool.execute(`UPDATE paciente_paquetes SET ${fields.join(', ')} WHERE id = ?`, vals);
+    if (precio != null || sesiones != null) {
+      await syncCuotasForPaquete(pkgId);
+    }
     const paquetes = await loadPacientePaquetes(pid);
     res.json({ ok: true, paquetes });
   } catch (err) {
@@ -238,66 +249,67 @@ router.patch('/:pid/paquetes-adquiridos/cuotas/:cuotaId/pagar', authAdmin, async
   }
 });
 
-// ── Sesiones por paciente (legacy) ────────────────────────────
-router.get('/:pid/sesiones', auth, async (req, res) => {
+router.get('/:pid/sesiones', auth, authPaciente, async (req, res) => {
   try {
     const [rows] = await pool.execute(
       'SELECT * FROM paciente_sesiones WHERE paciente_id=? ORDER BY fecha_inicio ASC, id ASC',
-      [req.params.pid]
+      [req.pid]
     );
     res.json(rows);
   } catch { res.status(500).json({ error: 'Error' }); }
 });
 
-router.post('/:pid/sesiones', auth, async (req, res) => {
-  const pid = id(req.params.pid);
-  if (!pid) return res.status(400).json({ error: 'ID inválido' });
+router.post('/:pid/sesiones', auth, authPaciente, async (req, res) => {
   const { fecha_inicio, sesiones } = req.body || {};
   try {
     const [r] = await pool.execute(
       'INSERT INTO paciente_sesiones (paciente_id, fecha_inicio, sesiones) VALUES (?,?,?)',
-      [pid, fecha_inicio||null, parseInt(sesiones,10)||0]
+      [req.pid, fecha_inicio||null, parseInt(sesiones,10)||0]
     );
     res.status(201).json({ id: r.insertId });
   } catch { res.status(500).json({ error: 'Error al crear' }); }
 });
 
-router.put('/:pid/sesiones/:sid', auth, async (req, res) => {
+router.put('/:pid/sesiones/:sid', auth, authPaciente, async (req, res) => {
   const sid = id(req.params.sid);
   if (!sid) return res.status(400).json({ error: 'ID inválido' });
   const { fecha_inicio, sesiones } = req.body || {};
   try {
     await pool.execute(
       'UPDATE paciente_sesiones SET fecha_inicio=?, sesiones=? WHERE id=? AND paciente_id=?',
-      [fecha_inicio||null, parseInt(sesiones,10)||0, sid, req.params.pid]
+      [fecha_inicio||null, parseInt(sesiones,10)||0, sid, req.pid]
     );
     res.json({ ok: true });
   } catch { res.status(500).json({ error: 'Error al actualizar' }); }
 });
 
-router.delete('/:pid/sesiones/:sid', auth, async (req, res) => {
+router.delete('/:pid/sesiones/:sid', auth, authPaciente, async (req, res) => {
+  const sid = id(req.params.sid);
+  if (!sid) return res.status(400).json({ error: 'ID inválido' });
   try {
     await pool.execute(
       'DELETE FROM paciente_sesiones WHERE id=? AND paciente_id=?',
-      [req.params.sid, req.params.pid]
+      [sid, req.pid]
     );
     res.json({ ok: true });
   } catch { res.status(500).json({ error: 'Error al eliminar' }); }
 });
 
 // Consentimiento informado
-router.post('/:pid/consentimiento', auth, async (req, res) => {
-  const pid = id(req.params.pid);
+router.post('/:pid/consentimiento', auth, authPaciente, async (req, res) => {
   const ip = req.ip || '';
-  await pool.execute(
-    'UPDATE pacientes SET consentimiento=1, consentimiento_at=NOW() WHERE id=?', [pid]
-  );
-  await pool.execute(
-    `INSERT INTO consentimientos (paciente_id, tipo, texto, firmado, firmado_at, ip_firma)
-     VALUES (?,?,?,1,NOW(),?)`,
-    [pid, req.body.tipo||'terapeutico', req.body.texto||'Consentimiento informado firmado digitalmente.', ip]
-  );
-  res.json({ ok: true });
+  const { tipo = 'terapeutico', texto = 'Consentimiento informado firmado digitalmente.' } = req.body || {};
+  try {
+    await pool.execute(
+      'UPDATE pacientes SET consentimiento=1, consentimiento_at=NOW() WHERE id=?', [req.pid]
+    );
+    await pool.execute(
+      `INSERT INTO consentimientos (paciente_id, tipo, texto, firmado, firmado_at, ip_firma)
+       VALUES (?,?,?,1,NOW(),?)`,
+      [req.pid, t(tipo, 80), t(texto, 2000), ip]
+    );
+    res.json({ ok: true });
+  } catch { res.status(500).json({ error: 'Error al registrar consentimiento' }); }
 });
 
 module.exports = router;

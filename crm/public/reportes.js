@@ -64,20 +64,32 @@
       </div>`;
   }
 
+  // Export functions to be used by other reports
+  window.CRM_REPORTS = {
+    setPreset: function(preset) {
+      const hoy = new Date(), fmt = d => d.toLocaleDateString('sv-SE', { timeZone: 'America/Lima' });
+      let desde, hasta = fmt(hoy);
+      if (preset === 'hoy')    { desde = fmt(hoy); }
+      if (preset === 'semana') { const d = new Date(hoy); d.setDate(hoy.getDate() - hoy.getDay() + (hoy.getDay()===0?-6:1)); desde = fmt(d); }
+      if (preset === 'mes')    { desde = `${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}-01`; }
+      if (preset === 'mes3')   { const d = new Date(hoy); d.setMonth(d.getMonth()-3); desde = fmt(d); }
+      
+      const elDesde = document.getElementById('rptDesde') || document.getElementById('rfDesde');
+      const elHasta = document.getElementById('rptHasta') || document.getElementById('rfHasta');
+      if (elDesde) elDesde.value = desde;
+      if (elHasta) elHasta.value = hasta;
+    }
+  };
+
   function setPreset(preset) {
-    const hoy = new Date(), fmt = d => d.toISOString().slice(0, 10);
-    let desde, hasta = fmt(hoy);
-    if (preset === 'hoy')    { desde = fmt(hoy); }
-    if (preset === 'semana') { const d = new Date(hoy); d.setDate(hoy.getDate() - hoy.getDay() + (hoy.getDay()===0?-6:1)); desde = fmt(d); }
-    if (preset === 'mes')    { desde = `${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}-01`; }
-    if (preset === 'mes3')   { const d = new Date(hoy); d.setMonth(d.getMonth()-3); desde = fmt(d); }
-    document.getElementById('rptDesde').value = desde;
-    document.getElementById('rptHasta').value = hasta;
+    window.CRM_REPORTS.setPreset(preset);
   }
 
   async function loadReportes() {
-    const hoy   = new Date().toISOString().slice(0, 10);
-    const desde = document.getElementById('rptDesde').value || hoy;
+    const inputDesde = document.getElementById('rptDesde');
+    if (!inputDesde) return;
+    const hoy   = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Lima' });
+    const desde = inputDesde.value || hoy;
     const hasta = document.getElementById('rptHasta').value || hoy;
     try {
       const d = await api(`/reportes/stats?desde=${desde}&hasta=${hasta}`, { loaderMessage: 'Cargando reportes…' });
@@ -122,15 +134,37 @@
     } catch (err) { toast(err.message, 'danger'); }
   }
 
-  document.querySelectorAll('[data-rpt-preset]').forEach(btn =>
-    btn.addEventListener('click', () => { setPreset(btn.dataset.rptPreset); loadReportes(); })
-  );
-  document.getElementById('btnAplicarFiltro').addEventListener('click', loadReportes);
-  ['rptDesde','rptHasta'].forEach(id =>
-    document.getElementById(id)?.addEventListener('keydown', e => { if (e.key === 'Enter') loadReportes(); })
-  );
+  const esReporteGeneral = !!document.getElementById('rptDesde');
+  const esReporteFinanciero = !!document.getElementById('btnAplicarFiltroRF');
 
-  setPreset('hoy');
-  loadReportes();
+  if (esReporteGeneral) {
+    document.querySelectorAll('[data-rpt-preset]').forEach(btn =>
+      btn.addEventListener('click', () => { setPreset(btn.dataset.rptPreset); loadReportes(); })
+    );
+    document.getElementById('btnAplicarFiltro').addEventListener('click', loadReportes);
+    ['rptDesde','rptHasta'].forEach(id =>
+      document.getElementById(id)?.addEventListener('keydown', e => { if (e.key === 'Enter') loadReportes(); })
+    );
 
-})();
+    setPreset('hoy');
+    loadReportes();
+  }
+
+  // Setup for Financial Report if on that page
+  if (esReporteFinanciero) {
+    const irConFiltro = () => {
+      window.showCrmLoader?.('Aplicando filtro…');
+      const desde = document.getElementById('rfDesde').value;
+      const hasta = document.getElementById('rfHasta').value;
+      window.location.href = `${window.location.pathname}?desde=${desde}&hasta=${hasta}`;
+    };
+    document.querySelectorAll('[data-rf-preset]').forEach(btn =>
+      btn.addEventListener('click', () => { window.CRM_REPORTS.setPreset(btn.dataset.rfPreset); irConFiltro(); })
+    );
+    document.getElementById('btnAplicarFiltroRF').addEventListener('click', irConFiltro);
+    ['rfDesde','rfHasta'].forEach(id =>
+      document.getElementById(id)?.addEventListener('keydown', e => { if (e.key === 'Enter') irConFiltro(); })
+    );
+  }
+
+  })();

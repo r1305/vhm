@@ -1,13 +1,19 @@
 const jwt = require('jsonwebtoken');
 const { isStaffAdmin, isSuperAdmin } = require('./roles');
 
-const SECRET = process.env.JWT_SECRET || (() => {
-  console.warn('[crm/auth] ⚠️ JWT_SECRET no configurado — usando fallback inseguro. Define JWT_SECRET en .env');
-  return 'crm_dev_secret_change_me';
-})();
+const SECRET = process.env.JWT_SECRET;
+if (!SECRET) {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('FATAL: JWT_SECRET is not defined in production environment');
+  } else {
+    console.warn('[crm/auth] ⚠️ JWT_SECRET no configurado — usando fallback inseguro para desarrollo. Define JWT_SECRET en .env');
+    process.env.JWT_SECRET = 'crm_dev_secret_change_me';
+  }
+}
+const FINAL_SECRET = process.env.JWT_SECRET;
 
 function signToken(payload) {
-  return jwt.sign(payload, SECRET, { expiresIn: '10h' });
+  return jwt.sign(payload, FINAL_SECRET, { expiresIn: '10h' });
 }
 
 function auth(req, res, next) {
@@ -19,7 +25,7 @@ function auth(req, res, next) {
   const token = header.startsWith('Bearer ') ? header.slice(7) : null;
   if (!token) return res.status(401).json({ error: 'No autenticado' });
   try {
-    req.user = jwt.verify(token, SECRET);
+    req.user = jwt.verify(token, FINAL_SECRET);
     next();
   } catch {
     res.status(401).json({ error: 'Token inválido o expirado' });

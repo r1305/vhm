@@ -89,8 +89,14 @@
       <% if (menuPermisos.has('reportes')) { %>
       <a class="nav-item <%= view === 'reportes'     ? 'active' : '' %>" href="<%= BASE %>/reportes"><i class="fas fa-chart-bar"></i><span> Reportes</span></a>
       <% } %>
+      <% if (menuPermisos.has('reporte_financiero') || menuPermisos.has('reporte_financiero_detalles')) { %>
+      <div class="nav-section">Reporte Financiero</div>
+      <% } %>
       <% if (menuPermisos.has('reporte_financiero')) { %>
-      <a class="nav-item <%= view === 'reporte_financiero' ? 'active' : '' %>" href="<%= BASE %>/reporte-financiero"><i class="fas fa-sack-dollar"></i><span> Reporte Financiero</span></a>
+      <a class="nav-item nav-item-sub <%= view === 'reporte_financiero' ? 'active' : '' %>" href="<%= BASE %>/reporte-financiero"><i class="fas fa-sack-dollar"></i><span> Dashboard</span></a>
+      <% } %>
+      <% if (menuPermisos.has('reporte_financiero_detalles')) { %>
+      <a class="nav-item nav-item-sub <%= view === 'reporte_financiero_detalles' ? 'active' : '' %>" href="<%= BASE %>/reporte-financiero/detalles"><i class="fas fa-list"></i><span> Detalles</span></a>
       <% } %>
       <% if (menuPermisos.has('permisos_menu')) { %>
       <a class="nav-item <%= view === 'permisos_menu'? 'active' : '' %>" href="<%= BASE %>/permisos-menu"><i class="fas fa-shield-halved"></i><span> Permisos de menú</span></a>

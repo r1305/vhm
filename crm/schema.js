@@ -613,6 +613,9 @@ async function ensureSchema() {
     for (const rol of ['superadmin', 'admin'])
       await conn.execute('INSERT IGNORE INTO menu_permisos (rol, item) VALUES (?,?)', [rol, 'reporte_financiero']);
 
+    for (const rol of ['superadmin', 'admin'])
+      await conn.execute('INSERT IGNORE INTO menu_permisos (rol, item) VALUES (?,?)', [rol, 'reporte_financiero_detalles']);
+
     // Ocultar módulo de pagos (sin dinero en CRM por ahora)
     await conn.execute("DELETE FROM usuario_menu_permisos WHERE item = 'pagos'");
     await conn.execute("DELETE FROM menu_permisos WHERE item = 'pagos'");
@@ -781,7 +784,8 @@ async function ensureSchema() {
       ['terapeutas','Usuarios','fa-user-md',18],
       ['reportes','Reportes','fa-chart-bar',19],
       ['permisos_menu','Permisos de menú','fa-shield-halved',20],
-      ['reporte_financiero','Reporte Financiero','fa-sack-dollar',21],
+      ['reporte_financiero','Reporte Financiero · Dashboard','fa-sack-dollar',21],
+      ['reporte_financiero_detalles','Reporte Financiero · Detalles','fa-list',22],
     ];
     for (const [clave, label, icon, orden] of CATALOG_ITEMS) {
       await conn.execute(

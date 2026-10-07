@@ -80,6 +80,17 @@
 
   /* ── Cargar citas y bloqueos ── */
   async function loadCitas() {
+    const loader = document.getElementById('calLoader');
+    const grid = document.getElementById('calGrid');
+    
+    // Mostrar loader inmediatamente
+    if (loader) loader.style.display = 'block';
+    // Si hay un grid previo, lo hacemos semi-transparente para indicar carga
+    if (grid) {
+      const existingGrid = grid.querySelector('.cal-mes, .cal-semana-wrap, .cal-dia-grid');
+      if (existingGrid) existingGrid.style.opacity = '0.5';
+    }
+
     try {
       const { desde, hasta } = rangoActual();
       const desdeStr = isoDate(desde);
@@ -163,7 +174,13 @@
       }
 
       render();
-    } catch (err) { toast(err.message, 'danger'); }
+    } catch (err) { toast(err.message, 'danger'); } finally {
+      if (loader) loader.style.display = 'none';
+      if (grid) {
+        grid.querySelectorAll('.cal-mes, .cal-semana-wrap, .cal-dia-grid').forEach(el => el.style.opacity = '1');
+      }
+    }
+  }
   }
 
   /* ── Título ── */

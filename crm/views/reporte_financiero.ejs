@@ -10,9 +10,31 @@ function fmtMes(ym) {
 }
 function fmtFecha(d) {
   if (!d) return '—';
-  return new Date(d).toLocaleDateString('es-PE',{day:'2-digit',month:'short',year:'numeric'});
+  return new Date(d).toLocaleDateString('es-PE',{day:'2-digit',month:'short',year:'numeric', timeZone:'America/Lima'});
 }
 %>
+
+<div class="card" style="margin-bottom:16px">
+  <div class="card-body" style="padding:14px 18px">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:8px">
+        <label class="form-label" style="margin:0;white-space:nowrap">Desde</label>
+        <input type="date" class="form-control" id="rfDesde" style="width:150px" value="<%= typeof desde !== 'undefined' ? desde : '' %>">
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <label class="form-label" style="margin:0;white-space:nowrap">Hasta</label>
+        <input type="date" class="form-control" id="rfHasta" style="width:150px" value="<%= typeof hasta !== 'undefined' ? hasta : '' %>">
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-outline btn-sm" data-rf-preset="hoy">Hoy</button>
+        <button class="btn btn-outline btn-sm" data-rf-preset="semana">Esta semana</button>
+        <button class="btn btn-outline btn-sm" data-rf-preset="mes">Este mes</button>
+        <button class="btn btn-outline btn-sm" data-rf-preset="mes3">3 meses</button>
+      </div>
+      <button class="btn btn-primary btn-sm" id="btnAplicarFiltroRF"><i class="fas fa-search"></i> Aplicar</button>
+    </div>
+  </div>
+</div>
 
 <%/* ── KPIs principales ── */%>
 <div class="rf-kpi-grid">
@@ -77,18 +99,26 @@ function fmtFecha(d) {
 </div>
 
 <%/* ── Ingresos por mes ── */%>
-<% if (ingresosPorMes.length) { %>
+<% if (ingresosPorMes.some(r => r.vendido || r.cobrado)) { %>
 <div class="card rf-section">
-  <div class="card-header"><span><i class="fas fa-chart-column"></i> Ingresos por mes (últimos 6 meses)</span></div>
+  <div class="card-header">
+    <span><i class="fas fa-chart-column"></i> Ingresos por mes · <%= rangoTexto %></span>
+    <span class="rf-legend">
+      <span class="rf-legend-dot rf-legend-vendido"></span> Vendido
+      <span class="rf-legend-dot rf-legend-cobrado"></span> Cobrado
+    </span>
+  </div>
   <div class="rf-bar-wrap">
-    <% const maxMes = Math.max(...ingresosPorMes.map(r => Number(r.total)), 1); %>
+    <% const maxMes = Math.max(...ingresosPorMes.map(r => Math.max(r.vendido, r.cobrado)), 1); %>
+    <% const pct = v => v > 0 ? Math.max(1, Math.round((v / maxMes) * 100)) : 0; %>
     <% ingresosPorMes.forEach(r => { %>
     <div class="rf-bar-row">
       <span class="rf-bar-label"><%= fmtMes(r.mes) %></span>
       <div class="rf-bar-track">
-        <div class="rf-bar-fill" style="width:<%= Math.round((Number(r.total)/maxMes)*100) %>%"></div>
+        <div class="rf-bar-fill rf-bar-vendido" style="width:<%= pct(r.vendido) %>%"></div>
+        <div class="rf-bar-fill rf-bar-cobrado" style="width:<%= pct(r.cobrado) %>%"></div>
       </div>
-      <span class="rf-bar-val"><%= sol(r.total) %></span>
+      <span class="rf-bar-val"><%= sol(r.vendido) %><small class="rf-bar-sub"><%= sol(r.cobrado) %> cobrado</small></span>
     </div>
     <% }) %>
   </div>
@@ -143,50 +173,3 @@ function fmtFecha(d) {
 
 </div>
 
-<div class="rf-grid-2">
-
-  <%/* ── Cuotas vencidas sin pagar ── */%>
-  <div class="card">
-    <div class="card-header">
-      <span><i class="fas fa-triangle-exclamation"></i> Cuotas vencidas sin pagar</span>
-      <span class="dash-badge dash-badge-red"><%= cuotasVencidas.length %></span>
-    </div>
-    <% if (cuotasVencidas.length) { %>
-    <div class="dash-list">
-      <% cuotasVencidas.forEach(c => { %>
-      <div class="list-item">
-        <div class="list-icon"><i class="fas fa-circle-exclamation"></i></div>
-        <div style="flex:1">
-          <div class="list-title"><%= c.nombre %> <%= c.apellido %></div>
-          <div class="list-meta"><%= c.paquete_nombre %> · Cuota <%= c.cuota_num %> · <%= c.telefono || 'Sin tel.' %></div>
-        </div>
-        <span class="badge-riesgo"><%= sol(c.monto) %><br><small><%= fmtFecha(c.fecha_pago) %></small></span>
-      </div>
-      <% }) %>
-    </div>
-    <% } else { %><div class="list-empty">Sin cuotas vencidas</div><% } %>
-  </div>
-
-  <%/* ── Próximas cuotas a vencer ── */%>
-  <div class="card">
-    <div class="card-header">
-      <span><i class="fas fa-calendar-clock"></i> Próximas cuotas (14 días)</span>
-      <span class="dash-badge"><%= cuotasProximas.length %></span>
-    </div>
-    <% if (cuotasProximas.length) { %>
-    <div class="dash-list">
-      <% cuotasProximas.forEach(c => { %>
-      <div class="list-item">
-        <div class="list-icon"><i class="fas fa-calendar-check"></i></div>
-        <div style="flex:1">
-          <div class="list-title"><%= c.nombre %> <%= c.apellido %></div>
-          <div class="list-meta"><%= c.paquete_nombre %> · Cuota <%= c.cuota_num %> · <%= c.telefono || 'Sin tel.' %></div>
-        </div>
-        <span class="badge-sesiones"><%= sol(c.monto) %><br><small><%= fmtFecha(c.fecha_pago) %></small></span>
-      </div>
-      <% }) %>
-    </div>
-    <% } else { %><div class="list-empty">Sin cuotas próximas</div><% } %>
-  </div>
-
-</div>
