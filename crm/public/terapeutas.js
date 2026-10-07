@@ -22,12 +22,22 @@
 
   const ASSIGNABLE_ROLES = {
     superadmin: ['superadmin', 'admin', 'recepcion', 'terapeuta'],
-    admin: ['terapeuta'],
+    admin: ['admin', 'terapeuta'],
+    recepcion: ['terapeuta'],
+  };
+
+  const MANAGEABLE_ROLES = {
+    superadmin: ['superadmin', 'admin', 'recepcion', 'terapeuta'],
+    admin: ['admin', 'terapeuta'],
     recepcion: ['terapeuta'],
   };
 
   function assignableRoles() {
     return ASSIGNABLE_ROLES[USER_ROL] || [];
+  }
+
+  function canManageTarget(targetRol) {
+    return (MANAGEABLE_ROLES[USER_ROL] || []).includes(targetRol);
   }
 
   function roleOptionsHtml(selected) {
@@ -43,7 +53,7 @@
 
   const btnNuevo = document.getElementById('btnNuevoTerapeuta');
   if (btnNuevo) {
-    btnNuevo.innerHTML = IS_SUPERADMIN
+    btnNuevo.innerHTML = IS_SUPERADMIN || USER_ROL === 'admin'
       ? '<i class="fas fa-plus"></i> Nuevo usuario'
       : '<i class="fas fa-plus"></i> Nuevo terapeuta';
   }
@@ -154,9 +164,9 @@
   }
 
   function showTerapeutaForm(t = null) {
-    const canEdit = !t || IS_SUPERADMIN || t.rol === 'terapeuta';
+    const canEdit = !t || canManageTarget(t.rol);
     if (!canEdit) {
-      toast('No puedes editar usuarios administradores', 'danger');
+      toast('No puedes editar este usuario', 'danger');
       return;
     }
 
@@ -164,7 +174,8 @@
     const showRol = roles.length > 0;
     const defaultRol = roles[0] || 'terapeuta';
 
-    openModal(t ? 'Editar usuario' : (IS_SUPERADMIN ? 'Nuevo usuario' : 'Nuevo terapeuta'), `
+    const nuevoUsuario = IS_SUPERADMIN || USER_ROL === 'admin';
+    openModal(t ? 'Editar usuario' : (nuevoUsuario ? 'Nuevo usuario' : 'Nuevo terapeuta'), `
       <div class="form-row">
         <div class="form-group"><label class="form-label">Nombre *</label><input class="form-control" id="f_nombre" value="${esc(t?.nombre||'')}"></div>
         <div class="form-group"><label class="form-label">Apellido *</label><input class="form-control" id="f_apellido" value="${esc(t?.apellido||'')}"></div>

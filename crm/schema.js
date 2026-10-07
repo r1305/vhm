@@ -529,6 +529,10 @@ async function ensureSchema() {
     for (const rol of ['superadmin', 'admin', 'recepcion', 'terapeuta'])
       await conn.execute('INSERT IGNORE INTO menu_permisos (rol, item) VALUES (?,?)', [rol, 'disponibilidad']);
 
+    // Los admins gestionan usuarios: darles el item de Usuarios en el template de rol
+    for (const rol of ['superadmin', 'admin'])
+      await conn.execute('INSERT IGNORE INTO menu_permisos (rol, item) VALUES (?,?)', [rol, 'terapeutas']);
+
     // Defaults: si la tabla está vacía, insertar permisos base
     const [[{cnt}]] = await conn.execute('SELECT COUNT(*) AS cnt FROM menu_permisos');
     if (!cnt) {

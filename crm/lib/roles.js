@@ -25,7 +25,8 @@ function isStaffAdmin(rol) {
 
 function assignableRoles(actorRol) {
   if (actorRol === 'superadmin') return ALL_ROLES;
-  if (actorRol === 'admin' || actorRol === 'recepcion') return ['terapeuta'];
+  if (actorRol === 'admin') return ['admin', 'terapeuta'];
+  if (actorRol === 'recepcion') return ['terapeuta'];
   return [];
 }
 
@@ -37,6 +38,7 @@ function canManageUser(actor, target) {
   if (!actor || !target) return false;
   if (isSuperAdmin(actor.rol)) return true;
   if (!isStaffAdmin(actor.rol)) return false;
+  if (actor.rol === 'admin') return target.rol === 'terapeuta' || target.rol === 'admin';
   return target.rol === 'terapeuta';
 }
 
@@ -46,6 +48,7 @@ function canViewUserList(actorRol) {
 
 function listFilterForRole(actorRol, actorId) {
   if (isSuperAdmin(actorRol)) return { sql: '', params: [] };
+  if (actorRol === 'admin') return { sql: " AND t.rol IN ('admin','terapeuta')", params: [] };
   if (isStaffAdmin(actorRol)) return { sql: " AND t.rol = 'terapeuta'", params: [] };
   return { sql: ' AND t.id = ?', params: [actorId] };
 }
