@@ -1,0 +1,192 @@
+<%
+function sol(n) {
+  return 'S/ ' + Number(n).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function fmtMes(ym) {
+  if (!ym) return '—';
+  const [y, m] = ym.split('-');
+  const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  return meses[parseInt(m,10)-1] + ' ' + y;
+}
+function fmtFecha(d) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('es-PE',{day:'2-digit',month:'short',year:'numeric'});
+}
+%>
+
+<%/* ── KPIs principales ── */%>
+<div class="rf-kpi-grid">
+
+  <div class="kpi-card">
+    <div class="kpi-label">Ingresos totales</div>
+    <div class="kpi-value"><%= sol(ingreso_total) %></div>
+    <div class="kpi-sub">histórico cobrado</div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-label">Ingresos este mes</div>
+    <div class="kpi-value"><%= sol(ingreso_mes) %></div>
+    <% if (variacion_mes !== null) { %>
+    <div class="kpi-sub">
+      <% if (variacion_mes >= 0) { %>
+        <span class="rf-up">▲ <%= variacion_mes %>%</span> vs mes anterior
+      <% } else { %>
+        <span class="rf-down">▼ <%= Math.abs(variacion_mes) %>%</span> vs mes anterior
+      <% } %>
+    </div>
+    <% } else { %>
+    <div class="kpi-sub"><%= sol(ingreso_mes_anterior) %> mes anterior</div>
+    <% } %>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-label">Deuda pendiente</div>
+    <div class="kpi-value rf-warn"><%= sol(deuda_pendiente) %></div>
+    <div class="kpi-sub">cuotas sin cobrar</div>
+    <% if (deuda_pendiente > 0) { %><span class="kpi-state kpi-state-warn">Revisar</span><% } %>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-label">Ticket promedio</div>
+    <div class="kpi-value"><%= sol(ticket_promedio) %></div>
+    <div class="kpi-sub">por paquete vendido</div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-label">Paquetes vendidos</div>
+    <div class="kpi-value"><%= paquetes_vendidos %></div>
+    <div class="kpi-sub"><%= paquetes_mes %> este mes</div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-label">Tasa de cobro</div>
+    <div class="kpi-value"><%= tasa_cobro %>%</div>
+    <div class="kpi-sub"><%= cuotas_pagadas %> de <%= total_cuotas %> cuotas pagadas</div>
+    <span class="kpi-state <%= tasa_cobro >= 80 ? 'kpi-state-ok' : 'kpi-state-warn' %>">
+      <%= tasa_cobro >= 80 ? 'En meta' : 'Revisar' %>
+    </span>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-label">Pagos parciales pendientes</div>
+    <div class="kpi-value <%= pago_parcial_pendiente > 0 ? 'rf-warn' : '' %>"><%= pago_parcial_pendiente %></div>
+    <div class="kpi-sub">paquetes con cuota sin pagar</div>
+    <% if (pago_parcial_pendiente > 0) { %><span class="kpi-state kpi-state-warn">Revisar</span><% } %>
+  </div>
+
+</div>
+
+<%/* ── Ingresos por mes ── */%>
+<% if (ingresosPorMes.length) { %>
+<div class="card rf-section">
+  <div class="card-header"><span><i class="fas fa-chart-column"></i> Ingresos por mes (últimos 6 meses)</span></div>
+  <div class="rf-bar-wrap">
+    <% const maxMes = Math.max(...ingresosPorMes.map(r => Number(r.total)), 1); %>
+    <% ingresosPorMes.forEach(r => { %>
+    <div class="rf-bar-row">
+      <span class="rf-bar-label"><%= fmtMes(r.mes) %></span>
+      <div class="rf-bar-track">
+        <div class="rf-bar-fill" style="width:<%= Math.round((Number(r.total)/maxMes)*100) %>%"></div>
+      </div>
+      <span class="rf-bar-val"><%= sol(r.total) %></span>
+    </div>
+    <% }) %>
+  </div>
+</div>
+<% } %>
+
+<div class="rf-grid-2">
+
+  <%/* ── Ingresos por paquete ── */%>
+  <div class="card">
+    <div class="card-header"><span><i class="fas fa-box"></i> Ingresos por tipo de paquete</span></div>
+    <% if (ingresosPorPaquete.length) { %>
+    <div class="rf-table-wrap">
+      <table class="rf-table">
+        <thead><tr><th>Paquete</th><th>Vendidos</th><th>Bruto</th><th>Cobrado</th></tr></thead>
+        <tbody>
+          <% ingresosPorPaquete.forEach(r => { %>
+          <tr>
+            <td><%= r.nombre %></td>
+            <td class="rf-num"><%= r.veces_vendido %></td>
+            <td class="rf-num"><%= sol(r.ingreso_bruto) %></td>
+            <td class="rf-num rf-ok"><%= sol(r.ingreso_cobrado) %></td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+    <% } else { %><div class="list-empty">Sin datos</div><% } %>
+  </div>
+
+  <%/* ── Ingresos por terapeuta ── */%>
+  <div class="card">
+    <div class="card-header"><span><i class="fas fa-user-tie"></i> Ingresos por terapeuta</span></div>
+    <% if (ingresosPorTerapeuta.length) { %>
+    <div class="rf-table-wrap">
+      <table class="rf-table">
+        <thead><tr><th>Terapeuta</th><th>Paquetes</th><th>Bruto</th><th>Cobrado</th></tr></thead>
+        <tbody>
+          <% ingresosPorTerapeuta.forEach(r => { %>
+          <tr>
+            <td><%= r.nombre ? r.nombre + ' ' + r.apellido : '—' %></td>
+            <td class="rf-num"><%= r.paquetes %></td>
+            <td class="rf-num"><%= sol(r.ingreso_bruto) %></td>
+            <td class="rf-num rf-ok"><%= sol(r.ingreso_cobrado) %></td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+    <% } else { %><div class="list-empty">Sin datos</div><% } %>
+  </div>
+
+</div>
+
+<div class="rf-grid-2">
+
+  <%/* ── Cuotas vencidas sin pagar ── */%>
+  <div class="card">
+    <div class="card-header">
+      <span><i class="fas fa-triangle-exclamation"></i> Cuotas vencidas sin pagar</span>
+      <span class="dash-badge dash-badge-red"><%= cuotasVencidas.length %></span>
+    </div>
+    <% if (cuotasVencidas.length) { %>
+    <div class="dash-list">
+      <% cuotasVencidas.forEach(c => { %>
+      <div class="list-item">
+        <div class="list-icon"><i class="fas fa-circle-exclamation"></i></div>
+        <div style="flex:1">
+          <div class="list-title"><%= c.nombre %> <%= c.apellido %></div>
+          <div class="list-meta"><%= c.paquete_nombre %> · Cuota <%= c.cuota_num %> · <%= c.telefono || 'Sin tel.' %></div>
+        </div>
+        <span class="badge-riesgo"><%= sol(c.monto) %><br><small><%= fmtFecha(c.fecha_pago) %></small></span>
+      </div>
+      <% }) %>
+    </div>
+    <% } else { %><div class="list-empty">Sin cuotas vencidas</div><% } %>
+  </div>
+
+  <%/* ── Próximas cuotas a vencer ── */%>
+  <div class="card">
+    <div class="card-header">
+      <span><i class="fas fa-calendar-clock"></i> Próximas cuotas (14 días)</span>
+      <span class="dash-badge"><%= cuotasProximas.length %></span>
+    </div>
+    <% if (cuotasProximas.length) { %>
+    <div class="dash-list">
+      <% cuotasProximas.forEach(c => { %>
+      <div class="list-item">
+        <div class="list-icon"><i class="fas fa-calendar-check"></i></div>
+        <div style="flex:1">
+          <div class="list-title"><%= c.nombre %> <%= c.apellido %></div>
+          <div class="list-meta"><%= c.paquete_nombre %> · Cuota <%= c.cuota_num %> · <%= c.telefono || 'Sin tel.' %></div>
+        </div>
+        <span class="badge-sesiones"><%= sol(c.monto) %><br><small><%= fmtFecha(c.fecha_pago) %></small></span>
+      </div>
+      <% }) %>
+    </div>
+    <% } else { %><div class="list-empty">Sin cuotas próximas</div><% } %>
+  </div>
+
+</div>

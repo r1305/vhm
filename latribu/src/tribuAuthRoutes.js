@@ -387,7 +387,16 @@ router.put('/perfil', tribuAuthMiddleware, async (req, res) => {
     if (email) { updates.push('email = ?'); params.push(email); }
     if (telefono !== undefined) { updates.push('telefono = ?'); params.push(telefono); }
     updates.push('carrera = ?', 'hobbies = ?', 'a_que_te_dedicas = ?');
-    params.push(carrera, hobbies, a_que_te_dedicas, req.tribuUser.id);
+    params.push(carrera, hobbies, a_que_te_dedicas);
+    if (Array.isArray(req.body.intereses)) {
+      updates.push('intereses = ?');
+      params.push(JSON.stringify(req.body.intereses.slice(0, 6)));
+    }
+    if (Array.isArray(req.body.objetivos)) {
+      updates.push('objetivos = ?');
+      params.push(JSON.stringify(req.body.objetivos.slice(0, 3)));
+    }
+    params.push(req.tribuUser.id);
 
     await pool.execute(`UPDATE tribu_users SET ${updates.join(', ')} WHERE id = ?`, params);
     const user = await fetchUserPublic(req.tribuUser.id);

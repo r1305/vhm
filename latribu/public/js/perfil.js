@@ -63,12 +63,12 @@ async function setEditMode(edit) {
   isEditMode = edit;
   const overlay = document.getElementById('editPerfilOverlay');
   if (edit) {
-    if (!_chipsCatalogo.intereses.length && !_chipsCatalogo.objetivos.length) {
-      await cargarCatalogoChips();
-    }
+    await cargarCatalogoChips();
     const u = window.tribuUser;
     _chipsSeleccionados.intereses = [...parseArray(u.intereses || [])];
     _chipsSeleccionados.objetivos = [...parseArray(u.objetivos || [])];
+    const chipsSection = document.getElementById('chipsSection');
+    if (chipsSection) chipsSection.style.display = 'block';
     renderEditChips('chipsIntereses', _chipsCatalogo.intereses, _chipsSeleccionados.intereses, 6, 'intereses');
     renderEditChips('chipsObjetivos', _chipsCatalogo.objetivos, _chipsSeleccionados.objetivos, 3, 'objetivos');
     setQuillReadonly(quillHobbies, false);
@@ -193,60 +193,85 @@ function setQuillReadonly(quill, readonly) {
 }
 
 /* ── Chip Catalog & Editing ── */
-async function cargarCatalogoChips() {
-  // Datos por defecto (matching schema.js) como fallback si la API falla
-  const DEFAULT_INTERESES = ['Lectura','Viajes','Deportes','Cine','Música','Emprendimiento','Psicología','Crecimiento personal','Arte','Meditación','Cocina','Tecnología','Naturaleza','Yoga','Baile','Fotografía'];
-  const DEFAULT_OBJETIVOS = ['Conocer personas','Crecer personalmente','Apoyo emocional','Actividades grupales','Networking','Deporte y bienestar','Aprender cosas nuevas','Viajar y hacer planes'];
+const DEFAULT_INTERESES = ['Lectura','Viajes','Deportes','Cine','Música','Emprendimiento','Psicología','Crecimiento personal','Arte','Meditación','Cocina','Tecnología','Naturaleza','Yoga','Baile','Fotografía'];
+const DEFAULT_OBJETIVOS = ['Conocer personas','Crecer personalmente','Apoyo emocional','Actividades grupales','Networking','Deporte y bienestar','Aprender cosas nuevas','Viajar y hacer planes'];
 
+function parseCatalogResponse(data) {
+  if (Array.isArray(data) && data.length) return data.map((x) => String(x).trim()).filter(Boolean);
+  if (data && data.activo && Array.isArray(data.data) && data.data.length) {
+    return data.data.map((x) => String(x).trim()).filter(Boolean);
+  }
+  return null;
+}
+
+function mergeCatalogWithSelected(catalog, selected) {
+  const out = [...(catalog || [])];
+  for (const s of parseArray(selected)) {
+    const v = String(s).trim();
+    if (v && !out.includes(v)) out.push(v);
+  }
+  return out;
+}
+
+async function cargarCatalogoChips() {
   try {
     const res = await fetch(`${API}/tribu-catalogo/intereses`);
-    const d = await res.json();
-    if (d.activo && Array.isArray(d.data) && d.data.length) {
-      _chipsCatalogo.intereses = d.data;
-    } else {
-      _chipsCatalogo.intereses = DEFAULT_INTERESES;
-    }
+    const d = res.ok ? await res.json() : null;
+    _chipsCatalogo.intereses = parseCatalogResponse(d) || DEFAULT_INTERESES;
   } catch {
     _chipsCatalogo.intereses = DEFAULT_INTERESES;
   }
   try {
     const res = await fetch(`${API}/tribu-catalogo/objetivos`);
-    const d = await res.json();
-    if (d.activo && Array.isArray(d.data) && d.data.length) {
-      _chipsCatalogo.objetivos = d.data;
-    } else {
-      _chipsCatalogo.objetivos = DEFAULT_OBJETIVOS;
-    }
+    const d = res.ok ? await res.json() : null;
+    _chipsCatalogo.objetivos = parseCatalogResponse(d) || DEFAULT_OBJETIVOS;
   } catch {
     _chipsCatalogo.objetivos = DEFAULT_OBJETIVOS;
   }
 }
 
+function chipAttrEsc(value) {
+  return String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+}
+
 function renderEditChips(containerId, options, selected, max, tipo) {
   const container = document.getElementById(containerId);
   if (!container) return;
-  delete container.dataset.chipsBound;
-  container.innerHTML = options.map(opt =>
-    '<button type="button" class="tribu-cp-chip' + (selected.includes(opt) ? ' selected' : '') + '"' +
-    ' data-chip-tipo="' + tipo + '" data-chip-opt="' + escapeHtml(opt) + '">' +
+  const sel = parseArray(selected);
+  const catalog = mergeCatalogWithSelected(options, sel);
+  container.innerHTML = catalog.map((opt) =>
+    '<button type="button" class="tribu-cp-chip' + (sel.includes(opt) ? ' selected' : '') + '"' +
+    ' data-chip-tipo="' + tipo + '" data-chip-opt="' + chipAttrEsc(opt) + '">' +
     escapeHtml(opt) + '</button>'
   ).join('');
-  container.dataset.chipsBound = '1';
-  container.addEventListener('click', function(e) {
-    const btn = e.target.closest('[data-chip-opt]');
-    if (!btn) return;
-    const t = btn.dataset.chipTipo;
-    const o = btn.dataset.chipOpt;
-    const maxSel = t === 'intereses' ? 6 : 3;
-    const arr = _chipsSeleccionados[t];
-    const idx = arr.indexOf(o);
-    if (idx >= 0) {
-      arr.splice(idx, 1);
-      btn.classList.remove('selected');
-    } else if (arr.length < maxSel) {
-      arr.push(o);
-      btn.classList.add('selected');
-    }
+}
+
+function onChipEditClick(e) {
+  const btn = e.target.closest('[data-chip-opt]');
+  if (!btn) return;
+  e.preventDefault();
+  const t = btn.dataset.chipTipo;
+  const o = btn.getAttribute('data-chip-opt');
+  if (!t || !o) return;
+  const maxSel = t === 'intereses' ? 6 : 3;
+  const arr = _chipsSeleccionados[t];
+  if (!arr) return;
+  const idx = arr.indexOf(o);
+  if (idx >= 0) {
+    arr.splice(idx, 1);
+    btn.classList.remove('selected');
+  } else if (arr.length < maxSel) {
+    arr.push(o);
+    btn.classList.add('selected');
+  }
+}
+
+function initChipsEditListeners() {
+  ['chipsIntereses', 'chipsObjetivos'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (!el || el.dataset.chipsListenerBound) return;
+    el.dataset.chipsListenerBound = '1';
+    el.addEventListener('click', onChipEditClick);
   });
 }
 
@@ -680,6 +705,7 @@ async function guardarPerfil() {
     setStoredUser(window.tribuUser);
     renderNavAuth();
     fillPerfilForm();
+    if (isEditMode) await setEditMode(false);
     setProfileMsg('Perfil actualizado correctamente', true);
   } catch {
     setProfileMsg('Error de conexión', false);
@@ -699,6 +725,8 @@ async function initPerfilPage() {
       return;
     }
     initQuillEditors();
+    initChipsEditListeners();
+    await cargarCatalogoChips();
     fillPerfilForm();
     const res = await tribuFetch('/tribu-auth/me');
     if (res.ok) {

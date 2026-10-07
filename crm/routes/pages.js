@@ -24,7 +24,8 @@ const TITLES = {
   asignacion:      'Asignación automática',
   calendario:      'Calendario',
   disponibilidad:  'Mi disponibilidad',
-  permisos_menu:   'Permisos de menú',
+  permisos_menu:        'Permisos de menú',
+  reporte_financiero:   'Reporte Financiero',
 };
 
 const ESTADO_CITA_CSS = {
@@ -371,6 +372,134 @@ router.get('/integraciones', requireSession, requireAdmin, async (req, res) => {
     const { isConnected } = require('../lib/googleMeet');
     const googleConnected = await isConnected().catch(() => false);
     render(res, 'integraciones', { user: req.session.user, cfg, cron: cron || {}, cronDias, origin, googleConnected, scripts: `<script src="${req.app.locals.BASE}/integraciones.js"></script>` });
+  } catch (err) { res.status(500).send(err.message); }
+});
+
+// ── REPORTE FINANCIERO ──────────────────────────────────────────
+router.get('/reporte-financiero', requireSession, requireAdmin, async (req, res) => {
+  try {
+    // ── Ingresos totales (cuotas pagadas) ──────────────────────────
+    const [[{ ingreso_total }]] = await db.execute(
+      `SELECT COALESCE(SUM(c.monto),0) AS ingreso_total
+       FROM paciente_paquete_cuotas c WHERE c.pagado = 1`
+    );
+    // ── Ingresos del mes actual ────────────────────────────────────
+    const [[{ ingreso_mes }]] = await db.execute(
+      `SELECT COALESCE(SUM(c.monto),0) AS ingreso_mes
+       FROM paciente_paquete_cuotas c
+       WHERE c.pagado = 1 AND DATE_FORMAT(c.pagado_at,'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')`
+    );
+    // ── Ingresos del mes anterior ──────────────────────────────────
+    const [[{ ingreso_mes_anterior }]] = await db.execute(
+      `SELECT COALESCE(SUM(c.monto),0) AS ingreso_mes_anterior
+       FROM paciente_paquete_cuotas c
+       WHERE c.pagado = 1
+         AND DATE_FORMAT(c.pagado_at,'%Y-%m') = DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 1 MONTH),'%Y-%m')`
+    );
+    // ── Deuda pendiente (cuotas no pagadas de paquetes activos) ────
+    const [[{ deuda_pendiente }]] = await db.execute(
+      `SELECT COALESCE(SUM(c.monto),0) AS deuda_pendiente
+       FROM paciente_paquete_cuotas c
+       INNER JOIN paciente_paquetes pp ON pp.id = c.paciente_paquete_id
+       WHERE c.pagado = 0`
+    );
+    // ── Ticket promedio por paquete ────────────────────────────────
+    const [[{ ticket_promedio }]] = await db.execute(
+      `SELECT COALESCE(AVG(pp.precio),0) AS ticket_promedio FROM paciente_paquetes pp`
+    );
+    // ── Total paquetes vendidos ────────────────────────────────────
+    const [[{ paquetes_vendidos }]] = await db.execute(
+      `SELECT COUNT(*) AS paquetes_vendidos FROM paciente_paquetes`
+    );
+    // ── Paquetes vendidos este mes ─────────────────────────────────
+    const [[{ paquetes_mes }]] = await db.execute(
+      `SELECT COUNT(*) AS paquetes_mes FROM paciente_paquetes
+       WHERE DATE_FORMAT(created_at,'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')`
+    );
+    // ── Paquetes con pago parcial pendiente ───────────────────────
+    const [[{ pago_parcial_pendiente }]] = await db.execute(
+      `SELECT COUNT(DISTINCT pp.id) AS pago_parcial_pendiente
+       FROM paciente_paquetes pp
+       INNER JOIN paciente_paquete_cuotas c ON c.paciente_paquete_id = pp.id
+       WHERE pp.tipo_pago = 'parcial' AND c.pagado = 0`
+    );
+    // ── Tasa de cobro (cuotas pagadas / total cuotas) ─────────────
+    const [[{ total_cuotas, cuotas_pagadas }]] = await db.execute(
+      `SELECT COUNT(*) AS total_cuotas, SUM(pagado) AS cuotas_pagadas FROM paciente_paquete_cuotas`
+    );
+    const tasa_cobro = total_cuotas > 0 ? Math.round((cuotas_pagadas / total_cuotas) * 100) : 0;
+
+    // ── Ingresos por mes (últimos 6 meses) ────────────────────────
+    const [ingresosPorMes] = await db.execute(
+      `SELECT DATE_FORMAT(c.pagado_at,'%Y-%m') AS mes,
+              COALESCE(SUM(c.monto),0) AS total
+       FROM paciente_paquete_cuotas c
+       WHERE c.pagado = 1 AND c.pagado_at >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
+       GROUP BY mes ORDER BY mes ASC`
+    );
+
+    // ── Ingresos por paquete (top 10) ─────────────────────────────
+    const [ingresosPorPaquete] = await db.execute(
+      `SELECT pp.nombre,
+              COUNT(*) AS veces_vendido,
+              COALESCE(SUM(pp.precio),0) AS ingreso_bruto,
+              COALESCE(SUM(CASE WHEN c.pagado=1 THEN c.monto ELSE 0 END),0) AS ingreso_cobrado
+       FROM paciente_paquetes pp
+       LEFT JOIN paciente_paquete_cuotas c ON c.paciente_paquete_id = pp.id
+       GROUP BY pp.nombre ORDER BY ingreso_cobrado DESC LIMIT 10`
+    );
+
+    // ── Ingresos por terapeuta ─────────────────────────────────────
+    const [ingresosPorTerapeuta] = await db.execute(
+      `SELECT t.nombre, t.apellido,
+              COUNT(DISTINCT pp.id) AS paquetes,
+              COALESCE(SUM(pp.precio),0) AS ingreso_bruto,
+              COALESCE(SUM(CASE WHEN c.pagado=1 THEN c.monto ELSE 0 END),0) AS ingreso_cobrado
+       FROM paciente_paquetes pp
+       INNER JOIN pacientes p ON p.id = pp.paciente_id
+       LEFT JOIN terapeutas t ON t.id = p.terapeuta_id
+       LEFT JOIN paciente_paquete_cuotas c ON c.paciente_paquete_id = pp.id
+       GROUP BY t.id ORDER BY ingreso_cobrado DESC`
+    );
+
+    // ── Cuotas vencidas sin pagar (fecha_pago < hoy) ──────────────
+    const [cuotasVencidas] = await db.execute(
+      `SELECT p.nombre, p.apellido, p.telefono,
+              pp.nombre AS paquete_nombre,
+              c.numero AS cuota_num, c.monto, c.fecha_pago
+       FROM paciente_paquete_cuotas c
+       INNER JOIN paciente_paquetes pp ON pp.id = c.paciente_paquete_id
+       INNER JOIN pacientes p ON p.id = pp.paciente_id
+       WHERE c.pagado = 0 AND c.fecha_pago < CURDATE()
+       ORDER BY c.fecha_pago ASC LIMIT 20`
+    );
+
+    // ── Próximas cuotas a vencer (próximos 14 días) ───────────────
+    const [cuotasProximas] = await db.execute(
+      `SELECT p.nombre, p.apellido, p.telefono,
+              pp.nombre AS paquete_nombre,
+              c.numero AS cuota_num, c.monto, c.fecha_pago
+       FROM paciente_paquete_cuotas c
+       INNER JOIN paciente_paquetes pp ON pp.id = c.paciente_paquete_id
+       INNER JOIN pacientes p ON p.id = pp.paciente_id
+       WHERE c.pagado = 0
+         AND c.fecha_pago BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 14 DAY)
+       ORDER BY c.fecha_pago ASC LIMIT 20`
+    );
+
+    const variacion_mes = ingreso_mes_anterior > 0
+      ? Math.round(((ingreso_mes - ingreso_mes_anterior) / ingreso_mes_anterior) * 100)
+      : null;
+
+    render(res, 'reporte_financiero', {
+      user: req.session.user,
+      ingreso_total, ingreso_mes, ingreso_mes_anterior, variacion_mes,
+      deuda_pendiente, ticket_promedio, paquetes_vendidos, paquetes_mes,
+      pago_parcial_pendiente, tasa_cobro, total_cuotas, cuotas_pagadas,
+      ingresosPorMes, ingresosPorPaquete, ingresosPorTerapeuta,
+      cuotasVencidas, cuotasProximas,
+      scripts: '',
+    });
   } catch (err) { res.status(500).send(err.message); }
 });
 

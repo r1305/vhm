@@ -218,6 +218,9 @@ if (fs.existsSync(REPO_MEDIA_DIR)) {
 
 app.get('/health', (req, res) => res.json({ ok: true, service: 'latribu', version: '1.0.0' }));
 
+// Page routes (Admin and Public)
+app.use('/', require('./routes/pages'));
+
 // API routes
 app.use('/api/auth', require('./authRoutes'));
 app.use('/api/usuarios', require('./usuariosRoutes'));
@@ -241,8 +244,16 @@ app.use('/api/contenido', require('./contenidoRoutes'));
 app.use('/api/posts', require('./postsRoutes'));
 
 app.use((err, req, res, next) => {
-  console.error('[latribu] Error no capturado:', err);
-  res.status(500).json({ error: 'Error interno del servidor' });
+  const status = err.status || 500;
+  const message = err.message || 'Error interno del servidor';
+  
+  console.error(`[latribu] ${new Date().toISOString()} - ${req.method} ${req.url} - ${status}: ${message}`);
+  if (status === 500) console.error(err.stack);
+
+  res.status(status).json({ 
+    error: message,
+    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+  });
 });
 
 module.exports = app;

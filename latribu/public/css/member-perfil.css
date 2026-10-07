@@ -256,15 +256,55 @@ body.member-profile .profile-intereses-chips .chip.is-empty {
   flex-direction: column;
   overflow: hidden;
 }
-.profile-edit-modal > .logro-modal-eyebrow,
-.profile-edit-modal > .logro-modal-title {
-  padding: 28px 28px 0;
+.profile-edit-modal-head {
   flex-shrink: 0;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 0;
+  padding: 12px 14px 12px 18px;
+  background: #fff;
+  border-bottom: 1px solid rgba(168, 79, 62, 0.18);
 }
-.profile-edit-modal > .logro-modal-title { padding-bottom: 0; }
+.profile-edit-modal-title {
+  margin: 0;
+  min-width: 0;
+  font-family: 'Fraunces', Georgia, 'Times New Roman', serif;
+  font-size: 1.22rem;
+  font-weight: 600;
+  line-height: 1.25;
+  color: #2a1915;
+}
+.profile-edit-modal-close {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  margin: 0;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid #A84F3E;
+  background: #fff;
+  color: #8F4234;
+  font-size: 1.35rem;
+  line-height: 1;
+  cursor: pointer;
+  font-family: inherit;
+  box-shadow: 0 2px 8px rgba(42, 25, 21, 0.15);
+}
+.profile-edit-modal-close:hover {
+  background: #A84F3E;
+  border-color: #8F4234;
+  color: #fff;
+}
 .profile-edit-modal-body {
   overflow-y: auto;
-  padding: 20px 28px 28px;
+  flex: 1;
+  min-height: 0;
+  padding: 14px 18px 18px;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -367,6 +407,24 @@ body.member-profile .profile-intereses-chips .chip.is-empty {
 .profile-edit-modal .ql-snow .ql-stroke { stroke: #444 !important; }
 .profile-edit-modal .ql-snow .ql-fill  { fill:   #444 !important; }
 
+/* Modal editar perfil: panel claro; no heredar --txt/--muted del tema oscuro */
+[data-theme="dark"] .profile-edit-modal,
+[data-theme="dark"] .profile-edit-modal .profile-edit-modal-head {
+  background: #fff9f4;
+  color: #2a1915;
+}
+[data-theme="dark"] .profile-edit-modal .profile-edit-modal-title {
+  color: #2a1915;
+}
+[data-theme="dark"] .profile-edit-modal .profile-edit-modal-close {
+  background: #fff;
+  color: #8F4234;
+  border-color: #A84F3E;
+}
+[data-theme="dark"] .profile-edit-modal .profile-field label {
+  color: #77645a;
+}
+
 /* Chips editables dentro del modal */
 .chips-edit-wrap {
   display: flex;
@@ -384,6 +442,9 @@ body.member-profile .profile-intereses-chips .chip.is-empty {
   font-weight: 700;
   cursor: pointer;
   transition: all .15s;
+  font-family: inherit;
+  pointer-events: auto;
+  touch-action: manipulation;
 }
 .chips-edit-wrap .tribu-cp-chip:hover {
   background: rgba(168,79,62,.14);
