@@ -10,6 +10,7 @@ const {
 const bcrypt = require('bcryptjs');
 const {
   activateNewSubscription, activateTrialSubscription, applyApprovedCharge, runRenovacionesSuscripciones,
+  acquireRenovacionesLock, releaseRenovacionesLock,
 } = require('./tribuRenovaciones');
 const { splitDisplayName, trialDaysFromEnv, formatRenewalDateLima } = require('../lib/tribuFunnel');
 const { issueSessionForUserId } = require('./tribuAuthRoutes');
@@ -287,10 +288,19 @@ router.post('/procesar-pago', tribuAuthMiddleware, async (req, res) => {
 
 async function handleCronRenovaciones(req, res) {
   if (!validateCronToken(req)) return res.status(401).json({ error: 'Token inválido' });
+  let lockConnection = null;
+  let lockHeld = false;
   try {
-    const result = await runRenovacionesSuscripciones();
+    lockConnection = await pool.getConnection();
+    lockHeld = await acquireRenovacionesLock(lockConnection, 2);
+    if (!lockHeld) return res.status(429).json({ error: 'Ya en ejecución' });
+    const result = await runRenovacionesSuscripciones({ lockConnection });
     res.json(result);
   } catch (err) { console.error('[tribu-pagos cron-renovaciones]', err.message); res.status(500).json({ error: 'Error al procesar renovaciones' }); }
+  finally {
+    if (lockHeld) await releaseRenovacionesLock(lockConnection);
+    if (lockConnection) { try { lockConnection.release(); } catch (_) {} }
+  }
 }
 
 router.get('/cron-renovaciones', handleCronRenovaciones);

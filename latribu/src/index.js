@@ -21,7 +21,22 @@ try {
 } catch (_) { /* optional */ }
 
 const corsOrigin = process.env.CORS_ORIGIN;
-app.use(cors(corsOrigin ? { origin: corsOrigin.split(',').map(o => o.trim()) } : {}));
+app.use(cors({
+  origin: (origin, cb) => {
+    if (!origin) return cb(null, true);
+    try {
+      const u = new URL(origin);
+      if (u.hostname === 'localhost' || u.hostname === '127.0.0.1') return cb(null, true);
+      if (u.hostname.endsWith('.vhm.com.pe') || u.hostname === 'vhm.com.pe') return cb(null, true);
+    } catch (_) {}
+    if (corsOrigin) {
+      const list = corsOrigin.split(',').map(o => o.trim()).filter(Boolean);
+      if (list.includes(origin)) return cb(null, true);
+    }
+    cb(null, false);
+  },
+  credentials: true,
+}));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(require('cookie-parser')());
@@ -96,16 +111,39 @@ function sendPublicHtml(res, filename) {
 // Lazy init
 let initPromise = null;
 
+let renovacionesEnEjecucion = false;
+let renovacionesUltimoInicio = 0;
+let renovacionesTimer = null;
+let cronTribuTimer = null;
+let cronDetenido = false;
+
+function detenerCronLatribu() {
+  cronDetenido = true;
+  if (renovacionesTimer) { clearInterval(renovacionesTimer); renovacionesTimer = null; }
+  if (cronTribuTimer) { clearTimeout(cronTribuTimer); cronTribuTimer = null; }
+}
+process.on('SIGTERM', detenerCronLatribu);
+process.on('SIGINT', detenerCronLatribu);
+
 function programarCronRenovaciones() {
   if (process.env.TRIBU_RENOVACION_CRON_ENABLED !== '1') return;
+  if (renovacionesTimer || cronDetenido) return;
   const { runRenovacionesSuscripciones } = require('./tribuRenovaciones');
-  const timer = setInterval(async () => {
+  renovacionesTimer = setInterval(async () => {
+    if (renovacionesEnEjecucion) {
+      console.warn(`[latribu] Renovaciones ya en ejecución desde ${new Date(renovacionesUltimoInicio).toISOString()}, se omite este disparo`);
+      return;
+    }
+    renovacionesEnEjecucion = true;
+    renovacionesUltimoInicio = Date.now();
     try {
       const result = await runRenovacionesSuscripciones();
       if (result.processed > 0) console.log(`[latribu] Renovaciones: ${result.processed} procesadas`);
+      else if (result.reason === 'ya_en_ejecucion') console.warn('[latribu] Renovaciones bloqueadas: otro proceso está ejecutando');
     } catch (e) { console.error('[latribu] Error en cron renovaciones:', e.message); }
+    finally { renovacionesEnEjecucion = false; }
   }, 60 * 60 * 1000);
-  if (typeof timer.unref === 'function') timer.unref();
+  if (typeof renovacionesTimer.unref === 'function') renovacionesTimer.unref();
 }
 
 function programarCronTribu() {
@@ -120,12 +158,18 @@ function programarCronTribu() {
     return objetivo - ahora;
   }
   function programar() {
-    const timer = setTimeout(async () => {
-      try { await renovarPassword(); console.log('[latribu] Contraseña de La Tribu renovada automáticamente'); }
+    if (cronDetenido) return;
+    cronTribuTimer = setTimeout(async () => {
+      cronTribuTimer = null;
+      try {
+        const nueva = await renovarPassword({ soloSiVencida: true });
+        if (nueva) console.log('[latribu] Contraseña de La Tribu renovada automáticamente');
+        else console.log('[latribu] Contraseña de La Tribu ya renovada por otro proceso, se omite');
+      }
       catch (e) { console.error('[latribu] Error al renovar contraseña:', e.message); }
       programar();
     }, msHastaProximoMiercoles12());
-    if (typeof timer.unref === 'function') timer.unref();
+    if (typeof cronTribuTimer.unref === 'function') cronTribuTimer.unref();
   }
   programar();
 }
@@ -217,9 +261,6 @@ if (fs.existsSync(REPO_MEDIA_DIR)) {
 }
 
 app.get('/health', (req, res) => res.json({ ok: true, service: 'latribu', version: '1.0.0' }));
-
-// Page routes (Admin and Public)
-app.use('/', require('./routes/pages'));
 
 // API routes
 app.use('/api/auth', require('./authRoutes'));

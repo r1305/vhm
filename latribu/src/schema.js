@@ -111,6 +111,9 @@ async function crearEsquema() {
       cancelada_at    TIMESTAMP NULL,
       renovacion_intentos INT NOT NULL DEFAULT 0,
       next_renovacion_intento DATETIME NULL,
+      renovando TINYINT(1) NOT NULL DEFAULT 0,
+      worker_pid INT NULL,
+      renovando_hasta DATETIME NULL,
       culqi_charge_id VARCHAR(64) NULL,
       culqi_customer_id VARCHAR(64) NULL,
       culqi_card_id   VARCHAR(64) NULL,
@@ -560,6 +563,15 @@ async function crearEsquema() {
 
   try {
     await pool.query('ALTER TABLE tribu_suscripciones ADD COLUMN es_prueba TINYINT(1) NOT NULL DEFAULT 0 AFTER auto_renovacion');
+  } catch (_) {}
+  try {
+    await pool.query('ALTER TABLE tribu_suscripciones ADD COLUMN renovando TINYINT(1) NOT NULL DEFAULT 0 AFTER next_renovacion_intento');
+  } catch (_) {}
+  try {
+    await pool.query('ALTER TABLE tribu_suscripciones ADD COLUMN worker_pid INT NULL AFTER renovando');
+  } catch (_) {}
+  try {
+    await pool.query('ALTER TABLE tribu_suscripciones ADD COLUMN renovando_hasta DATETIME NULL AFTER worker_pid');
   } catch (_) {}
 
   await ensureAccesosSchema();

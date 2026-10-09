@@ -31,6 +31,21 @@ function buildRenewExternalRef(tribuSubId) {
   return `tribu-renew-${tribuSubId}-${Date.now()}`;
 }
 
+function buildRenewalIdempotencyKey(tribuSubId) {
+  const stamp = new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'America/Lima',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    hour12: false,
+    hourCycle: 'h23',
+  })
+    .format(new Date())
+    .replace(/\D/g, '');
+  return `ren_${tribuSubId}_${stamp}`;
+}
+
 function parseExternalRef(ref) {
   const raw = String(ref || '');
   if (raw.startsWith('tribu-renew-')) {
@@ -304,11 +319,11 @@ function buildChargeBody({
   return body;
 }
 
-async function createCulqiCharge(secretKey, body) {
-  const idempotencyKey = crypto.randomUUID();
+async function createCulqiCharge(secretKey, body, idempotencyKey) {
+  const key = String(idempotencyKey || crypto.randomUUID()).slice(0, 64);
   return culqiFetch(secretKey, '/charges', {
     method: 'POST',
-    headers: { 'X-Idempotency-Key': idempotencyKey },
+    headers: { 'X-Idempotency-Key': key },
     body: JSON.stringify(body),
   });
 }
@@ -441,6 +456,7 @@ module.exports = {
   formatAmountCents,
   buildExternalRef,
   buildRenewExternalRef,
+  buildRenewalIdempotencyKey,
   parseExternalRef,
   getWebhookUrl,
   resolvePayerEmail,
