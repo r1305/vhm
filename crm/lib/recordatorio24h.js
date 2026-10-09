@@ -9,6 +9,7 @@ const REC24_CRON = '*/10 * * * *';
 const REC24_HORAS_ANTES = entero(process.env.REC24_HORAS_ANTES, 24);
 const REC24_MIN_HORAS_ANTES = entero(process.env.REC24_MIN_HORAS_ANTES, 2);
 const REC24_MAX_INTENTOS = entero(process.env.REC24_MAX_INTENTOS, 3);
+const REC24_LOCK_MIN = Math.max(1, entero(process.env.REC24_LOCK_MIN, 15));
 const REC24_LIMITE = 200;
 const ESTADOS_RECORDATORIO = ['pendiente', 'confirmada', 'reagendada'];
 const CLAVE_ACTIVO = 'recordatorio_24h_activo';
@@ -134,17 +135,20 @@ async function reclamarEnvio(db, cita, clave) {
     [cita.paciente_id, cita.id, programado, clave]
   );
   const [r] = await db.execute(
-    `UPDATE recordatorios SET intentos = intentos + 1, procesando = 1
-     WHERE clave = ? AND enviado = 0 AND procesando = 0 AND intentos < ?`,
-    [clave, REC24_MAX_INTENTOS]
+    `UPDATE recordatorios SET intentos = intentos + 1, procesando = 1, procesando_desde = NOW()
+     WHERE clave = ? AND enviado = 0 AND intentos < ?
+       AND (procesando = 0 OR procesando_desde IS NULL OR procesando_desde < NOW() - INTERVAL ? MINUTE)`,
+    [clave, REC24_MAX_INTENTOS, REC24_LOCK_MIN]
   );
   return r.affectedRows === 1;
 }
 
 async function estadoRegistro(db, clave) {
   const [[row]] = await db.execute(
-    'SELECT enviado, intentos, procesando FROM recordatorios WHERE clave=? LIMIT 1',
-    [clave]
+    `SELECT enviado, intentos, procesando,
+            (procesando = 1 AND (procesando_desde IS NULL OR procesando_desde < NOW() - INTERVAL ? MINUTE)) AS atascado
+     FROM recordatorios WHERE clave=? LIMIT 1`,
+    [REC24_LOCK_MIN, clave]
   );
   return row || null;
 }
@@ -202,11 +206,12 @@ async function procesarRecordatorios24h({
 
     if (dryRun) {
       const reg = await estadoRegistro(db, clave);
-      if (reg && (reg.enviado || reg.procesando || reg.intentos >= REC24_MAX_INTENTOS)) {
+      const atascado = !!(reg && Number(reg.atascado));
+      if (reg && (reg.enviado || (reg.procesando && !atascado) || reg.intentos >= REC24_MAX_INTENTOS)) {
         res.omitidos.push({ cita_id: cita.id, motivo: reg.enviado ? 'ya_enviado' : 'bloqueado_o_agotado', clave });
         continue;
       }
-      res.detalle.push({ cita_id: cita.id, paciente_id: cita.paciente_id, telefono, clave, mensaje, accion: 'enviaria' });
+      res.detalle.push({ cita_id: cita.id, paciente_id: cita.paciente_id, telefono, clave, mensaje, accion: 'enviaria', ...(atascado ? { recupera_bloqueo: true } : {}) });
       continue;
     }
 
@@ -222,7 +227,7 @@ async function procesarRecordatorios24h({
       const r = await enviar({ to: cita.telefono, message: mensaje });
       if (!r || r.skipped) throw new Error('OpenWA no configurado');
       await db.execute(
-        `UPDATE recordatorios SET enviado = 1, enviado_at = NOW(), procesando = 0, ultimo_error = NULL, mensaje = ?
+        `UPDATE recordatorios SET enviado = 1, enviado_at = NOW(), procesando = 0, procesando_desde = NULL, ultimo_error = NULL, mensaje = ?
          WHERE clave = ?`,
         [mensaje, clave]
       );
@@ -233,7 +238,7 @@ async function procesarRecordatorios24h({
       const msg = String(err?.message || err).slice(0, 500);
       console.error('[recordatorio24h] cita=%s clave=%s:', cita.id, clave, msg);
       await db.execute(
-        'UPDATE recordatorios SET procesando = 0, ultimo_error = ? WHERE clave = ?',
+        'UPDATE recordatorios SET procesando = 0, procesando_desde = NULL, ultimo_error = ? WHERE clave = ?',
         [msg, clave]
       ).catch((e) => console.error('[recordatorio24h] registrar error cita=%s:', cita.id, e.message));
       res.errores.push({ cita_id: cita.id, clave, error: msg });
@@ -267,6 +272,7 @@ module.exports = {
   REC24_HORAS_ANTES,
   REC24_MIN_HORAS_ANTES,
   REC24_MAX_INTENTOS,
+  REC24_LOCK_MIN,
   ESTADOS_RECORDATORIO,
   CLAVE_ACTIVO,
   CLAVE_MENSAJE,

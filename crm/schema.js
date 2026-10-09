@@ -292,6 +292,7 @@ async function ensureSchema() {
     try { await conn.execute('ALTER TABLE recordatorios ADD COLUMN intentos TINYINT NOT NULL DEFAULT 0'); } catch (_) {}
     try { await conn.execute('ALTER TABLE recordatorios ADD COLUMN procesando TINYINT(1) NOT NULL DEFAULT 0'); } catch (_) {}
     try { await conn.execute('ALTER TABLE recordatorios ADD COLUMN ultimo_error VARCHAR(500) DEFAULT NULL'); } catch (_) {}
+    try { await conn.execute('ALTER TABLE recordatorios ADD COLUMN procesando_desde DATETIME NULL DEFAULT NULL'); } catch (_) {}
 
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS configuracion (
