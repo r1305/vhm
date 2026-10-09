@@ -6,6 +6,7 @@ const express = require('express');
 const cors    = require('cors');
 const helmet  = require('helmet');
 const session = require('express-session');
+const MySQLStore = require('express-mysql-session')(session);
 const { rateLimit } = require('express-rate-limit');
 
 const { ensureSchema } = require('./schema');
@@ -43,19 +44,43 @@ if (!frontendUrl) {
 const allowedOrigins = [
   'https://vhm.com.pe',
   'https://www.vhm.com.pe',
+  'http://vhm.com.pe',
+  'http://www.vhm.com.pe',
   ...(frontendUrl && frontendUrl !== '*' && frontendUrl !== 'null' ? [frontendUrl] : []),
   'http://localhost:3001',
   'http://localhost:3000',
+  'http://localhost:3002',
+  'http://localhost:3003',
+  'http://localhost:3004',
   'http://127.0.0.1:3001',
   'http://127.0.0.1:3000',
+  'http://127.0.0.1:3002',
+  'http://127.0.0.1:3003',
+  'http://127.0.0.1:3004',
   ...(process.env.CORS_EXTRA || '').split(',').map(o => o.trim()).filter(Boolean),
 ];
 app.use(cors({
   origin: (origin, cb) => {
-    if (!origin) return cb(null, true);
+    if (process.env.DEBUG_CORS === '1') {
+      console.log('[crm/cors-debug]', { origin, NODE_ENV: process.env.NODE_ENV });
+    }
+    if (!origin) return cb(null, true); // Same-origin, SSR, no Origin header
+    try {
+      const u = new URL(origin);
+      const h = u.hostname;
+      if (h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === '::ffff:127.0.0.1') {
+        return cb(null, true);
+      }
+      if (h === 'vhm.com.pe' || h.endsWith('.vhm.com.pe')) {
+        return cb(null, true);
+      }
+    } catch (e) {
+      if (process.env.DEBUG_CORS === '1') console.log('[crm/cors-debug] invalid url', e.message);
+    }
     if (allowedOrigins.includes(origin)) return cb(null, true);
-    if (process.env.NODE_ENV !== 'production' && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin))
+    if (process.env.NODE_ENV !== 'production') {
       return cb(null, true);
+    }
     cb(new Error('CORS no permitido'));
   },
   credentials: true,
@@ -64,11 +89,21 @@ app.use(cors({
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+const SESSION_MAX_AGE = 10 * 60 * 60 * 1000; // 10h
+const sessionStore = new MySQLStore({
+  createDatabaseTable: false,
+  clearExpired: true,
+  checkExpirationInterval: 15 * 60 * 1000,
+  expiration: SESSION_MAX_AGE,
+  endConnectionOnClose: false,
+}, require('./lib/db'));
+
 app.use(session({
   secret: process.env.SESSION_SECRET || (process.env.NODE_ENV === 'production' ? (() => { throw new Error('FATAL: SESSION_SECRET not defined in production'); })() : 'crm_session_secret_change_me'),
+  store: sessionStore,
   resave: false,
   saveUninitialized: false,
-  cookie: { httpOnly: true, maxAge: 10 * 60 * 60 * 1000 }, // 10h
+  cookie: { httpOnly: true, maxAge: SESSION_MAX_AGE },
 }));
 
 app.use(BASE, express.static(path.join(__dirname, 'public'), { maxAge: '1h', index: false }));
@@ -77,14 +112,6 @@ app.use(BASE, express.static(path.join(__dirname, 'public'), { maxAge: '1h', ind
 // arriba y no consumen presupuesto; solo se limitan páginas y API.
 // Nota: el contador es por IP (trust proxy = 1). Varias personas detrás de la
 // misma IP de oficina comparten presupuesto: subir RATE_LIMIT_MAX si hace falta.
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: Number(process.env.AUTH_RATE_LIMIT_MAX) || 10,
-  standardHeaders: 'draft-7',
-  legacyHeaders: false,
-  message: { error: 'Demasiados intentos. Espera 15 minutos.' },
-});
-
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: Number(process.env.RATE_LIMIT_MAX) || 100,
@@ -93,13 +120,22 @@ const apiLimiter = rateLimit({
   message: { error: 'Demasiadas solicitudes. Intenta de nuevo en unos minutos.' },
 });
 
-app.use([
-  `${BASE}/api/auth/login`,
-  `${BASE}/api/auth/register`,
-  `${BASE}/api/auth/forgot-password`,
-  `${BASE}/api/auth/reset-password`,
-  `${BASE}/login`,
-], authLimiter);
+if (process.env.NODE_ENV === 'production') {
+  const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: Number(process.env.AUTH_RATE_LIMIT_MAX) || 10,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: { error: 'Demasiados intentos. Espera 15 minutos.' },
+  });
+  app.use([
+    `${BASE}/api/auth/login`,
+    `${BASE}/api/auth/register`,
+    `${BASE}/api/auth/forgot-password`,
+    `${BASE}/api/auth/reset-password`,
+    `${BASE}/login`,
+  ], authLimiter);
+}
 app.use(BASE, apiLimiter);
 
 function sendHtml(res, file) {
@@ -180,6 +216,8 @@ router.post('/api/cron/config', require('./lib/auth').authAdmin, async (req, res
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Vía única de cron: el endpoint manual no omite el guard (ver cron-wsp.js). 
+// No usar node-cron y este endpoint en paralelo para el mismo envío.
 router.post('/api/cron/ejecutar', require('./lib/auth').authAdmin, async (req, res) => {
   try {
     const stats = await require('./cron-wsp').runCronWSP({ manual: true });
@@ -190,9 +228,17 @@ router.post('/api/cron/ejecutar', require('./lib/auth').authAdmin, async (req, r
   }
 });
 
+// Broadcast manual: requiere flag explícito para evitar uso accidental cuando cron programado existe.
+// Usar ?dailyCheckKey=wsp_broadcast:YYYY-MM-DD (clave diaria) o enviar { dailyCheckKey: 'wsp_broadcast:YYYY-MM-DD' }
 router.post('/api/cron/broadcast', require('./lib/auth').authAdmin, async (req, res) => {
-  const { message } = req.body || {};
+  const { message, dailyCheckKey } = req.body || {};
   if (!message) return res.status(400).json({ error: 'message requerido' });
+  const { getLimaDateKey } = require('./cron-wsp');
+  const expectedKey = `wsp_broadcast:${getLimaDateKey()}`;
+  const providedKey = dailyCheckKey || req.query.dailyCheckKey;
+  if (!providedKey || providedKey !== expectedKey) {
+    return res.status(400).json({ error: 'Flag diario requerido: dailyCheckKey=' + expectedKey });
+  }
   try {
     const { sendBroadcastToTerapeutas } = require('./cron-wsp');
     const { loadOpenwaConfigFromDB, isOpenwaConfigured } = require('./lib/greenapi');
@@ -256,12 +302,14 @@ async function loadConfigFromDB() {
 
 // ── Scheduler node-cron ─────────────────────────────────────────
 let _cronTask = null;
+let _shuttingDown = false;
 async function scheduleCron() {
   try {
     const nodeCron = require('node-cron');
     const db = require('./lib/db');
     const [[cfg]] = await db.execute('SELECT enabled, hora, minuto, dias FROM cron_config WHERE id=1');
     if (_cronTask) { _cronTask.stop(); _cronTask = null; }
+    if (_shuttingDown) return;
     if (!cfg || !cfg.enabled) { console.log('[cron] Desactivado (enabled=' + (cfg?.enabled) + ')'); return; }
     const expr = `${cfg.minuto} ${cfg.hora} * * ${cfg.dias}`;
     _cronTask = nodeCron.schedule(expr, () => {
@@ -273,6 +321,33 @@ async function scheduleCron() {
     console.warn('[cron] node-cron no disponible:', err.message);
   }
 }
+
+let _shutdownPromise = null;
+function shutdown(signal) {
+  if (_shutdownPromise) return _shutdownPromise;
+  _shuttingDown = true;
+  console.log(`[crm] ${signal} recibido, cerrando recursos...`);
+  _shutdownPromise = (async () => {
+    try { if (_cronTask) { _cronTask.stop(); _cronTask = null; } } catch (_) {}
+    try { await sessionStore.close(); } catch (_) {}
+    let forceTimer = null;
+    const limite = new Promise((resolve) => {
+      forceTimer = setTimeout(resolve, 5000);
+      if (typeof forceTimer.unref === 'function') forceTimer.unref();
+    });
+    await Promise.race([
+      Promise.allSettled([
+        require('./lib/db').end(),
+        require('./lib/tribuDb').closePool(),
+      ]),
+      limite,
+    ]);
+    clearTimeout(forceTimer);
+  })();
+  return _shutdownPromise;
+}
+process.on('SIGTERM', () => { shutdown('SIGTERM').finally(() => process.exit(0)); });
+process.on('SIGINT', () => { shutdown('SIGINT').finally(() => process.exit(0)); });
 
 ensureSchema()
   .then(() => loadConfigFromDB())
@@ -313,7 +388,10 @@ ensureSchema()
   })
   .then(() => {
     if (typeof PhusionPassenger !== 'undefined') {
-      PhusionPassenger.configure({ autoInstall: false });
+      PhusionPassenger.configure({
+        autoInstall: false,
+        maxPoolSize: parseInt(process.env.PASSENGER_MAX_POOL_SIZE || '1', 10),
+      });
       app.listen('passenger');
     } else if (require.main === module) {
       const PORT = process.env.PORT || 3001;

@@ -21,6 +21,15 @@ async function ensureSchema() {
     `);
 
     await conn.execute(`
+      CREATE TABLE IF NOT EXISTS sessions (
+        session_id  VARCHAR(128) COLLATE utf8mb4_bin NOT NULL,
+        expires     INT(11) UNSIGNED NOT NULL,
+        data        MEDIUMTEXT COLLATE utf8mb4_bin,
+        PRIMARY KEY (session_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
+    await conn.execute(`
       CREATE TABLE IF NOT EXISTS pacientes (
         id              INT AUTO_INCREMENT PRIMARY KEY,
         nombre          VARCHAR(120) NOT NULL,
@@ -801,6 +810,16 @@ async function ensureSchema() {
     console.log('[crm] Schema OK');
   } finally {
     conn.release();
+  }
+
+  try {
+    const { repairPaquetesPrecioInconsistente } = require('./lib/paquetesPaciente');
+    const repaired = await repairPaquetesPrecioInconsistente();
+    if (repaired > 0) {
+      console.log(`[crm] Reparados ${repaired} paciente_paquetes con precio=0 inconsistente`);
+    }
+  } catch (err) {
+    console.error('[crm] repairPaquetesPrecioInconsistente:', err.message);
   }
 }
 
