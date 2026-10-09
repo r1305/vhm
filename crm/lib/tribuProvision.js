@@ -13,8 +13,12 @@ async function getPlanVipId(conn) {
     'SELECT id FROM suscripciones WHERE precio = ? ORDER BY id ASC LIMIT 1',
     [PLAN_PRECIO]
   );
-  if (!plan) throw new Error('No existe plan de suscripción S/ 89.90 en La Tribu');
+  if (!plan) throw errorValidacion('No existe plan de suscripción S/ 89.90 en La Tribu');
   return plan.id;
+}
+
+function errorValidacion(message) {
+  return Object.assign(new Error(message), { publico: true });
 }
 
 function generateTempPassword() {
@@ -78,13 +82,13 @@ async function grantManualSubscription(tribuUserId, conn) {
 }
 
 async function createTribuUserFromPaciente(paciente) {
-  if (!isConfigured()) throw new Error('Base de datos La Tribu no configurada (TRIBU_DB_NAME)');
+  if (!isConfigured()) throw errorValidacion('Base de datos La Tribu no configurada (TRIBU_DB_NAME)');
 
   const email = normalizeEmail(paciente.email);
-  if (!email) throw new Error('El paciente debe tener email para crear usuario Tribu');
+  if (!email) throw errorValidacion('El paciente debe tener email para crear usuario Tribu');
 
   const existing = await findTribuUserByEmail(email);
-  if (existing) throw new Error('Ya existe un usuario Tribu con ese correo');
+  if (existing) throw errorValidacion('Ya existe un usuario Tribu con ese correo');
 
   const tempPassword = generateTempPassword();
   const hash = await bcrypt.hash(tempPassword, 10);
@@ -126,7 +130,7 @@ async function createTribuUserFromPaciente(paciente) {
 
 /** Trunca tribu_suscripciones y crea suscripción VIP 1 año para cada tribu_users. */
 async function rebuildAllTribuSubscriptions() {
-  if (!isConfigured()) throw new Error('Base de datos La Tribu no configurada (TRIBU_DB_NAME)');
+  if (!isConfigured()) throw errorValidacion('Base de datos La Tribu no configurada (TRIBU_DB_NAME)');
 
   const pool = getPool();
   const conn = await pool.getConnection();

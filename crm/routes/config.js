@@ -16,7 +16,10 @@ router.get('/', authAdmin, async (req, res) => {
     const data = {};
     for (const r of rows) data[r.clave] = r.valor || '';
     res.json(data);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) {
+    console.error('[config/leer]:', err);
+    res.status(500).json({ error: 'No se pudo cargar la configuración. Inténtalo nuevamente.' });
+  }
 });
 
 // Guardar claves
@@ -43,7 +46,10 @@ router.post('/', authAdmin, async (req, res) => {
       if (r.clave === 'openwa_webhook_token')  process.env.OPENWA_WEBHOOK_TOKEN  = r.valor || '';
     }
     res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) {
+    console.error('[config/guardar]:', err);
+    res.status(500).json({ error: 'No se pudo guardar la configuración. Inténtalo nuevamente.' });
+  }
 });
 
 module.exports = router;

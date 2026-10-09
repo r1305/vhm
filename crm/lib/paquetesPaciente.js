@@ -35,6 +35,10 @@ function addDays(dateStr, days) {
   return d.toISOString().slice(0, 10);
 }
 
+function errorValidacion(message) {
+  return Object.assign(new Error(message), { status: 400, publico: true });
+}
+
 function isPackageExpired(paquete, hoy) {
   return paquete.vence_at && dateStr(paquete.vence_at) < hoy;
 }
@@ -85,6 +89,60 @@ async function countCitasActivasForPaquete(pacientePaqueteId, desdeDate = null, 
   }
   const [[row]] = await db.execute(sql, params);
   return row?.total || 0;
+}
+
+const ESTADOS_RESERVADA_SQL = "'pendiente','confirmada','reagendada'";
+
+function desdeReserva(desdeDate) {
+  const hoy = todayStr();
+  return desdeDate && desdeDate > hoy ? desdeDate : hoy;
+}
+
+async function countCitasReservadas(pacienteId, desdeDate = null, db = pool) {
+  const [[row]] = await db.execute(
+    `SELECT COUNT(*) AS total FROM citas
+     WHERE paciente_id = ? AND estado IN (${ESTADOS_RESERVADA_SQL})
+       AND DATE(fecha) >= ?`,
+    [pacienteId, desdeReserva(desdeDate)]
+  );
+  return Number(row?.total) || 0;
+}
+
+async function countCitasReservadasForPaquete(pacientePaqueteId, desdeDate = null, pacienteId = null, db = pool) {
+  let sql = `SELECT COUNT(*) AS total FROM citas
+             WHERE estado IN (${ESTADOS_RESERVADA_SQL}) AND DATE(fecha) >= ?`;
+  const params = [desdeReserva(desdeDate)];
+  if (pacienteId != null) {
+    sql += ' AND (paciente_paquete_id = ? OR (paciente_paquete_id IS NULL AND paciente_id = ?))';
+    params.push(pacientePaqueteId, pacienteId);
+  } else {
+    sql += ' AND paciente_paquete_id = ?';
+    params.push(pacientePaqueteId);
+  }
+  const [[row]] = await db.execute(sql, params);
+  return Number(row?.total) || 0;
+}
+
+function cupoReserva(total, usadas, reservadas) {
+  const t = Number(total) || 0;
+  const ocupadas = (Number(usadas) || 0) + (Number(reservadas) || 0);
+  return {
+    disponibles: Math.max(0, t - ocupadas),
+    siguienteSesion: ocupadas + 1,
+    sinCupo: ocupadas >= t,
+  };
+}
+
+const MSG_SIN_SESIONES = 'No tienes sesiones disponibles para agendar. Contacta a tu terapeuta para adquirir más sesiones.';
+const MSG_SIN_CUPO_RESERVADO = 'Ya tienes citas agendadas para todas tus sesiones disponibles. Contacta a tu terapeuta si necesitas más sesiones.';
+
+function respuestaSinCupo(usadas, total) {
+  return {
+    ok: false,
+    codigo: 'SIN_SESIONES',
+    mensaje: (Number(usadas) || 0) >= (Number(total) || 0) ? MSG_SIN_SESIONES : MSG_SIN_CUPO_RESERVADO,
+    sesiones_disponibles: 0,
+  };
 }
 
 async function syncPackageLifecycle(pacienteId, db = pool) {
@@ -200,26 +258,26 @@ async function loadPacientePaquetes(pacienteId) {
 
 async function createPacientePaquete(pacienteId, payload) {
   const catalogoId = parseInt(payload.paquete_catalogo_id, 10);
-  if (!catalogoId) throw new Error('Selecciona un paquete');
+  if (!catalogoId) throw errorValidacion('Selecciona un paquete');
 
   const [[cat]] = await pool.execute(
     'SELECT * FROM paquetes_catalogo WHERE id = ? AND activo = 1',
     [catalogoId]
   );
-  if (!cat) throw new Error('Paquete no encontrado o inactivo');
+  if (!cat) throw errorValidacion('Paquete no encontrado o inactivo');
 
   const tipoPago = payload.tipo_pago === 'parcial' ? 'parcial' : 'total';
   let numCuotas = tipoPago === 'parcial' ? parseInt(payload.num_cuotas, 10) : 1;
   if (!numCuotas || numCuotas < 1) numCuotas = 1;
-  if (tipoPago === 'parcial' && numCuotas < 2) throw new Error('El pago parcial requiere al menos 2 cuotas');
-  if (numCuotas > cat.sesiones) throw new Error('Las cuotas no pueden superar el número de sesiones');
+  if (tipoPago === 'parcial' && numCuotas < 2) throw errorValidacion('El pago parcial requiere al menos 2 cuotas');
+  if (numCuotas > cat.sesiones) throw errorValidacion('Las cuotas no pueden superar el número de sesiones');
 
   await syncPackageLifecycle(pacienteId);
   const activePkg = await getActivePacientePaquete(pacienteId);
   if (activePkg) {
     const citasUsadas = await countCitasActivasForPaquete(activePkg.id, dateStr(activePkg.fecha_inicio), activePkg.paciente_id);
     const restantes = activePkg.sesiones - citasUsadas;
-    throw new Error(
+    throw errorValidacion(
       `El paciente ya tiene el paquete "${activePkg.nombre}" activo con ${restantes} sesión${restantes !== 1 ? 'es' : ''} disponible${restantes !== 1 ? 's' : ''}. Debe agotar o vencer ese paquete antes de adquirir otro.`
     );
   }
@@ -234,12 +292,12 @@ async function createPacientePaquete(pacienteId, payload) {
   const descuento = Math.max(0, Number(payload.descuento) || 0);
   // Todo paquete asignado debe tener precio: es lo que alimenta el Reporte Financiero.
   if (precio <= 0) {
-    throw new Error(
+    throw errorValidacion(
       `El paquete "${cat.nombre}" no tiene precio en el catálogo. Asígnale un precio en Paquetes antes de venderlo.`
     );
   }
   if (descuento >= precio) {
-    throw new Error('El descuento no puede ser igual o mayor al precio del paquete');
+    throw errorValidacion('El descuento no puede ser igual o mayor al precio del paquete');
   }
   const precioNeto = Math.round((precio - descuento) * 100) / 100;
 
@@ -318,7 +376,7 @@ async function deletePacientePaquete(pacienteId, pkgId) {
     'SELECT id FROM paciente_paquetes WHERE id = ? AND paciente_id = ?',
     [pkgId, pacienteId]
   );
-  if (!pkg) throw new Error('Paquete no encontrado');
+  if (!pkg) throw errorValidacion('Paquete no encontrado');
 
   const conn = await pool.getConnection();
   try {
@@ -343,7 +401,7 @@ async function markCuotaPagada(pacienteId, cuotaId) {
      WHERE c.id = ? AND p.paciente_id = ?`,
     [cuotaId, pacienteId]
   );
-  if (!cuota) throw new Error('Cuota no encontrada');
+  if (!cuota) throw errorValidacion('Cuota no encontrada');
   if (cuota.pagado) return { ok: true, already: true };
 
   await pool.execute(
@@ -465,15 +523,20 @@ async function evaluateBooking(pacienteId, db = pool) {
     const paquete = await getActivePacientePaquete(pacienteId, db);
     if (!paquete) break;
 
-    const citasActivas = await countCitasActivasForPaquete(paquete.id, dateStr(paquete.fecha_inicio), pacienteId, db);
-    const nextSessionNum = citasActivas + 1;
+    const desde = dateStr(paquete.fecha_inicio);
+    const citasActivas = await countCitasActivasForPaquete(paquete.id, desde, pacienteId, db);
 
-    if (nextSessionNum > paquete.sesiones) {
+    if (citasActivas + 1 > paquete.sesiones) {
       await db.execute('UPDATE paciente_paquetes SET activo = 0 WHERE id = ?', [paquete.id]);
       await syncPackageLifecycle(pacienteId, db);
       continue;
     }
 
+    const reservadas = await countCitasReservadasForPaquete(paquete.id, desde, pacienteId, db);
+    const cupo = cupoReserva(paquete.sesiones, citasActivas, reservadas);
+    if (cupo.sinCupo) return respuestaSinCupo(citasActivas, paquete.sesiones);
+
+    const nextSessionNum = cupo.siguienteSesion;
     const [[cuota]] = await db.execute(
       `SELECT numero, pagado, fecha_pago FROM paciente_paquete_cuotas
        WHERE paciente_paquete_id = ? AND sesiones_inicio <= ? AND sesiones_fin >= ?`,
@@ -486,13 +549,13 @@ async function evaluateBooking(pacienteId, db = pool) {
         codigo: 'CUOTA_PENDIENTE',
         mensaje: `Debes completar el pago de la cuota ${cuota?.numero || ''} antes de agendar esta sesión. Contacta a tu terapeuta.`,
         cuota_numero: cuota?.numero || null,
-        sesiones_disponibles: Math.max(0, paquete.sesiones - citasActivas),
+        sesiones_disponibles: cupo.disponibles,
       };
     }
 
     return {
       ok: true,
-      sesiones_disponibles: paquete.sesiones - citasActivas,
+      sesiones_disponibles: cupo.disponibles,
       paciente_paquete_id: paquete.id,
     };
   }
@@ -502,8 +565,7 @@ async function evaluateBooking(pacienteId, db = pool) {
     `SELECT COALESCE((SELECT SUM(ps.sesiones) FROM paciente_sesiones ps WHERE ps.paciente_id = ?), 0) AS total`,
     [pacienteId]
   );
-  const totalLegacy = legacy?.total || 0;
-  const disponibles = totalLegacy - citasActivas;
+  const totalLegacy = Number(legacy?.total) || 0;
 
   if (totalLegacy <= 0) {
     return {
@@ -514,16 +576,11 @@ async function evaluateBooking(pacienteId, db = pool) {
     };
   }
 
-  if (disponibles <= 0) {
-    return {
-      ok: false,
-      codigo: 'SIN_SESIONES',
-      mensaje: 'No tienes sesiones disponibles para agendar. Contacta a tu terapeuta para adquirir más sesiones.',
-      sesiones_disponibles: 0,
-    };
-  }
+  const reservadas = await countCitasReservadas(pacienteId, null, db);
+  const cupo = cupoReserva(totalLegacy, citasActivas, reservadas);
+  if (cupo.sinCupo) return respuestaSinCupo(citasActivas, totalLegacy);
 
-  return { ok: true, sesiones_disponibles: disponibles, paciente_paquete_id: null };
+  return { ok: true, sesiones_disponibles: cupo.disponibles, paciente_paquete_id: null };
 }
 
 /**
@@ -643,6 +700,9 @@ module.exports = {
   addMonths,
   countCitasActivas,
   countCitasActivasForPaquete,
+  countCitasReservadas,
+  countCitasReservadasForPaquete,
+  cupoReserva,
   syncPackageLifecycle,
   getActivePacientePaquete,
   loadCuotas,

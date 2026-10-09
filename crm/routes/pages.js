@@ -97,6 +97,11 @@ router.post('/api/pwa/install', async (req, res) => {
   } catch { res.json({ ok: false }); }
 });
 
+function errorPagina(res, contexto, err) {
+  console.error('[pages/%s]:', contexto, err);
+  res.status(500).send('No se pudo cargar la página. Inténtalo nuevamente.');
+}
+
 // ── AGENDAR (público, sin auth) ────────────────────────────────
 router.get('/agendar/:username', async (req, res) => {
   try {
@@ -106,7 +111,7 @@ router.get('/agendar/:username', async (req, res) => {
     );
     if (!terapeuta) return res.status(404).send('Terapeuta no encontrado');
     res.render('agendar', { BASE: req.app.locals.BASE, terapeuta });
-  } catch (err) { res.status(500).send(err.message); }
+  } catch (err) { errorPagina(res, 'agendar', err); }
 });
 
 // Encuesta pública
@@ -133,13 +138,14 @@ router.post('/login', async (req, res) => {
       'SELECT id, nombre, apellido, username, rol, activo, password FROM terapeutas WHERE username = ?',
       [username]
     );
-    if (!user || !user.activo) throw new Error('Usuario no encontrado');
+    if (!user || !user.activo) throw Object.assign(new Error('Usuario no encontrado'), { publico: true });
     const ok = await bcrypt.compare(password, user.password);
-    if (!ok) throw new Error('Contraseña incorrecta');
+    if (!ok) throw Object.assign(new Error('Contraseña incorrecta'), { publico: true });
     req.session.user = { id: user.id, nombre: user.nombre, apellido: user.apellido, username: user.username, rol: user.rol };
     res.redirect(`${BASE}/${getHomePath(req.session.user)}`);
   } catch (err) {
-    res.render('login', { BASE, error: err.message, assetVersion: req.app.locals.assetVersion });
+    if (!err.publico) console.error('[pages/login] username=%s:', username, err);
+    res.render('login', { BASE, error: err.publico ? err.message : 'No se pudo iniciar sesión. Inténtalo nuevamente.', assetVersion: req.app.locals.assetVersion });
   }
 });
 
@@ -262,7 +268,7 @@ router.get('/dashboard', requireSession, (req, res, next) => {
       sinPaquete, packVencidos, ocupacion,
       scripts: `<script src="${req.app.locals.BASE}/dashboard.js"></script>`
     });
-  } catch (err) { res.status(500).send(err.message); }
+  } catch (err) { errorPagina(res, 'dashboard', err); }
 });
 
 // ── CALENDARIO ─────────────────────────────────────────────────
@@ -271,7 +277,7 @@ router.get('/calendario', requireSession, async (req, res) => {
   try {
     const [terapeutas] = await db.execute("SELECT id, nombre, apellido FROM terapeutas WHERE activo=1 AND rol='terapeuta' ORDER BY nombre");
     render(res, 'calendario', { user, terapeutas, scripts: `<script src="${req.app.locals.BASE}/citas_modal.js"></script><script src="${req.app.locals.BASE}/calendario.js"></script>` });
-  } catch (err) { res.status(500).send(err.message); }
+  } catch (err) { errorPagina(res, 'calendario', err); }
 });
 
 // ── AGENDA ───────────────────────────────────────────────────────
@@ -283,7 +289,7 @@ router.get('/agenda', requireSession, async (req, res) => {
     const params = user.rol === 'terapeuta' ? [user.id] : [];
     const [pacientes] = await db.execute(`SELECT id, nombre, apellido FROM pacientes ${qs} ORDER BY nombre`, params);
     render(res, 'agenda', { user, terapeutas, pacientes, scripts: `<script src="${req.app.locals.BASE}/citas_modal.js"></script><script src="${req.app.locals.BASE}/agenda.js"></script>` });
-  } catch (err) { res.status(500).send(err.message); }
+  } catch (err) { errorPagina(res, 'agenda', err); }
 });
 
 // ── PACIENTES ────────────────────────────────────────────────────
@@ -294,7 +300,7 @@ router.get('/pacientes', requireSession, async (req, res) => {
     const [rows]       = await db.execute('SELECT terapeuta_id, COUNT(*) AS total FROM pacientes GROUP BY terapeuta_id');
     const conteo       = Object.fromEntries(rows.map(r => [r.terapeuta_id, r.total]));
     render(res, 'pacientes', { user, terapeutas, conteo, scripts: `<script src="${req.app.locals.BASE}/cuotasPlan.js"></script><script src="${req.app.locals.BASE}/pacientes.js"></script>` });
-  } catch (err) { res.status(500).send(err.message); }
+  } catch (err) { errorPagina(res, 'pacientes', err); }
 });
 
 // ── HISTORIAL ────────────────────────────────────────────────────
@@ -305,7 +311,7 @@ router.get('/historial', requireSession, async (req, res) => {
     const [pacientes] = await db.execute(`SELECT id, nombre, apellido FROM pacientes ${qs} ORDER BY nombre`,
       user.rol === 'terapeuta' ? [user.id] : []);
     render(res, 'historial', { user, pacientes, scripts: `<script src="${req.app.locals.BASE}/history.js"></script>` });
-  } catch (err) { res.status(500).send(err.message); }
+  } catch (err) { errorPagina(res, 'historial', err); }
 });
 
 // ── DISPONIBILIDAD ──────────────────────────────────────────────
@@ -317,7 +323,7 @@ router.get('/disponibilidad', requireSession, async (req, res) => {
       ? await db.execute("SELECT id, nombre, apellido, username FROM terapeutas WHERE activo=1 AND rol='terapeuta' ORDER BY nombre")
       : [[{ id: user.id, nombre: user.nombre, apellido: user.apellido, username: user.username }]];
     render(res, 'disponibilidad', { user, terapeutas, scripts: `<script src="${req.app.locals.BASE}/disponibilidad.js"></script>` });
-  } catch (err) { res.status(500).send(err.message); }
+  } catch (err) { errorPagina(res, 'disponibilidad', err); }
 });
 
 // ── TERAPEUTAS ───────────────────────────────────────────────────
@@ -359,7 +365,7 @@ router.get('/integraciones', requireSession, requireAdmin, async (req, res) => {
     const { isConnected } = require('../lib/googleMeet');
     const googleConnected = await isConnected().catch(() => false);
     render(res, 'integraciones', { user: req.session.user, cfg, cron: cron || {}, cronDias, origin, googleConnected, scripts: `<script src="${req.app.locals.BASE}/integraciones.js"></script>` });
-  } catch (err) { res.status(500).send(err.message); }
+  } catch (err) { errorPagina(res, 'integraciones', err); }
 });
 
 // ── REPORTE FINANCIERO ──────────────────────────────────────────
@@ -475,7 +481,7 @@ router.get('/reporte-financiero', requireSession, requireAdmin, async (req, res)
       hasta: hayRango ? hasta : '',
       scripts: `<script src="${req.app.locals.BASE}/reportes.js"></script>`,
     });
-  } catch (err) { res.status(500).send(err.message); }
+  } catch (err) { errorPagina(res, 'reporte-financiero', err); }
 });
 
 const fechaHoyLima = () =>
@@ -552,7 +558,7 @@ router.get('/reporte-financiero/detalles', requireSession, requireAdmin, async (
       hasta,
       scripts: `<script src="${req.app.locals.BASE}/reportes.js"></script>`,
     });
-  } catch (err) { res.status(500).send(err.message); }
+  } catch (err) { errorPagina(res, 'reporte-financiero/detalles', err); }
 });
 
 // ── PERMISOS DE MENÚ ───────────────────────────────────────────

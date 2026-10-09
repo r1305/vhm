@@ -1,3 +1,5 @@
+const { evaluateBooking } = require('./paquetesPaciente');
+
 const normHora = (v) => {
   const m = /^([01]?\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?$/.exec(String(v ?? '').trim());
   return m ? `${m[1].padStart(2, '0')}:${m[2]}:${m[3] || '00'}` : null;
@@ -13,6 +15,12 @@ const fechaValida = (f) => !!f && /^\d{4}-\d{2}-\d{2}$/.test(f) && !isNaN(new Da
 const diaSemanaLima = (f) => new Date(f + 'T12:00:00-05:00').getUTCDay();
 
 const errorPublico = (status, message, extra) => Object.assign(new Error(message), extra || {}, { status, publico: true });
+
+const cuerpoErrorPublico = (err) => {
+  const body = { error: err.message };
+  if (err.codigo) { body.codigo = err.codigo; body.cuota_numero = err.cuota_numero || null; }
+  return body;
+};
 
 const MSG_NO_DISPONIBLE = 'Ese horario no está disponible';
 
@@ -43,9 +51,25 @@ const franjaBloqueada = (bloqueos, fecha, iniMin, finMin) =>
 const encajaEnDisponibilidad = (rangos, iniMin, finMin) =>
   finMin > iniMin && (rangos || []).some((r) => horaAMin(r.hora_inicio) <= iniMin && finMin <= horaAMin(r.hora_fin));
 
+const citaSolapa = (citas, iniMin, finMin) =>
+  (citas || []).some((c) => c.hora_inicio != null && c.hora_fin != null
+    && horaAMin(c.hora_inicio) < finMin && horaAMin(c.hora_fin) > iniMin);
+
 async function bloquearPaciente(conn, pacienteId) {
   const [[row]] = await conn.execute('SELECT id FROM pacientes WHERE id=? FOR UPDATE', [pacienteId]);
   return row || null;
+}
+
+async function reservarCupoPaciente(conn, pacienteId) {
+  if (!pacienteId || !(await bloquearPaciente(conn, pacienteId))) return null;
+  const booking = await evaluateBooking(pacienteId, conn);
+  if (!booking.ok) {
+    throw errorPublico(403, booking.mensaje, {
+      codigo: booking.codigo,
+      cuota_numero: booking.cuota_numero || null,
+    });
+  }
+  return { pacienteId, pacientePaqueteId: booking.paciente_paquete_id || null };
 }
 
 async function tipoCitaReserva(conn, pacienteId) {
@@ -61,8 +85,8 @@ async function tipoCitaReserva(conn, pacienteId) {
  * Orden de locks de toda reserva (POST /api/publico/:username/agendar y
  * POST /api/citas/agendar). Respetarlo en cualquier transacción nueva que
  * toque estas tablas para no provocar deadlocks:
- *   1. pacientes (id) FOR UPDATE           -> bloquearPaciente, solo si ya existe
- *   2. paciente_paquetes del paciente      -> evaluateBooking(pacienteId, conn)
+ *   1. pacientes (id) FOR UPDATE           -> reservarCupoPaciente (bloquearPaciente), solo si ya existe
+ *   2. paciente_paquetes del paciente      -> reservarCupoPaciente (evaluateBooking(pacienteId, conn))
  *   3. terapeutas (id) FOR UPDATE          -> bloquearFranja
  *   4. disponibilidad del día FOR UPDATE   -> bloquearFranja
  *   5. bloqueos del terapeuta LOCK IN SHARE MODE -> bloquearFranja
@@ -101,7 +125,7 @@ async function bloquearFranja(conn, { terapeutaId, fecha, horaInicio, horaFin })
 }
 
 module.exports = {
-  normHora, sumarHora, fechaValida, diaSemanaLima, errorPublico,
-  horaAMin, bloqueoSolapa, franjaBloqueada, encajaEnDisponibilidad,
-  bloquearPaciente, tipoCitaReserva, bloquearFranja,
+  normHora, sumarHora, fechaValida, diaSemanaLima, errorPublico, cuerpoErrorPublico,
+  horaAMin, bloqueoSolapa, franjaBloqueada, encajaEnDisponibilidad, citaSolapa,
+  bloquearPaciente, reservarCupoPaciente, tipoCitaReserva, bloquearFranja,
 };

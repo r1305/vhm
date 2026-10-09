@@ -6,7 +6,8 @@ const { createMeetLink, isConnected } = require('../lib/googleMeet');
 const { getActivePacientePaquete } = require('../lib/paquetesPaciente');
 const googleCal = require('../lib/googleCalendar');
 const {
-  normHora, sumarHora, fechaValida, diaSemanaLima, bloquearPaciente, tipoCitaReserva, bloquearFranja,
+  normHora, sumarHora, fechaValida, diaSemanaLima, cuerpoErrorPublico,
+  reservarCupoPaciente, tipoCitaReserva, bloquearFranja,
 } = require('../lib/reservaCita');
 
 const router = Router();
@@ -152,9 +153,15 @@ router.post('/agendar', async (req, res) => {
     conn = await pool.getConnection();
     await conn.beginTransaction();
     let pacienteId = null;
-    if (email) {
-      const [[existing]] = await conn.execute('SELECT id FROM pacientes WHERE email=? LIMIT 1', [email]);
-      if (existing && await bloquearPaciente(conn, existing.id)) pacienteId = existing.id;
+    let pacientePaqueteId = null;
+    const emailVal = t(email, 150);
+    if (emailVal) {
+      const [[existing]] = await conn.execute('SELECT id FROM pacientes WHERE email=? LIMIT 1', [emailVal]);
+      const cupo = existing ? await reservarCupoPaciente(conn, existing.id) : null;
+      if (cupo) {
+        pacienteId = cupo.pacienteId;
+        pacientePaqueteId = cupo.pacientePaqueteId;
+      }
     }
     await bloquearFranja(conn, { terapeutaId, fecha: fechaVal, horaInicio, horaFin });
     const tipoCita = await tipoCitaReserva(conn, pacienteId);
@@ -162,14 +169,14 @@ router.post('/agendar', async (req, res) => {
       const [r] = await conn.execute(
         `INSERT INTO pacientes (nombre,apellido,email,telefono,fuente,fuente_detalle,estado)
          VALUES (?,?,?,?,'web',?,'prospecto')`,
-        [t(nombre,120),t(apellido,120),t(email,150),t(telefono,30),t(fuente_detalle,300)]
+        [t(nombre,120),t(apellido,120),emailVal,t(telefono,30),t(fuente_detalle,300)]
       );
       pacienteId = r.insertId;
     }
     const [rc] = await conn.execute(
-      `INSERT INTO citas (paciente_id,terapeuta_id,fecha,hora_inicio,hora_fin,modalidad,tipo)
-       VALUES (?,?,?,?,?,?,?)`,
-      [pacienteId, terapeutaId, fechaVal, horaInicio, horaFin, modalidad, tipoCita]
+      `INSERT INTO citas (paciente_id,terapeuta_id,fecha,hora_inicio,hora_fin,modalidad,tipo,paciente_paquete_id)
+       VALUES (?,?,?,?,?,?,?,?)`,
+      [pacienteId, terapeutaId, fechaVal, horaInicio, horaFin, modalidad, tipoCita, pacientePaqueteId]
     );
     // Si el paciente es prospecto, pasa a confirmado
     await conn.execute(
@@ -180,7 +187,7 @@ router.post('/agendar', async (req, res) => {
     res.status(201).json({ ok: true, cita_id: rc.insertId, paciente_id: pacienteId });
   } catch (err) {
     if (conn) { try { await conn.rollback(); } catch (_) {} }
-    if (err.publico) return res.status(err.status).json({ error: err.message });
+    if (err.publico) return res.status(err.status).json(cuerpoErrorPublico(err));
     console.error('[citas/agendar] terapeuta_id=%s fecha=%s hora=%s:', terapeutaId, fechaVal, horaInicio, err);
     res.status(500).json({ error: 'No se pudo agendar la cita. Inténtalo nuevamente.' });
   } finally {

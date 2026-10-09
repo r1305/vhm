@@ -23,7 +23,10 @@ router.get('/', auth, async (req, res) => {
     sql += ' ORDER BY b.fecha_inicio';
     const [rows] = await pool.execute(sql, params);
     res.json(rows);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) {
+    console.error('[bloqueos/listar] usuario=%s:', req.user?.id, err);
+    res.status(500).json({ error: 'No se pudieron cargar los bloqueos. Inténtalo nuevamente.' });
+  }
 });
 
 // POST /api/bloqueos
@@ -42,7 +45,10 @@ router.post('/', auth, async (req, res) => {
       [terId, fecha_inicio, fecha_fin, hora_inicio, hora_fin, t(titulo,200)]
     );
     res.status(201).json({ id: r.insertId });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) {
+    console.error('[bloqueos/crear] usuario=%s:', req.user?.id, err);
+    res.status(500).json({ error: 'No se pudo crear el bloqueo. Inténtalo nuevamente.' });
+  }
 });
 
 // DELETE /api/bloqueos/:id
@@ -56,7 +62,10 @@ router.delete('/:id', auth, async (req, res) => {
       return res.status(403).json({ error: 'Sin acceso' });
     await pool.execute('DELETE FROM bloqueos WHERE id=?', [id]);
     res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) {
+    console.error('[bloqueos/eliminar] bloqueo_id=%s:', req.params.id, err);
+    res.status(500).json({ error: 'No se pudo eliminar el bloqueo. Inténtalo nuevamente.' });
+  }
 });
 
 module.exports = router;

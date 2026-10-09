@@ -1,11 +1,10 @@
 const { Router } = require('express');
 const pool = require('../lib/db');
 const { createMeetLink, isConnected } = require('../lib/googleMeet');
-const { evaluateBooking } = require('../lib/paquetesPaciente');
 const googleCal = require('../lib/googleCalendar');
 const {
-  normHora, sumarHora, fechaValida, diaSemanaLima, errorPublico,
-  franjaBloqueada, bloquearPaciente, tipoCitaReserva, bloquearFranja,
+  normHora, sumarHora, fechaValida, diaSemanaLima, cuerpoErrorPublico,
+  franjaBloqueada, citaSolapa, reservarCupoPaciente, tipoCitaReserva, bloquearFranja,
 } = require('../lib/reservaCita');
 const router = Router();
 
@@ -95,7 +94,7 @@ router.get('/:username/slots', async (req, res) => {
 
     // Citas existentes en el rango
     const [citas] = await pool.execute(
-      `SELECT DATE_FORMAT(fecha,'%Y-%m-%d') AS fecha, hora_inicio
+      `SELECT DATE_FORMAT(fecha,'%Y-%m-%d') AS fecha, hora_inicio, hora_fin
        FROM citas WHERE terapeuta_id=? AND fecha BETWEEN ? AND ? AND estado NOT IN ('cancelada')`,
       [ter.id, desdeStr, hastaStr]
     );
@@ -119,8 +118,8 @@ router.get('/:username/slots', async (req, res) => {
     const ocupados = {};
     citas.forEach(c => {
       const f = String(c.fecha).slice(0,10);
-      if (!ocupados[f]) ocupados[f] = new Set();
-      ocupados[f].add(toMin(c.hora_inicio));
+      if (!ocupados[f]) ocupados[f] = [];
+      ocupados[f].push(c);
     });
 
     // Generar slots por día
@@ -151,7 +150,7 @@ router.get('/:username/slots', async (req, res) => {
       for (const rango of rangos) {
         for (let m = rango.ini; m + 60 <= rango.fin; m += 60) {
           if (esHoy && m <= minAhora) continue;
-          if (ocupados[f]?.has(m)) continue;
+          if (citaSolapa(ocupados[f], m, m + 60)) continue;
           if (franjaBloqueada(bloqueos, f, m, m + 60)) continue;
           if (gcalBusyHoy.some(b => m < b.fin && m + 60 > b.ini)) continue;
           slots.push(minToHora(m));
@@ -238,16 +237,10 @@ router.post('/:username/agendar', async (req, res) => {
     conn = await pool.getConnection();
     await conn.beginTransaction();
 
-    if (paciente && await bloquearPaciente(conn, paciente.id)) {
-      const booking = await evaluateBooking(paciente.id, conn);
-      if (!booking.ok) {
-        throw errorPublico(403, booking.mensaje, {
-          codigo: booking.codigo,
-          cuota_numero: booking.cuota_numero || null,
-        });
-      }
-      pacienteId = paciente.id;
-      pacientePaqueteId = booking.paciente_paquete_id || null;
+    const cupo = paciente ? await reservarCupoPaciente(conn, paciente.id) : null;
+    if (cupo) {
+      pacienteId = cupo.pacienteId;
+      pacientePaqueteId = cupo.pacientePaqueteId;
     }
 
     await bloquearFranja(conn, { terapeutaId: ter.id, fecha: fechaVal, horaInicio, horaFin });
@@ -288,11 +281,7 @@ router.post('/:username/agendar', async (req, res) => {
     res.status(201).json({ ok: true, cita_id: rc.insertId, meet_link });
   } catch (err) {
     if (conn) { try { await conn.rollback(); } catch (_) {} }
-    if (err.publico) {
-      const body = { error: err.message };
-      if (err.codigo) { body.codigo = err.codigo; body.cuota_numero = err.cuota_numero || null; }
-      return res.status(err.status).json(body);
-    }
+    if (err.publico) return res.status(err.status).json(cuerpoErrorPublico(err));
     console.error('[publico/agendar] username=%s terapeuta_id=%s fecha=%s hora=%s:',
       req.params.username, ter?.id, fechaVal, horaInicio, err);
     res.status(500).json({ error: 'No se pudo agendar la cita. Inténtalo nuevamente.' });

@@ -2,24 +2,40 @@ const { Router } = require('express');
 const pool = require('../lib/db');
 const { auth } = require('../lib/auth');
 const { sendRecordatorioCita, sendFollowUp } = require('../lib/mailer');
+const { fechaValida } = require('../lib/reservaCita');
 
 const router = Router();
 
+const informado = (v) => v != null && v !== '';
+
 // ── Helper: validar y sanitizar rango de fechas ───────────────
 function parseDateRange(query) {
-  const today = new Date().toISOString().slice(0, 10);
-  const desde = /^\d{4}-\d{2}-\d{2}$/.test(query.desde) ? query.desde : today;
-  const hasta = /^\d{4}-\d{2}-\d{2}$/.test(query.hasta) ? query.hasta : today;
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(new Date());
+  if (informado(query.desde) && !fechaValida(String(query.desde))) return { error: 'Fecha inválida' };
+  if (informado(query.hasta) && !fechaValida(String(query.hasta))) return { error: 'Fecha inválida' };
+  const desde = informado(query.desde) ? String(query.desde) : today;
+  const hasta = informado(query.hasta) ? String(query.hasta) : today;
+  if (desde > hasta) return { error: 'Rango de fechas inválido' };
   return { desde, hasta };
+}
+
+function parseTerapeutaId(v) {
+  if (!informado(v)) return { tid: null };
+  const str = String(v).trim();
+  const n = /^\d+$/.test(str) ? parseInt(str, 10) : NaN;
+  return Number.isSafeInteger(n) && n > 0 ? { tid: n } : { error: 'Terapeuta inválido' };
 }
 
 // ── Reportes con filtro de fecha ──────────────────────────────
 router.get('/stats', auth, async (req, res) => {
   try {
-    const { desde, hasta } = parseDateRange(req.query);
-    const hastaFin = `${hasta} 23:59:59`;
+    const rango = parseDateRange(req.query);
+    if (rango.error) return res.status(400).json({ error: rango.error });
+    const { desde, hasta } = rango;
 
-    const tid = req.query.terapeuta_id ? parseInt(req.query.terapeuta_id, 10) : null;
+    const ter = parseTerapeutaId(req.query.terapeuta_id);
+    if (ter.error) return res.status(400).json({ error: ter.error });
+    const { tid } = ter;
     const tidFilter  = tid ? ` AND terapeuta_id = ${tid}`   : '';
     const tidFilterC = tid ? ` AND c.terapeuta_id = ${tid}` : '';
 
@@ -99,7 +115,10 @@ router.get('/stats', auth, async (req, res) => {
       citasPorEstado, citasPorTerapeuta, citasPorDia,
       ingresosPorDia, ingresosPorMetodo, citasPorModalidad,
     });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) {
+    console.error('[reportes/stats] desde=%s hasta=%s terapeuta_id=%s:', req.query.desde, req.query.hasta, req.query.terapeuta_id, err);
+    res.status(500).json({ error: 'No se pudo generar el reporte. Inténtalo nuevamente.' });
+  }
 });
 
 // Dashboard KPIs (mantener para compatibilidad)
@@ -121,7 +140,10 @@ router.get('/dashboard', auth, async (req, res) => {
       WHERE c.fecha=CURDATE() ORDER BY c.fecha ASC LIMIT 20
     `);
     res.json({ kpis, citasHoy });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) {
+    console.error('[reportes/dashboard] usuario=%s:', req.user?.id, err);
+    res.status(500).json({ error: 'No se pudieron cargar los indicadores. Inténtalo nuevamente.' });
+  }
 });
 
 // Procesar recordatorios pendientes (llamar desde cron o manualmente)

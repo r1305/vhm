@@ -95,14 +95,14 @@ async function sendRecordatorioCita(paciente, cita, terapeuta, canal = 'email') 
       to: paciente.email,
       subject: `Recordatorio de tu cita — ${fecha}`,
       html,
-    }).catch(e => ({ error: e.message }));
+    }).catch(e => { console.error('[mailer/recordatorio] email:', e); return { error: 'No se pudo enviar el email' }; });
   }
 
   if ((canal === 'whatsapp' || canal === 'ambos') && paciente.telefono) {
     results.whatsapp = await sendWhatsApp({
       to: paciente.telefono,
       message: mensaje,
-    }).catch(e => ({ error: e.message }));
+    }).catch(e => { console.error('[mailer/recordatorio] whatsapp:', e); return { error: 'No se pudo enviar el WhatsApp' }; });
   }
 
   return results;

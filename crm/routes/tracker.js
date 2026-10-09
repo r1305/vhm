@@ -217,8 +217,8 @@ router.get('/stats', auth, async (req, res) => {
       topClicks, eventosRecientes,
     });
   } catch (err) {
-    console.error('[tracker/stats]', err.message);
-    res.status(500).json({ error: err.message });
+    console.error('[tracker/stats] desde=%s hasta=%s:', req.query.desde, req.query.hasta, err);
+    res.status(500).json({ error: 'No se pudo cargar la analítica. Inténtalo nuevamente.' });
   }
 });
 

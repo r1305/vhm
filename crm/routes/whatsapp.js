@@ -66,7 +66,7 @@ const uploadMedia = (req, res, next) => {
     if (err.code === 'LIMIT_FILE_SIZE')
       return res.status(413).json({ error: 'Archivo demasiado grande (máximo 50MB)' });
     if (err.status === 415) return res.status(415).json({ error: err.message });
-    return respondRouteError(res, err);
+    return respondRouteError(res, err, 'upload');
   });
 };
 
@@ -76,9 +76,13 @@ function safeUploadName(name) {
   return (base || 'archivo').slice(0, 120);
 }
 
-function respondRouteError(res, err) {
+function respondRouteError(res, err, contexto) {
   const status = err.status && err.status >= 400 && err.status < 600 ? err.status : 500;
-  res.status(status).json({ error: err.message, code: err.code || undefined });
+  if (err.code === 'duplicate_instance' || err.code === 'session_inactive') {
+    return res.status(status).json({ error: err.message, code: err.code });
+  }
+  console.error('[whatsapp/%s]:', contexto, err);
+  res.status(status).json({ error: 'No se pudo completar la operación de WhatsApp. Inténtalo nuevamente.' });
 }
 
 const MEDIA_LABELS = {
@@ -1006,7 +1010,8 @@ router.get('/conversaciones', authWhatsApp, async (req, res) => {
     const [rows] = await pool.execute(sql, params);
     res.json(rows);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[whatsapp/conversaciones/listar]:', err);
+    res.status(500).json({ error: 'No se pudieron cargar las conversaciones. Inténtalo nuevamente.' });
   }
 });
 
@@ -1040,7 +1045,8 @@ router.get('/conversaciones/:id/mensajes', authWhatsApp, async (req, res) => {
       mensajes: dedupeMensajes(rows),
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[whatsapp/conversaciones/mensajes] conversacion_id=%s:', req.params.id, err);
+    res.status(500).json({ error: 'No se pudieron cargar los mensajes. Inténtalo nuevamente.' });
   }
 });
 
@@ -1081,7 +1087,8 @@ router.patch('/conversaciones/:id/leer', authWhatsApp, async (req, res) => {
     await pool.execute('UPDATE wa_conversaciones SET no_leidos = 0 WHERE id = ?', [conversacionId]);
     res.json({ ok: true, conversacionId });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[whatsapp/conversaciones/leer] conversacion_id=%s:', req.params.id, err);
+    res.status(500).json({ error: 'No se pudo marcar la conversación como leída. Inténtalo nuevamente.' });
   }
 });
 
@@ -1134,7 +1141,7 @@ router.post('/conversaciones/:id/mensajes', authWhatsApp, async (req, res) => {
 
     res.status(201).json({ ok: true, id: msgId, conversacionId, messageId: result.messageId });
   } catch (err) {
-    respondRouteError(res, err);
+    respondRouteError(res, err, 'enviar');
   }
 });
 
@@ -1195,7 +1202,7 @@ router.post('/conversaciones/:id/mensajes/media', authWhatsApp, uploadMedia, asy
 
     res.status(201).json({ ok: true, id: msgId, conversacionId, messageId: result.messageId, tipo });
   } catch (err) {
-    respondRouteError(res, err);
+    respondRouteError(res, err, 'enviar-media');
   }
 });
 
@@ -1285,7 +1292,8 @@ router.get('/status', authWhatsApp, async (req, res) => {
       hasWebhookToken: Boolean(process.env.OPENWA_WEBHOOK_TOKEN),
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[whatsapp/status]:', err);
+    res.status(500).json({ error: 'No se pudo consultar el estado de WhatsApp. Inténtalo nuevamente.' });
   }
 });
 
@@ -1336,7 +1344,8 @@ router.post('/iniciar', authWhatsApp, async (req, res) => {
     const [[conv]] = await pool.execute('SELECT * FROM wa_conversaciones WHERE id = ?', [conversacionId]);
     res.status(201).json(conv);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[whatsapp/iniciar]:', err);
+    res.status(500).json({ error: 'No se pudo iniciar el chat. Inténtalo nuevamente.' });
   }
 });
 

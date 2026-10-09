@@ -71,7 +71,8 @@ router.post('/tribu/rebuild-suscripciones', authAdmin, async (req, res) => {
     const result = await tribuProvision.rebuildAllTribuSubscriptions();
     res.json({ ok: true, ...result });
   } catch (err) {
-    res.status(500).json({ error: err.message || 'Error al reconstruir suscripciones' });
+    if (!err.publico) console.error('[pacientes/tribu-rebuild]:', err);
+    res.status(500).json({ error: err.publico ? err.message : 'Error al reconstruir suscripciones' });
   }
 });
 
@@ -88,8 +89,9 @@ router.post('/:pid/tribu-usuario', authAdmin, async (req, res) => {
     const result = await tribuProvision.createTribuUserFromPaciente(p);
     res.status(201).json({ ok: true, ...result });
   } catch (err) {
-    const code = err.message?.includes('Ya existe') ? 409 : 500;
-    res.status(code).json({ error: err.message || 'Error al crear usuario Tribu' });
+    if (!err.publico) console.error('[pacientes/tribu-usuario] paciente_id=%s:', pid, err);
+    const code = err.publico && err.message.includes('Ya existe') ? 409 : 500;
+    res.status(code).json({ error: err.publico ? err.message : 'Error al crear usuario Tribu' });
   }
 });
 
@@ -192,7 +194,8 @@ router.post('/:pid/paquetes-adquiridos', authAdmin, async (req, res) => {
     const paquetes = await loadPacientePaquetes(pid);
     res.status(201).json({ id: paqueteId, paquetes });
   } catch (err) {
-    res.status(400).json({ error: err.message || 'Error al asignar paquete' });
+    if (!err.publico) console.error('[pacientes/paquete-asignar] paciente_id=%s:', pid, err);
+    res.status(err.publico ? 400 : 500).json({ error: err.publico ? err.message : 'Error al asignar paquete' });
   }
 });
 
@@ -256,7 +259,8 @@ router.patch('/:pid/paquetes-adquiridos/:pkgId', authAdmin, async (req, res) => 
     const paquetes = await loadPacientePaquetes(pid);
     res.json({ ok: true, paquetes });
   } catch (err) {
-    res.status(500).json({ error: err.message || 'Error al actualizar paquete' });
+    console.error('[pacientes/paquete-actualizar] paciente_id=%s paquete_id=%s:', pid, pkgId, err);
+    res.status(500).json({ error: 'Error al actualizar paquete' });
   }
 });
 
@@ -269,7 +273,8 @@ router.delete('/:pid/paquetes-adquiridos/:pkgId', authAdmin, async (req, res) =>
     const paquetes = await loadPacientePaquetes(pid);
     res.json({ ok: true, paquetes });
   } catch (err) {
-    res.status(400).json({ error: err.message || 'Error al eliminar paquete' });
+    if (!err.publico) console.error('[pacientes/paquete-eliminar] paciente_id=%s paquete_id=%s:', pid, pkgId, err);
+    res.status(err.publico ? 400 : 500).json({ error: err.publico ? err.message : 'Error al eliminar paquete' });
   }
 });
 
@@ -282,7 +287,8 @@ router.patch('/:pid/paquetes-adquiridos/cuotas/:cuotaId/pagar', authAdmin, async
     const paquetes = await loadPacientePaquetes(pid);
     res.json({ ok: true, paquetes });
   } catch (err) {
-    res.status(400).json({ error: err.message || 'Error al registrar pago' });
+    if (!err.publico) console.error('[pacientes/cuota-pagar] paciente_id=%s cuota_id=%s:', pid, cuotaId, err);
+    res.status(err.publico ? 400 : 500).json({ error: err.publico ? err.message : 'Error al registrar pago' });
   }
 });
 
