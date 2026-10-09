@@ -33,10 +33,6 @@ router.get('/stats', auth, async (req, res) => {
           WHERE fecha BETWEEN ? AND ? AND estado='cancelada'${tidFilter}) AS citas_canceladas,
         (SELECT COUNT(*) FROM citas
           WHERE fecha BETWEEN ? AND ? AND estado='no_show'${tidFilter}) AS no_shows,
-        (SELECT COUNT(*) FROM leads
-          WHERE DATE(created_at) BETWEEN ? AND ?) AS leads_periodo,
-        (SELECT COUNT(*) FROM leads
-          WHERE DATE(created_at) BETWEEN ? AND ? AND estado='convertido') AS leads_convertidos,
         (SELECT COALESCE(SUM(monto),0) FROM pagos
           WHERE DATE(created_at) BETWEEN ? AND ? AND estado='completado') AS ingresos,
         (SELECT COUNT(*) FROM pacientes
@@ -45,7 +41,7 @@ router.get('/stats', auth, async (req, res) => {
         (SELECT COUNT(*) FROM pacientes WHERE estado='prospecto') AS prospectos
     `, [
       desde, hasta, desde, hasta, desde, hasta, desde, hasta,
-      desde, hasta, desde, hasta, desde, hasta, desde, hasta
+      desde, hasta, desde, hasta
     ]);
 
     const [citasPorEstado] = await pool.execute(`
@@ -66,14 +62,6 @@ router.get('/stats', auth, async (req, res) => {
       SELECT fecha, COUNT(*) AS total
       FROM citas WHERE fecha BETWEEN ? AND ?${tidFilter}
       GROUP BY fecha ORDER BY fecha ASC
-    `, [desde, hasta]);
-
-    // Leads por fuente
-    const [leadsPorFuente] = await pool.execute(`
-      SELECT fuente, COUNT(*) AS total,
-             SUM(CASE WHEN estado='convertido' THEN 1 ELSE 0 END) AS convertidos
-      FROM leads WHERE DATE(created_at) BETWEEN ? AND ?
-      GROUP BY fuente ORDER BY total DESC
     `, [desde, hasta]);
 
     // Ingresos por día
@@ -102,9 +90,6 @@ router.get('/stats', auth, async (req, res) => {
     kpis.tasa_asistencia = totalCitas > 0
       ? Math.round((kpis.citas_realizadas / totalCitas) * 100)
       : null;
-    kpis.tasa_conversion_leads = kpis.leads_periodo > 0
-      ? Math.round((kpis.leads_convertidos / kpis.leads_periodo) * 100)
-      : null;
     kpis.ingreso_promedio_cita = kpis.citas_realizadas > 0
       ? Math.round((kpis.ingresos / kpis.citas_realizadas) * 100) / 100
       : 0;
@@ -112,7 +97,7 @@ router.get('/stats', auth, async (req, res) => {
     res.json({
       desde, hasta, kpis,
       citasPorEstado, citasPorTerapeuta, citasPorDia,
-      leadsPorFuente, ingresosPorDia, ingresosPorMetodo, citasPorModalidad,
+      ingresosPorDia, ingresosPorMetodo, citasPorModalidad,
     });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -126,8 +111,6 @@ router.get('/dashboard', auth, async (req, res) => {
         (SELECT COUNT(*) FROM pacientes WHERE estado='prospecto') AS prospectos,
         (SELECT COUNT(*) FROM citas WHERE fecha=CURDATE() AND estado NOT IN ('cancelada','no_show')) AS citas_hoy,
         (SELECT COUNT(*) FROM citas WHERE fecha>=CURDATE() AND fecha<=DATE_ADD(CURDATE(),INTERVAL 7 DAY) AND estado='pendiente') AS citas_semana,
-        (SELECT COUNT(*) FROM leads WHERE estado='nuevo') AS leads_nuevos,
-        (SELECT COUNT(*) FROM lista_espera WHERE activo=1) AS lista_espera,
         (SELECT COALESCE(SUM(monto),0) FROM pagos WHERE MONTH(created_at)=MONTH(NOW()) AND estado='completado') AS ingresos_mes
     `);
     const [citasHoy] = await pool.execute(`
@@ -137,46 +120,8 @@ router.get('/dashboard', auth, async (req, res) => {
       JOIN terapeutas t ON c.terapeuta_id=t.id
       WHERE c.fecha=CURDATE() ORDER BY c.fecha ASC LIMIT 20
     `);
-    const [leadsFuente] = await pool.execute(`
-      SELECT fuente, COUNT(*) AS total FROM leads
-      GROUP BY fuente ORDER BY total DESC
-    `);
-    res.json({ kpis, citasHoy, leadsFuente });
+    res.json({ kpis, citasHoy });
   } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-// Lista de espera
-router.get('/lista-espera', auth, async (req, res) => {
-  const [rows] = await pool.execute(`
-    SELECT lw.*, p.nombre, p.apellido, p.email, p.telefono,
-           t.nombre AS terapeuta_nombre
-    FROM lista_espera lw JOIN pacientes p ON lw.paciente_id=p.id
-    LEFT JOIN terapeutas t ON lw.terapeuta_id=t.id
-    WHERE lw.activo=1 ORDER BY lw.fecha_solicitud ASC
-  `);
-  res.json(rows);
-});
-
-router.post('/lista-espera', auth, async (req, res) => {
-  const { paciente_id, terapeuta_id, especialidad } = req.body || {};
-  const t = (v,max=200) => v==null?null:String(v).trim().slice(0,max)||null;
-  const [r] = await pool.execute(
-    'INSERT INTO lista_espera (paciente_id,terapeuta_id,especialidad) VALUES (?,?,?)',
-    [paciente_id, terapeuta_id||null, t(especialidad)]
-  );
-  res.status(201).json({ id: r.insertId });
-});
-
-// Notificar disponibilidad a paciente en espera
-router.post('/lista-espera/:id/notificar', auth, async (req, res) => {
-  const [[item]] = await pool.execute(`
-    SELECT lw.*, p.nombre, p.email FROM lista_espera lw
-    JOIN pacientes p ON lw.paciente_id=p.id WHERE lw.id=?
-  `, [req.params.id]);
-  if (!item) return res.status(404).json({ error: 'No encontrado' });
-  await sendFollowUp({ nombre: item.nombre, email: item.email });
-  await pool.execute('UPDATE lista_espera SET notificado=1,notificado_at=NOW() WHERE id=?', [req.params.id]);
-  res.json({ ok: true });
 });
 
 // Procesar recordatorios pendientes (llamar desde cron o manualmente)

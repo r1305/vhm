@@ -10,18 +10,13 @@ const TITLES = {
   dashboard:       'Dashboard',
   agenda:          'Agenda',
   pacientes:       'Pacientes',
-  leads:           'Leads',
   historial:       'Historial clínico',
-  consentimientos: 'Consentimientos',
-  espera:          'Lista de espera',
   terapeutas:      'Usuarios',
   reportes:        'Reportes',
   analitica:       'Analítica web',
-  marketing:       'Email Marketing',
   integraciones:   'Integraciones',
   paquetes:        'Paquetes',
   whatsapp:        'Central WhatsApp',
-  asignacion:      'Asignación automática',
   calendario:      'Calendario',
   disponibilidad:  'Mi disponibilidad',
   permisos_menu:        'Permisos de menú',
@@ -175,11 +170,8 @@ router.get('/dashboard', requireSession, (req, res, next) => {
       [ [{ retenidos }] ],
       [ [{ altas_mes }] ],
       [ [{ sin_paquete }] ],
-      [ [{ leads_mes }] ],
-      [ [{ convertidos_mes }] ],
       [ [{ no_show_mes }] ],
       [ [{ citas_mes }] ],
-      [ [{ lista_espera }] ],
       [ proximosAgotar ],
       [ enRiesgo ],
       [ sinPaquete ],
@@ -190,11 +182,8 @@ router.get('/dashboard', requireSession, (req, res, next) => {
       db.execute(`SELECT COUNT(*) AS retenidos FROM pacientes p WHERE p.estado='activo' AND ${SQL.paquetesComprados('p')} >= 2`),
       db.execute("SELECT COUNT(*) AS altas_mes FROM pacientes WHERE estado='alta' AND DATE_FORMAT(updated_at,'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')"),
       db.execute(`SELECT COUNT(*) AS sin_paquete FROM pacientes p WHERE p.estado='activo' AND ${SQL.sinSesiones('p')}`),
-      db.execute("SELECT COUNT(*) AS leads_mes FROM leads WHERE DATE_FORMAT(created_at,'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')"),
-      db.execute("SELECT COUNT(*) AS convertidos_mes FROM leads WHERE estado='convertido' AND DATE_FORMAT(updated_at,'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')"),
       db.execute("SELECT COUNT(*) AS no_show_mes FROM citas WHERE estado='no_show' AND DATE_FORMAT(fecha,'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')"),
       db.execute("SELECT COUNT(*) AS citas_mes FROM citas WHERE estado IN ('realizada','no_show') AND DATE_FORMAT(fecha,'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')"),
-      db.execute('SELECT COUNT(*) AS lista_espera FROM lista_espera WHERE activo=1'),
       db.execute(`
         SELECT p.id, p.nombre, p.apellido, p.telefono, t.nombre AS terapeuta_nombre,
                ${SQL.sesionesTotal('p')}          AS sesiones_total,
@@ -257,13 +246,11 @@ router.get('/dashboard', requireSession, (req, res, next) => {
     ]);
 
     const tasaRetencion   = pacientes_activos > 0 ? Math.round((retenidos / pacientes_activos) * 100) : 0;
-    const tasaConversion  = leads_mes > 0 ? Math.round((convertidos_mes / leads_mes) * 100) : 0;
     const tasaNoShow      = citas_mes > 0 ? Math.round((no_show_mes / citas_mes) * 100) : 0;
 
     const kpis = [
       { label: 'Pacientes activos',   value: pacientes_activos, sub: null, state: null },
       { label: 'Tasa de retención',   value: `${tasaRetencion}%`, sub: `${retenidos} con 2+ paquetes`, state: tasaRetencion >= 50 ? 'ok' : 'warn' },
-      { label: 'Conversión leads',    value: `${tasaConversion}%`, sub: `${convertidos_mes} de ${leads_mes} este mes`, state: tasaConversion >= 30 ? 'ok' : 'warn' },
       { label: 'No-show del mes',     value: `${tasaNoShow}%`, sub: `${no_show_mes} de ${citas_mes} citas`, state: tasaNoShow > 15 ? 'warn' : 'ok' },
       { label: 'Altas este mes',      value: altas_mes, sub: 'tratamientos finalizados', state: null },
       { label: 'Sin sesiones',        value: sin_paquete, sub: 'activos que nunca compraron', state: sin_paquete > 0 ? 'warn' : null },
@@ -273,7 +260,6 @@ router.get('/dashboard', requireSession, (req, res, next) => {
       user, kpis,
       proximosAgotar, enRiesgo,
       sinPaquete, packVencidos, ocupacion,
-      lista_espera,
       scripts: `<script src="${req.app.locals.BASE}/dashboard.js"></script>`
     });
   } catch (err) { res.status(500).send(err.message); }

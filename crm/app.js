@@ -148,24 +148,12 @@ function sendHtml(res, file) {
   res.type('html').send(html);
 }
 
-// Config publica (sin auth) — debe ir antes del router principal
-app.get(`${BASE}/api/config/public`, require('./routes/config'));
-
 // Rutas MPA (páginas)
 app.use(BASE, require('./routes/pages'));
 
 const router = express.Router();
 
 router.get('/health', (_, res) => res.json({ ok: true, service: 'vhm-crm' }));
-
-const leadsRouter = require('./routes/leads');
-router.get ('/api/leads/webhook/meta',   leadsRouter);
-router.post('/api/leads/webhook/meta',   leadsRouter);
-router.post('/api/leads/webhook/tiktok', leadsRouter);
-router.post('/api/leads/web',            leadsRouter);
-
-// Suscripcion publica newsletter
-router.post('/api/marketing/suscribir', require('./routes/marketing'));
 
 const citasRouter = require('./routes/citas');
 router.post('/api/citas/agendar',     citasRouter);
@@ -183,10 +171,8 @@ router.use('/api/citas',      citasRouter);
 router.use('/api/bloqueos',    require('./routes/bloqueos'));
 router.use('/api/publico',     require('./routes/publico'));
 router.use('/api/historial',  require('./routes/historial'));
-router.use('/api/leads',      leadsRouter);
 router.use('/api/pagos',      require('./routes/pagos'));
 router.use('/api/reportes',   require('./routes/reportes'));
-router.use('/api/marketing',  require('./routes/marketing'));
 router.use('/api/config',        require('./routes/config'));
 router.use('/api/integraciones', require('./routes/integraciones'));
 router.use('/api/whatsapp',      require('./routes/whatsapp'));
@@ -269,17 +255,12 @@ router.get('*', (req, res) => {
 app.use(BASE, router);
 app.get('/', (_, res) => res.redirect(BASE + '/'));
 
-// Cargar config de BD al arrancar (webhook tokens, SMTP, WA)
+// Cargar config de BD al arrancar (SMTP, WA)
 async function loadConfigFromDB() {
   try {
     const dbPool = require('./lib/db');
     const [rows] = await dbPool.execute('SELECT clave, valor FROM configuracion');
     const map = {
-      meta_verify_token:   'META_WEBHOOK_VERIFY_TOKEN',
-      meta_access_token:   'META_PAGE_ACCESS_TOKEN',
-      meta_app_secret:     'META_APP_SECRET',
-      tiktok_app_secret:   'TIKTOK_APP_SECRET',
-      tiktok_verify_token: 'TIKTOK_WEBHOOK_VERIFY_TOKEN',
       smtp_host:    'SMTP_HOST',    smtp_port:   'SMTP_PORT',
       smtp_user:    'SMTP_USER',    smtp_pass:   'SMTP_PASS',
       smtp_from:    'SMTP_FROM',    smtp_secure: 'SMTP_SECURE',

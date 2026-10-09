@@ -40,15 +40,6 @@ function togglePwd(id, btn) {
     if (btn) btn.textContent = 'Conectar cuenta Google';
   });
 
-  function updateBadges(cfg) {
-    const metaOk   = cfg.meta_verify_token && cfg.meta_access_token;
-    const tiktokOk = cfg.tiktok_app_secret && cfg.tiktok_verify_token;
-    const ms = document.getElementById('meta-status');
-    const ts = document.getElementById('tiktok-status');
-    if (ms) { ms.textContent = metaOk   ? 'Configurado' : 'Sin configurar'; ms.className = 'badge '+(metaOk  ?'badge-green':'badge-yellow'); }
-    if (ts) { ts.textContent = tiktokOk ? 'Configurado' : 'Sin configurar'; ts.className = 'badge '+(tiktokOk?'badge-green':'badge-yellow'); }
-  }
-
   function updateCronStatus(cron) {
     const el = document.getElementById('cron-status');
     if (!el) return;
@@ -63,37 +54,6 @@ function togglePwd(id, btn) {
   }
 
   // Listeners de botones guardar
-  document.getElementById('btnSaveMeta')?.addEventListener('click', async () => {
-    try {
-      const body = {
-        meta_verify_token: document.getElementById('meta-verify-token').value,
-        meta_access_token: document.getElementById('meta-access-token').value,
-        meta_app_secret:   document.getElementById('meta-app-secret').value,
-      };
-      await api('/config', { method:'POST', body, successMessage: 'Configuración de Instagram guardada' });
-      updateBadges(body);
-    } catch (err) { toast(err.message, 'danger'); }
-  });
-
-  document.getElementById('btnSaveTiktok')?.addEventListener('click', async () => {
-    try {
-      const body = {
-        tiktok_app_secret:   document.getElementById('tiktok-app-secret').value,
-        tiktok_verify_token: document.getElementById('tiktok-verify-token').value,
-      };
-      await api('/config', { method:'POST', body, successMessage: 'Configuración de TikTok guardada' });
-      updateBadges(body);
-    } catch (err) { toast(err.message, 'danger'); }
-  });
-
-  document.getElementById('btnSaveWidget')?.addEventListener('click', async () => {
-    try {
-      const texto = document.getElementById('widget-btn-texto').value.trim();
-      if (!texto) { toast('El texto no puede estar vacío', 'danger'); return; }
-      await api('/config', { method:'POST', body: { widget_btn_texto: texto }, successMessage: 'Texto del botón actualizado' });
-    } catch (err) { toast(err.message, 'danger'); }
-  });
-
   document.getElementById('btnSaveOpenwa')?.addEventListener('click', async () => {
     try {
       const url = document.getElementById('openwa-url').value.trim();

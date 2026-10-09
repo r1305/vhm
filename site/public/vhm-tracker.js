@@ -1,6 +1,6 @@
 /**
  * VHM Tracker — vhm-tracker.js
- * Incluir en vhm.com.pe/site ANTES de vhm-crm-widget.js:
+ * Incluir en vhm.com.pe/site:
  *   <script src="/site/vhm-tracker.js"></script>
  *
  * Captura: pageviews, clicks en CTAs, scroll depth, tiempo de estadía,
@@ -117,7 +117,6 @@
       pagina:      state.pagina,
       duracion_seg: duracion,
       scroll_max:  state.scroll_max,
-      lead_id:     state.lead_id || null,
     });
   }
 
@@ -186,36 +185,6 @@
   document.addEventListener('submit', function (e) {
     const form = e.target;
     evento('form_submit', form.id || form.action || 'form', null);
-  });
-
-  // ── Integración con el widget del CRM ───────────────────────
-  // Cuando alguien llena el formulario de sesión, registrar conversión
-  // y vincular la sesión con el lead_id
-  const origCapturar = window.VHMWidget?.capturarLead;
-  if (origCapturar) {
-    window.VHMWidget.capturarLead = async function (data) {
-      evento('form_start', 'widget_sesion', null);
-      const result = await origCapturar.call(this, data);
-      if (result && result.id) {
-        state.lead_id = result.id;
-        evento('conversion', 'widget_sesion', `lead_id:${result.id}`);
-        // Vincular lead con sesión
-        send('/sesion', {
-          sesion_id:  state.sesion_id,
-          visitor_id: state.visitor_id,
-          pagina:     state.pagina,
-          lead_id:    result.id,
-        });
-      }
-      return result;
-    };
-  }
-
-  // También interceptar el botón del widget cuando se abre
-  document.addEventListener('click', function (e) {
-    if (e.target.id === 'vhm-widget-btn' || e.target.closest('#vhm-widget-btn')) {
-      evento('click', 'widget_btn_open', null);
-    }
   });
 
   // ── Iniciar y finalizar ──────────────────────────────────────

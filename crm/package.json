@@ -1,7 +1,7 @@
 {
   "name": "vhm-crm",
   "version": "1.0.0",
-  "description": "CRM clínico VHM — gestión de pacientes, agenda, pagos y marketing",
+  "description": "CRM clínico VHM — gestión de pacientes, agenda y pagos",
   "main": "app.js",
   "scripts": {
     "start": "node app.js",

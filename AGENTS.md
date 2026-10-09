@@ -82,8 +82,7 @@ lógica. Así el dashboard, el listado y el detalle no pueden divergir.
 
 La tabla `terapeutas` guarda también admins y superadmins. Cualquier consulta
 que liste terapeutas para selectores o métricas debe incluir
-`WHERE rol = 'terapeuta'`. Ver `routes/pages.js` (`/calendario`, ocupación) y
-`routes/leads.js` (auto-asignación).
+`WHERE rol = 'terapeuta'`. Ver `routes/pages.js` (`/calendario`, ocupación).
 
 Para decidir si un rol de *staff* (ve a todos los pacientes), usar
 `isStaffAdmin(rol)` de `lib/roles.js` en lugar de comparar contra el literal

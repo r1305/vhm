@@ -109,21 +109,6 @@ async function ensureSchema() {
     `);
 
     await conn.execute(`
-      CREATE TABLE IF NOT EXISTS lista_espera (
-        id           INT AUTO_INCREMENT PRIMARY KEY,
-        paciente_id  INT NOT NULL,
-        terapeuta_id INT DEFAULT NULL,
-        especialidad VARCHAR(200) DEFAULT NULL,
-        fecha_solicitud TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        notificado   TINYINT(1) NOT NULL DEFAULT 0,
-        notificado_at TIMESTAMP NULL DEFAULT NULL,
-        activo       TINYINT(1) NOT NULL DEFAULT 1,
-        FOREIGN KEY (paciente_id)  REFERENCES pacientes(id)  ON DELETE CASCADE,
-        FOREIGN KEY (terapeuta_id) REFERENCES terapeutas(id) ON DELETE SET NULL
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-    `);
-
-    await conn.execute(`
       CREATE TABLE IF NOT EXISTS pagos (
         id           INT AUTO_INCREMENT PRIMARY KEY,
         paciente_id  INT NOT NULL,
@@ -153,32 +138,6 @@ async function ensureSchema() {
         vence_at     DATE DEFAULT NULL,
         created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (paciente_id) REFERENCES pacientes(id) ON DELETE CASCADE
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-    `);
-
-    await conn.execute(`
-      CREATE TABLE IF NOT EXISTS leads (
-        id              INT AUTO_INCREMENT PRIMARY KEY,
-        nombre          VARCHAR(120) DEFAULT NULL,
-        apellido        VARCHAR(120) DEFAULT NULL,
-        email           VARCHAR(150) DEFAULT NULL,
-        telefono        VARCHAR(30)  DEFAULT NULL,
-        fuente          ENUM('instagram','tiktok','web','whatsapp','referido','otro') NOT NULL DEFAULT 'web',
-        fuente_detalle  VARCHAR(300) DEFAULT NULL,
-        mensaje         TEXT         DEFAULT NULL,
-        estado          ENUM('nuevo','contactado','agendado','convertido','descartado') NOT NULL DEFAULT 'nuevo',
-        terapeuta_id    INT          DEFAULT NULL,
-        paciente_id     INT          DEFAULT NULL,
-        notas           TEXT         DEFAULT NULL,
-        utm_source      VARCHAR(200) DEFAULT NULL,
-        utm_medium      VARCHAR(200) DEFAULT NULL,
-        utm_campaign    VARCHAR(200) DEFAULT NULL,
-        utm_content     VARCHAR(200) DEFAULT NULL,
-        utm_term        VARCHAR(200) DEFAULT NULL,
-        created_at      TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
-        updated_at      TIMESTAMP    DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        FOREIGN KEY (terapeuta_id) REFERENCES terapeutas(id) ON DELETE SET NULL,
-        FOREIGN KEY (paciente_id)  REFERENCES pacientes(id)  ON DELETE SET NULL
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
 
@@ -311,26 +270,6 @@ async function ensureSchema() {
     try { await conn.execute("ALTER TABLE citas MODIFY tipo ENUM('primera_vez','seguimiento','evaluacion','urgencia') NOT NULL DEFAULT 'seguimiento'"); } catch (_) {}
     try { await conn.execute("ALTER TABLE citas MODIFY estado ENUM('pendiente','confirmada','reagendada','realizada','cancelada','no_show') NOT NULL DEFAULT 'pendiente'"); } catch (_) {}
 
-    // Agregar columnas UTM si la tabla ya existía sin ellas
-    for (const col of ['utm_source','utm_medium','utm_campaign','utm_content','utm_term']) {
-      try { await conn.execute(`ALTER TABLE leads ADD COLUMN ${col} VARCHAR(200) DEFAULT NULL`); }
-      catch (_) {}
-    }
-
-    await conn.execute(`
-      CREATE TABLE IF NOT EXISTS consentimientos (
-        id           INT AUTO_INCREMENT PRIMARY KEY,
-        paciente_id  INT NOT NULL,
-        tipo         VARCHAR(80) NOT NULL DEFAULT 'terapeutico',
-        texto        TEXT NOT NULL,
-        firmado      TINYINT(1) NOT NULL DEFAULT 0,
-        firmado_at   TIMESTAMP NULL DEFAULT NULL,
-        ip_firma     VARCHAR(45) DEFAULT NULL,
-        created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (paciente_id) REFERENCES pacientes(id) ON DELETE CASCADE
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-    `);
-
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS recordatorios (
         id            INT AUTO_INCREMENT PRIMARY KEY,
@@ -356,52 +295,6 @@ async function ensureSchema() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
 
-    // ── Punto 2: Reglas de asignación automática ───────────────────
-    await conn.execute(`
-      CREATE TABLE IF NOT EXISTS asignacion_reglas (
-        id           INT AUTO_INCREMENT PRIMARY KEY,
-        terapeuta_id INT NOT NULL,
-        keyword      VARCHAR(100) NOT NULL COMMENT 'palabra clave en motivo_consulta',
-        prioridad    INT NOT NULL DEFAULT 1,
-        activo       TINYINT(1) NOT NULL DEFAULT 1,
-        created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (terapeuta_id) REFERENCES terapeutas(id) ON DELETE CASCADE
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-    `);
-
-    // ── Punto 4: Suscriptores newsletter ──────────────────────────
-    await conn.execute(`
-      CREATE TABLE IF NOT EXISTS suscriptores (
-        id          INT AUTO_INCREMENT PRIMARY KEY,
-        email       VARCHAR(150) NOT NULL UNIQUE,
-        nombre      VARCHAR(120) DEFAULT NULL,
-        paciente_id INT DEFAULT NULL,
-        segmento    VARCHAR(80)  DEFAULT NULL,
-        activo      TINYINT(1) NOT NULL DEFAULT 1,
-        ip_origen   VARCHAR(45) DEFAULT NULL,
-        created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (paciente_id) REFERENCES pacientes(id) ON DELETE SET NULL
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-    `);
-
-    // ── Punto 4: Campañas de email marketing ──────────────────────
-    await conn.execute(`
-      CREATE TABLE IF NOT EXISTS campanas_email (
-        id             INT AUTO_INCREMENT PRIMARY KEY,
-        nombre         VARCHAR(200) NOT NULL,
-        asunto         VARCHAR(300) NOT NULL,
-        cuerpo_html    LONGTEXT NOT NULL,
-        segmento       VARCHAR(80) DEFAULT NULL,
-        estado         ENUM('borrador','enviando','completada','cancelada') NOT NULL DEFAULT 'borrador',
-        total_enviados INT NOT NULL DEFAULT 0,
-        total_abiertos INT NOT NULL DEFAULT 0,
-        enviada_at     DATETIME DEFAULT NULL,
-        propietario_id INT DEFAULT NULL,
-        created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (propietario_id) REFERENCES terapeutas(id) ON DELETE SET NULL
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-    `);
-
     // ── Tracker web ───────────────────────────────────────────────────
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS web_sesiones (
@@ -422,8 +315,7 @@ async function ensureSchema() {
         created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         KEY idx_ws_visitor (visitor_id),
-        KEY idx_ws_fecha (created_at),
-        FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE SET NULL
+        KEY idx_ws_fecha (created_at)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
 
@@ -445,8 +337,6 @@ async function ensureSchema() {
 
     // Índices adicionales para consultas frecuentes
     const indexes = [
-      'CREATE INDEX IF NOT EXISTS idx_leads_created ON leads(created_at)',
-      'CREATE INDEX IF NOT EXISTS idx_leads_fuente ON leads(fuente)',
       'CREATE INDEX IF NOT EXISTS idx_citas_fecha ON citas(fecha)',
       'CREATE INDEX IF NOT EXISTS idx_citas_terapeuta ON citas(terapeuta_id)',
       'CREATE INDEX IF NOT EXISTS idx_pacientes_terapeuta ON pacientes(terapeuta_id)',
@@ -546,8 +436,8 @@ async function ensureSchema() {
     const [[{cnt}]] = await conn.execute('SELECT COUNT(*) AS cnt FROM menu_permisos');
     if (!cnt) {
       const defaults = [
-        ...['dashboard','agenda','calendario','disponibilidad','pacientes','leads','historial','consentimientos','espera','terapeutas','reportes','analitica','marketing','asignacion','integraciones','permisos_menu'].map(i => ['superadmin', i]),
-        ...['dashboard','agenda','calendario','disponibilidad','pacientes','leads','historial','consentimientos','espera','terapeutas','reportes','analitica','marketing','asignacion','integraciones'].flatMap(i => [['admin', i], ['recepcion', i]]),
+        ...['dashboard','agenda','calendario','disponibilidad','pacientes','historial','terapeutas','reportes','analitica','integraciones','permisos_menu'].map(i => ['superadmin', i]),
+        ...['dashboard','agenda','calendario','disponibilidad','pacientes','historial','terapeutas','reportes','analitica','integraciones'].flatMap(i => [['admin', i], ['recepcion', i]]),
         ...['agenda','calendario','disponibilidad','pacientes','historial','mi_reporte'].map(i => ['terapeuta', i]),
       ];
       for (const [rol, item] of defaults)
@@ -787,12 +677,7 @@ async function ensureSchema() {
       ['disponibilidad','Disponibilidad','fa-clock',8],
       ['historial','Historial clínico','fa-file-medical',9],
       ['encuestas','Encuestas','fa-poll',10],
-      ['leads','Leads','fa-funnel-dollar',11],
       ['analitica','Analítica web','fa-chart-line',12],
-      ['marketing','Email Marketing','fa-envelope',13],
-      ['asignacion','Asignación automática','fa-shuffle',14],
-      ['consentimientos','Consentimientos','fa-file-signature',15],
-      ['espera','Lista de espera','fa-hourglass-half',16],
       ['integraciones','Integraciones','fa-plug',17],
       ['terapeutas','Usuarios','fa-user-md',18],
       ['reportes','Reportes','fa-chart-bar',19],
@@ -806,6 +691,19 @@ async function ensureSchema() {
         [clave, label, icon, orden]
       );
     }
+
+    // Retirar módulos: consentimientos, marketing, leads, asignacion, espera
+    const RETIRED_MENU_ITEMS = ['consentimientos', 'marketing', 'leads', 'asignacion', 'espera'];
+    const retiredPh = RETIRED_MENU_ITEMS.map(() => '?').join(',');
+    await conn.execute(
+      `DELETE a FROM crm_usuario_menu_accesos a
+       INNER JOIN crm_menu_items m ON m.id = a.menu_id
+       WHERE m.clave IN (${retiredPh})`,
+      RETIRED_MENU_ITEMS
+    );
+    await conn.execute(`DELETE FROM usuario_menu_permisos WHERE item IN (${retiredPh})`, RETIRED_MENU_ITEMS);
+    await conn.execute(`DELETE FROM menu_permisos WHERE item IN (${retiredPh})`, RETIRED_MENU_ITEMS);
+    await conn.execute(`DELETE FROM crm_menu_items WHERE clave IN (${retiredPh})`, RETIRED_MENU_ITEMS);
 
     console.log('[crm] Schema OK');
   } finally {

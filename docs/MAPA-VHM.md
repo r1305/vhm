@@ -80,7 +80,7 @@ Documento de referencia: qué hay en cada app (Site, CRM, OpenWA), quién la usa
 
 - Reportes — KPIs y gráficos con filtros de fecha
 - Analítica web — sesiones, clicks, conversiones
-- Integraciones — Meta, TikTok, Instagram, widget web, Google Meet
+- Integraciones — Google Meet, OpenWA, cron WhatsApp
 - Config OpenWA desde panel Integraciones
 - Permisos de menú por rol
 
@@ -118,12 +118,11 @@ Documento de referencia: qué hay en cada app (Site, CRM, OpenWA), quién la usa
 
 Estos módulos existieron en desarrollo pero **ya no aparecen en el menú activo**:
 
-- Leads
 - Historial clínico
-- Consentimientos
-- Lista de espera
-- Email marketing
-- Asignación automática
+
+### Retirados por completo (oct 2026)
+
+Leads (webhooks Meta/TikTok, `/api/leads/web`), Consentimientos, Lista de espera, Email marketing (newsletter y campañas) y Asignación automática: se eliminaron menú, permisos, rutas API y el widget `vhm-crm-widget.js` del site. Las tablas se eliminan manualmente con `crm/scripts/sql/drop-modulos-retirados.sql` (hacer backup antes).
 
 ---
 

@@ -98,7 +98,6 @@
       document.getElementById('reporteKpis').innerHTML = `
         <div class="kpi-card success"><div class="kpi-label">Citas realizadas</div><div class="kpi-value">${k.citas_realizadas||0}</div><div class="kpi-sub">de ${k.citas_periodo||0} programadas</div></div>
         <div class="kpi-card" style="border-left:3px solid var(--primary)"><div class="kpi-label">Tasa asistencia</div><div class="kpi-value">${k.tasa_asistencia!=null?k.tasa_asistencia+'%':'—'}</div><div class="kpi-sub">${k.no_shows||0} no-shows</div></div>
-        <div class="kpi-card warning"><div class="kpi-label">Leads captados</div><div class="kpi-value">${k.leads_periodo||0}</div><div class="kpi-sub">${k.leads_convertidos||0} convertidos (${k.tasa_conversion_leads!=null?k.tasa_conversion_leads+'%':'—'})</div></div>
         <div class="kpi-card"><div class="kpi-label">Pacientes nuevos</div><div class="kpi-value">${k.pacientes_nuevos||0}</div><div class="kpi-sub">${k.pacientes_activos||0} activos en total</div></div>
         <div class="kpi-card" style="border-left:3px solid var(--danger)"><div class="kpi-label">Cancelaciones</div><div class="kpi-value">${k.citas_canceladas||0}</div></div>`;
 

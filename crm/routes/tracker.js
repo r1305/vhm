@@ -45,7 +45,7 @@ router.post('/sesion', async (req, res) => {
     const {
       sesion_id, visitor_id, pagina, referrer,
       utm_source, utm_medium, utm_campaign, utm_content,
-      duracion_seg, scroll_max, lead_id,
+      duracion_seg, scroll_max,
     } = req.body || {};
 
     const ua  = req.headers['user-agent'] || '';
@@ -56,17 +56,16 @@ router.post('/sesion', async (req, res) => {
     const dispositivo = detectDevice(ua);
     const navegador   = detectBrowser(ua);
 
-    // Upsert — si ya existe la sesión, actualiza duración/scroll/lead
+    // Upsert — si ya existe la sesión, actualiza duración/scroll
     await pool.execute(`
       INSERT INTO web_sesiones
         (id, visitor_id, pagina, referrer, utm_source, utm_medium,
          utm_campaign, utm_content, dispositivo, navegador,
-         duracion_seg, scroll_max, lead_id)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+         duracion_seg, scroll_max)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
       ON DUPLICATE KEY UPDATE
         duracion_seg = COALESCE(VALUES(duracion_seg), duracion_seg),
-        scroll_max   = GREATEST(scroll_max, COALESCE(VALUES(scroll_max), 0)),
-        lead_id      = COALESCE(VALUES(lead_id), lead_id)
+        scroll_max   = GREATEST(scroll_max, COALESCE(VALUES(scroll_max), 0))
     `, [
       sid, vid,
       s(pagina), s(referrer),
@@ -75,7 +74,6 @@ router.post('/sesion', async (req, res) => {
       dispositivo, navegador,
       duracion_seg || null,
       scroll_max   || 0,
-      lead_id      || null,
     ]);
 
     res.json({ ok: true, sesion_id: sid, visitor_id: vid });

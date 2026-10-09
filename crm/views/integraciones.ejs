@@ -10,29 +10,6 @@
     </div>
   </div>
   <div class="card">
-    <div class="card-header"><span><i class="fa-brands fa-instagram" style="color:#E1306C"></i> Instagram / Meta Lead Ads</span><span class="badge badge-green" id="meta-status"><%= cfg.meta_verify_token ? 'Configurado' : 'Sin configurar' %></span></div>
-    <div class="card-body">
-      <div class="form-group"><label class="form-label">Verify Token</label><input class="form-control" id="meta-verify-token" value="<%= cfg.meta_verify_token || '' %>" placeholder="token_secreto_meta"></div>
-      <div class="form-group"><label class="form-label">Page Access Token</label><div class="pwd-wrapper"><input type="password" class="form-control" id="meta-access-token" value="<%= cfg.meta_access_token || '' %>" placeholder="EAAxxxxx..."><button type="button" class="pwd-toggle" onclick="togglePwd('meta-access-token',this)" tabindex="-1"><i class="fas fa-eye"></i></button></div></div>
-      <div class="form-group"><label class="form-label">App Secret</label><div class="pwd-wrapper"><input type="password" class="form-control" id="meta-app-secret" value="<%= cfg.meta_app_secret || '' %>" placeholder="App Secret"><button type="button" class="pwd-toggle" onclick="togglePwd('meta-app-secret',this)" tabindex="-1"><i class="fas fa-eye"></i></button></div></div>
-      <button class="btn btn-primary btn-sm" id="btnSaveMeta"><i class="fas fa-save"></i> Guardar</button>
-      <hr style="margin:14px 0;border-color:var(--border)">
-      <p style="font-size:12px;color:var(--text-muted)"><strong>Webhook URL:</strong></p>
-      <code style="font-size:11px;word-break:break-all;background:var(--bg);padding:6px 8px;border-radius:6px;display:block;margin-top:4px"><%= origin %><%= BASE %>/api/leads/webhook/meta</code>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-header"><span><i class="fa-brands fa-tiktok"></i> TikTok Lead Generation</span><span class="badge badge-green" id="tiktok-status"><%= cfg.tiktok_app_secret ? 'Configurado' : 'Sin configurar' %></span></div>
-    <div class="card-body">
-      <div class="form-group"><label class="form-label">App Secret</label><div class="pwd-wrapper"><input type="password" class="form-control" id="tiktok-app-secret" value="<%= cfg.tiktok_app_secret || '' %>" placeholder="App Secret TikTok"><button type="button" class="pwd-toggle" onclick="togglePwd('tiktok-app-secret',this)" tabindex="-1"><i class="fas fa-eye"></i></button></div></div>
-      <div class="form-group"><label class="form-label">Verify Token</label><input class="form-control" id="tiktok-verify-token" value="<%= cfg.tiktok_verify_token || '' %>" placeholder="token_secreto_tiktok"></div>
-      <button class="btn btn-primary btn-sm" id="btnSaveTiktok"><i class="fas fa-save"></i> Guardar</button>
-      <hr style="margin:14px 0;border-color:var(--border)">
-      <p style="font-size:12px;color:var(--text-muted)"><strong>Webhook URL:</strong></p>
-      <code style="font-size:11px;word-break:break-all;background:var(--bg);padding:6px 8px;border-radius:6px;display:block;margin-top:4px"><%= origin %><%= BASE %>/api/leads/webhook/tiktok</code>
-    </div>
-  </div>
-  <div class="card">
     <div class="card-header"><span><i class="fab fa-whatsapp" style="color:#25D366"></i> WhatsApp (openwa)</span><span class="badge <%= cfg.openwa_url ? 'badge-green' : 'badge-yellow' %>" id="openwa-status"><%= cfg.openwa_url ? 'Configurado' : 'Sin configurar' %></span></div>
     <div class="card-body">
       <div class="form-group"><label class="form-label">URL de openwa *</label><input class="form-control" id="openwa-url" value="<%= cfg.openwa_url || '' %>" placeholder="https://vhm.com.pe/openwa"></div>
@@ -69,13 +46,6 @@
         <button class="btn btn-outline btn-sm" id="btnBroadcast"><i class="fab fa-whatsapp" style="color:#25D366"></i> Enviar a todos</button>
         <button class="btn btn-outline btn-sm" id="btnEnviarManual"><i class="fas fa-paper-plane"></i> Enviar a número</button>
       </div>
-    </div>
-  </div>
-  <div class="card" style="grid-column:1/-1">
-    <div class="card-header"><span><i class="fas fa-globe" style="color:var(--primary)"></i> Widget para vhm.com.pe</span></div>
-    <div class="card-body">
-      <div class="form-group" style="max-width:400px"><label class="form-label">Texto del botón flotante</label><input class="form-control" id="widget-btn-texto" value="<%= cfg.widget_btn_texto || '' %>" placeholder="💜 Quiero una sesión gratuita"></div>
-      <button class="btn btn-primary btn-sm" id="btnSaveWidget"><i class="fas fa-save"></i> Guardar texto</button>
     </div>
   </div>
 </div>

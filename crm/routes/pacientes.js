@@ -332,21 +332,4 @@ router.delete('/:pid/sesiones/:sid', auth, authPaciente, async (req, res) => {
   } catch { res.status(500).json({ error: 'Error al eliminar' }); }
 });
 
-// Consentimiento informado
-router.post('/:pid/consentimiento', auth, authPaciente, async (req, res) => {
-  const ip = req.ip || '';
-  const { tipo = 'terapeutico', texto = 'Consentimiento informado firmado digitalmente.' } = req.body || {};
-  try {
-    await pool.execute(
-      'UPDATE pacientes SET consentimiento=1, consentimiento_at=NOW() WHERE id=?', [req.pid]
-    );
-    await pool.execute(
-      `INSERT INTO consentimientos (paciente_id, tipo, texto, firmado, firmado_at, ip_firma)
-       VALUES (?,?,?,1,NOW(),?)`,
-      [req.pid, t(tipo, 80), t(texto, 2000), ip]
-    );
-    res.json({ ok: true });
-  } catch { res.status(500).json({ error: 'Error al registrar consentimiento' }); }
-});
-
 module.exports = router;
