@@ -5,6 +5,7 @@ const { sendRecordatorioCita } = require('../lib/mailer');
 const { createMeetLink, isConnected } = require('../lib/googleMeet');
 const { getActivePacientePaquete } = require('../lib/paquetesPaciente');
 const googleCal = require('../lib/googleCalendar');
+const { normHora, sumarHora, fechaValida, bloquearFranja } = require('../lib/reservaCita');
 
 const router = Router();
 const t = (v, max = 255) => v == null ? null : String(v).trim().slice(0, max) || null;
@@ -129,16 +130,23 @@ router.post('/agendar', async (req, res) => {
   if (!nombre || !terapeuta_id || !fecha)
     return res.status(400).json({ error: 'Datos incompletos' });
   const terapeutaId = pid(terapeuta_id);
-  const conn = await pool.getConnection();
+  const fechaVal = t(fecha, 10);
+  const { hora_inicio, hora_fin } = req.body;
+  const horaInicio = hora_inicio ? normHora(hora_inicio) : '17:00:00';
+  const horaFin = hora_fin ? normHora(hora_fin) : (horaInicio && sumarHora(horaInicio));
+  if (!terapeutaId) return res.status(400).json({ error: 'Terapeuta inválido' });
+  if (!horaInicio) return res.status(400).json({ error: 'Hora inválida' });
+  if (!fechaValida(fechaVal))
+    return res.status(400).json({ error: 'Fecha inválida' });
+  if (!horaFin || horaFin <= horaInicio)
+    return res.status(400).json({ error: 'Horario inválido' });
+  if (!['presencial', 'videollamada', 'telefono'].includes(modalidad))
+    return res.status(400).json({ error: 'Modalidad inválida' });
+  let conn;
   try {
+    conn = await pool.getConnection();
     await conn.beginTransaction();
-    // TOCTOU: verificar disponibilidad con lock para evitar doble reserva
-    try {
-      const [slots] = await conn.execute(
-        'SELECT id FROM disponibilidad WHERE terapeuta_id=? AND activo=1 FOR UPDATE',
-        [terapeutaId]
-      );
-    } catch (_) {}
+    await bloquearFranja(conn, { terapeutaId, fecha: fechaVal, horaInicio, horaFin });
     // Crear o encontrar paciente
     let pacienteId;
     if (email) {
@@ -154,9 +162,9 @@ router.post('/agendar', async (req, res) => {
       pacienteId = r.insertId;
     }
     const [rc] = await conn.execute(
-      `INSERT INTO citas (paciente_id,terapeuta_id,fecha,modalidad,tipo)
-       VALUES (?,?,?,?,'primera_vez')`,
-      [pacienteId, terapeutaId, fecha, modalidad]
+      `INSERT INTO citas (paciente_id,terapeuta_id,fecha,hora_inicio,hora_fin,modalidad,tipo)
+       VALUES (?,?,?,?,?,?,'primera_vez')`,
+      [pacienteId, terapeutaId, fechaVal, horaInicio, horaFin, modalidad]
     );
     // Si el paciente es prospecto, pasa a confirmado
     await conn.execute(
@@ -166,10 +174,12 @@ router.post('/agendar', async (req, res) => {
     await conn.commit();
     res.status(201).json({ ok: true, cita_id: rc.insertId, paciente_id: pacienteId });
   } catch (err) {
-    try { await conn.rollback(); } catch (_) {}
-    res.status(500).json({ error: err.message || 'Error al agendar' });
+    if (conn) { try { await conn.rollback(); } catch (_) {} }
+    if (err.publico) return res.status(err.status).json({ error: err.message });
+    console.error('[citas/agendar] terapeuta_id=%s fecha=%s hora=%s:', terapeutaId, fechaVal, horaInicio, err);
+    res.status(500).json({ error: 'No se pudo agendar la cita. Inténtalo nuevamente.' });
   } finally {
-    conn.release();
+    if (conn) conn.release();
   }
 });
 

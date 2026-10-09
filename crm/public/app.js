@@ -18,14 +18,6 @@
     lista_espera: { label: 'Espera',       css: 'badge-purple' },
   };
 
-  const ESTADO_LEAD = {
-    nuevo:      { label: 'Nuevo',      css: 'badge-purple' },
-    contactado: { label: 'Contactado', css: 'badge-yellow' },
-    agendado:   { label: 'Agendado',   css: 'badge-blue'   },
-    convertido: { label: 'Convertido', css: 'badge-green'  },
-    descartado: { label: 'Descartado', css: 'badge-gray'   },
-  };
-
   const FUENTE_ICON = {
     instagram: 'fa-brands fa-instagram',
     tiktok:    'fa-brands fa-tiktok',
@@ -331,7 +323,7 @@
     fmtMoney, badge, fullName,
     openModal, closeModal, showLoader, hideLoader,
     confirmDialog, promptDialog,
-    ESTADO_PACIENTE, ESTADO_LEAD, FUENTE_ICON, ESTADO_CITA,
+    ESTADO_PACIENTE, FUENTE_ICON, ESTADO_CITA,
     estadoCitaOptionsHtml, estadoCitaSelectEntries,
   };
   window.showCrmLoader = showLoader;

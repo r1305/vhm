@@ -3,6 +3,7 @@ const pool = require('../lib/db');
 const { createMeetLink, isConnected } = require('../lib/googleMeet');
 const { evaluateBooking } = require('../lib/paquetesPaciente');
 const googleCal = require('../lib/googleCalendar');
+const { normHora, sumarHora, fechaValida, bloquearFranja } = require('../lib/reservaCita');
 const router = Router();
 
 const t   = (v, max=255) => v == null ? null : String(v).trim().slice(0,max) || null;
@@ -181,34 +182,35 @@ router.get('/:username/slots', async (req, res) => {
 
 // POST /api/publico/:username/agendar
 router.post('/:username/agendar', async (req, res) => {
+  let conn;
+  let ter;
+  const { nombre, apellido, email, telefono, fecha, hora_inicio, motivo, modalidad } = req.body || {};
+  const fechaVal = t(fecha, 10);
+  const horaInicio = normHora(hora_inicio);
   try {
-    const [[ter]] = await pool.execute(
+    [[ter]] = await pool.execute(
       'SELECT id, presencial_habilitado FROM terapeutas WHERE username=? AND activo=1',
       [req.params.username]
     );
     if (!ter) return res.status(404).json({ error: 'Terapeuta no encontrado' });
 
-    const { nombre, apellido, email, telefono, fecha, hora_inicio, motivo, modalidad } = req.body || {};
     if (!nombre || !fecha || !hora_inicio) return res.status(400).json({ error: 'nombre, fecha y hora_inicio requeridos' });
+    if (!fechaValida(fechaVal)) return res.status(400).json({ error: 'Fecha inválida' });
+    if (!horaInicio) return res.status(400).json({ error: 'Hora inválida' });
+    const horaFin = sumarHora(horaInicio);
+    if (!horaFin) return res.status(400).json({ error: 'Horario inválido' });
     const presencialOk = !!ter.presencial_habilitado;
     let modalidadVal = ['presencial', 'videollamada', 'telefono'].includes(modalidad) ? modalidad : 'videollamada';
     if (modalidadVal === 'presencial' && !presencialOk) {
       return res.status(400).json({ error: 'Este terapeuta no ofrece atención presencial' });
     }
 
-    // Verificar que el slot sigue libre (BD + Google Calendar)
-    const [[ocupado]] = await pool.execute(
-      `SELECT id FROM citas WHERE terapeuta_id=? AND fecha=? AND hora_inicio=? AND estado NOT IN ('cancelada')`,
-      [ter.id, fecha, hora_inicio + ':00']
-    );
-    if (ocupado) return res.status(409).json({ error: 'Este horario ya fue tomado, elige otro' });
-
     // Validar contra Google Calendar
     try {
       if (await googleCal.isConnected(ter.id)) {
-        const slotIni = toMin(hora_inicio);
-        const slotFin = slotIni + 60;
-        const busy = await googleCal.getBusySlots(ter.id, fecha, fecha);
+        const slotIni = toMin(horaInicio);
+        const slotFin = toMin(horaFin);
+        const busy = await googleCal.getBusySlots(ter.id, fechaVal, fechaVal);
         const bloqueado = busy.some(b => {
           const bIni = limaMin(new Date(b.start));
           const bFin = limaMin(new Date(b.end));
@@ -217,10 +219,6 @@ router.post('/:username/agendar', async (req, res) => {
         if (bloqueado) return res.status(409).json({ error: 'Este horario no está disponible, elige otro' });
       }
     } catch (_) {}
-
-    // Calcular hora_fin (+1h)
-    const [hh, mm] = hora_inicio.split(':').map(Number);
-    const hora_fin = `${String(hh+1).padStart(2,'0')}:${String(mm).padStart(2,'0')}`;
 
     // Buscar paciente existente por email o teléfono
     let paciente = null;
@@ -253,9 +251,17 @@ router.post('/:username/agendar', async (req, res) => {
       }
       pacienteId = paciente.id;
       pacientePaqueteId = booking.paciente_paquete_id || null;
-    } else {
+    }
+
+    const tipoCita = paciente ? 'seguimiento' : 'primera_vez';
+
+    conn = await pool.getConnection();
+    await conn.beginTransaction();
+    await bloquearFranja(conn, { terapeutaId: ter.id, fecha: fechaVal, horaInicio, horaFin });
+
+    if (!pacienteId) {
       // Paciente nuevo — crear como prospecto asignado al terapeuta de la URL
-      const [r] = await pool.execute(
+      const [r] = await conn.execute(
         `INSERT INTO pacientes (nombre, apellido, email, telefono, fuente, estado, motivo_consulta, terapeuta_id)
          VALUES (?, ?, ?, ?, 'web', 'prospecto', ?, ?)`,
         [t(nombre,120), t(apellido,120), t(email,150), t(telefono,30), t(motivo,500), ter.id]
@@ -263,25 +269,38 @@ router.post('/:username/agendar', async (req, res) => {
       pacienteId = r.insertId;
     }
 
-    const tipoCita = paciente ? 'seguimiento' : 'primera_vez';
+    const [rc] = await conn.execute(
+      `INSERT INTO citas (paciente_id, terapeuta_id, fecha, hora_inicio, hora_fin, modalidad, tipo, estado, meet_link, paciente_paquete_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'pendiente', NULL, ?)`,
+      [pacienteId, ter.id, fechaVal, horaInicio, horaFin, modalidadVal, tipoCita, pacientePaqueteId]
+    );
+    await conn.commit();
+    conn.release();
+    conn = null;
 
-    // Generar Meet link si es videollamada
+    // Generar Meet link si es videollamada (fuera de la transacción)
     let meet_link = null;
     if (modalidadVal === 'videollamada' && await isConnected().catch(() => false)) {
       meet_link = await createMeetLink({
         titulo: `Sesión VHM — ${t(nombre,120)}`,
-        fecha, horaInicio: hora_inicio, horaFin: hora_fin,
+        fecha: fechaVal, horaInicio: horaInicio.slice(0, 5), horaFin: horaFin.slice(0, 5),
       }).catch(e => { console.error('[meet]', e.message); return null; });
+      if (meet_link) {
+        await pool.execute('UPDATE citas SET meet_link=? WHERE id=?', [meet_link, rc.insertId])
+          .catch(e => console.error('[publico/agendar] meet_link cita=%s:', rc.insertId, e));
+      }
     }
 
-    const [rc] = await pool.execute(
-      `INSERT INTO citas (paciente_id, terapeuta_id, fecha, hora_inicio, hora_fin, modalidad, tipo, estado, meet_link, paciente_paquete_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 'pendiente', ?, ?)`,
-      [pacienteId, ter.id, fecha, hora_inicio + ':00', hora_fin + ':00', modalidadVal, tipoCita, meet_link, pacientePaqueteId]
-    );
-
     res.status(201).json({ ok: true, cita_id: rc.insertId, meet_link });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) {
+    if (conn) { try { await conn.rollback(); } catch (_) {} }
+    if (err.publico) return res.status(err.status).json({ error: err.message });
+    console.error('[publico/agendar] username=%s terapeuta_id=%s fecha=%s hora=%s:',
+      req.params.username, ter?.id, fechaVal, horaInicio, err);
+    res.status(500).json({ error: 'No se pudo agendar la cita. Inténtalo nuevamente.' });
+  } finally {
+    if (conn) conn.release();
+  }
 });
 
 function isoDate(d) {
