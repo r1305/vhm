@@ -33,6 +33,8 @@ const ESTADO_CITA_CSS = {
   no_show:    'badge-gray',
 };
 
+const PACIENTE_ACTIVO = "p.estado = 'activo'";
+
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
                'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
@@ -400,6 +402,8 @@ router.get('/reporte-financiero', requireSession, requireAdmin, async (req, res)
         SELECT paciente_paquete_id, SUM(CASE WHEN pagado = 1 THEN monto ELSE 0 END) AS cobrado
         FROM paciente_paquete_cuotas GROUP BY paciente_paquete_id
       ) cc ON cc.paciente_paquete_id = pp.id`;
+    const joinPacienteActivo = `INNER JOIN pacientes p ON p.id = pp.paciente_id AND ${PACIENTE_ACTIVO}`;
+    const joinCuotaActivo = `INNER JOIN paciente_paquetes pp ON pp.id = c.paciente_paquete_id ${joinPacienteActivo}`;
     const desdeSeisMeses = `AND pp.fecha_inicio >= DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 5 MONTH), '%Y-%m-01')`;
     const cobroSeisMeses = `AND ${fechaCobro} >= DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 5 MONTH), '%Y-%m-01')`;
 
@@ -439,21 +443,21 @@ router.get('/reporte-financiero', requireSession, requireAdmin, async (req, res)
       [ ingresosPorPaquete ],
       [ ingresosPorTerapeuta ]
     ] = await Promise.all([
-      db.execute(`SELECT COALESCE(SUM(c.monto),0) AS ingreso_total FROM paciente_paquete_cuotas c WHERE c.pagado = 1 ${filterDate(fechaCobro)}`),
-      db.execute(`SELECT COALESCE(SUM(c.monto),0) AS ingreso_mes FROM paciente_paquete_cuotas c WHERE c.pagado = 1 AND DATE_FORMAT(${fechaCobro},'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')`),
-      db.execute(`SELECT COALESCE(SUM(c.monto),0) AS ingreso_mes_anterior FROM paciente_paquete_cuotas c WHERE c.pagado = 1 AND DATE_FORMAT(${fechaCobro},'%Y-%m') = DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 1 MONTH),'%Y-%m')`),
-      db.execute(`SELECT COALESCE(SUM(c.monto),0) AS deuda_pendiente FROM paciente_paquete_cuotas c INNER JOIN paciente_paquetes pp ON pp.id = c.paciente_paquete_id WHERE c.pagado = 0`),
-      db.execute(`SELECT COALESCE(AVG(${ppPrecioEff}),0) AS ticket_promedio FROM paciente_paquetes pp ${joinCatalogo}`),
-      db.execute(`SELECT COUNT(*) AS paquetes_vendidos FROM paciente_paquetes pp WHERE 1=1 ${filterDate('pp.fecha_inicio')}`),
-      db.execute(`SELECT COUNT(*) AS paquetes_mes FROM paciente_paquetes pp WHERE DATE_FORMAT(pp.fecha_inicio,'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')`),
-      db.execute(`SELECT COUNT(DISTINCT pp.id) AS pago_parcial_pendiente FROM paciente_paquetes pp INNER JOIN paciente_paquete_cuotas c ON c.paciente_paquete_id = pp.id WHERE pp.tipo_pago = 'parcial' AND c.pagado = 0`),
-      db.execute(`SELECT COUNT(*) AS total_cuotas, SUM(pagado) AS cuotas_pagadas FROM paciente_paquete_cuotas`),
-      db.execute(`SELECT DATE_FORMAT(pp.fecha_inicio,'%Y-%m') AS mes, COALESCE(SUM(${ppPrecioEff}),0) AS total FROM paciente_paquetes pp ${joinCatalogo} WHERE 1=1 ${filterDate('pp.fecha_inicio') || desdeSeisMeses} GROUP BY mes`),
-      db.execute(`SELECT DATE_FORMAT(${fechaCobro},'%Y-%m') AS mes, COALESCE(SUM(c.monto),0) AS total FROM paciente_paquete_cuotas c WHERE c.pagado = 1 ${filterDate(fechaCobro) || cobroSeisMeses} GROUP BY mes`),
+      db.execute(`SELECT COALESCE(SUM(c.monto),0) AS ingreso_total FROM paciente_paquete_cuotas c ${joinCuotaActivo} WHERE c.pagado = 1 ${filterDate(fechaCobro)}`),
+      db.execute(`SELECT COALESCE(SUM(c.monto),0) AS ingreso_mes FROM paciente_paquete_cuotas c ${joinCuotaActivo} WHERE c.pagado = 1 AND DATE_FORMAT(${fechaCobro},'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')`),
+      db.execute(`SELECT COALESCE(SUM(c.monto),0) AS ingreso_mes_anterior FROM paciente_paquete_cuotas c ${joinCuotaActivo} WHERE c.pagado = 1 AND DATE_FORMAT(${fechaCobro},'%Y-%m') = DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 1 MONTH),'%Y-%m')`),
+      db.execute(`SELECT COALESCE(SUM(c.monto),0) AS deuda_pendiente FROM paciente_paquete_cuotas c ${joinCuotaActivo} WHERE c.pagado = 0`),
+      db.execute(`SELECT COALESCE(AVG(${ppPrecioEff}),0) AS ticket_promedio FROM paciente_paquetes pp ${joinCatalogo} ${joinPacienteActivo}`),
+      db.execute(`SELECT COUNT(*) AS paquetes_vendidos FROM paciente_paquetes pp ${joinPacienteActivo} WHERE 1=1 ${filterDate('pp.fecha_inicio')}`),
+      db.execute(`SELECT COUNT(*) AS paquetes_mes FROM paciente_paquetes pp ${joinPacienteActivo} WHERE DATE_FORMAT(pp.fecha_inicio,'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')`),
+      db.execute(`SELECT COUNT(DISTINCT pp.id) AS pago_parcial_pendiente FROM paciente_paquetes pp INNER JOIN paciente_paquete_cuotas c ON c.paciente_paquete_id = pp.id ${joinPacienteActivo} WHERE pp.tipo_pago = 'parcial' AND c.pagado = 0`),
+      db.execute(`SELECT COUNT(*) AS total_cuotas, SUM(c.pagado) AS cuotas_pagadas FROM paciente_paquete_cuotas c ${joinCuotaActivo}`),
+      db.execute(`SELECT DATE_FORMAT(pp.fecha_inicio,'%Y-%m') AS mes, COALESCE(SUM(${ppPrecioEff}),0) AS total FROM paciente_paquetes pp ${joinCatalogo} ${joinPacienteActivo} WHERE 1=1 ${filterDate('pp.fecha_inicio') || desdeSeisMeses} GROUP BY mes`),
+      db.execute(`SELECT DATE_FORMAT(${fechaCobro},'%Y-%m') AS mes, COALESCE(SUM(c.monto),0) AS total FROM paciente_paquete_cuotas c ${joinCuotaActivo} WHERE c.pagado = 1 ${filterDate(fechaCobro) || cobroSeisMeses} GROUP BY mes`),
       // Las cuotas se agregan por paquete ANTES del join: si se unen fila a fila, el
       // precio del paquete se suma una vez por cuota y el "vendido" sale inflado.
-      db.execute(`SELECT pp.nombre, COUNT(*) AS veces_vendido, COALESCE(SUM(${ppPrecioEff}),0) AS ingreso_bruto, COALESCE(SUM(cc.cobrado),0) AS ingreso_cobrado FROM paciente_paquetes pp ${joinCatalogo} ${joinCobrado} WHERE 1=1 ${filterDate('pp.fecha_inicio')} GROUP BY pp.nombre ORDER BY ingreso_cobrado DESC LIMIT 10`),
-      db.execute(`SELECT t.nombre, t.apellido, COUNT(pp.id) AS paquetes, COALESCE(SUM(${ppPrecioEff}),0) AS ingreso_bruto, COALESCE(SUM(cc.cobrado),0) AS ingreso_cobrado FROM paciente_paquetes pp ${joinCatalogo} ${joinCobrado} INNER JOIN pacientes p ON p.id = pp.paciente_id LEFT JOIN terapeutas t ON t.id = p.terapeuta_id WHERE 1=1 ${filterDate('pp.fecha_inicio')} GROUP BY t.id, t.nombre, t.apellido ORDER BY ingreso_cobrado DESC`)
+      db.execute(`SELECT pp.nombre, COUNT(*) AS veces_vendido, COALESCE(SUM(${ppPrecioEff}),0) AS ingreso_bruto, COALESCE(SUM(cc.cobrado),0) AS ingreso_cobrado FROM paciente_paquetes pp ${joinCatalogo} ${joinCobrado} ${joinPacienteActivo} WHERE 1=1 ${filterDate('pp.fecha_inicio')} GROUP BY pp.nombre ORDER BY ingreso_cobrado DESC LIMIT 10`),
+      db.execute(`SELECT t.nombre, t.apellido, COUNT(pp.id) AS paquetes, COALESCE(SUM(${ppPrecioEff}),0) AS ingreso_bruto, COALESCE(SUM(cc.cobrado),0) AS ingreso_cobrado FROM paciente_paquetes pp ${joinCatalogo} ${joinCobrado} ${joinPacienteActivo} LEFT JOIN terapeutas t ON t.id = p.terapeuta_id WHERE 1=1 ${filterDate('pp.fecha_inicio')} GROUP BY t.id, t.nombre, t.apellido ORDER BY ingreso_cobrado DESC`)
     ]);
 
     const vendidoMap = Object.fromEntries(vendidosPorMes.map(r => [r.mes, Number(r.total)]));
@@ -503,6 +507,7 @@ router.get('/reporte-financiero/detalles', requireSession, requireAdmin, async (
       ` AND ${col} BETWEEN ${db.escape(desde + ' 00:00:00')} AND ${db.escape(hasta + ' 23:59:59')}`;
     const ppPrecioEff = 'COALESCE(NULLIF(pp.precio, 0), pc.precio, 0)';
     const joinCatalogo = 'LEFT JOIN paquetes_catalogo pc ON pc.id = pp.paquete_catalogo_id';
+    const joinPacienteActivo = `INNER JOIN pacientes p ON p.id = pp.paciente_id AND ${PACIENTE_ACTIVO}`;
     const where = `WHERE 1=1 ${filterDate('pp.fecha_inicio')}`;
 
     const pageSize = 25;
@@ -517,6 +522,7 @@ router.get('/reporte-financiero/detalles', requireSession, requireAdmin, async (
                COALESCE(SUM(CASE WHEN c.pagado = 1 THEN c.monto ELSE 0 END),0) AS cobrado
         FROM paciente_paquetes pp
         ${joinCatalogo}
+        ${joinPacienteActivo}
         LEFT JOIN paciente_paquete_cuotas c ON c.paciente_paquete_id = pp.id
         ${where}
         GROUP BY pp.id
@@ -533,15 +539,15 @@ router.get('/reporte-financiero/detalles', requireSession, requireAdmin, async (
           COALESCE(SUM(CASE WHEN c.pagado = 1 THEN c.monto ELSE 0 END),0) AS cobrado
           FROM paciente_paquetes pp
           ${joinCatalogo}
-          INNER JOIN pacientes p ON p.id = pp.paciente_id
+          ${joinPacienteActivo}
           LEFT JOIN paciente_paquete_cuotas c ON c.paciente_paquete_id = pp.id
           ${where}
           GROUP BY pp.id, p.id
           ORDER BY pp.fecha_inicio DESC, pp.created_at DESC
           LIMIT ${pageSize} OFFSET ${(paginaAjustada - 1) * pageSize}`
       ),
-      db.execute(`SELECT p.nombre, p.apellido, p.telefono, pp.nombre AS paquete_nombre, c.numero AS cuota_num, c.monto, c.fecha_pago FROM paciente_paquete_cuotas c INNER JOIN paciente_paquetes pp ON pp.id = c.paciente_paquete_id INNER JOIN pacientes p ON p.id = pp.paciente_id WHERE c.pagado = 0 AND c.fecha_pago < CURDATE() ORDER BY c.fecha_pago ASC LIMIT 20`),
-      db.execute(`SELECT p.nombre, p.apellido, p.telefono, pp.nombre AS paquete_nombre, c.numero AS cuota_num, c.monto, c.fecha_pago FROM paciente_paquete_cuotas c INNER JOIN paciente_paquetes pp ON pp.id = c.paciente_paquete_id INNER JOIN pacientes p ON p.id = pp.paciente_id WHERE c.pagado = 0 AND c.fecha_pago BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 14 DAY) ORDER BY c.fecha_pago ASC LIMIT 20`)
+      db.execute(`SELECT p.nombre, p.apellido, p.telefono, pp.nombre AS paquete_nombre, c.numero AS cuota_num, c.monto, c.fecha_pago FROM paciente_paquete_cuotas c INNER JOIN paciente_paquetes pp ON pp.id = c.paciente_paquete_id ${joinPacienteActivo} WHERE c.pagado = 0 AND c.fecha_pago < CURDATE() ORDER BY c.fecha_pago ASC LIMIT 20`),
+      db.execute(`SELECT p.nombre, p.apellido, p.telefono, pp.nombre AS paquete_nombre, c.numero AS cuota_num, c.monto, c.fecha_pago FROM paciente_paquete_cuotas c INNER JOIN paciente_paquetes pp ON pp.id = c.paciente_paquete_id ${joinPacienteActivo} WHERE c.pagado = 0 AND c.fecha_pago BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 14 DAY) ORDER BY c.fecha_pago ASC LIMIT 20`)
     ]);
 
     const fmtFechaTexto = (s) => `${s.slice(8, 10)}/${s.slice(5, 7)}/${s.slice(0, 4)}`;
