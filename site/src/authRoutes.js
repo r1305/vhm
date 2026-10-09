@@ -33,12 +33,17 @@ function resetAttempts(ip) {
 }
 
 // Limpiar entradas expiradas cada 30 min
-setInterval(() => {
+const loginAttemptsCleanup = setInterval(() => {
   const now = Date.now();
   for (const [ip, record] of loginAttempts) {
     if (now - record.start > WINDOW_MS) loginAttempts.delete(ip);
   }
-}, 30 * 60 * 1000).unref();
+}, 30 * 60 * 1000);
+loginAttemptsCleanup.unref();
+
+function stopLoginAttemptsCleanup() { clearInterval(loginAttemptsCleanup); }
+process.on('SIGTERM', stopLoginAttemptsCleanup);
+process.on('SIGINT', stopLoginAttemptsCleanup);
 
 router.post('/login', async (req, res) => {
   try {

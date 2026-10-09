@@ -114,10 +114,15 @@ function recordAttempt(key) {
   else r.count++;
 }
 function resetAttempts(key) { loginAttempts.delete(key); }
-setInterval(() => {
+const loginAttemptsCleanup = setInterval(() => {
   const now = Date.now();
   for (const [k, r] of loginAttempts) if (now - r.start > WINDOW_MS) loginAttempts.delete(k);
-}, 30 * 60 * 1000).unref();
+}, 30 * 60 * 1000);
+loginAttemptsCleanup.unref();
+
+function stopLoginAttemptsCleanup() { clearInterval(loginAttemptsCleanup); }
+process.on('SIGTERM', stopLoginAttemptsCleanup);
+process.on('SIGINT', stopLoginAttemptsCleanup);
 
 function signToken(user) {
   return jwt.sign({ id: user.id, email: user.email, tribu: true }, TRIBU_JWT_SECRET, { expiresIn: '7d' });

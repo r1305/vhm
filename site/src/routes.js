@@ -19,12 +19,17 @@ function rateLimit(key, maxRequests, windowMs) {
   entry.count++;
   return entry.count <= maxRequests;
 }
-setInterval(() => {
+const rateLimitCleanup = setInterval(() => {
   const now = Date.now();
   for (const [key, entry] of rateLimitMap) {
     if (now - entry.start > 15 * 60 * 1000) rateLimitMap.delete(key);
   }
-}, 5 * 60 * 1000).unref();
+}, 5 * 60 * 1000);
+rateLimitCleanup.unref();
+
+function stopRateLimitCleanup() { clearInterval(rateLimitCleanup); }
+process.on('SIGTERM', stopRateLimitCleanup);
+process.on('SIGINT', stopRateLimitCleanup);
 
 function generarNumeroReclamo() {
   const f = new Date();

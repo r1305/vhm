@@ -17,6 +17,11 @@ const pool = mysql.createPool({
   keepAliveInitialDelay: 10000,
 });
 
+const LIMA_OFFSET = '-05:00';
+pool.on('connection', (conn) => {
+  conn.query('SET time_zone = ?', [LIMA_OFFSET]);
+});
+
 process.on('SIGTERM', () => pool.end());
 process.on('SIGINT', () => pool.end());
 

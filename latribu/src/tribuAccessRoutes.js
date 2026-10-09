@@ -9,8 +9,15 @@ function generarPassword() {
   return crypto.randomBytes(4).toString('hex').toUpperCase();
 }
 
-async function renovarPassword() {
+async function renovarPassword({ soloSiVencida = false } = {}) {
   const nueva = generarPassword();
+  if (soloSiVencida) {
+    const [result] = await pool.execute(
+      'UPDATE tribu_access SET password = ?, fecha_renovacion = NOW() WHERE id = 1 AND (fecha_renovacion IS NULL OR fecha_renovacion < NOW() - INTERVAL 1 HOUR)',
+      [nueva]
+    );
+    return (result?.affectedRows || 0) >= 1 ? nueva : null;
+  }
   await pool.execute('UPDATE tribu_access SET password = ?, fecha_renovacion = NOW() WHERE id = 1', [nueva]);
   return nueva;
 }

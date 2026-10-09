@@ -31,4 +31,11 @@ function getPool() {
   return pool;
 }
 
-module.exports = { getPool, isConfigured };
+async function closePool() {
+  if (!pool) return;
+  const p = pool;
+  pool = null;
+  await p.end();
+}
+
+module.exports = { getPool, isConfigured, closePool };

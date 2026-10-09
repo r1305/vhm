@@ -19,7 +19,22 @@ try {
 } catch (_) {}
 
 const corsOrigin = process.env.CORS_ORIGIN;
-app.use(cors(corsOrigin ? { origin: corsOrigin.split(',').map(o => o.trim()) } : {}));
+app.use(cors({
+  origin: (origin, cb) => {
+    if (!origin) return cb(null, true);
+    try {
+      const u = new URL(origin);
+      if (u.hostname === 'localhost' || u.hostname === '127.0.0.1') return cb(null, true);
+      if (u.hostname.endsWith('.vhm.com.pe') || u.hostname === 'vhm.com.pe') return cb(null, true);
+    } catch (_) {}
+    if (corsOrigin) {
+      const list = corsOrigin.split(',').map(o => o.trim()).filter(Boolean);
+      if (list.includes(origin)) return cb(null, true);
+    }
+    cb(null, false);
+  },
+  credentials: true,
+}));
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(require('cookie-parser')());

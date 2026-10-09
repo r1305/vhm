@@ -6,6 +6,7 @@ const { newTrialChargeRef, trialDaysFromEnv } = require('../lib/tribuFunnel');
 const {
   getCulqiConfig,
   buildRenewExternalRef,
+  buildRenewalIdempotencyKey,
   buildChargeBody,
   createCulqiCharge,
   resolveChargeOutcome,
@@ -13,6 +14,85 @@ const {
   parseExternalRef,
 } = require('./tribuCulqi');
 const { recordCulqiTransaction } = require('./tribuCulqiTransactionLog');
+
+const RENOVACION_LOCK_NAME = 'tribu_renovaciones';
+const RENOVACION_CLAIM_MINUTES = 30;
+
+async function acquireRenovacionesLock(connection, waitSeconds = 2) {
+  try {
+    const [[row]] = await connection.execute(
+      'SELECT GET_LOCK(?, ?) AS obtenido',
+      [RENOVACION_LOCK_NAME, Number(waitSeconds) || 0]
+    );
+    const obtenido = row ? Number(row.obtenido) : null;
+    if (obtenido === 1) return true;
+    if (obtenido === 0) return false;
+    console.warn('[tribu-renovacion] GET_LOCK sin soporte, se continúa con el claim por suscripción');
+    return true;
+  } catch (err) {
+    console.warn('[tribu-renovacion] GET_LOCK no disponible:', err.message);
+    return true;
+  }
+}
+
+async function releaseRenovacionesLock(connection) {
+  if (!connection) return;
+  try {
+    await connection.execute('SELECT RELEASE_LOCK(?) AS liberado', [RENOVACION_LOCK_NAME]);
+  } catch (err) {
+    console.warn('[tribu-renovacion] RELEASE_LOCK no disponible:', err.message);
+  }
+}
+
+async function claimRenovacion(subId) {
+  const [result] = await pool.execute(
+    `UPDATE tribu_suscripciones
+        SET renovacion_intentos = renovacion_intentos + 1,
+            next_renovacion_intento = NOW() + INTERVAL ? MINUTE,
+            renovando = 1,
+            renovando_hasta = NOW() + INTERVAL ? MINUTE,
+            worker_pid = ?
+      WHERE id = ?
+        AND auto_renovacion = 1
+        AND activo = 1
+        AND fecha_fin <= CURDATE()
+        AND culqi_customer_id IS NOT NULL
+        AND culqi_card_id IS NOT NULL
+        AND (renovacion_intentos < 4 OR renovacion_intentos IS NULL)
+        AND (next_renovacion_intento IS NULL OR next_renovacion_intento <= NOW())
+        AND (renovando = 0 OR renovando IS NULL)
+      LIMIT 1`,
+    [RENOVACION_CLAIM_MINUTES, RENOVACION_CLAIM_MINUTES, process.pid, subId]
+  );
+  return (result?.affectedRows || 0) >= 1;
+}
+
+async function releaseRenovacionClaim(subId) {
+  try {
+    await pool.execute(
+      'UPDATE tribu_suscripciones SET renovando = 0, renovando_hasta = NULL, worker_pid = NULL WHERE id = ?',
+      [subId]
+    );
+  } catch (err) {
+    console.error('[tribu-renovacion] no se pudo liberar claim sub=' + subId, err.message);
+  }
+}
+
+async function limpiarClaimsObsoletos() {
+  try {
+    const [result] = await pool.execute(
+      `UPDATE tribu_suscripciones
+          SET renovando = 0, renovando_hasta = NULL, worker_pid = NULL
+        WHERE renovando = 1
+          AND (renovando_hasta IS NULL OR renovando_hasta <= NOW())`
+    );
+    if ((result?.affectedRows || 0) > 0) {
+      console.warn(`[tribu-renovacion] claims obsoletos liberados: ${result.affectedRows}`);
+    }
+  } catch (err) {
+    console.error('[tribu-renovacion] limpiar claims obsoletos', err.message);
+  }
+}
 
 async function paymentAlreadyProcessed(chargeId) {
   const [[row]] = await pool.execute(
@@ -145,13 +225,12 @@ async function markRenewalFailed(tribuSubId, errorMsg) {
     'SELECT renovacion_intentos FROM tribu_suscripciones WHERE id = ? LIMIT 1',
     [tribuSubId]
   );
-  const intentos = (row?.renovacion_intentos || 0) + 1;
+  const intentos = row?.renovacion_intentos || 0;
   const disableAuto = intentos >= 4;
 
   await pool.execute(
     `UPDATE tribu_suscripciones
-     SET renovacion_intentos = LEAST(renovacion_intentos + 1, 10),
-         next_renovacion_intento = DATE_ADD(NOW(), INTERVAL 1 DAY),
+     SET next_renovacion_intento = DATE_ADD(NOW(), INTERVAL 1 DAY),
          auto_renovacion = IF(?, 0, auto_renovacion),
          cancelada_at = IF(?, NOW(), cancelada_at)
      WHERE id = ?`,
@@ -235,7 +314,7 @@ async function procesarRenovacionSuscripcion(row, cfg) {
     description: `Renovación ${row.plan_nombre}`,
   });
 
-  const charge = await createCulqiCharge(cfg.secret_key, chargeBody);
+  const charge = await createCulqiCharge(cfg.secret_key, chargeBody, buildRenewalIdempotencyKey(row.id));
   const outcome = resolveChargeOutcome(charge);
 
   await recordCulqiTransaction(charge, {
@@ -255,47 +334,75 @@ async function procesarRenovacionSuscripcion(row, cfg) {
   return { id: row.id, ok: false, status: outcome.status, detail: outcome.status_detail };
 }
 
-async function runRenovacionesSuscripciones() {
-  let cfg;
+async function runRenovacionesSuscripciones(options = {}) {
+  const lockConnection = options.lockConnection || null;
+  let connection = lockConnection;
+  let connectionPropia = false;
+  let lockAdquirido = false;
+
   try {
-    cfg = await getCulqiConfig();
-  } catch {
-    return { ok: false, reason: 'culqi_inactivo', processed: 0, results: [] };
-  }
+    if (!connection) {
+      connection = await pool.getConnection();
+      connectionPropia = true;
+      lockAdquirido = await acquireRenovacionesLock(connection, 2);
+      if (!lockAdquirido) {
+        return { ok: false, reason: 'ya_en_ejecucion', processed: 0, results: [] };
+      }
+    } else {
+      lockAdquirido = true;
+    }
 
-  const [rows] = await pool.execute(
-    `SELECT ts.id, ts.tribu_user_id, ts.suscripcion_id,
-            ts.culqi_customer_id, ts.culqi_card_id, ts.culqi_card_brand,
-            ts.renovacion_intentos,
-            s.nombre AS plan_nombre, s.precio, s.vigencia_dias,
-            u.email, u.nombre, u.apellido, u.telefono,
-            tp.identification_type, tp.identification_number
-     FROM tribu_suscripciones ts
-     JOIN suscripciones s ON s.id = ts.suscripcion_id
-     JOIN tribu_users u ON u.id = ts.tribu_user_id
-     LEFT JOIN tribu_payer_profiles tp ON tp.tribu_user_id = ts.tribu_user_id
-     WHERE ts.auto_renovacion = 1
-       AND ts.activo = 1
-       AND ts.culqi_customer_id IS NOT NULL
-       AND ts.culqi_card_id IS NOT NULL
-       AND ts.fecha_fin <= CURDATE()
-       AND ts.renovacion_intentos < 4
-       AND (ts.next_renovacion_intento IS NULL OR ts.next_renovacion_intento <= NOW())
-     ORDER BY ts.fecha_fin ASC
-     LIMIT 20`
-  );
-
-  const results = [];
-  for (const row of rows) {
+    let cfg;
     try {
-      results.push(await procesarRenovacionSuscripcion(row, cfg));
-    } catch (err) {
-      await markRenewalFailed(row.id, err.message);
-      results.push({ id: row.id, ok: false, error: err.message });
+      cfg = await getCulqiConfig();
+    } catch {
+      return { ok: false, reason: 'culqi_inactivo', processed: 0, results: [] };
+    }
+
+    await limpiarClaimsObsoletos();
+
+    const [rows] = await pool.execute(
+      `SELECT ts.id, ts.tribu_user_id, ts.suscripcion_id,
+              ts.culqi_customer_id, ts.culqi_card_id, ts.culqi_card_brand,
+              ts.renovacion_intentos,
+              s.nombre AS plan_nombre, s.precio, s.vigencia_dias,
+              u.email, u.nombre, u.apellido, u.telefono,
+              tp.identification_type, tp.identification_number
+       FROM tribu_suscripciones ts
+       JOIN suscripciones s ON s.id = ts.suscripcion_id
+       JOIN tribu_users u ON u.id = ts.tribu_user_id
+       LEFT JOIN tribu_payer_profiles tp ON tp.tribu_user_id = ts.tribu_user_id
+       WHERE ts.auto_renovacion = 1
+         AND ts.activo = 1
+         AND ts.culqi_customer_id IS NOT NULL
+         AND ts.culqi_card_id IS NOT NULL
+         AND ts.fecha_fin <= CURDATE()
+         AND ts.renovacion_intentos < 4
+         AND (ts.next_renovacion_intento IS NULL OR ts.next_renovacion_intento <= NOW())
+       ORDER BY ts.fecha_fin ASC
+       LIMIT 20`
+    );
+
+    const results = [];
+    for (const row of rows) {
+      if (!(await claimRenovacion(row.id))) continue;
+      try {
+        results.push(await procesarRenovacionSuscripcion(row, cfg));
+      } catch (err) {
+        await markRenewalFailed(row.id, err.message);
+        results.push({ id: row.id, ok: false, error: err.message });
+      } finally {
+        await releaseRenovacionClaim(row.id);
+      }
+    }
+
+    return { ok: true, processed: results.length, results };
+  } finally {
+    if (connectionPropia) {
+      if (lockAdquirido) await releaseRenovacionesLock(connection);
+      try { connection.release(); } catch (_) {}
     }
   }
-
-  return { ok: true, processed: results.length, results };
 }
 
 module.exports = {
@@ -304,5 +411,9 @@ module.exports = {
   extendSubscriptionRenewal,
   applyApprovedCharge,
   runRenovacionesSuscripciones,
+  acquireRenovacionesLock,
+  releaseRenovacionesLock,
+  claimRenovacion,
+  releaseRenovacionClaim,
   isChargePaid,
 };
