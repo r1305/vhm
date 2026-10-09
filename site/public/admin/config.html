@@ -27,24 +27,6 @@
       border: 1px solid #fecaca;
       color: #b91c1c;
     }
-    .sus-planes-table { width: 100%; border-collapse: collapse; font-size: .9rem; }
-    .sus-planes-table thead tr { border-bottom: 1px solid var(--border-color); color: var(--text-muted); }
-    .sus-planes-table th { text-align: left; padding: 8px 4px; }
-    .sus-planes-table th:nth-child(2) { text-align: right; }
-    .sus-planes-table th:nth-child(3) { text-align: center; }
-    .sus-planes-table th:last-child { text-align: right; }
-    .sus-planes-table td { padding: 10px 4px; border-bottom: 1px solid var(--border-color); }
-    .sus-planes-table td:nth-child(2) { text-align: right; }
-    .sus-planes-table td:nth-child(3) { text-align: center; }
-    .sus-planes-table td:nth-child(4) { color: var(--text-muted); }
-    .sus-planes-table td:last-child { white-space: nowrap; text-align: right; }
-    .mp-token-wrap { position: relative; }
-    .mp-token-wrap input { padding-right: 42px; }
-    .mp-token-toggle {
-      position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
-      background: none; border: none; cursor: pointer; font-size: 1.1rem;
-      color: var(--text-muted); padding: 4px;
-    }
   </style>
 </head>
 <body>
@@ -62,8 +44,6 @@
       <button type="button" data-tab="whatsapp">💬 WhatsApp</button>
       <button type="button" data-tab="redes">🌐 Redes Sociales</button>
       <button type="button" data-tab="facebook">🔗 Facebook</button>
-      <button type="button" data-tab="suscripciones">💳 Suscripciones</button>
-      <button type="button" data-tab="culqi">💳 Culqi</button>
       <button type="button" data-tab="portada">🖼️ Portada</button>
     </div>
 
@@ -231,91 +211,6 @@
       </div>
     </div>
 
-    <!-- SUSCRIPCIONES -->
-    <div data-panel="suscripciones" style="display:none">
-      <div class="config-grid">
-        <div class="config-section">
-          <h3>💳 Planes de Suscripción</h3>
-          <div class="form-group" style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
-            <label style="margin:0;min-width:220px">Habilitar suscripciones (pagos)</label>
-            <label class="switch">
-              <input type="checkbox" id="sus-activo">
-              <span class="slider"></span>
-            </label>
-            <span style="font-size:.85rem;color:var(--text-muted)" id="sus-activo-label">🔴 Deshabilitado</span>
-          </div>
-          <div class="form-group" style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
-            <label style="margin:0;min-width:220px">Mostrar sección en la landing</label>
-            <label class="switch">
-              <input type="checkbox" id="sus-visible">
-              <span class="slider"></span>
-            </label>
-            <span style="font-size:.85rem;color:var(--text-muted)" id="sus-visible-label">🔴 Oculta</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-            <strong id="sus-planes-count">Planes (0)</strong>
-            <button type="button" class="btn btn-primary" id="btn-nuevo-plan">+ Agregar plan</button>
-          </div>
-          <div id="sus-planes-wrap"></div>
-          <div class="msg-box" id="sus-msg"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- CULQI -->
-    <div data-panel="culqi" style="display:none">
-      <div class="config-grid">
-        <div class="config-section">
-          <h3>💳 Integración con Culqi</h3>
-          <div class="form-group" style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
-            <label style="margin:0">Habilitar Culqi</label>
-            <label class="switch">
-              <input type="checkbox" id="culqi-activo">
-              <span class="slider"></span>
-            </label>
-            <span style="font-size:.85rem;color:var(--text-muted)" id="culqi-activo-label">🔴 Inactivo</span>
-          </div>
-          <div class="form-group">
-            <label for="culqi-modo">Modo</label>
-            <select id="culqi-modo">
-              <option value="sandbox">🧪 Sandbox (integración)</option>
-              <option value="produccion">🚀 Producción</option>
-            </select>
-            <div class="field-hint">Sandbox usa llaves pk_test_ / sk_test_. Producción usa pk_live_ / sk_live_.</div>
-          </div>
-          <div class="form-group">
-            <label for="culqi-public-key">Public Key</label>
-            <input type="text" id="culqi-public-key" placeholder="pk_test_xxxxxxxxxxxxxxxx">
-            <div class="field-hint">Llave pública del CulqiPanel. Se usa en Culqi Checkout en el frontend.</div>
-          </div>
-          <div class="form-group">
-            <label for="culqi-secret-key">Secret Key</label>
-            <div class="mp-token-wrap">
-              <input type="password" id="culqi-secret-key" placeholder="sk_test_xxxxxxxxxxxxxxxx">
-              <button type="button" class="mp-token-toggle" id="btn-culqi-key-toggle" title="Mostrar">👁️</button>
-            </div>
-            <div class="field-hint">Llave privada del CulqiPanel. Solo en el servidor; nunca en el frontend.</div>
-          </div>
-          <div style="font-size:.85rem;margin-top:8px;min-height:1.2em" id="culqi-credenciales-status"></div>
-          <div style="font-size:.8rem;color:var(--text-muted)" id="culqi-fecha"></div>
-          <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap">
-            <button type="button" class="btn btn-primary" id="btn-guardar-culqi">💾 Guardar configuración</button>
-          </div>
-          <div class="msg-box" id="culqi-msg"></div>
-          <div class="info-box" style="margin-top:20px">
-            <h4>ℹ️ ¿Cómo obtener las credenciales?</h4>
-            <p>1. Ingresa a <a href="https://integraciones.culqi.com/" target="_blank" rel="noopener noreferrer">CulqiPanel</a> (Integración o Producción).</p>
-            <p>2. Ve a <strong>Desarrollo → API Keys</strong> y copia <strong>Public Key</strong> y <strong>Secret Key</strong>.</p>
-            <p>3. La Tribu usa <strong>Culqi Checkout</strong> (token) + API de <strong>Cargos</strong> y <strong>Tarjetas</strong> para guardar medios de pago y autorenovación.</p>
-            <p>4. Configura el webhook en Culqi apuntando a <code id="culqi-webhook-url"></code> (evento <strong>charge.succeeded</strong>).</p>
-            <p>5. En el servidor define <code>SITE_URL</code>, <code>TRIBU_RENOVACION_CRON_SECRET</code> y opcionalmente <code>CULQI_WEBHOOK_SECRET</code>.</p>
-            <p>6. Programa un cron HTTP diario a <code>/api/tribu-pagos/cron-renovaciones?token=...</code> para renovaciones con tarjeta guardada.</p>
-            <p>7. Tarjeta de prueba: <code>4111 1111 1111 1111</code>, CVV <code>123</code>, vencimiento futuro.</p>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- PORTADA -->
     <div data-panel="portada" style="display:none">
       <div class="config-grid">
@@ -334,39 +229,6 @@
             <button type="button" class="btn btn-outline" id="btn-eliminar-portada" style="color:#dc2626;border-color:#dc2626">🗑️ Eliminar portada</button>
           </div>
           <div class="msg-box" id="portada-msg"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- MODAL SUSCRIPCIÓN -->
-    <div class="modal-overlay" id="modal-sus">
-      <div class="modal">
-        <div class="modal-header">
-          <h3 id="modal-sus-title">➕ Nuevo plan</h3>
-          <button type="button" class="modal-close" data-modal-close="modal-sus">✕</button>
-        </div>
-        <div class="modal-body">
-          <div class="form-group">
-            <label for="sus-nombre">Nombre</label>
-            <input type="text" id="sus-nombre" placeholder="Plan Base">
-          </div>
-          <div class="form-group">
-            <label for="sus-precio">Precio (S/)</label>
-            <input type="number" step="0.01" min="0" id="sus-precio" placeholder="39.90">
-          </div>
-          <div class="form-group">
-            <label for="sus-vigencia">Vigencia (días calendario)</label>
-            <input type="number" min="1" id="sus-vigencia" placeholder="30" value="30">
-            <div class="field-hint">Número de días calendario desde la fecha de suscripción</div>
-          </div>
-          <div class="form-group">
-            <label for="sus-descripcion">Descripción</label>
-            <input type="text" id="sus-descripcion" placeholder="Próximamente">
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-outline" data-modal-close="modal-sus">Cancelar</button>
-          <button type="button" class="btn btn-primary" id="btn-guardar-plan">💾 Guardar</button>
         </div>
       </div>
     </div>

@@ -3,18 +3,12 @@
   if (!ok) return;
 
   const tabsLoaded = {};
-  let susPlanes = [];
-  let susEditId = null;
   let guardandoEmail = false;
   let guardandoPixel = false;
   let guardandoWa = false;
   let guardandoRedes = false;
   let guardandoFb = false;
-  let guardandoSus = false;
-  let guardandoCulqi = false;
   let enviandoTest = false;
-  let culqiKeyVisible = false;
-  let culqiModoPrev = null;
 
   const el = {
     emailHost: document.getElementById('email-host'),
@@ -48,31 +42,6 @@
     fbFecha: document.getElementById('fb-fecha'),
     fbMsg: document.getElementById('fb-msg'),
     btnGuardarFb: document.getElementById('btn-guardar-fb'),
-    susVisible: document.getElementById('sus-visible'),
-    susVisibleLabel: document.getElementById('sus-visible-label'),
-    susActivo: document.getElementById('sus-activo'),
-    susActivoLabel: document.getElementById('sus-activo-label'),
-    susPlanesCount: document.getElementById('sus-planes-count'),
-    susPlanesWrap: document.getElementById('sus-planes-wrap'),
-    susMsg: document.getElementById('sus-msg'),
-    btnNuevoPlan: document.getElementById('btn-nuevo-plan'),
-    modalSusTitle: document.getElementById('modal-sus-title'),
-    susNombre: document.getElementById('sus-nombre'),
-    susPrecio: document.getElementById('sus-precio'),
-    susVigencia: document.getElementById('sus-vigencia'),
-    susDescripcion: document.getElementById('sus-descripcion'),
-    btnGuardarPlan: document.getElementById('btn-guardar-plan'),
-    culqiActivo: document.getElementById('culqi-activo'),
-    culqiActivoLabel: document.getElementById('culqi-activo-label'),
-    culqiModo: document.getElementById('culqi-modo'),
-    culqiPublicKey: document.getElementById('culqi-public-key'),
-    culqiSecretKey: document.getElementById('culqi-secret-key'),
-    culqiFecha: document.getElementById('culqi-fecha'),
-    culqiMsg: document.getElementById('culqi-msg'),
-    culqiCredencialesStatus: document.getElementById('culqi-credenciales-status'),
-    culqiWebhookUrl: document.getElementById('culqi-webhook-url'),
-    btnGuardarCulqi: document.getElementById('btn-guardar-culqi'),
-    btnCulqiKeyToggle: document.getElementById('btn-culqi-key-toggle'),
     testEmailDest: document.getElementById('test-email-dest'),
     testEmailMensaje: document.getElementById('test-email-mensaje'),
     btnEnviarTest: document.getElementById('btn-enviar-test'),
@@ -81,30 +50,6 @@
   function fmtFecha(d) {
     if (!d) return '';
     return 'Última actualización: ' + new Date(d).toLocaleString('es-PE');
-  }
-
-  function webhookUrl() {
-    const base = (window.__APP_BASE__ || '/site').replace(/\/$/, '');
-    return window.location.origin + base + '/api/tribu-pagos/webhook';
-  }
-
-  function updateSusVisibleLabel(checked) {
-    el.susVisibleLabel.textContent = checked ? '🟢 Visible' : '🔴 Oculta';
-  }
-
-  function updateSusActivoLabel(checked) {
-    el.susActivoLabel.textContent = checked ? '🟢 Habilitado' : '🔴 Deshabilitado';
-  }
-
-  function updateCulqiActivoLabel(checked) {
-    el.culqiActivoLabel.textContent = checked ? '🟢 Activo' : '🔴 Inactivo';
-  }
-
-  function setCulqiKeyVisible(visible) {
-    culqiKeyVisible = visible;
-    el.culqiSecretKey.type = visible ? 'text' : 'password';
-    el.btnCulqiKeyToggle.textContent = visible ? '🙈' : '👁️';
-    el.btnCulqiKeyToggle.title = visible ? 'Ocultar' : 'Mostrar';
   }
 
   /* ── EMAIL ── */
@@ -354,240 +299,6 @@
     }
   }
 
-  /* ── SUSCRIPCIONES ── */
-  function renderSusPlanes() {
-    el.susPlanesCount.textContent = 'Planes (' + susPlanes.length + ')';
-    if (!susPlanes.length) {
-      el.susPlanesWrap.innerHTML = '<p style="color:var(--text-muted);font-size:.9rem">No hay planes registrados.</p>';
-      return;
-    }
-    let rows = '';
-    susPlanes.forEach(function (p) {
-      const precio = Number(p.precio).toFixed(2);
-      const vigencia = p.vigencia_dias || 30;
-      rows +=
-        '<tr>' +
-          '<td>' + AdminApi.escapeHtml(p.nombre) + '</td>' +
-          '<td>S/ ' + precio + '</td>' +
-          '<td>' + vigencia + ' días</td>' +
-          '<td>' + AdminApi.escapeHtml(p.descripcion || '') + '</td>' +
-          '<td>' +
-            '<button type="button" class="btn btn-outline btn-xs" data-action="edit-plan" data-id="' + p.id + '" style="margin-right:6px">✏️</button>' +
-            '<button type="button" class="btn btn-outline btn-xs" data-action="del-plan" data-id="' + p.id + '" style="color:#e55">🗑️</button>' +
-          '</td>' +
-        '</tr>';
-    });
-    el.susPlanesWrap.innerHTML =
-      '<table class="sus-planes-table"><thead><tr>' +
-        '<th>Nombre</th><th>Precio</th><th>Vigencia</th><th>Descripción</th><th></th>' +
-      '</tr></thead><tbody>' + rows + '</tbody></table>';
-  }
-
-  async function cargarSuscripciones() {
-    try {
-      const resCfg = await AdminApi.apiFetch('/suscripciones/config', { headers: AdminApi.authHeaders() });
-      const resPlanes = await AdminApi.apiFetch('/suscripciones', { headers: AdminApi.authHeaders() });
-      const cfg = await resCfg.json();
-      const planes = await resPlanes.json();
-      el.susActivo.checked = !!cfg.activo;
-      updateSusActivoLabel(el.susActivo.checked);
-      el.susVisible.checked = !!cfg.visible;
-      updateSusVisibleLabel(el.susVisible.checked);
-      susPlanes = Array.isArray(planes) ? planes : [];
-      renderSusPlanes();
-    } catch {
-      AdminUtils.mostrarMsg(el.susMsg, 'Error al cargar suscripciones', false);
-    }
-  }
-
-  async function guardarConfigSus() {
-    try {
-      const res = await AdminApi.apiFetch('/suscripciones/config', {
-        method: 'PUT',
-        headers: AdminApi.authHeaders(),
-        body: JSON.stringify({ activo: el.susActivo.checked, visible: el.susVisible.checked }),
-      });
-      const d = await res.json();
-      AdminUtils.mostrarMsg(el.susMsg, res.ok ? d.message : d.error, res.ok);
-    } catch {
-      AdminUtils.mostrarMsg(el.susMsg, 'Error de conexión', false);
-    }
-  }
-
-  function abrirModalSus(plan) {
-    if (plan) {
-      susEditId = plan.id;
-      el.modalSusTitle.textContent = '✏️ Editar plan';
-      el.susNombre.value = plan.nombre || '';
-      el.susPrecio.value = plan.precio;
-      el.susDescripcion.value = plan.descripcion || '';
-      el.susVigencia.value = plan.vigencia_dias || 30;
-    } else {
-      susEditId = null;
-      el.modalSusTitle.textContent = '➕ Nuevo plan';
-      el.susNombre.value = '';
-      el.susPrecio.value = '';
-      el.susDescripcion.value = '';
-      el.susVigencia.value = '30';
-    }
-    AdminUtils.mostrarMsg(el.susMsg, '', true);
-    AdminUtils.showModal('modal-sus');
-  }
-
-  async function guardarPlan() {
-    const nombre = el.susNombre.value.trim();
-    const precio = el.susPrecio.value;
-    if (!nombre || precio === '') {
-      AdminUtils.mostrarMsg(el.susMsg, 'Nombre y precio son obligatorios', false);
-      return;
-    }
-    if (guardandoSus) return;
-    guardandoSus = true;
-    el.btnGuardarPlan.disabled = true;
-    el.btnGuardarPlan.textContent = 'Guardando...';
-    try {
-      const body = {
-        nombre: nombre,
-        precio: Number(precio),
-        descripcion: el.susDescripcion.value.trim(),
-        vigencia_dias: Number(el.susVigencia.value) || 30,
-      };
-      const url = susEditId ? '/suscripciones/' + susEditId : '/suscripciones';
-      const method = susEditId ? 'PUT' : 'POST';
-      const res = await AdminApi.apiFetch(url, {
-        method: method,
-        headers: AdminApi.authHeaders(),
-        body: JSON.stringify(body),
-      });
-      const d = await res.json();
-      if (res.ok) {
-        AdminUtils.hideModal('modal-sus');
-        await cargarSuscripciones();
-        toast(susEditId ? 'Plan actualizado' : 'Plan creado', 'success');
-      } else {
-        AdminUtils.mostrarMsg(el.susMsg, d.error || 'Error al guardar', false);
-      }
-    } catch {
-      AdminUtils.mostrarMsg(el.susMsg, 'Error de conexión', false);
-    } finally {
-      guardandoSus = false;
-      el.btnGuardarPlan.disabled = false;
-      el.btnGuardarPlan.textContent = '💾 Guardar';
-    }
-  }
-
-  async function eliminarPlan(id) {
-    if (!confirm('¿Eliminar este plan?')) return;
-    try {
-      const res = await AdminApi.apiFetch('/suscripciones/' + id, {
-        method: 'DELETE',
-        headers: AdminApi.authHeaders(),
-      });
-      if (res.ok) {
-        await cargarSuscripciones();
-        toast('Plan eliminado', 'success');
-      } else {
-        const d = await res.json();
-        toast(d.error || 'Error al eliminar', 'error');
-      }
-    } catch {
-      toast('Error de conexión', 'error');
-    }
-  }
-
-  function onSusPlanesClick(e) {
-    const btn = e.target.closest('[data-action]');
-    if (!btn) return;
-    const id = parseInt(btn.getAttribute('data-id'), 10);
-    const action = btn.getAttribute('data-action');
-    if (action === 'edit-plan') {
-      const plan = susPlanes.find(function (p) { return p.id === id; });
-      if (plan) abrirModalSus(plan);
-    } else if (action === 'del-plan') {
-      eliminarPlan(id);
-    }
-  }
-
-  function renderCulqiCredencialesStatus(d) {
-    if (!el.culqiCredencialesStatus) return;
-    const parts = [];
-    if (d.credenciales_ok === true) {
-      parts.push('✅ Credenciales válidas para modo ' + (d.modo === 'sandbox' ? 'Sandbox (integración)' : 'Producción'));
-      el.culqiCredencialesStatus.style.color = '#15803d';
-    } else if (d.credenciales_ok === false) {
-      parts.push('⚠️ ' + (d.credenciales_error || 'Las credenciales no coinciden con el modo seleccionado'));
-      el.culqiCredencialesStatus.style.color = '#b91c1c';
-    } else {
-      el.culqiCredencialesStatus.textContent = '';
-      return;
-    }
-    if (d.culqi_live_mode === true) {
-      parts.push('Llaves live (producción)');
-    } else if (d.culqi_live_mode === false || d.is_test) {
-      parts.push('Llaves test (integración)');
-    }
-    if (d.secret_key_suffix) {
-      parts.push('Secret termina en …' + d.secret_key_suffix);
-    }
-    el.culqiCredencialesStatus.textContent = parts.join(' · ');
-  }
-
-  /* ── CULQI ── */
-  async function cargarCulqi() {
-    el.culqiWebhookUrl.textContent = webhookUrl();
-    try {
-      const res = await AdminApi.apiFetch('/config-culqi', { headers: AdminApi.authHeaders() });
-      const d = await res.json();
-      el.culqiActivo.checked = !!d.activo;
-      updateCulqiActivoLabel(el.culqiActivo.checked);
-      el.culqiModo.value = d.modo || 'sandbox';
-      culqiModoPrev = el.culqiModo.value;
-      el.culqiPublicKey.value = d.public_key || '';
-      el.culqiSecretKey.value = d.secret_key || '';
-      el.culqiFecha.textContent = d.fecha_actualizacion ? fmtFecha(d.fecha_actualizacion) : '';
-      renderCulqiCredencialesStatus(d);
-    } catch {
-      AdminUtils.mostrarMsg(el.culqiMsg, 'Error al cargar configuración', false);
-    }
-  }
-
-  async function guardarCulqi() {
-    if (guardandoCulqi) return;
-    if (!el.culqiPublicKey.value.trim() || !el.culqiSecretKey.value.trim()) {
-      AdminUtils.mostrarMsg(
-        el.culqiMsg,
-        'Public Key y Secret Key son obligatorios. En sandbox usa pk_test_ / sk_test_ del CulqiPanel.',
-        false
-      );
-      return;
-    }
-    guardandoCulqi = true;
-    el.btnGuardarCulqi.disabled = true;
-    el.btnGuardarCulqi.textContent = 'Guardando...';
-    try {
-      const body = {
-        activo: el.culqiActivo.checked,
-        modo: el.culqiModo.value,
-        public_key: el.culqiPublicKey.value,
-        secret_key: el.culqiSecretKey.value,
-      };
-      const res = await AdminApi.apiFetch('/config-culqi', {
-        method: 'PUT',
-        headers: AdminApi.authHeaders(),
-        body: JSON.stringify(body),
-      });
-      const d = await res.json();
-      AdminUtils.mostrarMsg(el.culqiMsg, res.ok ? d.message : d.error, res.ok);
-      if (res.ok) await cargarCulqi();
-    } catch {
-      AdminUtils.mostrarMsg(el.culqiMsg, 'Error de conexión', false);
-    } finally {
-      guardandoCulqi = false;
-      el.btnGuardarCulqi.disabled = false;
-      el.btnGuardarCulqi.textContent = '💾 Guardar configuración';
-    }
-  }
-
   /* ── PORTADA ── */
   async function cargarPortada() {
     try {
@@ -655,8 +366,6 @@
     else if (tab === 'whatsapp') cargarWhatsapp();
     else if (tab === 'redes') cargarRedes();
     else if (tab === 'facebook') cargarFacebook();
-    else if (tab === 'suscripciones') cargarSuscripciones();
-    else if (tab === 'culqi') cargarCulqi();
     else if (tab === 'portada') cargarPortada();
   };
 
@@ -671,41 +380,6 @@
     el.btnGuardarWa.addEventListener('click', guardarWhatsapp);
     el.btnGuardarRedes.addEventListener('click', guardarRedes);
     el.btnGuardarFb.addEventListener('click', guardarFacebook);
-
-    el.susActivo.addEventListener('change', function () {
-      updateSusActivoLabel(this.checked);
-      guardarConfigSus();
-    });
-    el.susVisible.addEventListener('change', function () {
-      updateSusVisibleLabel(this.checked);
-      guardarConfigSus();
-    });
-    el.btnNuevoPlan.addEventListener('click', function () { abrirModalSus(null); });
-    el.btnGuardarPlan.addEventListener('click', guardarPlan);
-    el.susPlanesWrap.addEventListener('click', onSusPlanesClick);
-
-    el.culqiActivo.addEventListener('change', function () {
-      updateCulqiActivoLabel(this.checked);
-    });
-    el.culqiModo.addEventListener('change', function () {
-      if (culqiModoPrev !== null && culqiModoPrev !== this.value) {
-        el.culqiPublicKey.value = '';
-        el.culqiSecretKey.value = '';
-        AdminUtils.mostrarMsg(
-          el.culqiMsg,
-          this.value === 'sandbox'
-            ? 'Pega Public Key y Secret Key de Integración (pk_test_ / sk_test_).'
-            : 'Pega Public Key y Secret Key de Producción (pk_live_ / sk_live_).',
-          false
-        );
-        if (el.culqiCredencialesStatus) el.culqiCredencialesStatus.textContent = '';
-      }
-      culqiModoPrev = this.value;
-    });
-    el.btnGuardarCulqi.addEventListener('click', guardarCulqi);
-    el.btnCulqiKeyToggle.addEventListener('click', function () {
-      setCulqiKeyVisible(!culqiKeyVisible);
-    });
   }
 
   AdminUtils.bindTabs('.sub-tabs');

@@ -23,13 +23,11 @@ APP_MOUNT_PATH=/site
 SITE_URL=https://vhm.com.pe/site
 CORS_ORIGIN=https://vhm.com.pe
 JWT_SECRET=<secret fuerte>
-CULQI_WEBHOOK_SECRET=   # opcional, firma webhook Culqi
-TRIBU_RENOVACION_CRON_SECRET=<generar con node -e "...">
 ```
 
 4. **Restart** la aplicación Node
 
-5. La primera vez que arranca, `ensureSchema.js` crea/actualiza tablas (incl. La Tribu y Culqi)
+5. La primera vez que arranca, `ensureSchema.js` crea/actualiza tablas del sitio (accesos, columnas de testimonios y reclamos)
 
 ### Flujo habitual (cualquier cambio)
 
@@ -107,21 +105,21 @@ Ver guía completa: `site/DEPLOY.md`
 |---------|-----|
 | Login | `/site/admin/login.html` |
 | Reclamos | `/site/admin/reclamos.html` |
-| La Tribu | `/site/admin/videos.html` |
-| Usuarios Tribu | `/site/admin/tribu-users.html` |
 | Ajustes (Super Admin) | `/site/admin/config.html` |
 
 Archivos en `public/admin/` — editas HTML/JS/CSS y subes directo.
 
 ## La Tribu + Culqi
 
+La Tribu, sus suscripciones y los pagos Culqi viven en la app `latribu/` (`/site/latribu` solo redirige a `https://vhm.com.pe/latribu`).
+
 | Recurso | URL |
 |---------|-----|
-| La Tribu | `/site/latribu` |
-| Webhook Culqi | `https://vhm.com.pe/site/api/tribu-pagos/webhook` |
-| Cron renovaciones | `https://vhm.com.pe/site/api/tribu-pagos/cron-renovaciones?token=...` |
+| La Tribu | `https://vhm.com.pe/latribu` |
+| Webhook Culqi | `https://vhm.com.pe/latribu/api/tribu-pagos/webhook` |
+| Cron renovaciones | `https://vhm.com.pe/latribu/api/tribu-pagos/cron-renovaciones?token=...` |
 
-En el panel admin → **Ajustes → Culqi**: Public Key, Secret Key y modo (sandbox/producción).
+El webhook de Culqi debe apuntar a **latribu**; `/site/api/tribu-pagos/*` ya no existe. Las llaves Culqi se configuran en el admin de La Tribu (`/latribu/admin/config.html`).
 
 ## Health check
 

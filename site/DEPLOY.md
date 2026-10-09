@@ -50,7 +50,7 @@ Si no tienes `cloudlinux-selector` en SSH: **STOP** → `bash site/scripts/cpane
 
 | URL | Esperado |
 |-----|----------|
-| `/site/api/deploy-info` | `"version": "...html-admin-v3..."`, `"tribuCronEnabled": false` |
+| `/site/api/deploy-info` | `"version": "...html-admin-v3..."` |
 | `/site/api/pixel-config` | `"_deployVersion":"html-admin-v3"` |
 | `/site/admin/login.html` | Pantalla de login con estilos |
 | `/site/admin/js/api.js` | Código JavaScript (texto), **no** HTML |
@@ -81,7 +81,6 @@ Si ves el uso de procesos subir (ej. 90/100):
 2. **Actualiza el código** (`bash site/deploy.sh`) — versiones viejas ejecutaban `npm build` en cada restart.
 3. En `.env` del servidor:
    ```env
-   TRIBU_CRON_ENABLED=0
    PASSENGER_MAX_POOL_SIZE=2
    DB_POOL_MAX=3
    ```
@@ -107,4 +106,4 @@ Si ves el uso de procesos subir (ej. 90/100):
    pkill -f "vite build" 2>/dev/null
    ```
 
-Verifica: `/site/api/deploy-info` debe mostrar `"version": "...html-admin-v3..."` y `"tribuCronEnabled": false`.
+Verifica: `/site/api/deploy-info` debe mostrar `"version": "...html-admin-v3..."`.

@@ -1,6 +1,6 @@
 # VHM — Libro de Reclamaciones Virtual
 
-Backend + frontend para libro de reclamaciones, videos/masterclass ("La Tribu"), testimonios y chat IA "Clara".
+Backend + frontend para libro de reclamaciones y testimonios. La Tribu (videos, usuarios, suscripciones y pagos Culqi) vive en la app `latribu/` (montada en `/latribu`).
 
 ## Requisitos
 
@@ -30,26 +30,16 @@ src/
 ├── routes.js         ← Reclamos
 ├── authRoutes.js     ← Login / registro
 ├── usuariosRoutes.js
-├── videosRoutes.js
 ├── testimoniosRoutes.js
-├── claraRoutes.js    ← Chat IA
-├── eventosRoutes.js
 ├── configEmailRoutes.js
 ├── configPixelRoutes.js
 ├── configWhatsappRoutes.js
 ├── ensureSchema.js   ← Auto-migración de tablas
-├── tribuAuthRoutes.js    ← Login/registro La Tribu
-├── tribuPagosRoutes.js   ← Culqi (cargos + tarjetas guardadas)
-├── tribuCulqi.js         ← Cliente API Culqi
-├── tribuAccessRoutes.js  ← Gate contraseña landing
-├── tribuUsersRoutes.js   ← Admin usuarios La Tribu
-├── suscripcionesRoutes.js
-├── configCulqiRoutes.js
 └── mailer.js
 lib/
 ├── siteEnv.js        ← Lectura de variables de entorno
 └── mount.js          ← Utilidad de reescritura HTML
-public/               ← Frontend estático (videos.html = La Tribu en /latribu)
+public/               ← Frontend estático
 public/admin/         ← Panel admin HTML + JS (sin build, sin Vue)
 app.js                ← Entry point (Passenger / standalone)
 ```
@@ -63,8 +53,6 @@ HTML + JavaScript vanilla en `public/admin/` — **sin compilación**.
 | Login | `admin/login.html` |
 | Reclamos | `admin/reclamos.html` |
 | Testimonios | `admin/testimonios.html` |
-| La Tribu | `admin/videos.html` |
-| Usuarios Tribu | `admin/tribu-users.html` |
 | Administradores | `admin/usuarios.html` |
 | Ajustes | `admin/config.html` |
 
@@ -74,9 +62,7 @@ Deploy: sube los archivos editados → Restart en cPanel.
 
 ## La Tribu
 
-- Página: `public/videos.html` servida en `/site/latribu`
-- Pagos: Checkout API vía Orders API (`/api/tribu-pagos/procesar-pago`)
-- Variables extra: `SITE_URL`, `CULQI_WEBHOOK_SECRET`, `TRIBU_RENOVACION_CRON_SECRET` (ver `.env.example`)
+`/site/latribu` redirige a `https://vhm.com.pe/latribu` (app `latribu/`). Pagos Culqi, suscripciones, usuarios y webhook se gestionan allí.
 
 ## Deploy cPanel
 

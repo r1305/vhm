@@ -12,8 +12,6 @@ const configEmailRoutes = require('./configEmailRoutes');
 const configPixelRoutes = require('./configPixelRoutes');
 const configWhatsappRoutes = require('./configWhatsappRoutes');
 const testimoniosRoutes = require('./testimoniosRoutes');
-const claraRoutes = require('./claraRoutes');
-const eventosRoutes = require('./eventosRoutes');
 const configFacebookVerificationRoutes = require('./configFacebookVerificationRoutes');
 
 const app = express();
@@ -27,14 +25,29 @@ try {
     threshold: 1024,
     filter: (req, res) => {
       const p = String(req.path || '');
-      if (p.includes('/landing/hero-stream') || p.startsWith('/media/')) return false;
+      if (p.startsWith('/media/')) return false;
       return compression.filter(req, res);
     },
   }));
 } catch (_) { /* optional */ }
 
 const corsOrigin = process.env.CORS_ORIGIN;
-app.use(cors(corsOrigin ? { origin: corsOrigin.split(',').map((o) => o.trim()) } : {}));
+app.use(cors({
+  origin: (origin, cb) => {
+    if (!origin) return cb(null, true);
+    try {
+      const u = new URL(origin);
+      if (u.hostname === 'localhost' || u.hostname === '127.0.0.1') return cb(null, true);
+      if (u.hostname.endsWith('.vhm.com.pe') || u.hostname === 'vhm.com.pe') return cb(null, true);
+    } catch (_) {}
+    if (corsOrigin) {
+      const list = corsOrigin.split(',').map((o) => o.trim()).filter(Boolean);
+      if (list.includes(origin)) return cb(null, true);
+    }
+    cb(null, false);
+  },
+  credentials: true,
+}));
 app.use((req, res, next) => {
   if (req.path === '/api/hero-image' && req.method === 'POST') return next();
   express.json({ limit: '10mb' })(req, res, next);
@@ -73,7 +86,7 @@ app.use((req, res, next) => {
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
   const crmOrigin = crmPublicOrigin();
-  res.setHeader('Content-Security-Policy', `default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://connect.facebook.net https://checkout.culqi.com https://js.culqi.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; media-src 'self' https://drive.google.com https://drive.usercontent.google.com https://*.googleusercontent.com blob:; connect-src 'self' ${crmOrigin} https://connect.facebook.net https://graph.facebook.com https://api.culqi.com https://checkout.culqi.com https://checkoutview.culqi.com https://js.culqi.com; frame-src https://www.loom.com https://checkout.culqi.com https://checkoutview.culqi.com https://js.culqi.com; frame-ancestors 'none'`);
+  res.setHeader('Content-Security-Policy', `default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://connect.facebook.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; media-src 'self' https://drive.google.com https://drive.usercontent.google.com https://*.googleusercontent.com blob:; connect-src 'self' ${crmOrigin} https://connect.facebook.net https://graph.facebook.com; frame-src https://www.loom.com; frame-ancestors 'none'`);
   if (process.env.NODE_ENV === 'production') {
     res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   }
@@ -123,13 +136,9 @@ app.use((req, res, next) => {
   }
   // Validate CSRF on state-changing methods (skip public POST endpoints)
   if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {
-    const publicPostPaths = ['/api/reclamos', '/api/clara/chat', '/api/auth/login'];
-    const isPublicEncuestaPost = false;
+    const publicPostPaths = ['/api/reclamos', '/api/auth/login'];
     const isPublicPost = req.method === 'POST' && publicPostPaths.some(p => req.path === p);
-    const isPublicCronRenovaciones = false;
-    const isPublicVideoAction = false;
-    const isTribuBearer = false;
-    if (!isPublicPost && !isPublicEncuestaPost && !isPublicVideoAction && !isPublicCronRenovaciones && !isTribuBearer) {
+    if (!isPublicPost) {
       const headerToken = req.headers['x-csrf-token'] || req.headers['csrf-token'];
       const cookieToken = req.cookies?.csrf_token;
       if (!validateCsrfToken(headerToken) || !validateCsrfToken(cookieToken) || headerToken !== cookieToken) {
@@ -300,7 +309,6 @@ app.get('/api/deploy-info', (req, res) => {
     pid: process.pid,
     uptimeSec: Math.round(process.uptime()),
     memoryMb: Math.round(process.memoryUsage().rss / 1024 / 1024),
-    tribuCronEnabled: process.env.TRIBU_CRON_ENABLED === '1',
     dbPoolMax: process.env.DB_POOL_MAX || '3',
     adminDir: fs.existsSync(ADMIN_DIR),
     adminJs: fs.existsSync(path.join(ADMIN_DIR, 'js', 'api.js')),
@@ -384,8 +392,6 @@ app.use('/api/config-whatsapp', configWhatsappRoutes);
 app.use('/api/config-redes', require('./configRedesRoutes'));
 app.use('/api/hero-image', require('./heroImageRoutes'));
 app.use('/api/testimonios', testimoniosRoutes);
-app.use('/api/clara', claraRoutes);
-app.use('/api/eventos', eventosRoutes);
 app.use('/api/config-facebook-verification', configFacebookVerificationRoutes);
 
 // Error handler global

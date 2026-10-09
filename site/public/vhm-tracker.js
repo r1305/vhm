@@ -1,6 +1,6 @@
 /**
  * VHM Tracker — vhm-tracker.js
- * Incluir en vhm.com.pe/site ANTES de clara-chat.js y vhm-crm-widget.js:
+ * Incluir en vhm.com.pe/site ANTES de vhm-crm-widget.js:
  *   <script src="/site/vhm-tracker.js"></script>
  *
  * Captura: pageviews, clicks en CTAs, scroll depth, tiempo de estadía,
