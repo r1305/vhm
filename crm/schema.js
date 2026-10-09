@@ -1,5 +1,27 @@
 const pool = require('./lib/db');
 
+async function seedSuperadmin(conn) {
+  const [[existing]] = await conn.execute(
+    "SELECT id FROM terapeutas WHERE username = 'CRM' LIMIT 1"
+  );
+  if (existing) return false;
+  const bcrypt = require('bcryptjs');
+  const envPwd = process.env.CRM_ADMIN_INITIAL_PASSWORD;
+  const password = envPwd || require('crypto').randomBytes(24).toString('base64url');
+  const hash = await bcrypt.hash(password, 12);
+  await conn.execute(
+    `INSERT INTO terapeutas (nombre, apellido, username, email, password, rol)
+     VALUES ('CRM', 'Admin', 'CRM', 'admin@vhm.com.pe', ?, 'superadmin')`,
+    [hash]
+  );
+  if (envPwd) {
+    console.log('[crm] Superadmin CRM creado con la contraseña de CRM_ADMIN_INITIAL_PASSWORD (borrar la variable del .env)');
+  } else {
+    console.warn('[crm] Superadmin CRM creado con una contraseña aleatoria no mostrada. Para acceder: definir CRM_ADMIN_INITIAL_PASSWORD y ejecutar node crm/reset-admin.js');
+  }
+  return true;
+}
+
 async function ensureSchema() {
   const conn = await pool.getConnection();
   try {
@@ -354,19 +376,7 @@ async function ensureSchema() {
     }
 
     // Seed superadmin ────────────────────────────────────────────
-    const bcrypt = require('bcryptjs');
-    const [[existing]] = await conn.execute(
-      "SELECT id FROM terapeutas WHERE username = 'CRM' LIMIT 1"
-    );
-    if (!existing) {
-      const hash = await bcrypt.hash('***REMOVED***$', 12);
-      await conn.execute(
-        `INSERT INTO terapeutas (nombre, apellido, username, email, password, rol)
-         VALUES ('CRM', 'Admin', 'CRM', 'admin@vhm.com.pe', ?, 'superadmin')`,
-        [hash]
-      );
-      console.log('[crm] Superadmin creado: CRM / ***REMOVED***$');
-    }
+    await seedSuperadmin(conn);
 
     // ── Permisos de menú por rol (plantillas) ───────────────────
     await conn.execute(`
@@ -728,4 +738,4 @@ async function ensureSchema() {
   }
 }
 
-module.exports = { ensureSchema };
+module.exports = { ensureSchema, seedSuperadmin };

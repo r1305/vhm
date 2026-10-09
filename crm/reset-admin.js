@@ -1,13 +1,19 @@
 /**
- * Uso: node crm/reset-admin.js
- * Crea o actualiza el usuario CRM con la contraseña ***REMOVED***
+ * Uso: CRM_ADMIN_INITIAL_PASSWORD=... node crm/reset-admin.js
+ *   o: node crm/reset-admin.js '<contraseña>'
+ * Crea o actualiza el usuario CRM (superadmin) con esa contraseña.
  */
 require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 const bcrypt = require('bcryptjs');
 const pool   = require('./lib/db');
 
 async function main() {
-  const hash = await bcrypt.hash('***REMOVED***$', 12);
+  const password = process.argv[2] || process.env.CRM_ADMIN_INITIAL_PASSWORD;
+  if (!password) {
+    console.error('[reset-admin] Falta la contraseña: definir CRM_ADMIN_INITIAL_PASSWORD en crm/.env o pasarla como argumento (node crm/reset-admin.js <contraseña>)');
+    process.exit(1);
+  }
+  const hash = await bcrypt.hash(password, 12);
 
   // Agregar columna username si no existe (por si la tabla fue creada antes)
   try {
@@ -39,7 +45,7 @@ async function main() {
   }
 
   console.log('Usuario: CRM');
-  console.log('Contraseña: ***REMOVED***$');
+  console.log('[reset-admin] Contraseña establecida (no se muestra). Borrar CRM_ADMIN_INITIAL_PASSWORD del .env si se usó.');
   await pool.end();
 }
 

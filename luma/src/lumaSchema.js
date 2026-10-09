@@ -12,6 +12,34 @@ const ACCESOS_SISTEMA = [
   { clave: 'accesos',         nombre: 'Accesos',         descripcion: 'Asignación de accesos a roles' },
 ];
 
+async function seedAdminProtegido(db) {
+  const bcrypt = require('bcryptjs');
+  const bootstrapPwd = process.env.LUMA_BOOTSTRAP_PASSWORD;
+  const [existing] = await db.query('SELECT id FROM luma_admins WHERE protegido = 1 LIMIT 1');
+  if (!existing.length) {
+    const password = bootstrapPwd || require('crypto').randomBytes(24).toString('base64url');
+    const hash = await bcrypt.hash(password, 12);
+    await db.query(`
+      INSERT INTO luma_admins (nombre, usuario, email, password_hash, rol_id, protegido, activo)
+      VALUES ('Luma', 'Luma', 'luma@luma.com', ?, 1, 1, 1)
+    `, [hash]);
+    if (bootstrapPwd) {
+      console.log('[luma] Admin protegido creado con la contraseña de LUMA_BOOTSTRAP_PASSWORD (borrar la variable del .env)');
+    } else {
+      console.warn('[luma] Admin protegido creado con una contraseña aleatoria no mostrada. Para acceder: definir LUMA_BOOTSTRAP_PASSWORD y reiniciar la app');
+    }
+    return 'created';
+  }
+  await db.query("UPDATE luma_admins SET usuario = 'Luma' WHERE protegido = 1 AND (usuario IS NULL OR usuario = '')").catch(() => {});
+  if (bootstrapPwd) {
+    const hash = await bcrypt.hash(bootstrapPwd, 12);
+    await db.query('UPDATE luma_admins SET password_hash = ? WHERE protegido = 1', [hash]);
+    console.log('[luma] Contraseña del admin protegido actualizada desde LUMA_BOOTSTRAP_PASSWORD');
+    return 'updated';
+  }
+  return 'existing';
+}
+
 async function crearEsquema() {
   // ── Eventos ──────────────────────────────────────────────────────────────
   await pool.query(`
@@ -123,25 +151,7 @@ async function crearEsquema() {
   await pool.query('ALTER TABLE luma_admins ADD UNIQUE KEY uq_la_usuario (usuario)').catch(() => {});
   await pool.query('ALTER TABLE luma_admins DROP COLUMN rol').catch(() => {});
 
-  // Seed SUPERADMIN protegido (usuario: Luma, correo: luma@luma.com, contraseña: ***REMOVED***$)
-  const bcrypt = require('bcryptjs');
-  const [existing] = await pool.query('SELECT id FROM luma_admins WHERE protegido = 1 LIMIT 1');
-  if (!existing.length) {
-    const hash = await bcrypt.hash('***REMOVED***$', 12);
-    await pool.query(`
-      INSERT INTO luma_admins (nombre, usuario, email, password_hash, rol_id, protegido, activo)
-      VALUES ('Luma', 'Luma', 'luma@luma.com', ?, 1, 1, 1)
-    `, [hash]);
-  } else {
-    await pool.query("UPDATE luma_admins SET usuario = 'Luma' WHERE protegido = 1 AND (usuario IS NULL OR usuario = '')").catch(() => {});
-  }
-
-  const bootstrapPwd = process.env.LUMA_BOOTSTRAP_PASSWORD;
-  if (bootstrapPwd) {
-    const hash = await bcrypt.hash(bootstrapPwd, 12);
-    await pool.query('UPDATE luma_admins SET password_hash = ? WHERE protegido = 1', [hash]);
-    console.log('[luma] Contraseña del admin protegido actualizada desde LUMA_BOOTSTRAP_PASSWORD');
-  }
+  await seedAdminProtegido(pool);
 
   // ── Accesos (catálogo de vistas) ──────────────────────────────────────────
   await pool.query(`
@@ -188,4 +198,4 @@ function ensureLumaSchema() {
   return ready;
 }
 
-module.exports = { ensureLumaSchema, ACCESOS_SISTEMA };
+module.exports = { ensureLumaSchema, ACCESOS_SISTEMA, seedAdminProtegido };
