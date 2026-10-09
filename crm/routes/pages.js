@@ -377,8 +377,22 @@ router.get('/integraciones', requireSession, requireAdmin, async (req, res) => {
 });
 
 // ── REPORTE FINANCIERO ──────────────────────────────────────────
+// Antes de calcular cifras, asegura que cada paquete asignado a un paciente tenga
+// precio y cuotas coherentes; si no, el paciente desaparecería del reporte o
+// figuraría con S/ 0.
+async function asegurarPreciosPaquetes() {
+  try {
+    const { repairPaquetesPrecioInconsistente } = require('../lib/paquetesPaciente');
+    const n = await repairPaquetesPrecioInconsistente();
+    if (n > 0) console.log(`[crm] Reporte financiero: reparados ${n} paquetes con precio/cuotas inconsistentes`);
+  } catch (err) {
+    console.error('[crm] asegurarPreciosPaquetes:', err.message);
+  }
+}
+
 router.get('/reporte-financiero', requireSession, requireAdmin, async (req, res) => {
   try {
+    await asegurarPreciosPaquetes();
     const esFecha = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s || '');
     const desde = req.query.desde;
     const hasta = req.query.hasta;
@@ -388,7 +402,13 @@ router.get('/reporte-financiero', requireSession, requireAdmin, async (req, res)
       return ` AND ${col} BETWEEN ${db.escape(desde + ' 00:00:00')} AND ${db.escape(hasta + ' 23:59:59')}`;
     };
     const fechaCobro = 'COALESCE(c.pagado_at, c.fecha_pago)';
-    const desdeSeisMeses = `AND pp.created_at >= DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 5 MONTH), '%Y-%m-01')`;
+    const ppPrecioEff = 'COALESCE(NULLIF(pp.precio, 0), pc.precio, 0)';
+    const joinCatalogo = 'LEFT JOIN paquetes_catalogo pc ON pc.id = pp.paquete_catalogo_id';
+    const joinCobrado = `LEFT JOIN (
+        SELECT paciente_paquete_id, SUM(CASE WHEN pagado = 1 THEN monto ELSE 0 END) AS cobrado
+        FROM paciente_paquete_cuotas GROUP BY paciente_paquete_id
+      ) cc ON cc.paciente_paquete_id = pp.id`;
+    const desdeSeisMeses = `AND pp.fecha_inicio >= DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 5 MONTH), '%Y-%m-01')`;
     const cobroSeisMeses = `AND ${fechaCobro} >= DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 5 MONTH), '%Y-%m-01')`;
 
     const mesKey = (y, m) => `${y}-${String(m).padStart(2, '0')}`;
@@ -431,15 +451,17 @@ router.get('/reporte-financiero', requireSession, requireAdmin, async (req, res)
       db.execute(`SELECT COALESCE(SUM(c.monto),0) AS ingreso_mes FROM paciente_paquete_cuotas c WHERE c.pagado = 1 AND DATE_FORMAT(${fechaCobro},'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')`),
       db.execute(`SELECT COALESCE(SUM(c.monto),0) AS ingreso_mes_anterior FROM paciente_paquete_cuotas c WHERE c.pagado = 1 AND DATE_FORMAT(${fechaCobro},'%Y-%m') = DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 1 MONTH),'%Y-%m')`),
       db.execute(`SELECT COALESCE(SUM(c.monto),0) AS deuda_pendiente FROM paciente_paquete_cuotas c INNER JOIN paciente_paquetes pp ON pp.id = c.paciente_paquete_id WHERE c.pagado = 0`),
-      db.execute(`SELECT COALESCE(AVG(pp.precio),0) AS ticket_promedio FROM paciente_paquetes pp`),
-      db.execute(`SELECT COUNT(*) AS paquetes_vendidos FROM paciente_paquetes WHERE 1=1 ${filterDate('created_at')}`),
-      db.execute(`SELECT COUNT(*) AS paquetes_mes FROM paciente_paquetes WHERE DATE_FORMAT(created_at,'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')`),
+      db.execute(`SELECT COALESCE(AVG(${ppPrecioEff}),0) AS ticket_promedio FROM paciente_paquetes pp ${joinCatalogo}`),
+      db.execute(`SELECT COUNT(*) AS paquetes_vendidos FROM paciente_paquetes pp WHERE 1=1 ${filterDate('pp.fecha_inicio')}`),
+      db.execute(`SELECT COUNT(*) AS paquetes_mes FROM paciente_paquetes pp WHERE DATE_FORMAT(pp.fecha_inicio,'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')`),
       db.execute(`SELECT COUNT(DISTINCT pp.id) AS pago_parcial_pendiente FROM paciente_paquetes pp INNER JOIN paciente_paquete_cuotas c ON c.paciente_paquete_id = pp.id WHERE pp.tipo_pago = 'parcial' AND c.pagado = 0`),
       db.execute(`SELECT COUNT(*) AS total_cuotas, SUM(pagado) AS cuotas_pagadas FROM paciente_paquete_cuotas`),
-      db.execute(`SELECT DATE_FORMAT(pp.created_at,'%Y-%m') AS mes, COALESCE(SUM(pp.precio),0) AS total FROM paciente_paquetes pp WHERE 1=1 ${filterDate('pp.created_at') || desdeSeisMeses} GROUP BY mes`),
+      db.execute(`SELECT DATE_FORMAT(pp.fecha_inicio,'%Y-%m') AS mes, COALESCE(SUM(${ppPrecioEff}),0) AS total FROM paciente_paquetes pp ${joinCatalogo} WHERE 1=1 ${filterDate('pp.fecha_inicio') || desdeSeisMeses} GROUP BY mes`),
       db.execute(`SELECT DATE_FORMAT(${fechaCobro},'%Y-%m') AS mes, COALESCE(SUM(c.monto),0) AS total FROM paciente_paquete_cuotas c WHERE c.pagado = 1 ${filterDate(fechaCobro) || cobroSeisMeses} GROUP BY mes`),
-      db.execute(`SELECT pp.nombre, COUNT(*) AS veces_vendido, COALESCE(SUM(pp.precio),0) AS ingreso_bruto, COALESCE(SUM(CASE WHEN c.pagado=1 THEN c.monto ELSE 0 END),0) AS ingreso_cobrado FROM paciente_paquetes pp LEFT JOIN paciente_paquete_cuotas c ON c.paciente_paquete_id = pp.id ${filterDate('pp.created_at')} GROUP BY pp.nombre ORDER BY ingreso_cobrado DESC LIMIT 10`),
-      db.execute(`SELECT t.nombre, t.apellido, COUNT(DISTINCT pp.id) AS paquetes, COALESCE(SUM(pp.precio),0) AS ingreso_bruto, COALESCE(SUM(CASE WHEN c.pagado=1 THEN c.monto ELSE 0 END),0) AS ingreso_cobrado FROM paciente_paquetes pp INNER JOIN pacientes p ON p.id = pp.paciente_id LEFT JOIN terapeutas t ON t.id = p.terapeuta_id LEFT JOIN paciente_paquete_cuotas c ON c.paciente_paquete_id = pp.id ${filterDate('pp.created_at')} GROUP BY t.id ORDER BY ingreso_cobrado DESC`)
+      // Las cuotas se agregan por paquete ANTES del join: si se unen fila a fila, el
+      // precio del paquete se suma una vez por cuota y el "vendido" sale inflado.
+      db.execute(`SELECT pp.nombre, COUNT(*) AS veces_vendido, COALESCE(SUM(${ppPrecioEff}),0) AS ingreso_bruto, COALESCE(SUM(cc.cobrado),0) AS ingreso_cobrado FROM paciente_paquetes pp ${joinCatalogo} ${joinCobrado} WHERE 1=1 ${filterDate('pp.fecha_inicio')} GROUP BY pp.nombre ORDER BY ingreso_cobrado DESC LIMIT 10`),
+      db.execute(`SELECT t.nombre, t.apellido, COUNT(pp.id) AS paquetes, COALESCE(SUM(${ppPrecioEff}),0) AS ingreso_bruto, COALESCE(SUM(cc.cobrado),0) AS ingreso_cobrado FROM paciente_paquetes pp ${joinCatalogo} ${joinCobrado} INNER JOIN pacientes p ON p.id = pp.paciente_id LEFT JOIN terapeutas t ON t.id = p.terapeuta_id WHERE 1=1 ${filterDate('pp.fecha_inicio')} GROUP BY t.id, t.nombre, t.apellido ORDER BY ingreso_cobrado DESC`)
     ]);
 
     const vendidoMap = Object.fromEntries(vendidosPorMes.map(r => [r.mes, Number(r.total)]));
@@ -470,19 +492,26 @@ router.get('/reporte-financiero', requireSession, requireAdmin, async (req, res)
   } catch (err) { res.status(500).send(err.message); }
 });
 
+const fechaHoyLima = () =>
+  new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(new Date());
+
 // ── REPORTE FINANCIERO · DETALLES (paquetes paginados) ─────────
 router.get('/reporte-financiero/detalles', requireSession, requireAdmin, async (req, res) => {
   try {
     const esFecha = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s || '');
-    const desde = req.query.desde;
-    const hasta = req.query.hasta;
-    const hayRango = esFecha(desde) && esFecha(hasta) && desde <= hasta;
-    const filterDate = (col) => {
-      if (!hayRango) return '';
-      return ` AND ${col} BETWEEN ${db.escape(desde + ' 00:00:00')} AND ${db.escape(hasta + ' 23:59:59')}`;
-    };
-    const desdeSeisMeses = `AND pp.created_at >= DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 5 MONTH), '%Y-%m-01')`;
-    const where = `WHERE 1=1 ${filterDate('pp.created_at') || desdeSeisMeses}`;
+    let desde = req.query.desde;
+    let hasta = req.query.hasta;
+    let hayRango = esFecha(desde) && esFecha(hasta) && desde <= hasta;
+    if (!hayRango) {
+      const hoy = fechaHoyLima();
+      return res.redirect(302, `${req.app.locals.BASE}/reporte-financiero/detalles?desde=${hoy}&hasta=${hoy}`);
+    }
+    await asegurarPreciosPaquetes();
+    const filterDate = (col) =>
+      ` AND ${col} BETWEEN ${db.escape(desde + ' 00:00:00')} AND ${db.escape(hasta + ' 23:59:59')}`;
+    const ppPrecioEff = 'COALESCE(NULLIF(pp.precio, 0), pc.precio, 0)';
+    const joinCatalogo = 'LEFT JOIN paquetes_catalogo pc ON pc.id = pp.paquete_catalogo_id';
+    const where = `WHERE 1=1 ${filterDate('pp.fecha_inicio')}`;
 
     const pageSize = 25;
     const pagina = Math.max(1, parseInt(req.query.pagina, 10) || 1);
@@ -492,9 +521,10 @@ router.get('/reporte-financiero/detalles', requireSession, requireAdmin, async (
              COALESCE(SUM(t.vendido),0) AS vendido,
              COALESCE(SUM(t.cobrado),0) AS cobrado
       FROM (
-        SELECT pp.id, MAX(pp.precio) AS vendido,
+        SELECT pp.id, MAX(${ppPrecioEff}) AS vendido,
                COALESCE(SUM(CASE WHEN c.pagado = 1 THEN c.monto ELSE 0 END),0) AS cobrado
         FROM paciente_paquetes pp
+        ${joinCatalogo}
         LEFT JOIN paciente_paquete_cuotas c ON c.paciente_paquete_id = pp.id
         ${where}
         GROUP BY pp.id
@@ -507,14 +537,15 @@ router.get('/reporte-financiero/detalles', requireSession, requireAdmin, async (
       db.execute(
         `SELECT pp.id, pp.nombre AS paquete, p.nombre AS paciente_nombre, p.apellido AS paciente_apellido,
           DATE(pp.created_at) AS fecha_registro, DATE(pp.fecha_inicio) AS fecha_activacion,
-          pp.precio, pp.tipo_pago, COUNT(c.id) AS cuotas_total, COALESCE(SUM(c.pagado),0) AS cuotas_pagadas,
+          ${ppPrecioEff} AS precio, pp.tipo_pago, COUNT(c.id) AS cuotas_total, COALESCE(SUM(c.pagado),0) AS cuotas_pagadas,
           COALESCE(SUM(CASE WHEN c.pagado = 1 THEN c.monto ELSE 0 END),0) AS cobrado
           FROM paciente_paquetes pp
+          ${joinCatalogo}
           INNER JOIN pacientes p ON p.id = pp.paciente_id
           LEFT JOIN paciente_paquete_cuotas c ON c.paciente_paquete_id = pp.id
           ${where}
           GROUP BY pp.id, p.id
-          ORDER BY pp.created_at DESC
+          ORDER BY pp.fecha_inicio DESC, pp.created_at DESC
           LIMIT ${pageSize} OFFSET ${(paginaAjustada - 1) * pageSize}`
       ),
       db.execute(`SELECT p.nombre, p.apellido, p.telefono, pp.nombre AS paquete_nombre, c.numero AS cuota_num, c.monto, c.fecha_pago FROM paciente_paquete_cuotas c INNER JOIN paciente_paquetes pp ON pp.id = c.paciente_paquete_id INNER JOIN pacientes p ON p.id = pp.paciente_id WHERE c.pagado = 0 AND c.fecha_pago < CURDATE() ORDER BY c.fecha_pago ASC LIMIT 20`),
@@ -522,15 +553,17 @@ router.get('/reporte-financiero/detalles', requireSession, requireAdmin, async (
     ]);
 
     const fmtFechaTexto = (s) => `${s.slice(8, 10)}/${s.slice(5, 7)}/${s.slice(0, 4)}`;
-    const rangoTexto = hayRango ? `del ${fmtFechaTexto(desde)} al ${fmtFechaTexto(hasta)}` : 'últimos 6 meses';
+    const rangoTexto = desde === hasta
+      ? `el ${fmtFechaTexto(desde)}`
+      : `del ${fmtFechaTexto(desde)} al ${fmtFechaTexto(hasta)}`;
 
     render(res, 'reporte_financiero_detalles', {
       user: req.session.user,
       detalleVentas, total, vendido, cobrado,
-      pagina: paginaAjustada, totalPaginas,
+      pagina: paginaAjustada, totalPaginas, pageSize,
       cuotasVencidas, cuotasProximas, rangoTexto,
-      desde: hayRango ? desde : '',
-      hasta: hayRango ? hasta : '',
+      desde,
+      hasta,
       scripts: `<script src="${req.app.locals.BASE}/reportes.js"></script>`,
     });
   } catch (err) { res.status(500).send(err.message); }

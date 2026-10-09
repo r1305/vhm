@@ -115,3 +115,32 @@ autocompletado de "Nueva cita" consulta `/pacientes?q=`, que aplica
 
 Mensajes en español, formato convencional (`fix(crm):`, `feat(crm):`).
 El usuario pide siempre subir los cambios tras verificarlos.
+
+## Despliegue cPanel
+
+Todo desarrollo debe asumir despliegue en **cPanel** (shared hosting típico) usando Node.js App (Application Manager) o similar.
+
+### Pautas obligatorias
+
+- **Entorno de ejecución**: Evitar procesos huérfanos. No usar `nodemon`, `ts-node-dev` ni watchers en producción. En desarrollo local pueden usarse, pero en producción usar `node` directo.
+- **Instancias/child processes**: Evitar crear múltiples instancias o child processes innecesarios. Si se usa clustering, debe justificarse y limitarse a **1–2 workers máximo (ideal 1)**.
+- **Conexiones a base de datos**: NO abrir conexiones DB nuevas por request. Usar **pool de conexiones** (Mongoose ya lo gestiona con pool). Reutilizar **singleton de DB**. No crear conexiones ad-hoc.
+- **Timers**: Evitar `setInterval`/`setTimeout` largos sin limpieza. Si son necesarios, explicar por qué y garantizar su `clearInterval`/`clearTimeout` al cierre del servidor/sesión.
+- **Gestión de procesos**: No usar PM2 (suele no estar disponible o no permitido). No asumir `systemd`.
+- **Uploads**: Si se guardan localmente, limitar concurrencia y limpieza periódica. Si usan Cloudinary, mantenerlo tal como está.
+- **WebSockets/Socket.IO**: Si se usan, deben compartir **un único servidor HTTP** (no crear servidor aparte) y evitar re-conexiones masivas.
+- **Rate-limit**: Debe ser **por IP + memoria** (no Redis a menos que ya exista y esté permitido). Usar `express-rate-limit` con store en memoria tal como está ahora.
+- **Archivos temporales**: Evitar generar archivos temporales sin borrar (`tmp`). Eliminar siempre al terminar su uso.
+- **Recursos**: Minimizar uso CPU/memoria. Los archivos estáticos deben servirse por **cPanel/nginx reverse proxy** cuando sea posible.
+- **Comandos de arranque**: `npm start` debe ser simple (`node app.js` o `node server.js`). No debe invocar watchers/dev-tools.
+- **Limpieza de handles**: Verificar que al cerrar sesión/requests no queden handles abiertos (servidor, sockets, timers, streams, conexiones).
+
+### Checklist de despliegue cPanel
+
+- [ ] sin watchers
+- [ ] sin child_process
+- [ ] pool reutilizado
+- [ ] sin timers sin cleanup
+- [ ] 1 instancia
+- [ ] sin nodemon prod
+- [ ] start simple

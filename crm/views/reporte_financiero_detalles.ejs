@@ -15,7 +15,9 @@ const linkPagina = (p) => {
 };
 %>
 
-<div class="card" style="margin-bottom:16px">
+<div class="rf-detalles-page">
+
+<div class="card rf-filtros-card">
   <div class="card-body" style="padding:14px 18px">
     <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
       <div style="display:flex;align-items:center;gap:8px">
@@ -64,7 +66,7 @@ const linkPagina = (p) => {
     <span class="rf-legend">Página <%= pagina %> de <%= totalPaginas %></span>
   </div>
   <% if (detalleVentas.length) { %>
-  <div class="rf-table-wrap">
+  <div class="rf-table-wrap rf-table-scroll">
     <table class="rf-table">
       <thead>
         <tr>
@@ -100,17 +102,19 @@ const linkPagina = (p) => {
       </tbody>
     </table>
   </div>
-  <% if (totalPaginas > 1) { %>
   <div class="rf-pager">
     <% if (pagina > 1) { %>
     <a class="btn btn-outline btn-sm" href="<%= linkPagina(pagina - 1) %>"><i class="fas fa-chevron-left"></i> Anterior</a>
+    <% } else { %>
+    <span class="rf-pager-spacer" aria-hidden="true"></span>
     <% } %>
-    <span class="rf-pager-info"><%= total %> paquete<%= total === 1 ? '' : 's' %> en el rango</span>
+    <span class="rf-pager-info">Página <%= pagina %> de <%= totalPaginas %> · <%= total %> paquete<%= total === 1 ? '' : 's' %> en el rango</span>
     <% if (pagina < totalPaginas) { %>
     <a class="btn btn-outline btn-sm" href="<%= linkPagina(pagina + 1) %>">Siguiente <i class="fas fa-chevron-right"></i></a>
+    <% } else { %>
+    <span class="rf-pager-spacer" aria-hidden="true"></span>
     <% } %>
   </div>
-  <% } %>
   <% } else { %>
   <div class="list-empty">Sin ventas en el rango</div>
   <% } %>
@@ -119,13 +123,13 @@ const linkPagina = (p) => {
 <div class="rf-grid-2">
 
   <%/* ── Cuotas vencidas sin pagar ── */%>
-  <div class="card">
+  <div class="card rf-cuotas-card">
     <div class="card-header">
       <span><i class="fas fa-triangle-exclamation"></i> Cuotas vencidas sin pagar</span>
       <span class="dash-badge dash-badge-red"><%= cuotasVencidas.length %></span>
     </div>
     <% if (cuotasVencidas.length) { %>
-    <div class="dash-list">
+    <div class="dash-list rf-cuotas-list">
       <% cuotasVencidas.forEach(c => { %>
       <div class="list-item">
         <div class="list-icon"><i class="fas fa-circle-exclamation"></i></div>
@@ -141,13 +145,13 @@ const linkPagina = (p) => {
   </div>
 
   <%/* ── Próximas cuotas a vencer ── */%>
-  <div class="card">
+  <div class="card rf-cuotas-card">
     <div class="card-header">
       <span><i class="fas fa-calendar-clock"></i> Próximas cuotas (14 días)</span>
       <span class="dash-badge"><%= cuotasProximas.length %></span>
     </div>
     <% if (cuotasProximas.length) { %>
-    <div class="dash-list">
+    <div class="dash-list rf-cuotas-list">
       <% cuotasProximas.forEach(c => { %>
       <div class="list-item">
         <div class="list-icon"><i class="fas fa-calendar-check"></i></div>
@@ -161,5 +165,7 @@ const linkPagina = (p) => {
     </div>
     <% } else { %><div class="list-empty">Sin cuotas próximas</div><% } %>
   </div>
+
+</div>
 
 </div>

@@ -397,6 +397,54 @@
   });
 
   sidebarBackdrop?.addEventListener('click', closeSidebar);
+
+  const NAV_SECTIONS_KEY = 'crm-nav-sections';
+  function readNavSectionsOpen() {
+    try {
+      const raw = localStorage.getItem(NAV_SECTIONS_KEY);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed.filter(id => typeof id === 'string') : [];
+    } catch {
+      return [];
+    }
+  }
+  function writeNavSectionsOpen(ids) {
+    localStorage.setItem(NAV_SECTIONS_KEY, JSON.stringify([...new Set(ids)]));
+  }
+  function setNavGroupExpanded(group, expanded) {
+    const toggle = group.querySelector('.nav-section-toggle');
+    group.classList.toggle('collapsed', !expanded);
+    if (toggle) toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+  }
+  function initNavGroups() {
+    const groups = sidebar?.querySelectorAll('.nav-group');
+    if (!groups?.length) return;
+    const saved = readNavSectionsOpen();
+    const openSet = new Set(saved);
+    groups.forEach(group => {
+      const id = group.getAttribute('data-nav-group');
+      if (!id) return;
+      const hasActive = !!group.querySelector('.nav-item.active');
+      if (hasActive) openSet.add(id);
+      setNavGroupExpanded(group, openSet.has(id));
+    });
+    groups.forEach(group => {
+      const toggle = group.querySelector('.nav-section-toggle');
+      const id = group.getAttribute('data-nav-group');
+      if (!toggle || !id) return;
+      toggle.addEventListener('click', () => {
+        const willExpand = group.classList.contains('collapsed');
+        setNavGroupExpanded(group, willExpand);
+        const next = readNavSectionsOpen();
+        const set = new Set(next);
+        if (willExpand) set.add(id);
+        else set.delete(id);
+        writeNavSectionsOpen([...set]);
+      });
+    });
+  }
+  initNavGroups();
+
   sidebar?.querySelectorAll('.nav-item').forEach(link =>
     link.addEventListener('click', () => { if (!isDesktop()) closeSidebar(); })
   );

@@ -3,6 +3,12 @@ const { buildCuotasPlan, normalizeDiasSiguienteCuota } = require('./cuotasPlan')
 
 const TZ = 'America/Lima';
 
+function effectivePrecio(rowPrecio, catalogPrecio) {
+  const p = Number(rowPrecio);
+  if (p > 0) return p;
+  return Number(catalogPrecio) || 0;
+}
+
 function todayStr() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date());
 }
@@ -155,7 +161,11 @@ async function loadPacientePaquetes(pacienteId) {
   await syncPackageLifecycle(pacienteId);
   const hoy = todayStr();
   const [rows] = await pool.execute(
-    `SELECT * FROM paciente_paquetes WHERE paciente_id = ? ORDER BY fecha_inicio DESC, id DESC`,
+    `SELECT pp.*, pc.precio AS catalogo_precio
+     FROM paciente_paquetes pp
+     LEFT JOIN paquetes_catalogo pc ON pc.id = pp.paquete_catalogo_id
+     WHERE pp.paciente_id = ?
+     ORDER BY pp.fecha_inicio DESC, pp.id DESC`,
     [pacienteId]
   );
   // Calcular sesiones_usadas para cada paquete en orden ASC (más antiguo primero)
@@ -173,11 +183,12 @@ async function loadPacientePaquetes(pacienteId) {
     const cuotas = await loadCuotas(row.id);
     const sesionesUsadas = usadasMap[row.id];
     const activo = !!row.activo;
+    const { catalogo_precio, ...pkgRow } = row;
     result.push({
-      ...row,
+      ...pkgRow,
       accede_comunidad: !!row.accede_comunidad,
       activo,
-      precio: Number(row.precio),
+      precio: effectivePrecio(row.precio, catalogo_precio),
       cuotas,
       sesiones_usadas: sesionesUsadas,
       sesiones_restantes: Math.max(0, row.sesiones - sesionesUsadas),
@@ -221,7 +232,16 @@ async function createPacientePaquete(pacienteId, payload) {
   const precio = Number(cat.precio) || 0;
   const sesiones = parseInt(cat.sesiones, 10) || 1;
   const descuento = Math.max(0, Number(payload.descuento) || 0);
-  const precioNeto = Math.max(0, precio - descuento);
+  // Todo paquete asignado debe tener precio: es lo que alimenta el Reporte Financiero.
+  if (precio <= 0) {
+    throw new Error(
+      `El paquete "${cat.nombre}" no tiene precio en el catálogo. Asígnale un precio en Paquetes antes de venderlo.`
+    );
+  }
+  if (descuento >= precio) {
+    throw new Error('El descuento no puede ser igual o mayor al precio del paquete');
+  }
+  const precioNeto = Math.round((precio - descuento) * 100) / 100;
 
   const conn = await pool.getConnection();
   try {
@@ -376,6 +396,68 @@ async function syncCuotasForPaquete(pkgId) {
     'UPDATE paciente_paquete_cuotas SET pagado_at = ? WHERE paciente_paquete_id = ? AND pagado = 1 AND pagado_at IS NULL',
     [pkg.created_at, pkgId]
   );
+}
+
+/**
+ * Detecta paquetes de pacientes cuyo precio no llegaría bien al Reporte Financiero:
+ *   - sin_precio:       paciente_paquetes.precio = 0 pero el catálogo sí tiene precio
+ *   - sin_cuotas:       el paquete no tiene ninguna cuota (no suma a cobrado / por cobrar)
+ *   - cuotas_descuadre: la suma de cuotas no coincide con el precio del paquete
+ *   - catalogo_sin_precio: ni el paquete ni su catálogo tienen precio (requiere acción manual)
+ */
+async function findPaquetesPrecioInconsistentes() {
+  const [rows] = await pool.execute(
+    `SELECT * FROM (
+       SELECT pp.id, pp.paciente_id, pp.nombre, pp.precio, pp.paquete_catalogo_id,
+              pc.precio AS catalogo_precio,
+              p.nombre AS paciente_nombre, p.apellido AS paciente_apellido,
+              (SELECT COUNT(*) FROM paciente_paquete_cuotas c WHERE c.paciente_paquete_id = pp.id) AS n_cuotas,
+              (SELECT COALESCE(SUM(c.monto),0) FROM paciente_paquete_cuotas c WHERE c.paciente_paquete_id = pp.id) AS suma_cuotas
+       FROM paciente_paquetes pp
+       LEFT JOIN paquetes_catalogo pc ON pc.id = pp.paquete_catalogo_id
+       LEFT JOIN pacientes p ON p.id = pp.paciente_id
+     ) x
+     WHERE x.precio <= 0
+        OR x.n_cuotas = 0
+        OR ABS(x.suma_cuotas - x.precio) > 0.01
+     ORDER BY x.id`
+  );
+  return rows.map((r) => {
+    const precio = Number(r.precio) || 0;
+    const catPrecio = Number(r.catalogo_precio) || 0;
+    let problema;
+    if (precio <= 0 && catPrecio <= 0) problema = 'catalogo_sin_precio';
+    else if (precio <= 0) problema = 'sin_precio';
+    else if (Number(r.n_cuotas) === 0) problema = 'sin_cuotas';
+    else problema = 'cuotas_descuadre';
+    return {
+      ...r,
+      precio,
+      catalogo_precio: catPrecio,
+      n_cuotas: Number(r.n_cuotas),
+      suma_cuotas: Number(r.suma_cuotas),
+      problema,
+    };
+  });
+}
+
+async function repairPaquetesPrecioInconsistente() {
+  const rows = await findPaquetesPrecioInconsistentes();
+  let reparados = 0;
+  for (const row of rows) {
+    if (row.problema === 'catalogo_sin_precio') {
+      console.warn(
+        `[crm] paciente_paquetes #${row.id} (${row.nombre}) de ${row.paciente_nombre || ''} ${row.paciente_apellido || ''} no tiene precio y su catálogo tampoco: asignar precio manualmente`
+      );
+      continue;
+    }
+    if (row.problema === 'sin_precio') {
+      await pool.execute('UPDATE paciente_paquetes SET precio = ? WHERE id = ?', [row.catalogo_precio, row.id]);
+    }
+    await syncCuotasForPaquete(row.id);
+    reparados += 1;
+  }
+  return reparados;
 }
 
 async function evaluateBooking(pacienteId) {
@@ -554,6 +636,9 @@ const SQL = {
 };
 
 module.exports = {
+  effectivePrecio,
+  findPaquetesPrecioInconsistentes,
+  repairPaquetesPrecioInconsistente,
   addDays,
   addMonths,
   countCitasActivas,

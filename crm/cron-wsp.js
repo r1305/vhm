@@ -156,7 +156,7 @@ async function runCronWSP(opts = {}) {
   if (!manual) {
     const guard = await tryAcquireAutoSendGuard();
     if (!guard.acquired) {
-      console.log(`[cron-wsp] Envío automático ya realizado hoy (${guard.guardKey}) — omitido (anti-duplicado)`);
+      console.log(`[cron-wsp] Envío ya realizado hoy (${guard.guardKey}) — omitido (anti-duplicado)`);
       stats.omitido = true;
       stats.motivo = 'duplicate';
       stats.duplicado = true;

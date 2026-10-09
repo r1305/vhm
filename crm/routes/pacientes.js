@@ -7,6 +7,7 @@ const router = Router();
 const t = (v, max = 255) => v == null ? null : String(v).trim().slice(0, max) || null;
 const id = (v) => { const n = parseInt(v, 10); return isFinite(n) && n > 0 ? n : null; };
 const tribuProvision = require('../lib/tribuProvision');
+const { normalizeDiasSiguienteCuota } = require('../lib/cuotasPlan');
 const {
   loadPacientePaquetes,
   createPacientePaquete,
@@ -14,6 +15,7 @@ const {
   markCuotaPagada,
   syncCuotasForPaquete,
   getSesionesResumen,
+  addDays,
   SQL,
 } = require('../lib/paquetesPaciente');
 
@@ -198,22 +200,57 @@ router.patch('/:pid/paquetes-adquiridos/:pkgId', authAdmin, async (req, res) => 
   const pid = id(req.params.pid);
   const pkgId = id(req.params.pkgId);
   if (!pid || !pkgId) return res.status(400).json({ error: 'ID inválido' });
-  const { nombre, fecha_inicio, sesiones, precio } = req.body || {};
+  const { nombre, fecha_inicio, sesiones, precio, paquete_catalogo_id } = req.body || {};
   try {
     const [[pkg]] = await pool.execute(
-      'SELECT id FROM paciente_paquetes WHERE id = ? AND paciente_id = ?', [pkgId, pid]
+      'SELECT * FROM paciente_paquetes WHERE id = ? AND paciente_id = ?', [pkgId, pid]
     );
     if (!pkg) return res.status(404).json({ error: 'Paquete no encontrado' });
+    const catalogoId = paquete_catalogo_id != null ? id(paquete_catalogo_id) : null;
     const fields = [];
     const vals = [];
-    if (nombre != null)       { fields.push('nombre = ?');       vals.push(t(nombre, 200)); }
-    if (fecha_inicio != null) { fields.push('fecha_inicio = ?'); vals.push(fecha_inicio); }
-    if (sesiones != null)     { fields.push('sesiones = ?');     vals.push(Math.max(1, parseInt(sesiones, 10) || 1)); }
-    if (precio != null)       { fields.push('precio = ?');       vals.push(Math.max(0, Number(precio) || 0)); }
+    let needsSync = false;
+
+    if (catalogoId) {
+      const [[cat]] = await pool.execute('SELECT * FROM paquetes_catalogo WHERE id = ?', [catalogoId]);
+      if (!cat) return res.status(400).json({ error: 'Paquete de catálogo no encontrado' });
+      if (!(Number(cat.precio) > 0)) {
+        return res.status(400).json({ error: `El paquete "${cat.nombre}" no tiene precio en el catálogo` });
+      }
+      const fi = fecha_inicio != null ? fecha_inicio : String(pkg.fecha_inicio).slice(0, 10);
+      const diasSiguienteCuota = normalizeDiasSiguienteCuota(cat.dias_siguiente_cuota);
+      const venceAt = addDays(fi, parseInt(cat.validez_dias, 10) || 30);
+      fields.push(
+        'paquete_catalogo_id = ?', 'nombre = ?', 'sesiones = ?', 'validez_dias = ?',
+        'dias_siguiente_cuota = ?', 'accede_comunidad = ?', 'precio = ?',
+        'fecha_inicio = ?', 'vence_at = ?'
+      );
+      vals.push(
+        catalogoId,
+        cat.nombre,
+        parseInt(cat.sesiones, 10) || 1,
+        cat.validez_dias,
+        diasSiguienteCuota,
+        cat.accede_comunidad ? 1 : 0,
+        Math.max(0, Number(cat.precio) || 0),
+        fi,
+        venceAt
+      );
+      needsSync = true;
+    } else {
+      if (nombre != null)       { fields.push('nombre = ?');       vals.push(t(nombre, 200)); }
+      if (fecha_inicio != null) { fields.push('fecha_inicio = ?'); vals.push(fecha_inicio); needsSync = true; }
+      if (sesiones != null)     { fields.push('sesiones = ?');     vals.push(Math.max(1, parseInt(sesiones, 10) || 1)); needsSync = true; }
+      if (precio != null) {
+        const nuevoPrecio = Number(precio);
+        if (!(nuevoPrecio > 0)) return res.status(400).json({ error: 'El precio del paquete debe ser mayor a 0' });
+        fields.push('precio = ?'); vals.push(Math.round(nuevoPrecio * 100) / 100); needsSync = true;
+      }
+    }
     if (!fields.length) return res.status(400).json({ error: 'Nada que actualizar' });
     vals.push(pkgId);
     await pool.execute(`UPDATE paciente_paquetes SET ${fields.join(', ')} WHERE id = ?`, vals);
-    if (precio != null || sesiones != null) {
+    if (needsSync) {
       await syncCuotasForPaquete(pkgId);
     }
     const paquetes = await loadPacientePaquetes(pid);

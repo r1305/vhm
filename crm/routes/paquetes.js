@@ -34,6 +34,7 @@ router.get('/', auth, async (req, res) => {
 router.post('/', authAdmin, async (req, res) => {
   const { nombre, sesiones, validez_dias, dias_siguiente_cuota, accede_comunidad, precio, activo } = req.body || {};
   if (!t(nombre, 120)) return res.status(400).json({ error: 'El nombre es obligatorio' });
+  if (!(num(precio, 0) > 0)) return res.status(400).json({ error: 'El precio debe ser mayor a 0' });
   const ses = Math.max(1, parseInt(sesiones, 10) || 1);
   const dias = Math.max(1, parseInt(validez_dias, 10) || 30);
   const diasCuota = normalizeDiasSiguienteCuota(dias_siguiente_cuota);
@@ -62,6 +63,7 @@ router.put('/:id', authAdmin, async (req, res) => {
   if (!id) return res.status(400).json({ error: 'ID inválido' });
   const { nombre, sesiones, validez_dias, dias_siguiente_cuota, accede_comunidad, precio, activo } = req.body || {};
   if (!t(nombre, 120)) return res.status(400).json({ error: 'El nombre es obligatorio' });
+  if (!(num(precio, 0) > 0)) return res.status(400).json({ error: 'El precio debe ser mayor a 0' });
   try {
     await pool.execute(
       `UPDATE paquetes_catalogo

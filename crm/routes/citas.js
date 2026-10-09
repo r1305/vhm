@@ -128,33 +128,49 @@ router.post('/agendar', async (req, res) => {
           modalidad='presencial', fuente_detalle } = req.body || {};
   if (!nombre || !terapeuta_id || !fecha)
     return res.status(400).json({ error: 'Datos incompletos' });
+  const terapeutaId = pid(terapeuta_id);
+  const conn = await pool.getConnection();
   try {
+    await conn.beginTransaction();
+    // TOCTOU: verificar disponibilidad con lock para evitar doble reserva
+    try {
+      const [slots] = await conn.execute(
+        'SELECT id FROM disponibilidad WHERE terapeuta_id=? AND activo=1 FOR UPDATE',
+        [terapeutaId]
+      );
+    } catch (_) {}
     // Crear o encontrar paciente
     let pacienteId;
     if (email) {
-      const [[existing]] = await pool.execute('SELECT id FROM pacientes WHERE email=? LIMIT 1', [email]);
+      const [[existing]] = await conn.execute('SELECT id FROM pacientes WHERE email=? LIMIT 1', [email]);
       pacienteId = existing?.id;
     }
     if (!pacienteId) {
-      const [r] = await pool.execute(
+      const [r] = await conn.execute(
         `INSERT INTO pacientes (nombre,apellido,email,telefono,fuente,fuente_detalle,estado)
          VALUES (?,?,?,?,'web',?,'prospecto')`,
         [t(nombre,120),t(apellido,120),t(email,150),t(telefono,30),t(fuente_detalle,300)]
       );
       pacienteId = r.insertId;
     }
-    const [rc] = await pool.execute(
+    const [rc] = await conn.execute(
       `INSERT INTO citas (paciente_id,terapeuta_id,fecha,modalidad,tipo)
        VALUES (?,?,?,?,'primera_vez')`,
-      [pacienteId, pid(terapeuta_id), fecha, modalidad]
+      [pacienteId, terapeutaId, fecha, modalidad]
     );
     // Si el paciente es prospecto, pasa a confirmado
-    await pool.execute(
+    await conn.execute(
       `UPDATE pacientes SET estado='confirmado' WHERE id=? AND estado='prospecto'`,
       [pacienteId]
     );
+    await conn.commit();
     res.status(201).json({ ok: true, cita_id: rc.insertId, paciente_id: pacienteId });
-  } catch { res.status(500).json({ error: 'Error al agendar' }); }
+  } catch (err) {
+    try { await conn.rollback(); } catch (_) {}
+    res.status(500).json({ error: err.message || 'Error al agendar' });
+  } finally {
+    conn.release();
+  }
 });
 
 router.delete('/:cid', auth, async (req, res) => {

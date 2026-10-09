@@ -152,11 +152,23 @@
 
   // Setup for Financial Report if on that page
   if (esReporteFinanciero) {
+    const rfDesdeEl = document.getElementById('rfDesde');
+    const rfHastaEl = document.getElementById('rfHasta');
+    if (rfDesdeEl && rfHastaEl && !rfDesdeEl.value && !rfHastaEl.value) {
+      setPreset('hoy');
+    }
+    const rfListPath = () => {
+      const base = window.__APP_BASE__ || '';
+      return window.location.pathname.includes('/detalles')
+        ? `${base}/reporte-financiero/detalles`
+        : `${base}/reporte-financiero`;
+    };
     const irConFiltro = () => {
       window.showCrmLoader?.('Aplicando filtro…');
-      const desde = document.getElementById('rfDesde').value;
-      const hasta = document.getElementById('rfHasta').value;
-      window.location.href = `${window.location.pathname}?desde=${desde}&hasta=${hasta}`;
+      const desde = rfDesdeEl.value;
+      const hasta = rfHastaEl.value;
+      const qs = new URLSearchParams({ desde, hasta });
+      window.location.href = `${rfListPath()}?${qs}`;
     };
     document.querySelectorAll('[data-rf-preset]').forEach(btn =>
       btn.addEventListener('click', () => { window.CRM_REPORTS.setPreset(btn.dataset.rfPreset); irConFiltro(); })

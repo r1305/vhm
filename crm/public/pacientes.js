@@ -339,14 +339,11 @@
         async () => {
           const catId = document.getElementById('epkg_catalogo').value;
           if (!catId) throw new Error('Selecciona un paquete');
-          const cat = catalogo.find((c) => String(c.id) === catId);
           await api(`/pacientes/${patientId}/paquetes-adquiridos/${pkgId}`, {
             method: 'PATCH',
             body: {
-              nombre:       cat.nombre,
+              paquete_catalogo_id: Number(catId),
               fecha_inicio: document.getElementById('epkg_fecha').value,
-              sesiones:     cat.sesiones,
-              precio:       cat.precio,
             },
           });
           const r = await api(`/pacientes/${patientId}/paquetes-adquiridos`, { loader: false });
@@ -609,14 +606,11 @@
         async () => {
           const catId = document.getElementById('epkg_catalogo').value;
           if (!catId) throw new Error('Selecciona un paquete');
-          const cat = catalogo.find((c) => String(c.id) === catId);
           await api(`/pacientes/${patientId}/paquetes-adquiridos/${pkgId}`, {
             method: 'PATCH',
             body: {
-              nombre:       cat.nombre,
+              paquete_catalogo_id: Number(catId),
               fecha_inicio: document.getElementById('epkg_fecha').value,
-              sesiones:     cat.sesiones,
-              precio:       cat.precio,
             },
           });
           closeModal();
