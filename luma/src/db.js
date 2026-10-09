@@ -16,8 +16,14 @@ const pool = mysql.createPool({
   keepAliveInitialDelay: 10000,
 });
 
+const LIMA_OFFSET = '-05:00';
 pool.on('connection', (conn) => {
-  conn.query("SET time_zone = '-05:00'");
+  conn.query('SET time_zone = ?', [LIMA_OFFSET], (err) => {
+    if (err) {
+      console.error('[db] SET time_zone fallo:', err.message);
+      conn.destroy();
+    }
+  });
 });
 
 process.on('SIGTERM', () => pool.end());
