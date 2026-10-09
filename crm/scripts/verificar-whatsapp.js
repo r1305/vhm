@@ -7,7 +7,20 @@
  */
 
 const pool = require('../lib/db');
-const { loadOpenwaConfigFromDB, isOpenwaConfigured } = require('../lib/openwa');
+const { loadOpenwaConfigFromDB, isOpenwaConfigured, openwaFetchConRelevo, RELEVO } = require('../lib/openwa');
+
+async function leerHealthEsperandoRelevo(baseUrl) {
+  const inicio = RELEVO.now();
+  let health = null;
+  for (;;) {
+    const res = await fetch(`${baseUrl}/api/health`).catch(() => null);
+    health = res && res.ok ? await res.json().catch(() => null) : null;
+    const enRelevo = health?.instance?.primary === false && health?.instance?.acquiring === true;
+    if (!enRelevo || RELEVO.now() - inicio >= RELEVO.presupuestoMs) return { health, enRelevo };
+    console.log(`(relevo OpenWA en curso: PID ${health.instance.pid} tomando el lock de PID ${health.instance.lockPid || '-'}; esperando...)`);
+    await RELEVO.sleep(RELEVO.esperaDefectoMs);
+  }
+}
 
 async function main() {
   const issues = [];
@@ -49,20 +62,29 @@ async function main() {
   console.log('\n=== OpenWA API ===');
   const headers = { 'X-API-Key': apiKey };
 
-  const statusRes = await fetch(`${baseUrl}/api/status`, { headers });
-  if (!statusRes.ok) {
+  let statusRes = null;
+  try {
+    statusRes = await openwaFetchConRelevo('/api/status');
+  } catch (err) {
+    issues.push(`OpenWA /api/status → ${err.message}`);
+  }
+  if (statusRes && !statusRes.ok) {
     issues.push(`OpenWA /api/status → HTTP ${statusRes.status}`);
-  } else {
+  } else if (statusRes) {
     const status = await statusRes.json();
     console.log('status:', JSON.stringify(status));
     ok.push(`OpenWA activo (${status.sessions} sesiones, ${status.messages} msgs en SQLite)`);
   }
 
-  const healthRes = await fetch(`${baseUrl}/api/health`);
-  const health = healthRes.ok ? await healthRes.json() : null;
+  const { health, enRelevo } = await leerHealthEsperandoRelevo(baseUrl);
   if (health) {
     console.log('health:', JSON.stringify(health));
-    if (health.status === 'duplicate_instance' || health.instance?.primary === false) {
+    if (enRelevo) {
+      issues.push(
+        `Relevo de instancia OpenWA sin terminar tras ${Math.round(RELEVO.presupuestoMs / 1000)} s: PID ${health.instance?.pid} `
+        + `sigue esperando el lock de PID ${health.instance?.lockPid || '-'}. Si persiste más de un minuto, revisa workers duplicados en cPanel.`
+      );
+    } else if (health.status === 'duplicate_instance' || health.instance?.primary === false) {
       issues.push(
         `INSTANCIA DUPLICADA OpenWA: este PID ${health.instance?.pid} no recibe WhatsApp; activo PID ${health.instance?.lockPid}. `
         + 'Detén la app en cPanel, ejecuta cpanel-clean-workers.sh --openwa-only -f, borra openwa/data/instance.lock y reinicia UNA sola vez.'

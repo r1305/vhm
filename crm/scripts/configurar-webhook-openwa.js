@@ -6,7 +6,7 @@
  * Uso: node scripts/configurar-webhook-openwa.js
  */
 
-const { loadOpenwaConfigFromDB } = require('../lib/openwa');
+const { loadOpenwaConfigFromDB, openwaFetchConRelevo } = require('../lib/openwa');
 
 const REQUIRED_EVENTS = [
   'message.received',
@@ -29,19 +29,13 @@ async function main() {
     throw new Error('OpenWA no configurado en Integraciones');
   }
 
-  const headers = {
-    'X-API-Key': apiKey,
-    'Content-Type': 'application/json',
-  };
-
-  const webhooks = await fetch(`${baseUrl}/api/webhooks`, { headers }).then((r) => r.json());
+  const webhooks = await openwaFetchConRelevo('/api/webhooks').then((r) => r.json());
   const mine = (webhooks || []).filter((w) => w.sessionId === sessionId);
 
   if (!mine.length) {
     console.log('Creando webhook de sesión...');
-    const created = await fetch(`${baseUrl}/api/sessions/${sessionId}/webhooks`, {
+    const created = await openwaFetchConRelevo(`/api/sessions/${sessionId}/webhooks`, {
       method: 'POST',
-      headers,
       body: JSON.stringify({
         url: webhookUrl,
         token: webhookToken,
@@ -61,9 +55,8 @@ async function main() {
       console.log(`Webhook ${wh.id} ya está correcto:`, wh.events);
       continue;
     }
-    const updated = await fetch(`${baseUrl}/api/sessions/${sessionId}/webhooks/${wh.id}`, {
+    const updated = await openwaFetchConRelevo(`/api/sessions/${sessionId}/webhooks/${wh.id}`, {
       method: 'PUT',
-      headers,
       body: JSON.stringify({
         url: webhookUrl,
         token: webhookToken,

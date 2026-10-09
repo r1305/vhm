@@ -1248,7 +1248,7 @@ router.get('/mensajes/:id/media', authWhatsApp, async (req, res) => {
         try {
           const upstream = await fetchOpenwaMediaByMessage(sessionId, msg.wa_message_id, chatJid);
           if (await proxyOpenwaMedia(upstream, res, mime)) return;
-        } catch (_) {}
+        } catch (e) { if (e?.code === 'duplicate_instance') throw e; }
       }
     }
 
@@ -1257,7 +1257,7 @@ router.get('/mensajes/:id/media', authWhatsApp, async (req, res) => {
       try {
         const upstream = await fetchOpenwaMediaFile(sessionId, filename);
         if (await proxyOpenwaMedia(upstream, res, mime)) return;
-      } catch (_) {}
+      } catch (e) { if (e?.code === 'duplicate_instance') throw e; }
     }
 
     if (msg.wa_message_id) {
@@ -1269,12 +1269,16 @@ router.get('/mensajes/:id/media', authWhatsApp, async (req, res) => {
             chatId: chatJid,
           });
           if (await proxyOpenwaMedia(upstream, res, mime)) return;
-        } catch (_) {}
+        } catch (e) { if (e?.code === 'duplicate_instance') throw e; }
       }
     }
 
     return res.status(404).json({ error: 'Medio no disponible' });
   } catch (err) {
+    if (err?.code === 'duplicate_instance') {
+      res.setHeader('Retry-After', '5');
+      return res.status(503).json({ error: err.message, code: err.code });
+    }
     console.error('[whatsapp/media]', req.params.id, err.message);
     return res.status(404).json({ error: 'Medio no disponible' });
   }

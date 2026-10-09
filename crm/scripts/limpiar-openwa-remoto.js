@@ -7,7 +7,7 @@
  */
 
 const pool = require('../lib/db');
-const { loadOpenwaConfigFromDB } = require('../lib/openwa');
+const { loadOpenwaConfigFromDB, openwaFetchConRelevo } = require('../lib/openwa');
 
 async function main() {
   await loadOpenwaConfigFromDB();
@@ -17,9 +17,7 @@ async function main() {
     throw new Error('OpenWA no configurado en Integraciones');
   }
 
-  const statusRes = await fetch(`${baseUrl}/api/status`, {
-    headers: { 'X-API-Key': apiKey },
-  });
+  const statusRes = await openwaFetchConRelevo('/api/status');
   if (!statusRes.ok) {
     throw new Error(`OpenWA status ${statusRes.status}`);
   }
@@ -31,12 +29,8 @@ async function main() {
     return;
   }
 
-  const purgeRes = await fetch(`${baseUrl}/api/purge-messages`, {
+  const purgeRes = await openwaFetchConRelevo('/api/purge-messages', {
     method: 'POST',
-    headers: {
-      'X-API-Key': apiKey,
-      'Content-Type': 'application/json',
-    },
     body: '{}',
   });
 

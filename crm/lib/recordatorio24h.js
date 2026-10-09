@@ -236,12 +236,19 @@ async function procesarRecordatorios24h({
       res.detalle.push({ cita_id: cita.id, paciente_id: cita.paciente_id, telefono, clave, accion: 'enviado' });
     } catch (err) {
       const msg = String(err?.message || err).slice(0, 500);
+      const relevo = err?.code === 'duplicate_instance';
       console.error('[recordatorio24h] cita=%s clave=%s:', cita.id, clave, msg);
       await db.execute(
-        'UPDATE recordatorios SET procesando = 0, procesando_desde = NULL, ultimo_error = ? WHERE clave = ?',
+        relevo
+          ? 'UPDATE recordatorios SET procesando = 0, procesando_desde = NULL, ultimo_error = ?, intentos = GREATEST(intentos - 1, 0) WHERE clave = ?'
+          : 'UPDATE recordatorios SET procesando = 0, procesando_desde = NULL, ultimo_error = ? WHERE clave = ?',
         [msg, clave]
       ).catch((e) => console.error('[recordatorio24h] registrar error cita=%s:', cita.id, e.message));
-      res.errores.push({ cita_id: cita.id, clave, error: msg });
+      res.errores.push({ cita_id: cita.id, clave, error: msg, ...(relevo ? { code: err.code } : {}) });
+      if (relevo) {
+        res.interrumpido = 'duplicate_instance';
+        break;
+      }
     }
   }
 
@@ -258,8 +265,9 @@ async function ejecutarCronRecordatorios24h(opts = {}) {
     if (!(await recordatorio24hActivo(opts.db || pool))) return { omitido: true, motivo: 'desactivado' };
     const res = await procesarRecordatorios24h(opts);
     if (res.candidatas) {
-      console.log('[recordatorio24h] candidatas=%d enviados=%d omitidos=%d errores=%d',
-        res.candidatas, res.enviados, res.omitidos.length, res.errores.length);
+      console.log('[recordatorio24h] candidatas=%d enviados=%d omitidos=%d errores=%d%s',
+        res.candidatas, res.enviados, res.omitidos.length, res.errores.length,
+        res.interrumpido ? ` interrumpido=${res.interrumpido}` : '');
     }
     return res;
   } finally {

@@ -70,15 +70,19 @@ class OpenwaError extends Error {
   }
 }
 
+const MENSAJE_RELEVO = 'OpenWA se está reiniciando (relevo de instancia en curso); reintenta en unos segundos. Si persiste más de un minuto, revisa /openwa/api/health por una instancia duplicada.';
+
+function esDuplicateInstance(status, body) {
+  if (status !== 503 || !body || typeof body !== 'object') return false;
+  return body.error === 'duplicate_instance' || body.code === 'duplicate_instance' || body.status === 'duplicate_instance';
+}
+
 function parseOpenwaFailure(status, txt) {
   let body = {};
   try { body = JSON.parse(txt); } catch (_) {}
-  const raw = body.message || body.error || txt.slice(0, 200);
-  if (status === 503 && body.error === 'duplicate_instance') {
-    return new OpenwaError(
-      'OpenWA tiene dos procesos activos en el servidor. En cPanel: Stop → limpia workers duplicados → Start una sola vez.',
-      { status: 503, code: 'duplicate_instance' }
-    );
+  const raw = body.message || body.error || String(txt || '').slice(0, 200);
+  if (esDuplicateInstance(status, body)) {
+    return new OpenwaError(MENSAJE_RELEVO, { status: 503, code: 'duplicate_instance' });
   }
   if ((status === 400 || status === 503) && /session is not active/i.test(String(raw))) {
     return new OpenwaError(
@@ -102,10 +106,57 @@ async function openwaRawFetch(path, options = {}) {
   return fetch(`${baseUrl}${path}`, { ...options, headers });
 }
 
+const RELEVO = {
+  presupuestoMs: 15000,
+  esperaMaxMs: 6000,
+  esperaDefectoMs: 2000,
+  esperaMinMs: 250,
+  sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
+  now: () => Date.now(),
+  random: () => Math.random(),
+};
+
+function parseRetryAfterMs(valor) {
+  const v = String(valor == null ? '' : valor).trim();
+  if (!v) return null;
+  if (/^\d+(\.\d+)?$/.test(v)) return Math.round(Number(v) * 1000);
+  const fecha = Date.parse(v);
+  if (Number.isNaN(fecha)) return null;
+  return Math.max(0, fecha - RELEVO.now());
+}
+
+function calcularEsperaRelevo(retryAfter, intento, transcurridoMs) {
+  const restante = RELEVO.presupuestoMs - transcurridoMs;
+  if (restante < RELEVO.esperaMinMs) return 0;
+  const sugerida = parseRetryAfterMs(retryAfter);
+  const base = Math.max(
+    RELEVO.esperaMinMs,
+    Math.min(sugerida == null ? RELEVO.esperaDefectoMs : sugerida, RELEVO.esperaMaxMs)
+  );
+  const conBackoff = base * (1 + 0.5 * intento);
+  const conJitter = conBackoff + conBackoff * 0.1 * RELEVO.random();
+  return Math.round(Math.min(conJitter, RELEVO.esperaMaxMs, restante));
+}
+
+async function openwaFetchConRelevo(path, options = {}, { inicio = RELEVO.now() } = {}) {
+  for (let intento = 0; ; intento++) {
+    const res = await openwaRawFetch(path, options);
+    if (res.status !== 503) return res;
+    const txt = await res.clone().text().catch(() => '');
+    let body = {};
+    try { body = JSON.parse(txt); } catch (_) {}
+    if (!esDuplicateInstance(res.status, body)) return res;
+    const espera = calcularEsperaRelevo(res.headers.get('retry-after'), intento, RELEVO.now() - inicio);
+    if (espera <= 0) throw parseOpenwaFailure(res.status, txt);
+    await RELEVO.sleep(espera);
+  }
+}
+
 async function openwaFetch(path, options = {}, retries = 3) {
+  const inicio = RELEVO.now();
   let lastErr;
   for (let attempt = 0; attempt < retries; attempt++) {
-    const res = await openwaRawFetch(path, options);
+    const res = await openwaFetchConRelevo(path, options, { inicio });
     if (res.ok) {
       const ct = res.headers.get('content-type') || '';
       if (ct.includes('application/json')) return res.json();
@@ -113,9 +164,8 @@ async function openwaFetch(path, options = {}, retries = 3) {
     }
     const txt = await res.text().catch(() => '');
     lastErr = parseOpenwaFailure(res.status, txt);
-    const retryable = lastErr.code === 'duplicate_instance' || lastErr.code === 'session_inactive';
-    if (retryable && attempt < retries - 1) {
-      await new Promise((r) => setTimeout(r, 400 + attempt * 350));
+    if (lastErr.code === 'session_inactive' && attempt < retries - 1) {
+      await RELEVO.sleep(400 + attempt * 350);
       continue;
     }
     throw lastErr;
@@ -218,7 +268,7 @@ function mediaTypeFromMime(mime) {
 
 async function sendWhatsAppMedia({ to, buffer, originalname, mimetype, caption, duration }) {
   await loadOpenwaConfigFromDB();
-  const { sessionId, baseUrl, apiKey } = getOpenwaConfig();
+  const { sessionId } = getOpenwaConfig();
   const chatId = toChatId(to);
   if (!sessionId || !chatId || !buffer) throw new Error('OpenWA no configurado');
 
@@ -229,14 +279,13 @@ async function sendWhatsAppMedia({ to, buffer, originalname, mimetype, caption, 
   if (duration != null && duration !== '') form.append('duration', String(duration));
   form.append('file', new Blob([buffer], { type: mimetype || 'application/octet-stream' }), originalname || 'file');
 
-  const res = await fetch(`${baseUrl}/api/sessions/${encodeURIComponent(sessionId)}/messages/send-media`, {
+  const res = await openwaFetchConRelevo(`/api/sessions/${encodeURIComponent(sessionId)}/messages/send-media`, {
     method: 'POST',
-    headers: { 'X-API-Key': apiKey },
     body: form,
   });
   if (!res.ok) {
     const txt = await res.text().catch(() => '');
-    throw new Error(`OpenWA ${res.status}: ${txt.slice(0, 200)}`);
+    throw parseOpenwaFailure(res.status, txt);
   }
   const data = await res.json();
   const tipo = data.type || mediaTypeFromMime(mimetype);
@@ -251,7 +300,7 @@ async function sendWhatsAppMedia({ to, buffer, originalname, mimetype, caption, 
 }
 
 async function fetchOpenwaMediaFile(sessionId, filename) {
-  const res = await openwaRawFetch(
+  const res = await openwaFetchConRelevo(
     `/api/media/file/${encodeURIComponent(sessionId)}/${encodeURIComponent(filename)}`
   );
   if (!res.ok) throw new Error(`OpenWA media ${res.status}`);
@@ -262,13 +311,13 @@ async function fetchOpenwaMediaByMessage(sessionId, messageId, chatId) {
   const params = new URLSearchParams();
   if (chatId) params.set('chatId', chatId);
   const qs = params.toString() ? `?${params}` : '';
-  return openwaRawFetch(
+  return openwaFetchConRelevo(
     `/api/media/by-message/${encodeURIComponent(sessionId)}/${encodeURIComponent(messageId)}${qs}`
   );
 }
 
 async function downloadOpenwaMedia({ sessionId, messageId, chatId }) {
-  const res = await openwaRawFetch('/api/media/download', {
+  const res = await openwaFetchConRelevo('/api/media/download', {
     method: 'POST',
     body: JSON.stringify({ sessionId, messageId, chatId }),
   });
@@ -284,6 +333,11 @@ module.exports = {
   toChatId,
   openwaFetch,
   openwaRawFetch,
+  openwaFetchConRelevo,
+  parseOpenwaFailure,
+  calcularEsperaRelevo,
+  RELEVO,
+  MENSAJE_RELEVO,
   sendWhatsApp,
   sendWhatsAppMedia,
   mediaTypeFromMime,
