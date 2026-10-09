@@ -181,7 +181,6 @@
       }
     }
   }
-  }
 
   /* ── Título ── */
   function actualizarTitulo() {
