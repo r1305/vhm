@@ -81,7 +81,7 @@ Si ves el uso de procesos subir (ej. 90/100):
 2. **Actualiza el código** (`bash site/deploy.sh`) — versiones viejas ejecutaban `npm build` en cada restart.
 3. En `.env` del servidor:
    ```env
-   PASSENGER_MAX_POOL_SIZE=2
+   PASSENGER_MAX_POOL_SIZE=1
    DB_POOL_MAX=3
    ```
 4. **Stop** la app en cPanel, luego **Start** una sola vez (no Restart en bucle).
