@@ -57,7 +57,7 @@ async function ensureSchema() {
       CREATE TABLE IF NOT EXISTS disponibilidad (
         id           INT AUTO_INCREMENT PRIMARY KEY,
         terapeuta_id INT NOT NULL,
-        dia_semana   TINYINT NOT NULL COMMENT '0=lun,1=mar,...,6=dom',
+        dia_semana   TINYINT NOT NULL COMMENT '0=dom,1=lun,...,6=sab',
         hora_inicio  TIME NOT NULL,
         hora_fin     TIME NOT NULL,
         activo       TINYINT(1) NOT NULL DEFAULT 1,

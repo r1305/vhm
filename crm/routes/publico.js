@@ -3,13 +3,18 @@ const pool = require('../lib/db');
 const { createMeetLink, isConnected } = require('../lib/googleMeet');
 const { evaluateBooking } = require('../lib/paquetesPaciente');
 const googleCal = require('../lib/googleCalendar');
-const { normHora, sumarHora, fechaValida, bloquearFranja } = require('../lib/reservaCita');
+const {
+  normHora, sumarHora, fechaValida, diaSemanaLima, errorPublico,
+  franjaBloqueada, bloquearPaciente, tipoCitaReserva, bloquearFranja,
+} = require('../lib/reservaCita');
 const router = Router();
 
 const t   = (v, max=255) => v == null ? null : String(v).trim().slice(0,max) || null;
 const pid = v => { const n = parseInt(v,10); return isFinite(n) && n > 0 ? n : null; };
 
 const TZ = 'America/Lima';
+const MES_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
+const MAX_DIAS_SLOTS = 62;
 
 // Fecha y hora actuales en America/Lima
 function ahoraLima() {
@@ -49,7 +54,10 @@ router.get('/:username/buscar-paciente', async (req, res) => {
 
     if (paciente) return res.json({ encontrado: true, nombre: paciente.nombre, apellido: paciente.apellido || '', email: paciente.email || '' });
     res.json({ encontrado: false });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) {
+    console.error('[publico/buscar-paciente] username=%s:', req.params.username, err);
+    res.status(500).json({ error: 'No se pudo buscar el paciente. Inténtalo nuevamente.' });
+  }
 });
 
 // GET /api/publico/:username/slots?mes=2025-08
@@ -61,7 +69,8 @@ router.get('/:username/slots', async (req, res) => {
     );
     if (!ter) return res.status(404).json({ error: 'Terapeuta no encontrado' });
 
-    const mesParam = t(req.query.mes, 7); // YYYY-MM
+    const mesParam = req.query.mes == null || req.query.mes === '' ? null : String(req.query.mes);
+    if (mesParam !== null && !MES_RE.test(mesParam)) return res.status(400).json({ error: 'Mes inválido' });
     const { fechaStr: hoyLima, minutos: minAhora } = ahoraLima();
 
     const anio = mesParam ? parseInt(mesParam.split('-')[0]) : parseInt(hoyLima.slice(0,4));
@@ -93,7 +102,9 @@ router.get('/:username/slots', async (req, res) => {
 
     // Bloqueos en el rango (CRM)
     const [bloqueos] = await pool.execute(
-      'SELECT fecha_inicio, fecha_fin, hora_inicio, hora_fin FROM bloqueos WHERE terapeuta_id=? AND fecha_inicio<=? AND fecha_fin>=?',
+      `SELECT DATE_FORMAT(fecha_inicio,'%Y-%m-%d') AS fecha_inicio, DATE_FORMAT(fecha_fin,'%Y-%m-%d') AS fecha_fin,
+              hora_inicio, hora_fin
+       FROM bloqueos WHERE terapeuta_id=? AND fecha_inicio<=? AND fecha_fin>=?`,
       [ter.id, hastaStr, desdeStr]
     );
 
@@ -112,36 +123,17 @@ router.get('/:username/slots', async (req, res) => {
       ocupados[f].add(toMin(c.hora_inicio));
     });
 
-    const bloqueadoTotal = {};
-    const bloqueadoParcial = {};
-    bloqueos.forEach(b => {
-      let d = new Date(String(b.fecha_inicio).slice(0,10) + 'T12:00:00');
-      const fin = new Date(String(b.fecha_fin).slice(0,10) + 'T12:00:00');
-      const bIni = toMin(b.hora_inicio);
-      const bFin = toMin(b.hora_fin);
-      const esTodoDia = bIni === 0 && bFin >= 23*60+59;
-      while (d <= fin) {
-        const f = isoDate(d);
-        if (esTodoDia) { bloqueadoTotal[f] = true; }
-        else {
-          if (!bloqueadoParcial[f]) bloqueadoParcial[f] = [];
-          bloqueadoParcial[f].push({ ini: bIni, fin: bFin });
-        }
-        d.setDate(d.getDate()+1);
-      }
-    });
-
     // Generar slots por día
     const dias = [];
     let cur = new Date(anio, mes, 1);
-    while (isoDate(cur) <= hastaStr) {
+    for (let iter = 0; iter < MAX_DIAS_SLOTS && isoDate(cur) <= hastaStr; iter++) {
       const f = isoDate(cur);
-      const diaSemana = cur.getDay();
+      const diaSemana = diaSemanaLima(f);
       const esPasado  = f < hoyLima;
       const esHoy     = f === hoyLima;
       const rangos    = horario[diaSemana];
 
-      if (!rangos || esPasado || bloqueadoTotal[f]) {
+      if (!rangos || esPasado) {
         dias.push({ fecha: f, slots: [] });
         cur.setDate(cur.getDate()+1);
         continue;
@@ -160,7 +152,7 @@ router.get('/:username/slots', async (req, res) => {
         for (let m = rango.ini; m + 60 <= rango.fin; m += 60) {
           if (esHoy && m <= minAhora) continue;
           if (ocupados[f]?.has(m)) continue;
-          if ((bloqueadoParcial[f] || []).some(b => m < b.fin && m + 60 > b.ini)) continue;
+          if (franjaBloqueada(bloqueos, f, m, m + 60)) continue;
           if (gcalBusyHoy.some(b => m < b.fin && m + 60 > b.ini)) continue;
           slots.push(minToHora(m));
         }
@@ -177,7 +169,10 @@ router.get('/:username/slots', async (req, res) => {
       dias,
       tz: TZ,
     });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) {
+    console.error('[publico/slots] username=%s mes=%s:', req.params.username, req.query.mes, err);
+    res.status(500).json({ error: 'No se pudieron cargar los horarios. Inténtalo nuevamente.' });
+  }
 });
 
 // POST /api/publico/:username/agendar
@@ -237,14 +232,16 @@ router.post('/:username/agendar', async (req, res) => {
       paciente = row || null;
     }
 
-    let pacienteId;
+    let pacienteId = null;
     let pacientePaqueteId = null;
 
-    if (paciente) {
-      const booking = await evaluateBooking(paciente.id);
+    conn = await pool.getConnection();
+    await conn.beginTransaction();
+
+    if (paciente && await bloquearPaciente(conn, paciente.id)) {
+      const booking = await evaluateBooking(paciente.id, conn);
       if (!booking.ok) {
-        return res.status(403).json({
-          error: booking.mensaje,
+        throw errorPublico(403, booking.mensaje, {
           codigo: booking.codigo,
           cuota_numero: booking.cuota_numero || null,
         });
@@ -253,11 +250,8 @@ router.post('/:username/agendar', async (req, res) => {
       pacientePaqueteId = booking.paciente_paquete_id || null;
     }
 
-    const tipoCita = paciente ? 'seguimiento' : 'primera_vez';
-
-    conn = await pool.getConnection();
-    await conn.beginTransaction();
     await bloquearFranja(conn, { terapeutaId: ter.id, fecha: fechaVal, horaInicio, horaFin });
+    const tipoCita = await tipoCitaReserva(conn, pacienteId);
 
     if (!pacienteId) {
       // Paciente nuevo — crear como prospecto asignado al terapeuta de la URL
@@ -294,7 +288,11 @@ router.post('/:username/agendar', async (req, res) => {
     res.status(201).json({ ok: true, cita_id: rc.insertId, meet_link });
   } catch (err) {
     if (conn) { try { await conn.rollback(); } catch (_) {} }
-    if (err.publico) return res.status(err.status).json({ error: err.message });
+    if (err.publico) {
+      const body = { error: err.message };
+      if (err.codigo) { body.codigo = err.codigo; body.cuota_numero = err.cuota_numero || null; }
+      return res.status(err.status).json(body);
+    }
     console.error('[publico/agendar] username=%s terapeuta_id=%s fecha=%s hora=%s:',
       req.params.username, ter?.id, fechaVal, horaInicio, err);
     res.status(500).json({ error: 'No se pudo agendar la cita. Inténtalo nuevamente.' });

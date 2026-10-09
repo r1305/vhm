@@ -5,7 +5,9 @@ const { sendRecordatorioCita } = require('../lib/mailer');
 const { createMeetLink, isConnected } = require('../lib/googleMeet');
 const { getActivePacientePaquete } = require('../lib/paquetesPaciente');
 const googleCal = require('../lib/googleCalendar');
-const { normHora, sumarHora, fechaValida, bloquearFranja } = require('../lib/reservaCita');
+const {
+  normHora, sumarHora, fechaValida, diaSemanaLima, bloquearPaciente, tipoCitaReserva, bloquearFranja,
+} = require('../lib/reservaCita');
 
 const router = Router();
 const t = (v, max = 255) => v == null ? null : String(v).trim().slice(0, max) || null;
@@ -46,9 +48,9 @@ router.get('/disponibles', async (req, res) => {
   const terapeuta_id = pid(req.query.terapeuta_id);
   const fecha = t(req.query.fecha, 10);
   if (!terapeuta_id || !fecha) return res.status(400).json({ error: 'terapeuta_id y fecha requeridos' });
+  if (!fechaValida(fecha)) return res.status(400).json({ error: 'Fecha inválida' });
   try {
-    const d = new Date(fecha);
-    const dia = (d.getDay() + 6) % 7; // 0=lun
+    const dia = diaSemanaLima(fecha);
     const [slots] = await pool.execute(
       'SELECT hora_inicio, hora_fin FROM disponibilidad WHERE terapeuta_id=? AND dia_semana=? AND activo=1',
       [terapeuta_id, dia]
@@ -120,7 +122,10 @@ router.post('/', auth, async (req, res) => {
       }
     } catch (e) { console.error('[gcal create]', e.message); }
     res.status(201).json({ id: r.insertId, meet_link, gcal_event_id });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) {
+    console.error('[citas/crear] paciente_id=%s terapeuta_id=%s fecha=%s:', paciente_id, terapeuta_id, fecha, err);
+    res.status(500).json({ error: 'No se pudo crear la cita. Inténtalo nuevamente.' });
+  }
 });
 
 // Auto-agendamiento público (sin auth)
@@ -146,13 +151,13 @@ router.post('/agendar', async (req, res) => {
   try {
     conn = await pool.getConnection();
     await conn.beginTransaction();
-    await bloquearFranja(conn, { terapeutaId, fecha: fechaVal, horaInicio, horaFin });
-    // Crear o encontrar paciente
-    let pacienteId;
+    let pacienteId = null;
     if (email) {
       const [[existing]] = await conn.execute('SELECT id FROM pacientes WHERE email=? LIMIT 1', [email]);
-      pacienteId = existing?.id;
+      if (existing && await bloquearPaciente(conn, existing.id)) pacienteId = existing.id;
     }
+    await bloquearFranja(conn, { terapeutaId, fecha: fechaVal, horaInicio, horaFin });
+    const tipoCita = await tipoCitaReserva(conn, pacienteId);
     if (!pacienteId) {
       const [r] = await conn.execute(
         `INSERT INTO pacientes (nombre,apellido,email,telefono,fuente,fuente_detalle,estado)
@@ -163,8 +168,8 @@ router.post('/agendar', async (req, res) => {
     }
     const [rc] = await conn.execute(
       `INSERT INTO citas (paciente_id,terapeuta_id,fecha,hora_inicio,hora_fin,modalidad,tipo)
-       VALUES (?,?,?,?,?,?,'primera_vez')`,
-      [pacienteId, terapeutaId, fechaVal, horaInicio, horaFin, modalidad]
+       VALUES (?,?,?,?,?,?,?)`,
+      [pacienteId, terapeutaId, fechaVal, horaInicio, horaFin, modalidad, tipoCita]
     );
     // Si el paciente es prospecto, pasa a confirmado
     await conn.execute(
@@ -198,7 +203,10 @@ router.delete('/:cid', auth, async (req, res) => {
     }
     await pool.execute('DELETE FROM citas WHERE id=?', [cid]);
     res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) {
+    console.error('[citas/eliminar] cita_id=%s:', cid, err);
+    res.status(500).json({ error: 'No se pudo eliminar la cita. Inténtalo nuevamente.' });
+  }
 });
 
 router.put('/:cid', auth, async (req, res) => {
@@ -274,7 +282,10 @@ router.put('/:cid', auth, async (req, res) => {
       } catch (e) { console.error('[gcal update]', e.message); }
     }
     res.json({ ok: true, meet_link: updates.meet_link || cita.meet_link || null });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) {
+    console.error('[citas/editar] cita_id=%s:', cid, err);
+    res.status(500).json({ error: 'No se pudo actualizar la cita. Inténtalo nuevamente.' });
+  }
 });
 
 router.patch('/:cid/estado', auth, async (req, res) => {
@@ -303,7 +314,10 @@ router.patch('/:cid/estado', auth, async (req, res) => {
     vals.push(cid);
     await pool.execute(`UPDATE citas SET ${sets.join(',')} WHERE id=?`, vals);
     res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) {
+    console.error('[citas/estado] cita_id=%s estado=%s:', cid, estado, err);
+    res.status(500).json({ error: 'No se pudo actualizar el estado de la cita. Inténtalo nuevamente.' });
+  }
 });
 
 // Enviar recordatorio manual
@@ -325,7 +339,10 @@ router.post('/:cid/recordatorio', auth, async (req, res) => {
       canal
     );
     res.json({ ok: true, result });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) {
+    console.error('[citas/recordatorio] cita_id=%s:', req.params.cid, err);
+    res.status(500).json({ error: 'No se pudo enviar el recordatorio. Inténtalo nuevamente.' });
+  }
 });
 
 module.exports = router;

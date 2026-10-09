@@ -56,8 +56,8 @@ function computePackageEstado(paquete, hoy, citasUsadas) {
   return 'inactivo';
 }
 
-async function countCitasActivas(pacienteId, desdeDate = null) {
-  const [[row]] = await pool.execute(
+async function countCitasActivas(pacienteId, desdeDate = null, db = pool) {
+  const [[row]] = await db.execute(
     `SELECT COUNT(*) AS total FROM citas
      WHERE paciente_id = ? AND estado IN ('realizada','no_show')
      ${desdeDate ? 'AND DATE(fecha) >= ?' : ''}`,
@@ -66,7 +66,7 @@ async function countCitasActivas(pacienteId, desdeDate = null) {
   return row?.total || 0;
 }
 
-async function countCitasActivasForPaquete(pacientePaqueteId, desdeDate = null, pacienteId = null) {
+async function countCitasActivasForPaquete(pacientePaqueteId, desdeDate = null, pacienteId = null, db = pool) {
   // Suma las citas vinculadas al paquete y, si se conoce al paciente, también las
   // citas legacy (sin paquete) dentro del rango. Coincide con SQL.sesionesPendientes
   // para que guard de compra, ciclo de vida y UI nunca diverjan.
@@ -83,24 +83,24 @@ async function countCitasActivasForPaquete(pacientePaqueteId, desdeDate = null, 
     params = [pacientePaqueteId];
     if (desdeDate) { sql += ' AND DATE(fecha) >= ?'; params.push(desdeDate); }
   }
-  const [[row]] = await pool.execute(sql, params);
+  const [[row]] = await db.execute(sql, params);
   return row?.total || 0;
 }
 
-async function syncPackageLifecycle(pacienteId) {
+async function syncPackageLifecycle(pacienteId, db = pool) {
   const hoy = todayStr();
-  const [packages] = await pool.execute(
+  const [packages] = await db.execute(
     `SELECT * FROM paciente_paquetes WHERE paciente_id = ? ORDER BY fecha_inicio ASC, id ASC`,
     [pacienteId]
   );
 
   for (const pkg of packages) {
     if (!pkg.activo) continue;
-    const citas = await countCitasActivasForPaquete(pkg.id, dateStr(pkg.fecha_inicio), pkg.paciente_id);
+    const citas = await countCitasActivasForPaquete(pkg.id, dateStr(pkg.fecha_inicio), pkg.paciente_id, db);
     const exhausted = citas >= pkg.sesiones;
     const expired = isPackageExpired(pkg, hoy);
     if (expired || exhausted) {
-      await pool.execute('UPDATE paciente_paquetes SET activo = 0 WHERE id = ?', [pkg.id]);
+      await db.execute('UPDATE paciente_paquetes SET activo = 0 WHERE id = ?', [pkg.id]);
       pkg.activo = 0;
     }
   }
@@ -116,19 +116,19 @@ async function syncPackageLifecycle(pacienteId) {
       if (pkg.activo) continue;
       if (isPackageNotStarted(pkg, hoy)) continue;
       if (isPackageExpired(pkg, hoy)) continue;
-      const citas = await countCitasActivasForPaquete(pkg.id, dateStr(pkg.fecha_inicio), pkg.paciente_id);
+      const citas = await countCitasActivasForPaquete(pkg.id, dateStr(pkg.fecha_inicio), pkg.paciente_id, db);
       if (citas >= pkg.sesiones) continue;
-      await pool.execute('UPDATE paciente_paquetes SET activo = 1 WHERE id = ?', [pkg.id]);
+      await db.execute('UPDATE paciente_paquetes SET activo = 1 WHERE id = ?', [pkg.id]);
       pkg.activo = 1;
       break;
     }
   }
 }
 
-async function getActivePacientePaquete(pacienteId) {
-  await syncPackageLifecycle(pacienteId);
+async function getActivePacientePaquete(pacienteId, db = pool) {
+  await syncPackageLifecycle(pacienteId, db);
   const hoy = todayStr();
-  const [[row]] = await pool.execute(
+  const [[row]] = await db.execute(
     `SELECT * FROM paciente_paquetes
      WHERE paciente_id = ? AND activo = 1
      ORDER BY fecha_inicio ASC, id ASC
@@ -137,7 +137,7 @@ async function getActivePacientePaquete(pacienteId) {
   );
   if (!row) return null;
   if (isPackageExpired(row, hoy) || isPackageNotStarted(row, hoy)) return null;
-  const citas = await countCitasActivasForPaquete(row.id, dateStr(row.fecha_inicio), pacienteId);
+  const citas = await countCitasActivasForPaquete(row.id, dateStr(row.fecha_inicio), pacienteId, db);
   if (citas >= row.sesiones) return null;
   return row;
 }
@@ -460,21 +460,21 @@ async function repairPaquetesPrecioInconsistente() {
   return reparados;
 }
 
-async function evaluateBooking(pacienteId) {
+async function evaluateBooking(pacienteId, db = pool) {
   for (let attempt = 0; attempt < 5; attempt++) {
-    const paquete = await getActivePacientePaquete(pacienteId);
+    const paquete = await getActivePacientePaquete(pacienteId, db);
     if (!paquete) break;
 
-    const citasActivas = await countCitasActivasForPaquete(paquete.id, dateStr(paquete.fecha_inicio), pacienteId);
+    const citasActivas = await countCitasActivasForPaquete(paquete.id, dateStr(paquete.fecha_inicio), pacienteId, db);
     const nextSessionNum = citasActivas + 1;
 
     if (nextSessionNum > paquete.sesiones) {
-      await pool.execute('UPDATE paciente_paquetes SET activo = 0 WHERE id = ?', [paquete.id]);
-      await syncPackageLifecycle(pacienteId);
+      await db.execute('UPDATE paciente_paquetes SET activo = 0 WHERE id = ?', [paquete.id]);
+      await syncPackageLifecycle(pacienteId, db);
       continue;
     }
 
-    const [[cuota]] = await pool.execute(
+    const [[cuota]] = await db.execute(
       `SELECT numero, pagado, fecha_pago FROM paciente_paquete_cuotas
        WHERE paciente_paquete_id = ? AND sesiones_inicio <= ? AND sesiones_fin >= ?`,
       [paquete.id, nextSessionNum, nextSessionNum]
@@ -497,8 +497,8 @@ async function evaluateBooking(pacienteId) {
     };
   }
 
-  const citasActivas = await countCitasActivas(pacienteId);
-  const [[legacy]] = await pool.execute(
+  const citasActivas = await countCitasActivas(pacienteId, null, db);
+  const [[legacy]] = await db.execute(
     `SELECT COALESCE((SELECT SUM(ps.sesiones) FROM paciente_sesiones ps WHERE ps.paciente_id = ?), 0) AS total`,
     [pacienteId]
   );
