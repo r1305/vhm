@@ -303,6 +303,23 @@ async function scheduleCron() {
   }
 }
 
+let _cronRec24Task = null;
+function scheduleRecordatorios24h() {
+  try {
+    const nodeCron = require('node-cron');
+    const rec24 = require('./lib/recordatorio24h');
+    if (_cronRec24Task) { _cronRec24Task.stop(); _cronRec24Task = null; }
+    if (_shuttingDown) return;
+    if (rec24.envInterruptor() === false) { console.log('[rec24] Desactivado por RECORDATORIO_24H_ENABLED'); return; }
+    _cronRec24Task = nodeCron.schedule(rec24.REC24_CRON, () => {
+      rec24.ejecutarCronRecordatorios24h().catch(e => console.error('[rec24]', e.message));
+    }, { timezone: 'America/Lima' });
+    console.log(`[rec24] Programado: ${rec24.REC24_CRON} (America/Lima)`);
+  } catch (err) {
+    console.warn('[rec24] node-cron no disponible:', err.message);
+  }
+}
+
 let _shutdownPromise = null;
 function shutdown(signal) {
   if (_shutdownPromise) return _shutdownPromise;
@@ -310,6 +327,7 @@ function shutdown(signal) {
   console.log(`[crm] ${signal} recibido, cerrando recursos...`);
   _shutdownPromise = (async () => {
     try { if (_cronTask) { _cronTask.stop(); _cronTask = null; } } catch (_) {}
+    try { if (_cronRec24Task) { _cronRec24Task.stop(); _cronRec24Task = null; } } catch (_) {}
     try { await sessionStore.close(); } catch (_) {}
     let forceTimer = null;
     const limite = new Promise((resolve) => {
@@ -366,6 +384,7 @@ ensureSchema()
       }
     } catch (err) { console.warn('[pwa] No se pudieron generar íconos:', err.message); }
     await scheduleCron();
+    scheduleRecordatorios24h();
   })
   .then(() => {
     if (typeof PhusionPassenger !== 'undefined') {

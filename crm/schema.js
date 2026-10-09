@@ -269,6 +269,7 @@ async function ensureSchema() {
     // Actualizar labels de tipo en citas (solo cosmético, los valores ENUM no cambian)
     try { await conn.execute("ALTER TABLE citas MODIFY tipo ENUM('primera_vez','seguimiento','evaluacion','urgencia') NOT NULL DEFAULT 'seguimiento'"); } catch (_) {}
     try { await conn.execute("ALTER TABLE citas MODIFY estado ENUM('pendiente','confirmada','reagendada','realizada','cancelada','no_show') NOT NULL DEFAULT 'pendiente'"); } catch (_) {}
+    try { await conn.execute("ALTER TABLE citas ALTER COLUMN estado SET DEFAULT 'pendiente'"); } catch (_) {}
 
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS recordatorios (
@@ -286,6 +287,11 @@ async function ensureSchema() {
         FOREIGN KEY (cita_id)     REFERENCES citas(id)     ON DELETE SET NULL
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
+    try { await conn.execute('ALTER TABLE recordatorios ADD COLUMN clave VARCHAR(100) DEFAULT NULL'); } catch (_) {}
+    try { await conn.execute('ALTER TABLE recordatorios ADD UNIQUE KEY uq_recordatorios_clave (clave)'); } catch (_) {}
+    try { await conn.execute('ALTER TABLE recordatorios ADD COLUMN intentos TINYINT NOT NULL DEFAULT 0'); } catch (_) {}
+    try { await conn.execute('ALTER TABLE recordatorios ADD COLUMN procesando TINYINT(1) NOT NULL DEFAULT 0'); } catch (_) {}
+    try { await conn.execute('ALTER TABLE recordatorios ADD COLUMN ultimo_error VARCHAR(500) DEFAULT NULL'); } catch (_) {}
 
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS configuracion (

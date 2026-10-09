@@ -8,6 +8,7 @@ const googleCal = require('../lib/googleCalendar');
 const {
   normHora, sumarHora, fechaValida, diaSemanaLima, cuerpoErrorPublico,
   reservarCupoPaciente, tipoCitaReserva, bloquearFranja,
+  dentroVentanaAgendamiento, MSG_FUERA_VENTANA,
 } = require('../lib/reservaCita');
 
 const router = Router();
@@ -76,7 +77,7 @@ function gcalTitulo(pac, tipo) {
 }
 
 router.post('/', auth, async (req, res) => {
-  const { paciente_id, terapeuta_id, fecha, modalidad='presencial', tipo='seguimiento', estado='realizada', notas } = req.body || {};
+  const { paciente_id, terapeuta_id, fecha, modalidad='presencial', tipo='seguimiento', estado='pendiente', notas } = req.body || {};
   let { hora_inicio, hora_fin } = req.body || {};
   if (!paciente_id || !terapeuta_id || !fecha)
     return res.status(400).json({ error: 'Campos requeridos faltantes' });
@@ -148,6 +149,8 @@ router.post('/agendar', async (req, res) => {
     return res.status(400).json({ error: 'Horario inválido' });
   if (!['presencial', 'videollamada', 'telefono'].includes(modalidad))
     return res.status(400).json({ error: 'Modalidad inválida' });
+  if (!dentroVentanaAgendamiento(fechaVal, horaInicio))
+    return res.status(409).json({ error: MSG_FUERA_VENTANA });
   let conn;
   try {
     conn = await pool.getConnection();

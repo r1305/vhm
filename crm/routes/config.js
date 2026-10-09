@@ -7,6 +7,7 @@ const router = Router();
 const ALLOWED = new Set([
   'smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from', 'smtp_secure',
   'openwa_url', 'openwa_api_key', 'openwa_session', 'openwa_webhook_token',
+  'recordatorio_24h_activo', 'recordatorio_24h_mensaje',
 ]);
 
 // Leer config completa (solo admin) — devuelve valores reales

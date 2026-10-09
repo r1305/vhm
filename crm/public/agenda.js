@@ -214,7 +214,7 @@
   function showCargaMasiva() {
     const tipoOpts = [['primera_vez','Primera consulta'],['seguimiento','Tratamiento'],['evaluacion','Seguimiento'],['urgencia','Urgencia']]
       .map(([v,l]) => `<option value="${v}">${l}</option>`).join('');
-    const estadoOpts = estadoCitaOptionsHtml('realizada');
+    const estadoOpts = estadoCitaOptionsHtml('pendiente');
     const modalidadOpts = [['presencial','Presencial'],['videollamada','Videollamada','selected'],['telefono','Teléfono']]
       .map(([v,l,s]) => `<option value="${v}" ${s||''}>${l}</option>`).join('');
 

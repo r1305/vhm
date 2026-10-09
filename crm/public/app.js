@@ -38,9 +38,9 @@
     return Object.entries(ESTADO_CITA);
   }
 
-  /** Opciones HTML para selects de estado de cita. Default: realizada. */
-  function estadoCitaOptionsHtml(selected = 'realizada') {
-    const sel = ESTADO_CITA[selected] ? selected : 'realizada';
+  /** Opciones HTML para selects de estado de cita. Default: pendiente. */
+  function estadoCitaOptionsHtml(selected = 'pendiente') {
+    const sel = ESTADO_CITA[selected] ? selected : 'pendiente';
     return estadoCitaSelectEntries()
       .map(([k, v]) => `<option value="${k}"${k === sel ? ' selected' : ''}>${v.label}</option>`)
       .join('');

@@ -5,6 +5,7 @@ const googleCal = require('../lib/googleCalendar');
 const {
   normHora, sumarHora, fechaValida, diaSemanaLima, cuerpoErrorPublico,
   franjaBloqueada, citaSolapa, reservarCupoPaciente, tipoCitaReserva, bloquearFranja,
+  ventanaAgendamiento, dentroVentanaAgendamiento, validarVentanaAgendamiento,
 } = require('../lib/reservaCita');
 const router = Router();
 
@@ -70,7 +71,9 @@ router.get('/:username/slots', async (req, res) => {
 
     const mesParam = req.query.mes == null || req.query.mes === '' ? null : String(req.query.mes);
     if (mesParam !== null && !MES_RE.test(mesParam)) return res.status(400).json({ error: 'Mes inválido' });
-    const { fechaStr: hoyLima, minutos: minAhora } = ahoraLima();
+    const { fechaStr: hoyLima } = ahoraLima();
+    const ahora = new Date();
+    const ventana = ventanaAgendamiento(ahora);
 
     const anio = mesParam ? parseInt(mesParam.split('-')[0]) : parseInt(hoyLima.slice(0,4));
     const mes  = mesParam ? parseInt(mesParam.split('-')[1]) - 1 : parseInt(hoyLima.slice(5,7)) - 1;
@@ -128,11 +131,10 @@ router.get('/:username/slots', async (req, res) => {
     for (let iter = 0; iter < MAX_DIAS_SLOTS && isoDate(cur) <= hastaStr; iter++) {
       const f = isoDate(cur);
       const diaSemana = diaSemanaLima(f);
-      const esPasado  = f < hoyLima;
-      const esHoy     = f === hoyLima;
+      const fueraVentana = f < ventana.minFecha || f > ventana.maxFecha;
       const rangos    = horario[diaSemana];
 
-      if (!rangos || esPasado) {
+      if (!rangos || fueraVentana) {
         dias.push({ fecha: f, slots: [] });
         cur.setDate(cur.getDate()+1);
         continue;
@@ -149,7 +151,7 @@ router.get('/:username/slots', async (req, res) => {
       const slots = [];
       for (const rango of rangos) {
         for (let m = rango.ini; m + 60 <= rango.fin; m += 60) {
-          if (esHoy && m <= minAhora) continue;
+          if (!dentroVentanaAgendamiento(f, minToHora(m), ahora)) continue;
           if (citaSolapa(ocupados[f], m, m + 60)) continue;
           if (franjaBloqueada(bloqueos, f, m, m + 60)) continue;
           if (gcalBusyHoy.some(b => m < b.fin && m + 60 > b.ini)) continue;
@@ -167,6 +169,7 @@ router.get('/:username/slots', async (req, res) => {
       },
       dias,
       tz: TZ,
+      ventana: { min_fecha: ventana.minFecha, max_fecha: ventana.maxFecha },
     });
   } catch (err) {
     console.error('[publico/slots] username=%s mes=%s:', req.params.username, req.query.mes, err);
@@ -193,6 +196,7 @@ router.post('/:username/agendar', async (req, res) => {
     if (!horaInicio) return res.status(400).json({ error: 'Hora inválida' });
     const horaFin = sumarHora(horaInicio);
     if (!horaFin) return res.status(400).json({ error: 'Horario inválido' });
+    validarVentanaAgendamiento(fechaVal, horaInicio);
     const presencialOk = !!ter.presencial_habilitado;
     let modalidadVal = ['presencial', 'videollamada', 'telefono'].includes(modalidad) ? modalidad : 'videollamada';
     if (modalidadVal === 'presencial' && !presencialOk) {

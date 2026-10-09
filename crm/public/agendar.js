@@ -78,6 +78,7 @@
   const hoy = new Date(); hoy.setHours(0,0,0,0);
   let cursor   = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
   let slotsData = [];
+  let maxFechaVentana = null;
   let fechaSel  = null;
   let horaSel   = null;
 
@@ -190,6 +191,7 @@
     try {
       const data = await api(`/api/publico/${USERNAME}/slots?mes=${mes}`);
       slotsData = data.dias;
+      if (data.ventana?.max_fecha) maxFechaVentana = data.ventana.max_fecha;
       if (data.terapeuta) aplicarModalidadTerapeuta(data.terapeuta.presencial_habilitado);
       renderCal();
     } catch (e) {
@@ -390,6 +392,8 @@
     loadMes();
   });
   document.getElementById('agNext').addEventListener('click', () => {
+    const siguiente = new Date(cursor.getFullYear(), cursor.getMonth()+1, 1);
+    if (maxFechaVentana && isoDate(siguiente) > maxFechaVentana) return;
     cursor.setMonth(cursor.getMonth()+1);
     loadMes();
   });

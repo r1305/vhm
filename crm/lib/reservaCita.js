@@ -24,6 +24,42 @@ const cuerpoErrorPublico = (err) => {
 
 const MSG_NO_DISPONIBLE = 'Ese horario no está disponible';
 
+const entero = (v, def) => { const n = parseInt(v, 10); return Number.isFinite(n) && n >= 0 ? n : def; };
+const VENTANA_MIN_HORAS = entero(process.env.VENTANA_MIN_HORAS, 24);
+const VENTANA_MAX_DIAS = entero(process.env.VENTANA_MAX_DIAS, 15);
+const MSG_FUERA_VENTANA = `Solo puedes agendar con al menos ${VENTANA_MIN_HORAS} horas de anticipación y hasta ${VENTANA_MAX_DIAS} días`;
+
+const fechaLimaDe = (d) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(d);
+
+const sumarDiasFecha = (f, n) => {
+  const d = new Date(f + 'T12:00:00Z');
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+};
+
+const instanteLima = (fecha, hora) => new Date(`${fecha}T${normHora(hora)}-05:00`);
+
+function ventanaAgendamiento(ahora = new Date()) {
+  const minMs = ahora.getTime() + VENTANA_MIN_HORAS * 3600000;
+  return {
+    minMs,
+    minFecha: fechaLimaDe(new Date(minMs)),
+    maxFecha: sumarDiasFecha(fechaLimaDe(ahora), VENTANA_MAX_DIAS),
+  };
+}
+
+function dentroVentanaAgendamiento(fecha, hora, ahora = new Date()) {
+  if (!fechaValida(fecha) || !normHora(hora)) return false;
+  const v = ventanaAgendamiento(ahora);
+  if (fecha > v.maxFecha) return false;
+  const ini = instanteLima(fecha, hora).getTime();
+  return Number.isFinite(ini) && ini >= v.minMs;
+}
+
+function validarVentanaAgendamiento(fecha, hora, ahora = new Date()) {
+  if (!dentroVentanaAgendamiento(fecha, hora, ahora)) throw errorPublico(409, MSG_FUERA_VENTANA);
+}
+
 const horaAMin = (h) => {
   if (h == null) return 0;
   const p = String(h).split(':');
@@ -128,4 +164,7 @@ module.exports = {
   normHora, sumarHora, fechaValida, diaSemanaLima, errorPublico, cuerpoErrorPublico,
   horaAMin, bloqueoSolapa, franjaBloqueada, encajaEnDisponibilidad, citaSolapa,
   bloquearPaciente, reservarCupoPaciente, tipoCitaReserva, bloquearFranja,
+  VENTANA_MIN_HORAS, VENTANA_MAX_DIAS, MSG_FUERA_VENTANA, MSG_NO_DISPONIBLE,
+  fechaLimaDe, sumarDiasFecha, instanteLima, ventanaAgendamiento,
+  dentroVentanaAgendamiento, validarVentanaAgendamiento,
 };
