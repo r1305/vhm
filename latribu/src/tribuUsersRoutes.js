@@ -45,7 +45,7 @@ router.post('/:id/enviar-reset', requireAdmin, async (req, res) => {
     const [[user]] = await pool.execute('SELECT id, nombre, email FROM tribu_users WHERE id = ? LIMIT 1', [id]);
     if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
     if (!user.email) return res.status(400).json({ error: 'El usuario no tiene correo' });
-    if (!isMailerConfigured()) return res.status(503).json({ error: 'El correo (SMTP) no está configurado en el servidor' });
+    if (!(await isMailerConfigured())) return res.status(503).json({ error: 'El correo (SMTP) no está configurado en el servidor' });
     const r = await solicitarResetPassword(user, { esperarEnvio: true });
     if (!r.enviado) return res.status(502).json({ error: 'No se pudo enviar el correo. Revisa la configuración SMTP.' });
     res.json({ message: 'Enlace para crear contraseña enviado a ' + user.email });

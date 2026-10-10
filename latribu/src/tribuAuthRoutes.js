@@ -187,7 +187,7 @@ router.post('/registro', async (req, res) => {
     if (!emailValido(emailNorm)) return res.status(400).json({ error: 'Correo electrónico inválido' });
     const nombreLimpio = String(nombre).trim().slice(0, 120);
     const apellidoLimpio = String(apellido).trim().slice(0, 120);
-    const verificar = isMailerConfigured();
+    const verificar = await isMailerConfigured();
     const hash = await bcrypt.hash(String(password), 12);
 
     const respuestaExistente = (nombreExistente) => {
@@ -246,7 +246,7 @@ router.post('/reenviar-verificacion', tribuAuthMiddleware, async (req, res) => {
   try {
     const rl = limiteReenvioVerificacion.consumir(String(req.tribuUser.id));
     if (!rl.ok) return responder429(res, rl);
-    if (!isMailerConfigured()) return res.json({ message });
+    if (!(await isMailerConfigured())) return res.json({ message });
     const [[u]] = await pool.execute(
       'SELECT id, nombre, email, email_verificado FROM tribu_users WHERE id = ? LIMIT 1', [req.tribuUser.id]
     );

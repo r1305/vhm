@@ -66,11 +66,38 @@ p. ej. `charge.creation.succeeded`).
 
 ## Correo (SMTP)
 
-Recuperación de contraseña y verificación de email usan las mismas variables que el CRM:
-`SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`.
-Sin SMTP no se envía nada (aviso en el log), el registro no exige verificación y la
-recuperación responde igual pero sin correo. `SITE_URL` debe ser la URL pública
-(`https://vhm.com.pe/latribu`) para construir los enlaces.
+Recuperación de contraseña y verificación de email usan **la misma configuración SMTP que
+site**: la tabla `config_email` (fila `id = 1`) de la BD `ssfdgwtm_vhm`. Se edita desde el
+panel de site; latribu no escribe en ella.
+
+- Se lee con el pool normal de latribu (`src/db.js`, usuario `DB_USER`) usando el nombre
+  calificado `` `ssfdgwtm_vhm`.config_email ``; no se abre ninguna conexión extra.
+- `EMAIL_CONFIG_DB_NAME` (opcional, por defecto `ssfdgwtm_vhm`) indica la BD. Solo admite
+  `[A-Za-z0-9_]`; un valor inválido se trata como fallo de lectura.
+- La configuración se guarda en memoria 10 minutos y se refresca al enviar o al comprobar
+  si hay correo (sin timers). Un cambio en `config_email` tarda como máximo 10 min en
+  aplicarse (o reiniciar la app). Si cambian host, puerto, usuario o contraseña, el
+  transporter se recrea y el anterior se cierra.
+- Si la lectura falla: se mantiene la última configuración leída (reintento cada 1 min); si
+  nunca se leyó, se usan las variables `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`,
+  `SMTP_PASS`, `SMTP_FROM` como respaldo, con un aviso en el log (solo el código de error).
+- Sin ninguna de las dos no se envía nada (aviso en el log), el registro no exige
+  verificación y la recuperación responde igual pero sin correo.
+- `SITE_URL` debe ser la URL pública (`https://vhm.com.pe/latribu`) para construir los enlaces.
+
+### Permiso MySQL (ya concedido)
+
+El usuario de latribu (`ssfdgwtm_tribu`) tiene **solo SELECT** sobre la BD `ssfdgwtm_vhm`
+(un UPDATE responde `ER_TABLEACCESS_DENIED_ERROR`). Si hubiera que rehacerlo (servidor nuevo,
+usuario recreado):
+
+1. cPanel → **MySQL Databases** → sección *Add User To Database*.
+2. Usuario `ssfdgwtm_tribu`, base de datos `ssfdgwtm_vhm` → **Add**.
+3. En *Manage User Privileges* marcar **solo `SELECT`** → **Make Changes**.
+
+cPanel no permite limitarlo a una sola tabla; con SELECT el usuario puede leer toda
+`ssfdgwtm_vhm`, pero no modificarla. Comprobar desde phpMyAdmin con ese usuario:
+`SELECT id, smtp_host FROM ssfdgwtm_vhm.config_email WHERE id = 1;`
 
 ## Planes
 
