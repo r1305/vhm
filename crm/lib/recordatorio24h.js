@@ -11,6 +11,7 @@ const REC24_MIN_HORAS_ANTES = entero(process.env.REC24_MIN_HORAS_ANTES, 2);
 const REC24_MAX_INTENTOS = entero(process.env.REC24_MAX_INTENTOS, 3);
 const REC24_LOCK_MIN = Math.max(1, entero(process.env.REC24_LOCK_MIN, 15));
 const REC24_LIMITE = 200;
+const REC24_MAX_TIMEOUTS_SEGUIDOS = 2;
 const ESTADOS_RECORDATORIO = ['pendiente', 'confirmada', 'reagendada'];
 const CLAVE_ACTIVO = 'recordatorio_24h_activo';
 const CLAVE_MENSAJE = 'recordatorio_24h_mensaje';
@@ -195,6 +196,7 @@ async function procesarRecordatorios24h({
   }
 
   let primero = true;
+  let timeoutsSeguidos = 0;
   for (const cita of citas) {
     const telefono = normalizePhone(cita.telefono);
     if (!telefono || telefono.length < 8) {
@@ -233,10 +235,27 @@ async function procesarRecordatorios24h({
       );
       await db.execute('UPDATE citas SET recordatorio_24h = 1 WHERE id = ?', [cita.id]);
       res.enviados++;
+      timeoutsSeguidos = 0;
       res.detalle.push({ cita_id: cita.id, paciente_id: cita.paciente_id, telefono, clave, accion: 'enviado' });
     } catch (err) {
       const msg = String(err?.message || err).slice(0, 500);
       const relevo = err?.code === 'duplicate_instance';
+      if (err?.code === 'openwa_timeout') {
+        const ultimo = `timeout_incierto: ${msg}`.slice(0, 500);
+        console.error('[recordatorio24h] cita=%s clave=%s: envío incierto por timeout de OpenWA; no se reintentará:', cita.id, clave, msg);
+        await db.execute(
+          'UPDATE recordatorios SET procesando = 0, procesando_desde = NULL, enviado = 0, intentos = GREATEST(intentos, ?), ultimo_error = ? WHERE clave = ?',
+          [REC24_MAX_INTENTOS, ultimo, clave]
+        ).catch((e) => console.error('[recordatorio24h] registrar timeout cita=%s:', cita.id, e.message));
+        res.errores.push({ cita_id: cita.id, clave, error: ultimo, code: err.code, incierto: true });
+        timeoutsSeguidos++;
+        if (timeoutsSeguidos >= REC24_MAX_TIMEOUTS_SEGUIDOS) {
+          res.interrumpido = 'openwa_timeout';
+          break;
+        }
+        continue;
+      }
+      timeoutsSeguidos = 0;
       console.error('[recordatorio24h] cita=%s clave=%s:', cita.id, clave, msg);
       await db.execute(
         relevo

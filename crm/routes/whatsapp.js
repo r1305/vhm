@@ -21,6 +21,8 @@ const {
   resolveLidPhone,
   resolvePhoneJid,
   markChatRead,
+  TIMEOUT,
+  toOpenwaTimeout,
 } = require('../lib/openwa');
 const {
   normalizeChatId,
@@ -76,8 +78,15 @@ function safeUploadName(name) {
   return (base || 'archivo').slice(0, 120);
 }
 
+const MSG_ENVIO_INCIERTO = 'No se pudo confirmar el envío; revisa en WhatsApp antes de reenviar para evitar duplicados.';
+
 function respondRouteError(res, err, contexto) {
   const status = err.status && err.status >= 400 && err.status < 600 ? err.status : 500;
+  if (err.code === 'openwa_timeout') {
+    console.warn('[whatsapp/%s]: %s', contexto, err.message);
+    const error = String(contexto).startsWith('enviar') ? MSG_ENVIO_INCIERTO : err.message;
+    return res.status(status).json({ error, code: err.code });
+  }
   if (err.code === 'duplicate_instance' || err.code === 'session_inactive') {
     return res.status(status).json({ error: err.message, code: err.code });
   }
@@ -536,6 +545,37 @@ function messageMatchesContact(row, conv, tail) {
   const digits = chatId.split('@')[0].replace(/\D/g, '');
   if (digits.length >= 10 && digits.slice(-9) === tail) return true;
   return false;
+}
+
+const SYNC_INTERVALO_MS = 45000;
+const SYNC_MAX_ENTRADAS = 500;
+const syncReciente = new Map();
+const syncEnCurso = new Set();
+
+function reservarSync(conversacionId, forzar = false, ahora = Date.now()) {
+  const key = String(conversacionId);
+  if (syncEnCurso.has(key)) return null;
+  const ultimo = syncReciente.get(key);
+  if (!forzar && ultimo != null && ahora - ultimo < SYNC_INTERVALO_MS) return null;
+  syncReciente.delete(key);
+  syncReciente.set(key, ahora);
+  while (syncReciente.size > SYNC_MAX_ENTRADAS) {
+    syncReciente.delete(syncReciente.keys().next().value);
+  }
+  syncEnCurso.add(key);
+  return key;
+}
+
+async function syncMensajesLimitado(conv, conversacionId, { forzar = false } = {}) {
+  if (!isOpenwaConfigured()) return false;
+  const key = reservarSync(conversacionId, forzar);
+  if (!key) return false;
+  try {
+    await syncMensajesFromOpenwa(conv, conversacionId);
+    return true;
+  } finally {
+    syncEnCurso.delete(key);
+  }
 }
 
 async function syncMensajesFromOpenwa(conv, conversacionId) {
@@ -1025,8 +1065,10 @@ router.get('/conversaciones/:id/mensajes', authWhatsApp, async (req, res) => {
     conversacionId = await absorbOrphanLidConversations(conversacionId);
 
     const [[merged]] = await pool.execute('SELECT * FROM wa_conversaciones WHERE id = ?', [conversacionId]);
-    await syncMensajesFromOpenwa(merged, conversacionId);
-    conversacionId = await absorbOrphanLidConversations(conversacionId);
+    const forzarSync = req.query.sync === '1' || req.query.sync === 'true';
+    if (await syncMensajesLimitado(merged, conversacionId, { forzar: forzarSync })) {
+      conversacionId = await absorbOrphanLidConversations(conversacionId);
+    }
 
     const [[fresh]] = await pool.execute('SELECT * FROM wa_conversaciones WHERE id = ?', [conversacionId]);
     const relatedIds = await getRelatedConversacionIds(fresh || { ...conv, id: conversacionId });
@@ -1208,9 +1250,14 @@ router.post('/conversaciones/:id/mensajes/media', authWhatsApp, uploadMedia, asy
 
 async function proxyOpenwaMedia(upstream, res, mime) {
   if (!upstream?.ok) return false;
+  let buf;
+  try {
+    buf = Buffer.from(await upstream.arrayBuffer());
+  } catch (err) {
+    throw toOpenwaTimeout(err, TIMEOUT.mediaMs);
+  }
   res.setHeader('Content-Type', upstream.headers.get('content-type') || mime);
   res.setHeader('Cache-Control', 'private, max-age=3600');
-  const buf = Buffer.from(await upstream.arrayBuffer());
   res.send(buf);
   return true;
 }
@@ -1248,7 +1295,7 @@ router.get('/mensajes/:id/media', authWhatsApp, async (req, res) => {
         try {
           const upstream = await fetchOpenwaMediaByMessage(sessionId, msg.wa_message_id, chatJid);
           if (await proxyOpenwaMedia(upstream, res, mime)) return;
-        } catch (e) { if (e?.code === 'duplicate_instance') throw e; }
+        } catch (e) { if (e?.code === 'duplicate_instance' || e?.code === 'openwa_timeout') throw e; }
       }
     }
 
@@ -1257,7 +1304,7 @@ router.get('/mensajes/:id/media', authWhatsApp, async (req, res) => {
       try {
         const upstream = await fetchOpenwaMediaFile(sessionId, filename);
         if (await proxyOpenwaMedia(upstream, res, mime)) return;
-      } catch (e) { if (e?.code === 'duplicate_instance') throw e; }
+      } catch (e) { if (e?.code === 'duplicate_instance' || e?.code === 'openwa_timeout') throw e; }
     }
 
     if (msg.wa_message_id) {
@@ -1269,7 +1316,7 @@ router.get('/mensajes/:id/media', authWhatsApp, async (req, res) => {
             chatId: chatJid,
           });
           if (await proxyOpenwaMedia(upstream, res, mime)) return;
-        } catch (e) { if (e?.code === 'duplicate_instance') throw e; }
+        } catch (e) { if (e?.code === 'duplicate_instance' || e?.code === 'openwa_timeout') throw e; }
       }
     }
 
@@ -1278,6 +1325,10 @@ router.get('/mensajes/:id/media', authWhatsApp, async (req, res) => {
     if (err?.code === 'duplicate_instance') {
       res.setHeader('Retry-After', '5');
       return res.status(503).json({ error: err.message, code: err.code });
+    }
+    if (err?.code === 'openwa_timeout') {
+      console.warn('[whatsapp/media]', req.params.id, err.message);
+      return res.status(504).json({ error: err.message, code: err.code });
     }
     console.error('[whatsapp/media]', req.params.id, err.message);
     return res.status(404).json({ error: 'Medio no disponible' });
@@ -1354,3 +1405,4 @@ router.post('/iniciar', authWhatsApp, async (req, res) => {
 });
 
 module.exports = router;
+module.exports._syncEstado = () => ({ entradas: syncReciente.size, enCurso: syncEnCurso.size, max: SYNC_MAX_ENTRADAS, intervaloMs: SYNC_INTERVALO_MS });

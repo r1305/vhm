@@ -8,6 +8,8 @@
   let conversaciones = [];
   let selectedId = null;
   let pollTimer = null;
+  let polling = false;
+  const POLL_MS = 8000;
   let sending = false;
   let recording = false;
   let mediaRecorder = null;
@@ -119,8 +121,9 @@
     };
   }
 
-  async function fetchMensajes(id, { silent = false } = {}) {
-    const data = await api(`/whatsapp/conversaciones/${id}/mensajes?sync=1`, {
+  async function fetchMensajes(id, { silent = false, sync = false } = {}) {
+    const qs = sync ? '?sync=1' : '';
+    const data = await api(`/whatsapp/conversaciones/${id}/mensajes${qs}`, {
       loader: !silent,
       loaderMessage: silent ? undefined : 'Cargando mensajes…',
     });
@@ -180,7 +183,7 @@
     document.getElementById('waCompose').style.display = 'flex';
     renderList(document.getElementById('waSearch').value.trim());
 
-    const msgs = await fetchMensajes(id);
+    const msgs = await fetchMensajes(id, { sync: true });
     renderMessages(msgs);
     await api(`/whatsapp/conversaciones/${id}/leer`, { method: 'PATCH', body: {}, loader: false }).catch(() => {});
     c.no_leidos = 0;
@@ -413,15 +416,41 @@
   document.getElementById('waFileInput').addEventListener('change', onFileSelected);
   document.getElementById('waMicBtn').addEventListener('click', toggleRecording);
 
+  async function pollTick() {
+    if (polling || document.visibilityState === 'hidden') return;
+    polling = true;
+    try {
+      await loadConversaciones({ silent: true });
+      if (selectedId) renderMessages(await fetchMensajes(selectedId, { silent: true }));
+    } catch (_) {
+    } finally {
+      polling = false;
+    }
+  }
+
+  function startPolling() {
+    if (pollTimer) return;
+    pollTimer = setInterval(pollTick, POLL_MS);
+  }
+
+  function stopPolling() {
+    if (!pollTimer) return;
+    clearInterval(pollTimer);
+    pollTimer = null;
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+      stopPolling();
+      return;
+    }
+    pollTick();
+    startPolling();
+  });
+
   loadConversaciones();
   checkStatus();
-  pollTimer = setInterval(() => {
-    loadConversaciones({ silent: true }).then(() => {
-      if (selectedId) {
-        fetchMensajes(selectedId, { silent: true }).then(renderMessages).catch(() => {});
-      }
-    });
-  }, 3000);
+  if (document.visibilityState !== 'hidden') startPolling();
 
-  window.addEventListener('beforeunload', () => clearInterval(pollTimer));
+  window.addEventListener('beforeunload', stopPolling);
 })();

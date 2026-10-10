@@ -93,17 +93,46 @@ function parseOpenwaFailure(status, txt) {
   return new OpenwaError(`OpenWA ${status}: ${raw}`, { status });
 }
 
+const TIMEOUT = {
+  defectoMs: 15000,
+  mediaMs: 30000,
+};
+
+function esTimeoutAbort(err) {
+  return Boolean(err) && (err.name === 'TimeoutError' || err.cause?.name === 'TimeoutError');
+}
+
+function errorTimeoutOpenwa(ms) {
+  const seg = Math.round(ms / 1000);
+  return new OpenwaError(
+    `OpenWA no respondió en ${seg} s. El servicio de WhatsApp está lento o reiniciándose; reintenta en unos segundos.`,
+    { status: 504, code: 'openwa_timeout' }
+  );
+}
+
+function toOpenwaTimeout(err, ms = TIMEOUT.defectoMs) {
+  if (err instanceof OpenwaError) return err;
+  return esTimeoutAbort(err) ? errorTimeoutOpenwa(ms) : err;
+}
+
 async function openwaRawFetch(path, options = {}) {
   await loadOpenwaConfigFromDB();
   const { baseUrl, apiKey } = getOpenwaConfig();
   if (!baseUrl || !apiKey) throw new Error('OpenWA no configurado');
 
-  const headers = { 'X-API-Key': apiKey, ...(options.headers || {}) };
-  if (options.body && !headers['Content-Type'] && !(options.body instanceof FormData)) {
+  const { timeoutMs = TIMEOUT.defectoMs, signal: externo, ...opts } = options;
+  const headers = { 'X-API-Key': apiKey, ...(opts.headers || {}) };
+  if (opts.body && !headers['Content-Type'] && !(opts.body instanceof FormData)) {
     headers['Content-Type'] = 'application/json';
   }
 
-  return fetch(`${baseUrl}${path}`, { ...options, headers });
+  const porTiempo = AbortSignal.timeout(timeoutMs);
+  const signal = externo ? AbortSignal.any([externo, porTiempo]) : porTiempo;
+  try {
+    return await fetch(`${baseUrl}${path}`, { ...opts, headers, signal });
+  } catch (err) {
+    throw toOpenwaTimeout(err, timeoutMs);
+  }
 }
 
 const RELEVO = {
@@ -282,6 +311,7 @@ async function sendWhatsAppMedia({ to, buffer, originalname, mimetype, caption, 
   const res = await openwaFetchConRelevo(`/api/sessions/${encodeURIComponent(sessionId)}/messages/send-media`, {
     method: 'POST',
     body: form,
+    timeoutMs: TIMEOUT.mediaMs,
   });
   if (!res.ok) {
     const txt = await res.text().catch(() => '');
@@ -301,7 +331,8 @@ async function sendWhatsAppMedia({ to, buffer, originalname, mimetype, caption, 
 
 async function fetchOpenwaMediaFile(sessionId, filename) {
   const res = await openwaFetchConRelevo(
-    `/api/media/file/${encodeURIComponent(sessionId)}/${encodeURIComponent(filename)}`
+    `/api/media/file/${encodeURIComponent(sessionId)}/${encodeURIComponent(filename)}`,
+    { timeoutMs: TIMEOUT.mediaMs }
   );
   if (!res.ok) throw new Error(`OpenWA media ${res.status}`);
   return res;
@@ -312,7 +343,8 @@ async function fetchOpenwaMediaByMessage(sessionId, messageId, chatId) {
   if (chatId) params.set('chatId', chatId);
   const qs = params.toString() ? `?${params}` : '';
   return openwaFetchConRelevo(
-    `/api/media/by-message/${encodeURIComponent(sessionId)}/${encodeURIComponent(messageId)}${qs}`
+    `/api/media/by-message/${encodeURIComponent(sessionId)}/${encodeURIComponent(messageId)}${qs}`,
+    { timeoutMs: TIMEOUT.mediaMs }
   );
 }
 
@@ -320,6 +352,7 @@ async function downloadOpenwaMedia({ sessionId, messageId, chatId }) {
   const res = await openwaFetchConRelevo('/api/media/download', {
     method: 'POST',
     body: JSON.stringify({ sessionId, messageId, chatId }),
+    timeoutMs: TIMEOUT.mediaMs,
   });
   if (!res.ok) throw new Error(`OpenWA download ${res.status}`);
   return res;
@@ -338,6 +371,8 @@ module.exports = {
   calcularEsperaRelevo,
   RELEVO,
   MENSAJE_RELEVO,
+  TIMEOUT,
+  toOpenwaTimeout,
   sendWhatsApp,
   sendWhatsAppMedia,
   mediaTypeFromMime,
