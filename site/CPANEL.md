@@ -134,18 +134,27 @@ cualquier archivo real (código, `package.json`, `.env`, `stderr.log`, …) sin 
   en las carpetas de código: `site/{src,lib,scripts}`, `crm/{lib,routes,scripts,views}`,
   `luma/src` y `latribu/{src,lib,scripts,test}`. Nunca en `public/`.
 - Lo que está en la raíz de cada app (`node_modules/`, `package.json`, `.env`, `stderr.log`,
-  `app.js`, scripts sueltos) solo se puede proteger desde el `.htaccess` raíz de cada app,
+  scripts sueltos) solo se puede proteger desde el `.htaccess` raíz de cada app,
   que gestiona cPanel/Passenger. Añade el bloque **fuera** de
   `# DO NOT REMOVE. CLOUDLINUX PASSENGER CONFIGURATION BEGIN/END`.
+
+**Nunca denegar el startup file (app.js) ni la carpeta de la app: provoca 403 en todo el sitio.**
+En las 4 apps (site, crm, luma, latribu) el *Application startup file* de LiteSpeed/lsnode
+(Passenger) es `app.js` en la raíz. Si un `FilesMatch` o un `Require all denied` lo alcanza,
+todas las URL de la app devuelven 403 (ya ocurrió en `/latribu`). Por eso ningún bloque
+incluye `app\.js` ni `index\.js`.
 
 `public_html/site/.htaccess`:
 
 ```apache
 RedirectMatch 404 ^/site/(node_modules|src|lib|scripts)(/|$)
-<FilesMatch "^(package(-lock)?\.json|.*\.log|.*\.md|\.env.*|app\.js|migrate-db\.js|flush-hosts\.js|.*\.sql|.*\.sh)$">
+<FilesMatch "^(package(-lock)?\.json|.*\.log|.*\.md|\.env.*|migrate-db\.js|flush-hosts\.js|.*\.sql|.*\.sh)$">
 Require all denied
 </FilesMatch>
 ```
+
+`migrate-db.js`, `flush-hosts.js`, `config_pixel.sql` y `deploy.sh` son scripts manuales de
+la raíz: Passenger no los carga y `public/` no tiene archivos con esos nombres o extensiones.
 
 `public_html/crm/.htaccess` (el CRM sirve `/crm/app.js` desde `public/`, así que aquí
 **no** se bloquean los `.js` sueltos):
@@ -161,10 +170,25 @@ Require all denied
 
 ```apache
 RedirectMatch 404 ^/luma/(node_modules|src)(/|$)
-<FilesMatch "^(package(-lock)?\.json|.*\.log|.*\.md|\.env.*|app\.js)$">
+<FilesMatch "^(package(-lock)?\.json|.*\.log|.*\.md|\.env.*)$">
 Require all denied
 </FilesMatch>
 ```
+
+Comprobado en el código: ninguna ruta de Express ni carpeta de `public/` empieza por los
+nombres del `RedirectMatch` (site: `/api/*`, `/admin/*`, `/media`, `/consulta`, …; CRM:
+`/api/*`, `/agenda`, `/pacientes`, …, y `public/` no tiene `lib`, `routes`, `scripts` ni
+`views`; luma: `/`, `/admin`, `/api`, `/health`). El `/test` de site es
+`/api/config-email/test`, no `/site/test`. Cada `app.js` carga `./src/index`, `./lib/...` o
+`./routes/...` con `require` (sistema de archivos, no HTTP), así que los `.htaccess` de
+esas carpetas no afectan al arranque; ninguna app tiene el startup file dentro de ellas.
+
+Verificación obligatoria tras pegar cada bloque (`<app>` = `site`, `crm`, `luma`):
+
+- `/<app>/` y `/<app>/health` responden 200/302 (en el CRM también `/crm/login`).
+- `/<app>/package.json` da 403/404.
+- **Si `/<app>/` da 403, quitar el bloque inmediatamente** y revisar que nada del
+  `.htaccess` coincida con `app.js` ni con la carpeta de la app.
 
 El de La Tribu está en `latribu/CPANEL.md`.
 
