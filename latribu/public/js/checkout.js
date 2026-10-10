@@ -211,7 +211,11 @@
       body: JSON.stringify(payload),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'No se pudo iniciar la prueba');
+    if (!res.ok) {
+      const err = new Error(data.error || 'No se pudo iniciar la prueba');
+      err.code = data.code;
+      throw err;
+    }
     localStorage.setItem('tribu_token', data.token);
     localStorage.setItem('tribu_user', JSON.stringify(data.user));
     sessionStorage.setItem('tribu_trial_welcome', JSON.stringify(data.trial || {}));
@@ -242,6 +246,13 @@
       await submitTrial(tokenId, fields);
     } catch (ex) {
       err.textContent = ex.message || 'Error al procesar';
+      if (ex.code === 'cuenta_existente') {
+        const link = document.createElement('a');
+        link.href = BASE + '/camino?login=1';
+        link.textContent = ' Iniciar sesión';
+        link.style.fontWeight = '600';
+        err.appendChild(link);
+      }
       btn.disabled = false;
       btn.textContent = TribuFunnel.fillCopy(
         copyCfg?.submit || `Empezar mis ${funnelCfg.trial_dias || 7} días gratis`,

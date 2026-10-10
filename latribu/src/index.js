@@ -37,6 +37,10 @@ app.use(cors({
   },
   credentials: true,
 }));
+app.use('/api/tribu-pagos/webhook', express.json({
+  limit: '1mb',
+  verify: (req, res, buf) => { req.rawBody = buf.toString('utf8'); },
+}));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(require('cookie-parser')());
@@ -208,6 +212,10 @@ app.get('/camino', (req, res) => sendPublicHtml(res, 'index.html'));
 app.get('/checkout', (req, res) => sendPublicHtml(res, 'checkout.html'));
 app.get('/confirmacion', (req, res) => sendPublicHtml(res, 'confirmacion.html'));
 app.get('/crear-contrasena', (req, res) => sendPublicHtml(res, 'crear-contrasena.html'));
+app.get('/restablecer-contrasena', (req, res) => {
+  res.set('Referrer-Policy', 'no-referrer');
+  sendPublicHtml(res, 'restablecer-contrasena.html');
+});
 app.get('/empezar', (req, res) => {
   const base = (res.locals.basePath || process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
   res.redirect(base + '/empezar/que-buscas');

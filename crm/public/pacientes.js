@@ -137,6 +137,7 @@
               <div style="font-family:monospace;font-size:18px;font-weight:700;letter-spacing:.08em;color:var(--primary)">${esc(r.tempPassword)}</div>
             </div>
             <p style="font-size:12px;color:var(--text-muted)">Comparte estos datos de forma segura. La contraseña debe cambiarse en el primer acceso.</p>
+            <p style="font-size:12px;color:var(--text-muted)"><strong>Solo se muestra esta vez:</strong> no se guarda en ningún sitio. Si se pierde, el usuario puede usar «Olvidé mi contraseña» en La Tribu o un admin puede enviarle un enlace desde Usuarios Tribu.</p>
           </div>`, null);
         document.getElementById('modalSave').style.display = 'none';
         loadPacientes();

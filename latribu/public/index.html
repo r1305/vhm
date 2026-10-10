@@ -1621,33 +1621,9 @@
       <div class="auth-title">Recuperar contrasena</div>
       <div class="auth-sub">Ingresa tu correo para recuperar tu acceso</div>
       <div class="auth-field"><label>Correo</label><input type="email" id="recEmail" placeholder="tu@correo.com" autocomplete="email"></div>
-      <button class="auth-btn" id="recBtn" onclick="doRecuperar()">Continuar</button>
+      <button class="auth-btn" id="recBtn" onclick="doRecuperar()">Enviar enlace</button>
       <div class="auth-error" id="recError"></div>
       <div class="auth-footer" style="margin-top:14px"><a onclick="mostrarPanel('authLogin')">Volver al inicio de sesion</a></div>
-    </div>
-    <div id="authRecuperarTemp" style="display:none;text-align:center;padding:8px 0">
-      <div class="auth-title">Tu contrasena temporal</div>
-      <div class="auth-sub">Guardala y usala en el siguiente paso para crear tu contrasena definitiva</div>
-      <div class="temp-pw-box" id="recTempShown">--------</div>
-      <button class="auth-btn" id="recTempNextBtn" onclick="mostrarPanel('authIngresarTemp')">Siguiente</button>
-      <div class="auth-footer" style="margin-top:14px"><a onclick="mostrarPanel('authRecuperar')">Volver</a></div>
-    </div>
-    <div id="authIngresarTemp" style="display:none">
-      <div class="auth-title">Confirma tu contrasena temporal</div>
-      <div class="auth-sub">Ingresa la contraseña temporal que acabas de ver</div>
-      <div class="auth-field"><label>Contrasena temporal</label><input type="text" id="recTempInput" placeholder="Contraseña temporal" autocomplete="off"></div>
-      <button class="auth-btn" id="recTempVerifyBtn" onclick="doIngresarTemp()">Continuar</button>
-      <div class="auth-error" id="recTempError"></div>
-      <div class="auth-footer" style="margin-top:14px"><a onclick="mostrarPanel('authRecuperarTemp')">Volver</a></div>
-    </div>
-    <div id="authNuevaPassword" style="display:none">
-      <div class="auth-title">Nueva contrasena</div>
-      <div class="auth-sub">Crea la contraseña con la que iniciaras sesion de ahora en adelante</div>
-      <div class="auth-field"><label>Nueva contrasena</label><div class="pw-wrap"><input type="password" id="recNewPassword" placeholder="Minimo 6 caracteres" autocomplete="new-password"><button type="button" class="pw-toggle" onclick="togglePw('recNewPassword',this)" aria-label="Mostrar contraseña">👁</button></div></div>
-      <div class="auth-field"><label>Confirmar contrasena</label><div class="pw-wrap"><input type="password" id="recNewPassword2" placeholder="Repite la contrasena" autocomplete="new-password"><button type="button" class="pw-toggle" onclick="togglePw('recNewPassword2',this)" aria-label="Mostrar contraseña">👁</button></div></div>
-      <button class="auth-btn" id="recNewBtn" onclick="doCambiarPasswordTemp()">Guardar contrasena</button>
-      <div class="auth-error" id="recNewError"></div>
-      <div class="auth-footer" style="margin-top:14px"><a onclick="mostrarPanel('authIngresarTemp')">Volver</a></div>
     </div>
     <div id="authRecuperarOk" style="display:none;text-align:center;padding:12px 0">
       <div style="font-size:2.5rem;margin-bottom:12px">📬</div>
@@ -1734,8 +1710,6 @@ let _tribuBeneficiosItems = null;
 let planActual = null;
 let planesCache = null;
 let videoPendiente = null;
-let recEmailFlow = '';
-let recTempPasswordFlow = '';
 const CAL_WRAP_HTML = '<div id="calLockBanner" class="cal-lock-banner" style="display:none"></div><div class="cal-header"><h2 id="calMesTitulo"></h2></div><div class="cal-grid" id="calDow"></div><div class="cal-grid" id="calGrid" style="margin-top:8px"></div><div class="cal-empty" id="calLoading">Cargando eventos...</div>';
 const MESES_ES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 const DOW_ES = ['Lun','Mar','Mie','Jue','Vie','Sab','Dom'];
@@ -2372,13 +2346,13 @@ function abrirAuth(panel) {
 }
 function cerrarAuth() { document.getElementById('authOverlay').classList.remove('show'); document.body.style.overflow = ''; limpiarErrores(); }
 function mostrarPanel(id) {
-  ['authLogin','authRegistro','authRecuperar','authRecuperarTemp','authIngresarTemp','authNuevaPassword','authRecuperarOk'].forEach(p => {
+  ['authLogin','authRegistro','authRecuperar','authRecuperarOk'].forEach(p => {
     document.getElementById(p).style.display = p === id ? '' : 'none';
   });
   limpiarErrores();
 }
 function limpiarErrores() {
-  ['loginError','regError','recError','recTempError','recNewError'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = ''; });
+  ['loginError','regError','recError'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = ''; });
 }
 
 async function doLogin() {
@@ -2412,6 +2386,11 @@ async function doRegistro() {
     const res = await fetch(API + '/tribu-auth/registro', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre, apellido, email, password }) });
     const d = await res.json();
     if (!res.ok) { errEl.textContent = d.error || 'Error al crear cuenta'; return; }
+    if (!d.token) {
+      document.getElementById('recOkMsg').textContent = d.message || 'Revisa tu correo para confirmar tu cuenta.';
+      mostrarPanel('authRecuperarOk');
+      return;
+    }
     setToken(d.token); setStoredUser(d.user); tribuUser = normalizarSuscripcionUsuario(d.user);
     await afterAuthSuccess();
   } catch { errEl.textContent = 'Error de conexion'; }
@@ -2423,58 +2402,15 @@ async function doRecuperar() {
   const errEl = document.getElementById('recError');
   const email = document.getElementById('recEmail').value.trim();
   if (!email) { errEl.textContent = 'Ingresa tu correo'; return; }
-  btn.disabled = true; btn.textContent = 'Buscando...';
+  btn.disabled = true; btn.textContent = 'Enviando...';
   try {
     const res = await fetch(API + '/tribu-auth/recuperar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
     const d = await res.json();
     if (!res.ok) { errEl.textContent = d.error || 'Error al procesar'; return; }
-    if (d.temp && d.tempPassword) {
-      recEmailFlow = email;
-      recTempPasswordFlow = d.tempPassword;
-      document.getElementById('recTempShown').textContent = d.tempPassword;
-      document.getElementById('recTempInput').value = '';
-      mostrarPanel('authRecuperarTemp');
-    } else {
-      document.getElementById('recOkMsg').textContent = d.message || 'Si el correo existe, recibiras las instrucciones en breve.';
-      mostrarPanel('authRecuperarOk');
-    }
-  } catch { errEl.textContent = 'Error de conexion'; }
-  finally { btn.disabled = false; btn.textContent = 'Continuar'; }
-}
-
-function doIngresarTemp() {
-  const errEl = document.getElementById('recTempError');
-  const temp = document.getElementById('recTempInput').value.trim();
-  if (!temp) { errEl.textContent = 'Ingresa tu contraseña temporal'; return; }
-  if (temp !== recTempPasswordFlow) { errEl.textContent = 'La contraseña temporal no coincide'; return; }
-  document.getElementById('recNewPassword').value = '';
-  document.getElementById('recNewPassword2').value = '';
-  mostrarPanel('authNuevaPassword');
-}
-
-async function doCambiarPasswordTemp() {
-  const btn = document.getElementById('recNewBtn');
-  const errEl = document.getElementById('recNewError');
-  const tempPassword = document.getElementById('recTempInput').value.trim();
-  const newPassword = document.getElementById('recNewPassword').value;
-  const newPassword2 = document.getElementById('recNewPassword2').value;
-  if (!newPassword || newPassword.length < 6) { errEl.textContent = 'La contraseña debe tener al menos 6 caracteres'; return; }
-  if (newPassword !== newPassword2) { errEl.textContent = 'Las contraseñas no coinciden'; return; }
-  btn.disabled = true; btn.textContent = 'Guardando...';
-  try {
-    const res = await fetch(API + '/tribu-auth/cambiar-password-temp', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: recEmailFlow, tempPassword, newPassword }),
-    });
-    const d = await res.json();
-    if (!res.ok) { errEl.textContent = d.error || 'No se pudo actualizar la contraseña'; return; }
-    recEmailFlow = '';
-    recTempPasswordFlow = '';
-    document.getElementById('recOkMsg').textContent = d.message || 'Contraseña actualizada. Ya puedes iniciar sesión.';
+    document.getElementById('recOkMsg').textContent = d.message || 'Si el correo está registrado, recibirás un enlace en breve.';
     mostrarPanel('authRecuperarOk');
   } catch { errEl.textContent = 'Error de conexion'; }
-  finally { btn.disabled = false; btn.textContent = 'Guardar contrasena'; }
+  finally { btn.disabled = false; btn.textContent = 'Enviar enlace'; }
 }
 
 function doLogout() { clearToken(); tribuUser = null; window.location.href = BASE + '/'; }
@@ -2482,15 +2418,47 @@ function doLogout() { clearToken(); tribuUser = null; window.location.href = BAS
 
 document.getElementById('authOverlay').addEventListener('keydown', e => {
   if (e.key !== 'Enter') return;
-  const visible = ['authLogin','authRegistro','authRecuperar','authIngresarTemp','authNuevaPassword'].find(p => document.getElementById(p).style.display !== 'none');
+  const visible = ['authLogin','authRegistro','authRecuperar'].find(p => document.getElementById(p).style.display !== 'none');
   if (visible === 'authLogin') doLogin();
   else if (visible === 'authRegistro') doRegistro();
   else if (visible === 'authRecuperar') doRecuperar();
-  else if (visible === 'authIngresarTemp') doIngresarTemp();
-  else if (visible === 'authNuevaPassword') doCambiarPasswordTemp();
 });
 
 /* PLANES Y PAGO */
+let pagoRequestId = null;
+function nuevoRequestIdPago() {
+  if (window.crypto && typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID();
+  const b = new Uint8Array(16);
+  window.crypto.getRandomValues(b);
+  return Array.from(b, x => x.toString(16).padStart(2, '0')).join('').replace(/^(.{8})(.{4})(.{4})(.{4})(.{12})$/, '$1-$2-$3-$4-$5');
+}
+function requestIdPago() {
+  if (!pagoRequestId) pagoRequestId = nuevoRequestIdPago();
+  return pagoRequestId;
+}
+async function enviarPagoTribu(payload) {
+  payload.request_id = requestIdPago();
+  let res;
+  try {
+    res = await fetch(API + '/tribu-pagos/procesar-pago', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + getToken() },
+      body: JSON.stringify(payload),
+    });
+  } catch (netErr) {
+    throw new Error('Error de conexión. Revisa tu membresía antes de reintentar: si el cobro se hizo, no se repetirá.');
+  }
+  const d = await res.json().catch(() => ({}));
+  if (d.code !== 'resultado_desconocido' && d.code !== 'pago_en_curso') pagoRequestId = null;
+  if (!res.ok) {
+    if (d.code === 'email_no_verificado') {
+      try { await tribuFetch('/tribu-auth/reenviar-verificacion', { method: 'POST' }); } catch {}
+      throw new Error((d.error || 'Confirma tu correo antes de pagar.') + ' Te enviamos un nuevo enlace a tu correo.');
+    }
+    throw new Error(d.error || 'Error al procesar el pago');
+  }
+  return d;
+}
 async function abrirModalPlanes() {
   document.getElementById('planesError').textContent = '';
   document.getElementById('planesLista').innerHTML = '<div style="color:var(--muted);text-align:center;padding:20px">Cargando planes...</div>';
@@ -2760,13 +2728,7 @@ async function pagarConTarjetaGuardada() {
       }
     }
     iniciarProcesamientoPago();
-    const res = await fetch(API + '/tribu-pagos/procesar-pago', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + getToken() },
-      body: JSON.stringify(payload),
-    });
-    const d = await res.json();
-    if (!res.ok) throw new Error(d.error || 'Error al procesar el pago');
+    const d = await enviarPagoTribu(payload);
     await handlePagoResultado(d);
   } catch (err) {
     mostrarPagoErrorFeedback('No se pudo procesar el pago', err.message);
@@ -3079,13 +3041,7 @@ async function procesarTokenCulqi(tokenId) {
         payload.billing_email = billingRaw.toLowerCase();
       }
     }
-    const res = await fetch(API + '/tribu-pagos/procesar-pago', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + getToken() },
-      body: JSON.stringify(payload),
-    });
-    const d = await res.json();
-    if (!res.ok) throw new Error(d.error || 'Error al procesar el pago');
+    const d = await enviarPagoTribu(payload);
     await handlePagoResultado(d);
   } catch (err) {
     mostrarPagoErrorFeedback('No se pudo procesar el pago', err.message);
@@ -3899,7 +3855,13 @@ document.getElementById('cpOverlay')?.addEventListener('keydown', e => {
 
 verificarSesion().then(() => {
   const params = new URLSearchParams(location.search);
-  if (params.get('login') === '1') abrirLoginAuth();
+  if (params.get('login') === '1') {
+    abrirLoginAuth();
+    const verificado = params.get('verificado');
+    const sub = document.querySelector('#authLogin .auth-sub');
+    if (sub && verificado === '1') sub.textContent = 'Correo confirmado. Inicia sesión para continuar.';
+    else if (sub && verificado === '0') sub.textContent = 'El enlace de confirmación no es válido o venció. Inicia sesión y te enviaremos uno nuevo al pagar.';
+  }
   cargar();
 });
 cargarCatalogo();

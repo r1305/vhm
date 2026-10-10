@@ -139,7 +139,8 @@
   window.deletePlan = async function (id) {
     if (!confirm('¿Eliminar este plan?')) return;
     const r = await AdminApi.apiFetch('/suscripciones/' + id, { method: 'DELETE' });
-    toast(r.ok ? 'Plan eliminado' : 'Error al eliminar', r.ok ? 'success' : 'error');
+    const d = r.ok ? null : await r.json().catch(() => ({}));
+    toast(r.ok ? 'Plan eliminado' : ((d && d.error) || 'Error al eliminar'), r.ok ? 'success' : 'error');
     if (r.ok) loadPlanes();
   };
 

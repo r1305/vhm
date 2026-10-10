@@ -1,8 +1,7 @@
 const { Router } = require('express');
-const bcrypt = require('bcryptjs');
-const crypto = require('crypto');
 const pool = require('./db');
 const { authMiddleware } = require('./auth');
+const { solicitarResetPassword, isMailerConfigured } = require('./lib/correosCuenta');
 
 const router = Router();
 router.use(authMiddleware);
@@ -10,11 +9,6 @@ router.use(authMiddleware);
 function requireAdmin(req, res, next) {
   if (req.user && (req.user.rol === 'SUPER_ADMIN' || req.user.rol === 'ADMIN')) return next();
   return res.status(403).json({ error: 'Acceso restringido' });
-}
-
-function requireSuperAdmin(req, res, next) {
-  if (req.user && req.user.rol === 'SUPER_ADMIN') return next();
-  return res.status(403).json({ error: 'Acceso restringido a Super Admin' });
 }
 
 router.get('/', async (req, res) => {
@@ -42,44 +36,18 @@ router.get('/', async (req, res) => {
   } catch (err) { console.error(err); res.status(500).json({ error: 'Error al obtener usuarios tribu' }); }
 });
 
-router.post('/regenerar-passwords-temp', requireAdmin, async (req, res) => {
+router.post('/:id/enviar-reset', requireAdmin, async (req, res) => {
   try {
-    const [rows] = await pool.execute(
-      "SELECT id FROM tribu_users WHERE psw_temp = 1 AND (password_plain IS NULL OR password_plain = '')"
-    );
-    if (!rows.length) return res.json({ message: 'No hay usuarios que necesiten regeneración', updated: 0 });
-
-    let updated = 0;
-    for (const { id } of rows) {
-      const plain = crypto.randomBytes(4).toString('hex').toUpperCase();
-      const hash = await bcrypt.hash(plain, 10);
-      await pool.execute('UPDATE tribu_users SET password = ?, password_plain = ? WHERE id = ?', [hash, plain, id]);
-      updated++;
-    }
-    res.json({ message: `Contraseñas regeneradas para ${updated} usuario(s)`, updated });
-  } catch (err) { console.error(err); res.status(500).json({ error: 'Error al regenerar contraseñas' }); }
-});
-
-router.get('/:id/password-temp', requireAdmin, async (req, res) => {
-  try {
-    const [rows] = await pool.execute(
-      'SELECT password_plain FROM tribu_users WHERE id = ? AND psw_temp = 1 LIMIT 1', [req.params.id]
-    );
-    if (!rows.length) return res.status(404).json({ error: 'No hay contraseña temporal para este usuario' });
-    res.json({ password: rows[0].password_plain || null });
-  } catch (err) { console.error(err); res.status(500).json({ error: 'Error al obtener contraseña' }); }
-});
-
-router.get('/:id/password', requireSuperAdmin, async (req, res) => {
-  try {
-    const [rows] = await pool.execute(
-      'SELECT password_plain, psw_temp FROM tribu_users WHERE id = ? LIMIT 1', [req.params.id]
-    );
-    if (!rows.length) return res.status(404).json({ error: 'Usuario no encontrado' });
-    const { password_plain, psw_temp } = rows[0];
-    if (!psw_temp) return res.json({ password: null, changed: true });
-    res.json({ password: password_plain || null, changed: false });
-  } catch (err) { console.error(err); res.status(500).json({ error: 'Error al obtener contraseña' }); }
+    const id = Number.parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) return res.status(400).json({ error: 'Usuario inválido' });
+    const [[user]] = await pool.execute('SELECT id, nombre, email FROM tribu_users WHERE id = ? LIMIT 1', [id]);
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+    if (!user.email) return res.status(400).json({ error: 'El usuario no tiene correo' });
+    if (!isMailerConfigured()) return res.status(503).json({ error: 'El correo (SMTP) no está configurado en el servidor' });
+    const r = await solicitarResetPassword(user, { esperarEnvio: true });
+    if (!r.enviado) return res.status(502).json({ error: 'No se pudo enviar el correo. Revisa la configuración SMTP.' });
+    res.json({ message: 'Enlace para crear contraseña enviado a ' + user.email });
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Error al enviar el enlace' }); }
 });
 
 module.exports = router;

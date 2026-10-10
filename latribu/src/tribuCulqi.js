@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const pool = require('./db');
 
 const CULQI_API = 'https://api.culqi.com/v2';
+const CULQI_TIMEOUT_MS = 20000;
 
 async function getCulqiConfig() {
   const [rows] = await pool.execute(
@@ -31,19 +32,22 @@ function buildRenewExternalRef(tribuSubId) {
   return `tribu-renew-${tribuSubId}-${Date.now()}`;
 }
 
-function buildRenewalIdempotencyKey(tribuSubId) {
-  const stamp = new Intl.DateTimeFormat('sv-SE', {
-    timeZone: 'America/Lima',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    hour12: false,
-    hourCycle: 'h23',
-  })
-    .format(new Date())
-    .replace(/\D/g, '');
-  return `ren_${tribuSubId}_${stamp}`;
+function ymdLima(value) {
+  if (value instanceof Date) {
+    return value.toLocaleDateString('en-CA', { timeZone: 'America/Lima' }).replace(/\D/g, '');
+  }
+  return String(value || '').slice(0, 10).replace(/\D/g, '');
+}
+
+function buildRenewalIdempotencyKey(tribuSubId, fechaFin, intento) {
+  const n = Number.parseInt(intento, 10);
+  return `ren_${tribuSubId}_${ymdLima(fechaFin)}_${Number.isFinite(n) ? n : 0}`.slice(0, 64);
+}
+
+function buildPaymentIdempotencyKey(userId, requestId) {
+  const rid = String(requestId || '').trim();
+  if (!/^[A-Za-z0-9-]{8,64}$/.test(rid)) return null;
+  return `pay_${userId}_${rid}`.slice(0, 64);
 }
 
 function parseExternalRef(ref) {
@@ -154,6 +158,7 @@ async function getCulqiCredentialInfo(secretKey) {
 }
 
 function httpStatusForError(err) {
+  if (err?.timeout || err?.network) return 504;
   const msg = String(err?.message || '');
   if (msg.includes('requerido') || msg.includes('inválido') || msg.includes('incompletos')) return 400;
   const status = Number(err?.status);
@@ -171,10 +176,22 @@ function culqiHeaders(secretKey, extra = {}) {
 }
 
 async function culqiFetch(secretKey, path, options = {}) {
-  const res = await fetch(`${CULQI_API}${path}`, {
-    ...options,
-    headers: culqiHeaders(secretKey, options.headers),
-  });
+  let res;
+  try {
+    res = await fetch(`${CULQI_API}${path}`, {
+      ...options,
+      signal: options.signal || AbortSignal.timeout(CULQI_TIMEOUT_MS),
+      headers: culqiHeaders(secretKey, options.headers),
+    });
+  } catch (fetchErr) {
+    const isTimeout = fetchErr?.name === 'TimeoutError' || fetchErr?.name === 'AbortError';
+    const err = new Error(isTimeout ? 'Culqi no respondió a tiempo' : 'No se pudo conectar con Culqi');
+    err.timeout = isTimeout;
+    err.network = true;
+    err.unknownOutcome = String(options.method || 'GET').toUpperCase() !== 'GET';
+    err.cause = fetchErr;
+    throw err;
+  }
   const payload = await res.json().catch(() => ({}));
   if (!res.ok) {
     const err = new Error(parseCulqiPayloadErrors(payload) || 'Error en Culqi');
@@ -435,20 +452,87 @@ async function vaultCustomerCardSafe(params) {
   }
 }
 
+/*
+ * Verificación del webhook de Culqi.
+ * Culqi no documenta de forma estable un esquema de firma HMAC para los eventos
+ * de cargos, así que la verificación es configurable con CULQI_WEBHOOK_AUTH:
+ *   - "hmac"  (por defecto): cabecera x-culqi-signature / culqi-signature con
+ *             HMAC-SHA256 en hex del cuerpo crudo (req.rawBody) usando
+ *             CULQI_WEBHOOK_SECRET. Se acepta opcionalmente el prefijo "sha256=".
+ *   - "basic": Authorization: Basic con "usuario:clave" igual a
+ *             CULQI_WEBHOOK_SECRET (credenciales configuradas en la URL del
+ *             webhook en CulqiPanel: https://usuario:clave@host/...).
+ *   - "token": cabecera x-webhook-token igual a CULQI_WEBHOOK_SECRET.
+ * La firma solo filtra ruido: la garantía real es que el cargo SIEMPRE se
+ * vuelve a consultar en la API de Culqi con la secret key antes de aplicarlo,
+ * y se valida monto, moneda, referencia y estado.
+ */
+function webhookSecretState() {
+  const secret = String(process.env.CULQI_WEBHOOK_SECRET || '');
+  const production = process.env.NODE_ENV === 'production';
+  return { secret, configured: !!secret, failClosed: production && !secret };
+}
+
+function safeEqual(a, b) {
+  const ba = Buffer.from(String(a));
+  const bb = Buffer.from(String(b));
+  if (ba.length !== bb.length) return false;
+  return crypto.timingSafeEqual(ba, bb);
+}
+
 function validateWebhookSignature(req) {
-  const secret = process.env.CULQI_WEBHOOK_SECRET;
-  if (!secret) return true;
+  const { secret } = webhookSecretState();
+  if (!secret) return process.env.NODE_ENV !== 'production';
 
-  const signature = req.headers['x-culqi-signature'] || req.headers['culqi-signature'];
-  if (!signature || typeof signature !== 'string') return false;
-
-  const rawBody = req.rawBody || JSON.stringify(req.body || {});
-  const expected = crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
-  try {
-    return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
-  } catch {
-    return false;
+  const mode = String(process.env.CULQI_WEBHOOK_AUTH || 'hmac').toLowerCase();
+  if (mode === 'basic') {
+    const auth = String(req.headers.authorization || '');
+    if (!auth.startsWith('Basic ')) return false;
+    const decoded = Buffer.from(auth.slice(6), 'base64').toString('utf8');
+    return safeEqual(decoded, secret);
   }
+  if (mode === 'token') {
+    const token = req.headers['x-webhook-token'];
+    return typeof token === 'string' && safeEqual(token, secret);
+  }
+
+  let signature = req.headers['x-culqi-signature'] || req.headers['culqi-signature'];
+  if (!signature || typeof signature !== 'string') return false;
+  signature = signature.trim().replace(/^sha256=/i, '');
+  if (typeof req.rawBody !== 'string') return false;
+  const expected = crypto.createHmac('sha256', secret).update(req.rawBody).digest('hex');
+  return safeEqual(signature.toLowerCase(), expected);
+}
+
+const WEBHOOK_CHARGE_SUCCESS = /^charge\.(?:(?:creation|update)\.)?(?:succeeded|success|successful|completed)$/i;
+
+function parseWebhookEvent(body) {
+  const payload = body && typeof body === 'object' ? body : {};
+  const eventType = String(payload.type || payload.event || '').trim();
+  let data = payload.data;
+  if (typeof data === 'string') {
+    try { data = JSON.parse(data); } catch { data = null; }
+  }
+  if (!data || typeof data !== 'object') data = null;
+  const candidate = data?.id || (payload.object === 'charge' ? payload.id : null);
+  const chargeId = typeof candidate === 'string' && /^chr_[A-Za-z0-9_]{4,60}$/.test(candidate) ? candidate : null;
+  return {
+    eventType,
+    chargeId,
+    isChargeSuccess: WEBHOOK_CHARGE_SUCCESS.test(eventType),
+  };
+}
+
+function validateChargeForPlan(charge, plan) {
+  if (!charge || typeof charge !== 'object') return { ok: false, reason: 'cargo_vacio' };
+  if (resolveChargeOutcome(charge).status !== 'approved') return { ok: false, reason: 'no_aprobado' };
+  if (String(charge.currency_code || '').toUpperCase() !== 'PEN') return { ok: false, reason: 'moneda' };
+  const ref = String(charge?.metadata?.external_reference || '');
+  if (!ref.startsWith('tribu-')) return { ok: false, reason: 'referencia' };
+  if (!plan) return { ok: false, reason: 'plan' };
+  const expected = Math.round(Number(plan.precio) * 100);
+  if (!Number.isFinite(expected) || Number(charge.amount) !== expected) return { ok: false, reason: 'monto' };
+  return { ok: true };
 }
 
 module.exports = {
@@ -474,4 +558,9 @@ module.exports = {
   validateCulqiCredentials,
   getCulqiCredentialInfo,
   validateWebhookSignature,
+  webhookSecretState,
+  parseWebhookEvent,
+  validateChargeForPlan,
+  buildPaymentIdempotencyKey,
+  CULQI_TIMEOUT_MS,
 };

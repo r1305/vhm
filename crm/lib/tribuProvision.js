@@ -100,8 +100,8 @@ async function createTribuUserFromPaciente(paciente) {
     const [insert] = await conn.execute(
       `INSERT INTO tribu_users
         (nombre, apellido, email, telefono, fecha_nacimiento, genero,
-         motivo_consulta, fuente, fuente_detalle, estado, password, password_plain, psw_temp, is_suscribed)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'activo', ?, ?, 1, 0)`,
+         motivo_consulta, fuente, fuente_detalle, estado, password, psw_temp, is_suscribed)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'activo', ?, 1, 0)`,
       [
         String(paciente.nombre || '').trim().slice(0, 120),
         String(paciente.apellido || '').trim().slice(0, 120),
@@ -113,7 +113,6 @@ async function createTribuUserFromPaciente(paciente) {
         paciente.fuente ? String(paciente.fuente).slice(0, 80) : null,
         paciente.fuente_detalle ? String(paciente.fuente_detalle).slice(0, 200) : null,
         hash,
-        tempPassword,
       ]
     );
     const tribuUserId = insert.insertId;

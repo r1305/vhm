@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node app.js",
     "dev": "node --watch src/index.js",
-    "setup": "node scripts/setup-admin.js"
+    "setup": "node scripts/setup-admin.js",
+    "test": "node --test test/"
   },
   "engines": {
     "node": ">=22.0.0"

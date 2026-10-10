@@ -71,6 +71,14 @@ router.put('/:id', requireAdmin, async (req, res) => {
 
 router.delete('/:id', requireAdmin, async (req, res) => {
   try {
+    const [[uso]] = await pool.execute(
+      'SELECT COUNT(*) AS total FROM tribu_suscripciones WHERE suscripcion_id = ?', [req.params.id]
+    );
+    if ((uso?.total || 0) > 0) {
+      return res.status(409).json({
+        error: `No se puede eliminar: el plan tiene ${uso.total} suscripción(es) asociadas (activas o históricas). Edita el plan o deja de ofrecerlo en su lugar.`,
+      });
+    }
     const [result] = await pool.execute('DELETE FROM suscripciones WHERE id = ?', [req.params.id]);
     if (result.affectedRows === 0) return res.status(404).json({ error: 'Plan no encontrado' });
     res.json({ message: 'Plan eliminado' });

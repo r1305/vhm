@@ -1,7 +1,6 @@
 const { Router } = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const crypto = require('crypto');
 const pool = require('./db');
 const {
   listSavedCards, getSavedCard, getDefaultSavedCard, setDefaultCard, deactivateSavedCard,
@@ -9,6 +8,12 @@ const {
 const { crearUploadImagen, guardarImagen, borrarImagen } = require('./lib/subidaImagen');
 const { JWT_SECRET } = require('./auth');
 const { sanitizeName, sanitizePhone, sanitizeEmail, toYmd } = require('../lib/validation');
+const { accesoVigenteSql, sincronizarIsSuscribed } = require('./lib/suscripcionAcceso');
+const { crearLimitador, ipDe, responder429 } = require('./lib/rateLimitMemoria');
+const {
+  RESET_TOKEN_MINUTOS, hashToken, esTokenValido, isMailerConfigured, solicitarResetPassword,
+  emitirTokenVerificacion, enviarCorreoVerificacion, enviarAvisoCuentaExistente,
+} = require('./lib/correosCuenta');
 
 const router = Router();
 const BASE = (process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
@@ -22,35 +27,19 @@ function deleteFotoFile(fotoUrl) {
   borrarImagen(fotoUrl, DESTINO_AVATAR);
 }
 
-async function syncSubscriptionAccess(userId) {
-  await pool.execute(
-    `UPDATE tribu_suscripciones SET activo = 0, auto_renovacion = 0
-      WHERE tribu_user_id = ? AND activo = 1 AND fecha_fin < CURDATE()`,
-    [userId]
-  );
-  const [[row]] = await pool.execute(
-    `SELECT COUNT(*) AS total FROM tribu_suscripciones
-      WHERE tribu_user_id = ? AND activo = 1 AND fecha_fin >= CURDATE()`,
-    [userId]
-  );
-  const subscribed = (row?.total || 0) > 0;
-  await pool.execute('UPDATE tribu_users SET is_suscribed = ? WHERE id = ?', [subscribed ? 1 : 0, userId]);
-  return subscribed;
-}
-
 async function fetchUserPublic(id) {
   const [rows] = await pool.execute(
-    'SELECT id, nombre, apellido, email, telefono, foto_url, carrera, hobbies, a_que_te_dedicas, intereses, objetivos, ciudad, onboarding_completado, como_empezar, psw_temp, is_suscribed FROM tribu_users WHERE id = ? LIMIT 1',
+    'SELECT id, nombre, apellido, email, telefono, foto_url, carrera, hobbies, a_que_te_dedicas, intereses, objetivos, ciudad, onboarding_completado, como_empezar, psw_temp, is_suscribed, email_verificado FROM tribu_users WHERE id = ? LIMIT 1',
     [id]
   );
   if (!rows.length) return null;
   const user = rows[0];
-  await syncSubscriptionAccess(id);
+  await sincronizarIsSuscribed(id);
   const [sus] = await pool.execute(
     `SELECT ts.id, s.nombre, s.precio, ts.fecha_inicio, ts.fecha_fin, ts.es_prueba
       FROM tribu_suscripciones ts
       JOIN suscripciones s ON s.id = ts.suscripcion_id
-      WHERE ts.tribu_user_id = ? AND ts.activo = 1 AND ts.fecha_fin >= CURDATE()
+      WHERE ts.tribu_user_id = ? AND ${accesoVigenteSql('ts')}
       ORDER BY ts.fecha_fin DESC LIMIT 1`,
     [id]
   );
@@ -88,6 +77,7 @@ function userPayload(user) {
     ciudad: user.ciudad || null,
     onboarding_completado: !!user.onboarding_completado,
     como_empezar: user.como_empezar || null,
+    email_verificado: user.email_verificado == null ? true : !!user.email_verificado,
   };
 }
 
@@ -170,65 +160,125 @@ router.post('/login', async (req, res) => {
   } catch (err) { console.error(err); res.status(500).json({ error: 'Error en el login' }); }
 });
 
+const HORA_MS = 60 * 60 * 1000;
+const limiteRegistroIp = crearLimitador({ max: 5, ventanaMs: HORA_MS });
+const limiteRecuperarIp = crearLimitador({ max: 10, ventanaMs: HORA_MS });
+const limiteRecuperarEmail = crearLimitador({ max: 3, ventanaMs: HORA_MS });
+const limiteResetIp = crearLimitador({ max: 10, ventanaMs: HORA_MS });
+const limiteReenvioVerificacion = crearLimitador({ max: 3, ventanaMs: HORA_MS });
+
+const MSG_REGISTRO_PENDIENTE = 'Si el correo no estaba registrado, te enviamos un enlace para confirmar tu cuenta. Si ya tienes cuenta, inicia sesión o usa «Olvidé mi contraseña».';
+const MSG_REGISTRO_NO_DISPONIBLE = 'No pudimos crear la cuenta con ese correo. Si ya tienes cuenta, inicia sesión o usa «Olvidé mi contraseña».';
+const MSG_RECUPERAR = `Si el correo está registrado, te enviamos un enlace para crear una nueva contraseña. Revisa tu bandeja de entrada y spam. El enlace vence en ${RESET_TOKEN_MINUTOS} minutos.`;
+
+function emailValido(emailNorm) {
+  return emailNorm.length <= 150 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailNorm);
+}
+
 router.post('/registro', async (req, res) => {
   try {
-    const { nombre, apellido, email, password } = req.body;
+    const rl = limiteRegistroIp.consumir(ipDe(req));
+    if (!rl.ok) return responder429(res, rl);
+    const { nombre, apellido, email, password } = req.body || {};
     if (!nombre || !apellido || !email || !password)
       return res.status(400).json({ error: 'Todos los campos son obligatorios' });
-    if (password.length < 6)
+    if (String(password).length < 6)
       return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
 
-    const emailNorm = email.trim().toLowerCase();
-    const [existe] = await pool.execute('SELECT id FROM tribu_users WHERE email = ? LIMIT 1', [emailNorm]);
-    if (existe.length) return res.status(409).json({ error: 'Ya existe una cuenta con ese correo' });
+    const emailNorm = String(email).trim().toLowerCase();
+    if (!emailValido(emailNorm)) return res.status(400).json({ error: 'Correo electrónico inválido' });
+    const nombreLimpio = String(nombre).trim().slice(0, 120);
+    const apellidoLimpio = String(apellido).trim().slice(0, 120);
+    const verificar = isMailerConfigured();
+    const hash = await bcrypt.hash(String(password), 12);
 
-    const hash = await bcrypt.hash(password, 12);
-    const [result] = await pool.execute(
-      `INSERT INTO tribu_users (nombre, apellido, email, password, psw_temp, is_suscribed, estado)
-        VALUES (?, ?, ?, ?, 0, 0, 'prospecto')`,
-      [nombre.trim(), apellido.trim(), emailNorm, hash]
-    );
-    const user = { id: result.insertId, nombre: nombre.trim(), apellido: apellido.trim(), email: emailNorm };
+    const respuestaExistente = (nombreExistente) => {
+      if (verificar) {
+        enviarAvisoCuentaExistente({ email: emailNorm, nombre: nombreExistente });
+        return res.status(202).json({ verificacion_pendiente: true, message: MSG_REGISTRO_PENDIENTE });
+      }
+      return res.status(409).json({ error: MSG_REGISTRO_NO_DISPONIBLE });
+    };
+
+    const [existe] = await pool.execute('SELECT id, nombre FROM tribu_users WHERE email = ? LIMIT 1', [emailNorm]);
+    if (existe.length) return respuestaExistente(existe[0].nombre);
+
+    let result;
+    try {
+      [result] = await pool.execute(
+        `INSERT INTO tribu_users (nombre, apellido, email, password, psw_temp, is_suscribed, estado, email_verificado)
+          VALUES (?, ?, ?, ?, 0, 0, 'prospecto', ?)`,
+        [nombreLimpio, apellidoLimpio, emailNorm, hash, verificar ? 0 : 1]
+      );
+    } catch (e) {
+      if (e.code === 'ER_DUP_ENTRY') return respuestaExistente(null);
+      throw e;
+    }
+
+    if (verificar) {
+      const token = await emitirTokenVerificacion(result.insertId);
+      enviarCorreoVerificacion({ email: emailNorm, nombre: nombreLimpio, token });
+      return res.status(202).json({ verificacion_pendiente: true, message: MSG_REGISTRO_PENDIENTE });
+    }
+
+    const user = { id: result.insertId, nombre: nombreLimpio, apellido: apellidoLimpio, email: emailNorm };
     const token = signToken(user);
-    res.status(201).json({ token, user: { ...user, psw_temp: false, is_suscribed: false } });
+    res.status(201).json({ token, user: { ...user, psw_temp: false, is_suscribed: false, email_verificado: true } });
   } catch (err) { console.error(err); res.status(500).json({ error: 'Error al crear la cuenta' }); }
 });
 
-async function ensureTempPasswordPlain(userId, currentPlain) {
-  if (currentPlain) return currentPlain;
-  const plain = crypto.randomBytes(4).toString('hex').toUpperCase();
-  const hash = await bcrypt.hash(plain, 10);
-  await pool.execute('UPDATE tribu_users SET password = ?, password_plain = ? WHERE id = ?', [hash, plain, userId]);
-  return plain;
-}
+router.get('/verificar-email', async (req, res) => {
+  const token = String(req.query.token || '');
+  let ok = false;
+  try {
+    if (esTokenValido(token)) {
+      const [upd] = await pool.execute(
+        `UPDATE tribu_users SET email_verificado = 1, verify_token = NULL, verify_token_exp = NULL
+          WHERE verify_token = ? AND verify_token_exp > NOW()`,
+        [hashToken(token)]
+      );
+      ok = (upd?.affectedRows || 0) > 0;
+    }
+  } catch (err) { console.error('[tribu-auth verificar-email]', err.message); }
+  res.redirect(302, `${BASE}/camino?login=1&verificado=${ok ? '1' : '0'}`);
+});
+
+router.post('/reenviar-verificacion', tribuAuthMiddleware, async (req, res) => {
+  const message = 'Si tu correo aún no está confirmado, te enviamos un nuevo enlace.';
+  try {
+    const rl = limiteReenvioVerificacion.consumir(String(req.tribuUser.id));
+    if (!rl.ok) return responder429(res, rl);
+    if (!isMailerConfigured()) return res.json({ message });
+    const [[u]] = await pool.execute(
+      'SELECT id, nombre, email, email_verificado FROM tribu_users WHERE id = ? LIMIT 1', [req.tribuUser.id]
+    );
+    if (u && !u.email_verificado) {
+      const token = await emitirTokenVerificacion(u.id);
+      enviarCorreoVerificacion({ email: u.email, nombre: u.nombre, token });
+    }
+    res.json({ message });
+  } catch (err) { console.error('[tribu-auth reenviar-verificacion]', err.message); res.json({ message }); }
+});
 
 router.post('/recuperar', async (req, res) => {
   try {
-    const ip = req.ip || req.connection.remoteAddress;
-    const { email } = req.body;
-    if (!email) return res.status(400).json({ error: 'Email requerido' });
+    const { email } = req.body || {};
+    if (!email || typeof email !== 'string') return res.status(400).json({ error: 'Email requerido' });
     const emailNorm = email.trim().toLowerCase();
-    const key = attemptKey(ip, emailNorm);
-    const record = getAttempts(key);
-    if (record && record.count >= MAX_ATTEMPTS) {
-      const remaining = Math.ceil((WINDOW_MS - (Date.now() - record.start)) / 60000);
-      return res.status(429).json({ error: `Demasiados intentos. Intenta en ${remaining} minuto(s).` });
+    const rlIp = limiteRecuperarIp.consumir(ipDe(req));
+    if (!rlIp.ok) return responder429(res, rlIp);
+    if (!emailValido(emailNorm) || !limiteRecuperarEmail.consumir(emailNorm).ok) {
+      return res.json({ message: MSG_RECUPERAR });
     }
     const [rows] = await pool.execute(
-      'SELECT id, psw_temp, password_plain FROM tribu_users WHERE email = ? LIMIT 1', [emailNorm]
+      'SELECT id, nombre, email FROM tribu_users WHERE email = ? LIMIT 1', [emailNorm]
     );
-    if (!rows.length) {
-      recordAttempt(key);
-      return res.json({ temp: false, message: 'Si el correo existe y tiene contraseña temporal, podrás continuar.' });
-    }
-    const user = rows[0];
-    if (!user.psw_temp) {
-      return res.json({ temp: false, message: 'Si el correo existe, recibirás instrucciones por correo cuando esté disponible.' });
-    }
-    resetAttempts(key);
-    const tempPassword = await ensureTempPasswordPlain(user.id, user.password_plain);
-    res.json({ temp: true, tempPassword, message: 'Esta es tu contraseña temporal. Ingrésala a continuación y crea una nueva contraseña.' });
-  } catch (err) { console.error(err); res.status(500).json({ error: 'Error al procesar la solicitud' }); }
+    if (rows.length) await solicitarResetPassword(rows[0]);
+    res.json({ message: MSG_RECUPERAR });
+  } catch (err) {
+    console.error('[tribu-auth recuperar]', err.message);
+    res.json({ message: MSG_RECUPERAR });
+  }
 });
 
 router.post('/definir-contrasena', tribuAuthMiddleware, async (req, res) => {
@@ -243,7 +293,7 @@ router.post('/definir-contrasena', tribuAuthMiddleware, async (req, res) => {
     if (!row.psw_temp) return res.status(400).json({ error: 'Tu cuenta ya tiene contraseña definida' });
     const hash = await bcrypt.hash(String(newPassword), 12);
     await pool.execute(
-      'UPDATE tribu_users SET password = ?, psw_temp = 0, password_plain = NULL WHERE id = ?',
+      'UPDATE tribu_users SET password = ?, psw_temp = 0 WHERE id = ?',
       [hash, row.id]
     );
     const session = await issueSessionForUserId(row.id);
@@ -317,7 +367,7 @@ router.post('/cambiar-password-temp', async (req, res) => {
     resetAttempts(key);
     const hash = await bcrypt.hash(String(newPassword), 12);
     await pool.execute(
-      'UPDATE tribu_users SET password = ?, psw_temp = 0, password_plain = NULL, reset_token = NULL, reset_token_exp = NULL WHERE id = ?',
+      'UPDATE tribu_users SET password = ?, psw_temp = 0, reset_token = NULL, reset_token_exp = NULL WHERE id = ?',
       [hash, rows[0].id]
     );
     res.json({ message: 'Contraseña actualizada. Ya puedes iniciar sesión con tu nueva contraseña.' });
@@ -326,21 +376,28 @@ router.post('/cambiar-password-temp', async (req, res) => {
 
 router.post('/reset-password', async (req, res) => {
   try {
-    const { token, password } = req.body;
+    const rl = limiteResetIp.consumir(ipDe(req));
+    if (!rl.ok) return responder429(res, rl);
+    const { token, password } = req.body || {};
     if (!token || !password) return res.status(400).json({ error: 'Token y contraseña requeridos' });
-    if (password.length < 6) return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
+    if (String(password).length < 8) return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres' });
+    const invalido = () => res.status(400).json({ error: 'El enlace no es válido o ya venció. Solicita uno nuevo.' });
+    if (!esTokenValido(String(token))) return invalido();
 
+    const tokenHash = hashToken(String(token));
     const [rows] = await pool.execute(
-      'SELECT id FROM tribu_users WHERE reset_token = ? AND reset_token_exp > NOW() LIMIT 1', [token]
+      'SELECT id FROM tribu_users WHERE reset_token = ? AND reset_token_exp > NOW() LIMIT 1', [tokenHash]
     );
-    if (!rows.length) return res.status(400).json({ error: 'Token inválido o expirado' });
+    if (!rows.length) return invalido();
 
-    const hash = await bcrypt.hash(password, 12);
-    await pool.execute(
-      'UPDATE tribu_users SET password = ?, psw_temp = 0, reset_token = NULL, reset_token_exp = NULL, password_plain = NULL WHERE id = ?',
-      [hash, rows[0].id]
+    const hash = await bcrypt.hash(String(password), 12);
+    const [upd] = await pool.execute(
+      `UPDATE tribu_users SET password = ?, psw_temp = 0, email_verificado = 1, reset_token = NULL, reset_token_exp = NULL
+        WHERE id = ? AND reset_token = ? AND reset_token_exp > NOW()`,
+      [hash, rows[0].id, tokenHash]
     );
-    res.json({ message: 'Contraseña actualizada correctamente' });
+    if (!upd || !upd.affectedRows) return invalido();
+    res.json({ message: 'Contraseña actualizada. Ya puedes iniciar sesión con tu nueva contraseña.' });
   } catch (err) { console.error(err); res.status(500).json({ error: 'Error al actualizar la contraseña' }); }
 });
 
@@ -482,7 +539,7 @@ router.get('/suscripciones', tribuAuthMiddleware, async (req, res) => {
       `SELECT ts.id, ts.fecha_inicio, ts.fecha_fin, ts.activo, ts.auto_renovacion, ts.es_prueba,
               ts.culqi_card_id, ts.culqi_card_brand, ts.cancelada_at,
               s.nombre, s.precio, s.descripcion, s.vigencia_dias,
-              (ts.activo = 1 AND ts.fecha_fin >= CURDATE()) AS vigente,
+              ${accesoVigenteSql('ts')} AS vigente,
               sc.last_four_digits
         FROM tribu_suscripciones ts
         JOIN suscripciones s ON s.id = ts.suscripcion_id
@@ -550,7 +607,7 @@ router.put('/suscripciones/:id/auto-renovacion', tribuAuthMiddleware, async (req
 
     const [[sub]] = await pool.execute(
       `SELECT ts.id, ts.tribu_user_id, ts.culqi_card_id, ts.culqi_customer_id, ts.culqi_card_brand,
-              (ts.activo = 1 AND ts.fecha_fin >= CURDATE()) AS vigente
+              ${accesoVigenteSql('ts')} AS vigente
        FROM tribu_suscripciones ts WHERE ts.id = ? AND ts.tribu_user_id = ? LIMIT 1`,
       [subId, req.tribuUser.id]
     );

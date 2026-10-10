@@ -573,9 +573,56 @@ async function crearEsquema() {
   try {
     await pool.query('ALTER TABLE tribu_suscripciones ADD COLUMN renovando_hasta DATETIME NULL AFTER worker_pid');
   } catch (_) {}
+  try {
+    await pool.query('ALTER TABLE tribu_suscripciones ADD COLUMN pendiente_conciliar TINYINT(1) NOT NULL DEFAULT 0 AFTER renovando_hasta');
+  } catch (_) {}
+
+  if (!colNames.includes('reset_token'))
+    await pool.query('ALTER TABLE tribu_users ADD COLUMN reset_token VARCHAR(64) NULL');
+  if (!colNames.includes('reset_token_exp'))
+    await pool.query('ALTER TABLE tribu_users ADD COLUMN reset_token_exp DATETIME NULL');
+  if (!colNames.includes('email_verificado'))
+    await pool.query('ALTER TABLE tribu_users ADD COLUMN email_verificado TINYINT(1) NOT NULL DEFAULT 1');
+  if (!colNames.includes('verify_token'))
+    await pool.query('ALTER TABLE tribu_users ADD COLUMN verify_token VARCHAR(64) NULL');
+  if (!colNames.includes('verify_token_exp'))
+    await pool.query('ALTER TABLE tribu_users ADD COLUMN verify_token_exp DATETIME NULL');
+
+  if (colNames.includes('password_plain')) {
+    try {
+      await pool.query('UPDATE tribu_users SET password_plain = NULL WHERE password_plain IS NOT NULL');
+    } catch (err) { console.error('[latribu/schema] limpiar password_plain:', err.message); }
+  }
+
+  await asegurarIndiceUnico('tribu_users', 'uq_tribu_users_email', 'email');
+  await asegurarIndiceUnico('tribu_suscripciones', 'uq_ts_culqi_charge', 'culqi_charge_id');
 
   await ensureAccesosSchema();
   await backfillAccesos();
 }
 
-module.exports = { ensureSchema, LANDING_INTRO_DEFAULT, LANDING_PACTO_DEFAULT };
+async function asegurarIndiceUnico(tabla, indice, columna) {
+  try {
+    const [existe] = await pool.query(`SHOW INDEX FROM \`${tabla}\` WHERE Key_name = ?`, [indice]);
+    if (existe.length) return true;
+    const [dups] = await pool.query(
+      `SELECT \`${columna}\` AS valor, COUNT(*) AS total FROM \`${tabla}\`
+        WHERE \`${columna}\` IS NOT NULL
+        GROUP BY \`${columna}\` HAVING COUNT(*) > 1 LIMIT 5`
+    );
+    if (dups.length) {
+      console.warn(
+        `[latribu/schema] No se crea el índice único ${indice} en ${tabla}.${columna}: hay valores duplicados ` +
+        `(al menos ${dups.length} valor(es) repetido(s); consulta: SELECT ${columna}, COUNT(*) FROM ${tabla} GROUP BY ${columna} HAVING COUNT(*) > 1). Corrige los duplicados y reinicia la app.`
+      );
+      return false;
+    }
+    await pool.query(`ALTER TABLE \`${tabla}\` ADD UNIQUE KEY \`${indice}\` (\`${columna}\`)`);
+    return true;
+  } catch (err) {
+    console.error(`[latribu/schema] índice único ${indice}:`, err.message);
+    return false;
+  }
+}
+
+module.exports = { ensureSchema, LANDING_INTRO_DEFAULT, LANDING_PACTO_DEFAULT, asegurarIndiceUnico };

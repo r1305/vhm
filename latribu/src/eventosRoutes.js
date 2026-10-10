@@ -4,6 +4,7 @@ const { authMiddleware } = require('./auth');
 const { ensureSchema: ensureVideoSchema } = require('./schema');
 const { tribuAuthMiddleware } = require('./tribuAuthRoutes');
 const { buildEventIcs } = require('../lib/tribuEventoIcs');
+const { usuarioTieneAcceso } = require('./lib/suscripcionAcceso');
 
 const router = Router();
 
@@ -69,17 +70,7 @@ function normalizarBody(body) {
 }
 
 async function tribuTieneSuscripcion(userId) {
-  await pool.execute(
-    `UPDATE tribu_suscripciones SET activo = 0, auto_renovacion = 0
-      WHERE tribu_user_id = ? AND activo = 1 AND fecha_fin < CURDATE()`,
-    [userId]
-  );
-  const [[row]] = await pool.execute(
-    `SELECT COUNT(*) AS total FROM tribu_suscripciones
-      WHERE tribu_user_id = ? AND activo = 1 AND fecha_fin >= CURDATE()`,
-    [userId]
-  );
-  return (row?.total || 0) > 0;
+  return usuarioTieneAcceso(userId);
 }
 
 async function fetchEventoActivo(id) {

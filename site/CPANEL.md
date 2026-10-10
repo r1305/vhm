@@ -117,7 +117,7 @@ La Tribu, sus suscripciones y los pagos Culqi viven en la app `latribu/` (`/site
 |---------|-----|
 | La Tribu | `https://vhm.com.pe/latribu` |
 | Webhook Culqi | `https://vhm.com.pe/latribu/api/tribu-pagos/webhook` |
-| Cron renovaciones | `https://vhm.com.pe/latribu/api/tribu-pagos/cron-renovaciones?token=...` |
+| Cron renovaciones | `https://vhm.com.pe/latribu/api/tribu-pagos/cron-renovaciones` con cabecera `X-Cron-Token` (ver `latribu/CPANEL.md`) |
 
 El webhook de Culqi debe apuntar a **latribu**; `/site/api/tribu-pagos/*` ya no existe. Las llaves Culqi se configuran en el admin de La Tribu (`/latribu/admin/config.html`).
 

@@ -8,14 +8,6 @@
   const pgWrap = document.getElementById('pg-wrap');
   const pgButtons = document.getElementById('pg-buttons');
   const pgTotal = document.getElementById('pg-total');
-  const pswUsuario = document.getElementById('psw-usuario');
-  const pswCargando = document.getElementById('psw-cargando');
-  const pswValorWrap = document.getElementById('psw-valor-wrap');
-  const pswValorEl = document.getElementById('psw-valor');
-  const pswError = document.getElementById('psw-error');
-  const btnTogglePsw = document.getElementById('btn-toggle-psw');
-  const btnCopiarPsw = document.getElementById('btn-copiar-psw');
-  const btnRegenerarPsw = document.getElementById('btn-regenerar-psw');
 
   let usuarios = [];
   let page = 1;
@@ -23,8 +15,6 @@
   let totalPages = 1;
   let perPage = 10;
   let debounceTimer = null;
-  let pswValor = '';
-  let pswVisible = false;
 
   AdminUtils.bindModalClose(document.getElementById('page-main'));
 
@@ -35,26 +25,6 @@
   });
   pgButtons.addEventListener('click', onPaginationClick);
   bodyEl.addEventListener('click', onTableClick);
-  btnTogglePsw.addEventListener('click', togglePswVisible);
-  btnCopiarPsw.addEventListener('click', copiarPsw);
-  btnRegenerarPsw.addEventListener('click', async function () {
-    btnRegenerarPsw.disabled = true;
-    btnRegenerarPsw.textContent = 'Procesando…';
-    try {
-      const res = await AdminApi.apiFetch('/tribu-users/regenerar-passwords-temp', {
-        method: 'POST',
-        headers: AdminApi.authHeaders()
-      });
-      const data = await res.json();
-      toast(data.message || 'Listo', 'success');
-      if (data.updated > 0) cargar(page);
-    } catch {
-      toast('Error al regenerar contraseñas', 'error');
-    } finally {
-      btnRegenerarPsw.disabled = false;
-      btnRegenerarPsw.textContent = '🔄 Regenerar contraseñas';
-    }
-  });
 
   cargar(1);
 
@@ -65,14 +35,13 @@
   }
 
   function passwordCell(u) {
-    if (AdminAuth.isSuperAdmin()) {
-      const label = u.psw_temp ? '🔑 Ver contraseña' : '🔑 Ver contraseña';
-      return '<button type="button" class="btn btn-outline btn-xs" data-action="ver-psw" data-id="' + u.id + '">' + label + '</button>';
-    }
-    if (!u.psw_temp) {
-      return '<span class="badge" style="background:#d1fae5;color:#065f46">Cambiada</span>';
-    }
-    return '<button type="button" class="btn btn-outline btn-xs" data-action="ver-psw" data-id="' + u.id + '">🔑 Ver temporal</button>';
+    const estado = u.psw_temp
+      ? '<span class="badge" style="background:#fef3c7;color:#92400e">Temporal</span>'
+      : '<span class="badge" style="background:#d1fae5;color:#065f46">Definida</span>';
+    const btn = u.email
+      ? ' <button type="button" class="btn btn-outline btn-xs" data-action="enviar-reset" data-id="' + u.id + '" title="Envía al usuario un enlace de un solo uso para crear su contraseña">✉️ Enviar enlace</button>'
+      : '';
+    return estado + btn;
   }
 
   function render() {
@@ -107,11 +76,7 @@
           '<td style="font-size:.82rem;color:#888">' + AdminApi.escapeHtml(fecha) + '</td>' +
         '</tr>';
 
-      const pswMobile = AdminAuth.isSuperAdmin()
-        ? '<button type="button" class="btn btn-outline btn-xs" style="margin-left:4px" data-action="ver-psw" data-id="' + u.id + '">🔑 Ver</button>'
-        : (u.psw_temp
-          ? '<button type="button" class="btn btn-outline btn-xs" style="margin-left:4px" data-action="ver-psw" data-id="' + u.id + '">🔑 Ver</button>'
-          : '<span class="badge" style="background:#d1fae5;color:#065f46;margin-left:4px">Cambiada</span>');
+      const pswMobile = psw;
 
       cards +=
         '<div class="mc-item">' +
@@ -196,70 +161,30 @@
   }
 
   function onTableClick(e) {
-    const btn = e.target.closest('[data-action="ver-psw"]');
+    const btn = e.target.closest('[data-action="enviar-reset"]');
     if (!btn) return;
     const id = parseInt(btn.getAttribute('data-id'), 10);
     const u = usuarios.find(function (x) { return x.id === id; });
-    if (u) verPassword(u);
+    if (u) enviarReset(u, btn);
   }
 
-  async function verPassword(u) {
-    pswUsuario.textContent = (u.nombre || '') + ' ' + (u.apellido || '');
-    pswValor = '';
-    pswVisible = false;
-    pswCargando.style.display = 'block';
-    pswValorWrap.style.display = 'none';
-    pswError.style.display = 'none';
-    btnTogglePsw.textContent = '👁️';
-    btnTogglePsw.title = 'Mostrar';
-    AdminUtils.showModal('modal-psw');
-
+  async function enviarReset(u, btn) {
+    const nombre = ((u.nombre || '') + ' ' + (u.apellido || '')).trim();
+    if (!window.confirm('¿Enviar a ' + nombre + ' (' + (u.email || '') + ') un enlace para crear su contraseña? El enlace vence en 60 minutos.')) return;
+    btn.disabled = true;
     try {
-      const endpoint = AdminAuth.isSuperAdmin()
-        ? '/tribu-users/' + u.id + '/password'
-        : '/tribu-users/' + u.id + '/password-temp';
-      const res = await AdminApi.apiFetch(endpoint, { headers: AdminApi.authHeaders() });
-      const data = await res.json();
-      if (data.changed) {
-        pswCargando.style.display = 'none';
-        pswError.style.display = 'block';
-        pswError.textContent = 'Este usuario ya cambió su contraseña. No es posible verla.';
-        return;
-      }
-      pswValor = data.password || '';
-    } catch {
-      toast('Error al obtener contraseña', 'error');
+      const res = await AdminApi.apiFetch('/tribu-users/' + u.id + '/enviar-reset', {
+        method: 'POST',
+        headers: AdminApi.authHeaders()
+      });
+      const data = await res.json().catch(function () { return {}; });
+      if (!res.ok) throw new Error(data.error || 'No se pudo enviar el enlace');
+      toast(data.message || 'Enlace enviado', 'success');
+    } catch (err) {
+      toast(err.message || 'No se pudo enviar el enlace', 'error');
     } finally {
-      pswCargando.style.display = 'none';
-      if (pswValor) {
-        pswValorWrap.style.display = 'block';
-        updatePswDisplay();
-      } else if (pswError.style.display !== 'block') {
-        pswError.style.display = 'block';
-        pswError.textContent = 'No se encontró la contraseña.';
-      }
+      btn.disabled = false;
     }
-  }
-
-  function updatePswDisplay() {
-    pswValorEl.textContent = pswVisible ? pswValor : '•'.repeat(pswValor.length);
-  }
-
-  function togglePswVisible() {
-    if (!pswValor) return;
-    pswVisible = !pswVisible;
-    btnTogglePsw.textContent = pswVisible ? '🙈' : '👁️';
-    btnTogglePsw.title = pswVisible ? 'Ocultar' : 'Mostrar';
-    updatePswDisplay();
-  }
-
-  function copiarPsw() {
-    if (!pswValor) return;
-    navigator.clipboard.writeText(pswValor).then(function () {
-      toast('Contraseña copiada', 'success');
-    }).catch(function () {
-      toast('No se pudo copiar', 'error');
-    });
   }
   });
 })();
