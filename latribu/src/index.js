@@ -26,7 +26,8 @@ app.use(cors({
     if (!origin) return cb(null, true);
     try {
       const u = new URL(origin);
-      if (u.hostname === 'localhost' || u.hostname === '127.0.0.1') return cb(null, true);
+      const esLocal = u.hostname === 'localhost' || u.hostname === '127.0.0.1';
+      if (esLocal && process.env.NODE_ENV !== 'production') return cb(null, true);
       if (u.hostname.endsWith('.vhm.com.pe') || u.hostname === 'vhm.com.pe') return cb(null, true);
     } catch (_) {}
     if (corsOrigin) {
@@ -41,8 +42,25 @@ app.use('/api/tribu-pagos/webhook', express.json({
   limit: '1mb',
   verify: (req, res, buf) => { req.rawBody = buf.toString('utf8'); },
 }));
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+const LIMITE_BODY = '100kb';
+const LIMITE_BODY_EDITOR = '1mb';
+const RUTAS_BODY_EDITOR = [
+  '/api/suscripciones',
+  '/api/plantillas',
+  '/api/encuestas/admin',
+  '/api/contenido',
+  '/api/config',
+  '/api/tribu-auth/perfil',
+];
+const jsonNormal = express.json({ limit: LIMITE_BODY });
+const jsonEditor = express.json({ limit: LIMITE_BODY_EDITOR });
+const urlencodedNormal = express.urlencoded({ extended: true, limit: LIMITE_BODY });
+const urlencodedEditor = express.urlencoded({ extended: true, limit: LIMITE_BODY_EDITOR });
+function esRutaEditor(p) {
+  return RUTAS_BODY_EDITOR.some(r => p === r || p.startsWith(r + '/'));
+}
+app.use((req, res, next) => (esRutaEditor(req.path) ? jsonEditor : jsonNormal)(req, res, next));
+app.use((req, res, next) => (esRutaEditor(req.path) ? urlencodedEditor : urlencodedNormal)(req, res, next));
 app.use(require('cookie-parser')());
 
 const BASE_PATH = (process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
@@ -126,8 +144,6 @@ function detenerCronLatribu() {
   if (renovacionesTimer) { clearInterval(renovacionesTimer); renovacionesTimer = null; }
   if (cronTribuTimer) { clearTimeout(cronTribuTimer); cronTribuTimer = null; }
 }
-process.on('SIGTERM', detenerCronLatribu);
-process.on('SIGINT', detenerCronLatribu);
 
 function programarCronRenovaciones() {
   if (process.env.TRIBU_RENOVACION_CRON_ENABLED !== '1') return;
@@ -306,3 +322,4 @@ app.use((err, req, res, next) => {
 });
 
 module.exports = app;
+module.exports.detenerCronLatribu = detenerCronLatribu;

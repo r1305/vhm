@@ -5,6 +5,17 @@ const pool = require('./db');
 const { authMiddleware } = require('./auth');
 const { crearUploadImagen, guardarImagen, borrarImagen } = require('./lib/subidaImagen');
 const { LANDING_INTRO_DEFAULT, LANDING_PACTO_DEFAULT, ensureSchema: ensureVideoSchema } = require('./schema');
+const { tribuAuthMiddleware } = require('./tribuAuthRoutes');
+const { requireSuscripcion } = require('./lib/suscripcionAcceso');
+const { crearLimitador, ipDe, responder429 } = require('./lib/rateLimitMemoria');
+
+const limiteInteraccionIp = crearLimitador({ max: 60, ventanaMs: 10 * 60 * 1000 });
+
+function limitarInteraccion(req, res, next) {
+  const r = limiteInteraccionIp.consumir(ipDe(req));
+  if (!r.ok) return responder429(res, r);
+  next();
+}
 
 function isDbUnreachable(err) {
   const code = err && err.code;
@@ -398,7 +409,7 @@ router.get('/', async (req, res) => {
     await ensureVideoSchema();
     const [rows] = await pool.execute(
       `SELECT v.id, v.categoria_id, v.titulo, v.subtitulo, v.descripcion,
-              v.video_url, v.thumbnail_url, v.duracion, v.vistas, v.likes, v.orden,
+              v.thumbnail_url, v.duracion, v.vistas, v.likes, v.orden,
               c.nombre AS categoria_nombre
          FROM videos v
          LEFT JOIN video_categorias c ON c.id = v.categoria_id
@@ -413,8 +424,23 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Enlace del video: solo para miembros con suscripción vigente
+router.get('/:id/reproducir', tribuAuthMiddleware, requireSuscripcion, async (req, res) => {
+  try {
+    const id = Number.parseInt(req.params.id, 10);
+    if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'Video inválido' });
+    const [rows] = await pool.execute('SELECT id, video_url FROM videos WHERE id = ? AND activo = 1 LIMIT 1', [id]);
+    if (!rows.length) return res.status(404).json({ error: 'Video no encontrado' });
+    res.set('Cache-Control', 'private, no-store');
+    res.json({ id: rows[0].id, video_url: rows[0].video_url });
+  } catch (err) {
+    console.error('[videos] reproducir:', err.message);
+    res.status(500).json({ error: 'No se pudo obtener el video' });
+  }
+});
+
 // Registrar una reproducción (interacción)
-router.post('/:id/vista', async (req, res) => {
+router.post('/:id/vista', limitarInteraccion, async (req, res) => {
   try {
     await pool.execute('UPDATE videos SET vistas = vistas + 1 WHERE id = ? AND activo = 1', [req.params.id]);
     const [rows] = await pool.execute('SELECT vistas FROM videos WHERE id = ?', [req.params.id]);
@@ -426,7 +452,7 @@ router.post('/:id/vista', async (req, res) => {
 });
 
 // Dar / quitar "me gusta" (interacción)
-router.post('/:id/like', async (req, res) => {
+router.post('/:id/like', limitarInteraccion, async (req, res) => {
   try {
     const quitar = req.body && (req.body.quitar === true || req.body.quitar === 'true');
     if (quitar) {

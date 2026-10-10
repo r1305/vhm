@@ -6,6 +6,7 @@ const { tribuAuthMiddleware, TRIBU_JWT_SECRET } = require('./tribuAuthRoutes');
 const {
   crearUploadImagen, guardarImagen, borrarImagen,
 } = require('./lib/subidaImagen');
+const { usuarioTieneAcceso, requireSuscripcion, MSG_SUSCRIPCION_REQUERIDA } = require('./lib/suscripcionAcceso');
 
 const router = Router();
 
@@ -86,6 +87,21 @@ function normalizarContenido(raw) {
   return texto;
 }
 
+const PREFIJO_LOGRO_PRIVADO = '#tipo:logro_privado';
+
+function esLogroPrivado(contenido) {
+  return String(contenido || '').startsWith(PREFIJO_LOGRO_PRIVADO);
+}
+
+function responderSinSuscripcion(res) {
+  return res.status(403).json({ error: MSG_SUSCRIPCION_REQUERIDA, code: 'SUSCRIPCION_REQUERIDA' });
+}
+
+function requireSuscripcionSalvoPropios(req, res, next) {
+  if (esTruthy(req.query.mine)) return next();
+  return requireSuscripcion(req, res, next);
+}
+
 function iniciales(nombre, apellido) {
   const a = nombre && nombre.length ? nombre[0] : '';
   const b = apellido && apellido.length ? apellido[0] : '';
@@ -148,7 +164,7 @@ function parsePaginacion(query) {
 }
 
 // ── Feed de la comunidad ──
-router.get('/', tribuAuthMiddleware, async (req, res) => {
+router.get('/', tribuAuthMiddleware, requireSuscripcionSalvoPropios, async (req, res) => {
   try {
     const viewerId = req.tribuUser.id;
     const { page, limit, offset } = parsePaginacion(req.query);
@@ -156,17 +172,21 @@ router.get('/', tribuAuthMiddleware, async (req, res) => {
     let where = 'WHERE p.activo = 1';
     const params = [];
     if (esTruthy(req.query.mine)) { where += ' AND p.tribu_user_id = ?'; params.push(viewerId); }
-    else if (req.query.user_id) {
-      const uid = parseInt(req.query.user_id);
-      if (Number.isInteger(uid) && uid > 0) { where += ' AND p.tribu_user_id = ?'; params.push(uid); }
+    else {
+      where += ' AND (p.contenido IS NULL OR p.contenido NOT LIKE ?)';
+      params.push(`${PREFIJO_LOGRO_PRIVADO}%`);
+      if (req.query.user_id) {
+        const uid = parseInt(req.query.user_id);
+        if (Number.isInteger(uid) && uid > 0) { where += ' AND p.tribu_user_id = ?'; params.push(uid); }
+      }
     }
     const orden = String(req.query.orden || '').toLowerCase() === 'likes'
       ? 'ORDER BY p.likes DESC, p.created_at DESC'
       : 'ORDER BY p.created_at DESC, p.id DESC';
 
     const [[{ total }]] = await pool.query(`SELECT COUNT(*) AS total FROM tribu_posts p ${where}`, params);
-    const [rows] = await pool.execute(`${SELECT_POST} ${where} ${orden} LIMIT ? OFFSET ?`, [
-      viewerId, ...params, limit, offset,
+    const [rows] = await pool.query(`${SELECT_POST} ${where} ${orden} LIMIT ? OFFSET ?`, [
+      viewerId, ...params, Number(limit), Number(offset),
     ]);
 
     res.json({
@@ -254,10 +274,12 @@ router.put('/:id/moderar', authMiddleware, requireAdmin, async (req, res) => {
 });
 
 // ── Detalle ──
-router.get('/:id', tribuAuthMiddleware, async (req, res) => {
+router.get('/:id', tribuAuthMiddleware, requireSuscripcion, async (req, res) => {
   try {
     const post = await obtenerPost(req.params.id, req.tribuUser.id);
-    if (!post) return res.status(404).json({ error: 'Publicación no encontrada' });
+    if (!post || (esLogroPrivado(post.contenido) && !post.mine)) {
+      return res.status(404).json({ error: 'Publicación no encontrada' });
+    }
     res.json(post);
   } catch (err) {
     console.error('[latribu] Error al obtener post:', err.message);
@@ -288,6 +310,9 @@ router.post('/', postAuth, async (req, res) => {
     let foto_url = null;
     try {
       const contenido = normalizarContenido(req.body?.contenido);
+      if (!esLogroPrivado(contenido) && !(await usuarioTieneAcceso(memberId))) {
+        return responderSinSuscripcion(res);
+      }
       if (req.file) {
         const guardada = await persistirFoto(req.file);
         foto_url = guardada.url;
@@ -320,14 +345,24 @@ router.put('/:id', postAuth, (req, res) => {
     if (err) return res.status(400).json({ error: err.message || 'Archivo no válido' });
 
     const id = parseInt(req.params.id);
-    const [rows] = await pool.execute(
-      'SELECT id, tribu_user_id, contenido, foto_url FROM tribu_posts WHERE id = ? LIMIT 1', [id]);
-    if (!rows.length) return res.status(404).json({ error: 'Publicación no encontrada' });
-
-    const actual = rows[0];
-    const esDueño = req.tribuUser && Number(req.tribuUser.id) === Number(actual.tribu_user_id);
-    if (!esDueño && !esAdmin(req)) {
-      return res.status(403).json({ error: 'No puedes editar esta publicación' });
+    let actual;
+    try {
+      const [rows] = await pool.execute(
+        'SELECT id, tribu_user_id, contenido, foto_url FROM tribu_posts WHERE id = ? LIMIT 1', [id]);
+      if (!rows.length) return res.status(404).json({ error: 'Publicación no encontrada' });
+      actual = rows[0];
+      const esDueño = req.tribuUser && Number(req.tribuUser.id) === Number(actual.tribu_user_id);
+      if (!esDueño && !esAdmin(req)) {
+        return res.status(403).json({ error: 'No puedes editar esta publicación' });
+      }
+      if (!esAdmin(req)) {
+        const nuevo = req.body && req.body.contenido !== undefined ? req.body.contenido : actual.contenido;
+        const privado = esLogroPrivado(actual.contenido) && esLogroPrivado(nuevo);
+        if (!privado && !(await usuarioTieneAcceso(req.tribuUser.id))) return responderSinSuscripcion(res);
+      }
+    } catch (e) {
+      console.error('[latribu] Error al editar post:', e.message);
+      return res.status(500).json({ error: 'Error al actualizar la publicación' });
     }
 
     // Se guarda la foto nueva antes de tocar nada. Antes se borraba la vieja
@@ -397,7 +432,7 @@ router.delete('/:id', postAuth, async (req, res) => {
 });
 
 // ── Like (toggle) ──
-router.post('/:id/like', tribuAuthMiddleware, async (req, res) => {
+router.post('/:id/like', tribuAuthMiddleware, requireSuscripcion, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const uid = req.tribuUser.id;

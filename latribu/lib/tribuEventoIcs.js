@@ -2,6 +2,8 @@
  * Genera un archivo iCalendar (.ics) para un evento de La Tribu (hora America/Lima).
  */
 
+const { toYmdLima } = require('./validation');
+
 function icsEscape(text) {
   return String(text || '')
     .replace(/\\/g, '\\\\')
@@ -17,8 +19,10 @@ function fmtHoraHm(t) {
   return `${String(parseInt(m[1], 10)).padStart(2, '0')}${m[2]}`;
 }
 
-function ymdToIcsDate(ymd) {
-  return String(ymd).slice(0, 10).replace(/-/g, '');
+function ymdToIcsDate(fecha) {
+  const ymd = toYmdLima(fecha);
+  if (!ymd) throw new Error('Fecha de evento inválida');
+  return ymd.replace(/-/g, '');
 }
 
 function addMinutesToHm(hm, minutes) {

@@ -53,25 +53,26 @@
     }
     .clara-card-input-wrap {
       display: flex; gap: 8px; align-items: flex-end;
+      text-decoration: none; cursor: pointer;
     }
     .clara-card-input {
-      flex: 1; resize: none; min-height: 44px; max-height: 96px;
+      flex: 1; min-height: 44px; box-sizing: border-box;
+      display: flex; align-items: center;
       padding: 11px 14px; border-radius: 12px;
       border: 1px solid var(--line, #D9E1DE);
-      background: var(--panel, #fff); color: var(--txt, #18211E);
-      font-family: inherit; font-size: .92rem; outline: none;
-      cursor: pointer;
+      background: var(--panel, #fff); color: var(--muted, #6B7874);
+      font-family: inherit; font-size: .92rem;
       transition: border-color .15s;
     }
-    .clara-card-input:focus { border-color: #8F4234; cursor: text; }
+    .clara-card-input-wrap:hover .clara-card-input,
+    .clara-card-input-wrap:focus-visible .clara-card-input { border-color: #8F4234; }
     .clara-card-send {
       width: 44px; height: 44px; flex-shrink: 0;
-      border: none; border-radius: 12px; cursor: pointer; color: #fff;
+      border: none; border-radius: 12px; color: #fff;
       background: linear-gradient(135deg,#A84F3E,#8F4234);
       display: flex; align-items: center; justify-content: center;
       font-size: 1.1rem;
     }
-    .clara-card-send:disabled { opacity: .5; cursor: default; }
     .clara-card-disclaimer {
       font-size: .68rem; color: var(--muted); text-align: center;
       margin-top: 8px; line-height: 1.4;
@@ -99,10 +100,10 @@
       <div class="clara-card-msg">Hola, soy Clara, tu guía de acompañamiento emocional. Estoy aquí para escucharte y orientarte, las 24 horas. 💜</div>
     </div>
     <div class="clara-card-foot">
-      <div class="clara-card-input-wrap">
-        <textarea class="clara-card-input" id="claraCardInput" rows="1" placeholder="Escribe tu mensaje a Clara..." maxlength="2000" readonly></textarea>
-        <button class="clara-card-send" id="claraCardSend" aria-label="Enviar">&#10148;</button>
-      </div>
+      <a class="clara-card-input-wrap" href="https://chatgpt.com/g/g-68fbdd94f4908191bf4bc65b8e92d540-clara-tu-guia-24-7-by-ps-guillermo" target="_blank" rel="noopener" aria-label="Abrir chat con Clara (se abre en una pestaña nueva)">
+        <span class="clara-card-input">Escribe tu mensaje a Clara...</span>
+        <span class="clara-card-send" aria-hidden="true">&#10148;</span>
+      </a>
       <div class="clara-card-disclaimer">Clara es una IA de acompañamiento y no sustituye atención psicológica profesional.</div>
     </div>
   </div>
@@ -112,66 +113,7 @@
 <script src="js/tribu-common.js"></script>
 <script src="js/tribu-contenido.js"></script>
 <script src="js/member-app.js"></script>
-<script src="clara-chat.js"></script>
 <script>
-var CLARA_URL = 'https://chatgpt.com/g/g-68fbdd94f4908191bf4bc65b8e92d540-clara-tu-guia-24-7-by-ps-guillermo';
-var _claraApiEnabled = false;
-var _claraReady = false;
-var _claraMensajes = [];
-
-function claraAbrirPopup() {
-  var w = 440, h = 760;
-  var left = Math.max(0, (window.screen.width || 1280) - w - 30);
-  var top = Math.max(0, ((window.screen.height || 800) - h) / 2);
-  window.open(CLARA_URL, 'ClaraChat',
-    'width=' + w + ',height=' + h + ',left=' + left + ',top=' + top +
-    ',menubar=no,toolbar=no,location=yes,status=no,resizable=yes,scrollbars=yes');
-}
-
-function claraAddMsg(text, who) {
-  var body = document.getElementById('claraCardBody');
-  var m = document.createElement('div');
-  m.className = 'clara-card-msg' + (who === 'user' ? ' user' : '');
-  if (who === 'user') {
-    m.style.cssText = 'align-self:flex-end;background:linear-gradient(135deg,#A84F3E,#8F4234);color:#fff;border-bottom-left-radius:16px;border-bottom-right-radius:5px;border:none;';
-  }
-  m.textContent = text;
-  body.appendChild(m);
-  body.scrollTop = body.scrollHeight;
-  return m;
-}
-
-function claraEnviarApi(texto) {
-  var input = document.getElementById('claraCardInput');
-  var send = document.getElementById('claraCardSend');
-  var body = document.getElementById('claraCardBody');
-  claraAddMsg(texto, 'user');
-  _claraMensajes.push({ role: 'user', content: texto });
-  send.disabled = true; input.disabled = true;
-  var typing = document.createElement('div');
-  typing.className = 'clara-card-msg';
-  typing.innerHTML = '<span style="opacity:.5">Clara está escribiendo…</span>';
-  body.appendChild(typing); body.scrollTop = body.scrollHeight;
-  var headers = { 'Content-Type': 'application/json' };
-  var t = typeof getToken === 'function' ? getToken() : '';
-  if (t) headers['Authorization'] = 'Bearer ' + t;
-  fetch((window.__APP_BASE__ || '') + '/api/clara/chat', {
-    method: 'POST', headers: headers,
-    body: JSON.stringify({ mensajes: _claraMensajes })
-  }).then(function(r){ return r.json().then(function(d){ return { ok: r.ok, d: d }; }); })
-    .then(function(res){
-      typing.remove();
-      var reply = res.ok && res.d.respuesta ? res.d.respuesta : (res.d.error || 'Lo siento, ahora mismo no puedo responder.');
-      claraAddMsg(reply, 'bot');
-      _claraMensajes.push({ role: 'assistant', content: reply });
-    }).catch(function(){
-      typing.remove();
-      claraAddMsg('Hubo un problema de conexión. Por favor, inténtalo de nuevo.', 'bot');
-    }).then(function(){
-      send.disabled = false; input.disabled = false; input.focus();
-    });
-}
-
 document.addEventListener('DOMContentLoaded', async () => {
   const ok = await MemberApp.init({ requireSub: true, layout: 'funnel' });
   if (!ok) return;
@@ -184,43 +126,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       TribuContenido.setText(document.querySelector('.bienestar-intro p'), c.lead);
     }
   }
-
-  // Detectar si la API de Clara está habilitada
-  try {
-    const t = typeof getToken === 'function' ? getToken() : '';
-    const headers = t ? { Authorization: 'Bearer ' + t } : {};
-    const cfg = await fetch((window.__APP_BASE__ || '') + '/api/clara/config', { headers }).then(r => r.json());
-    _claraApiEnabled = !!(cfg && cfg.enabled);
-  } catch (_) { _claraApiEnabled = false; }
-  _claraReady = true;
-
-  const input = document.getElementById('claraCardInput');
-  const send = document.getElementById('claraCardSend');
-
-  function autosize() { input.style.height = 'auto'; input.style.height = Math.min(input.scrollHeight, 96) + 'px'; }
-
-  function handleEnviar() {
-    if (!_claraApiEnabled) { claraAbrirPopup(); return; }
-    const texto = input.value.trim();
-    if (!texto) return;
-    input.value = ''; autosize();
-    claraEnviarApi(texto);
-  }
-
-  // Click o focus en el input: si es modo popup, abrir directamente
-  input.addEventListener('click', function() {
-    if (!_claraApiEnabled) { claraAbrirPopup(); return; }
-    input.removeAttribute('readonly');
-    input.focus();
-  });
-  input.addEventListener('focus', function() {
-    if (_claraApiEnabled) input.removeAttribute('readonly');
-  });
-  input.addEventListener('input', autosize);
-  input.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleEnviar(); }
-  });
-  send.addEventListener('click', handleEnviar);
 });
 </script>
 </body>

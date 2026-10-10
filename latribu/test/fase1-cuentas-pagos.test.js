@@ -537,6 +537,8 @@ test('asegurarIndiceUnico no crea el índice si hay duplicados', async () => {
 test('DELETE de plan con suscripciones responde 409', async () => {
   const adminToken = jwt.sign({ id: 1, rol: 'ADMIN' }, process.env.JWT_SECRET, { expiresIn: '1h' });
   db.on(/SELECT COUNT\(\*\) AS total FROM tribu_suscripciones WHERE suscripcion_id = \?/, () => [[{ total: 3 }], []]);
+  db.on(/FROM tribu_menu_accesos ORDER BY/, () => [[{ id: 9, clave: 'config' }], []]);
+  db.on(/FROM tribu_usuario_accesos u/, () => [[{ clave: 'config' }], []]);
   const csrf = await realFetch(`${BASE}/health`);
   const cookie = (csrf.headers.get('set-cookie') || '').split(';')[0];
   const csrfToken = decodeURIComponent(cookie.split('=')[1] || '');

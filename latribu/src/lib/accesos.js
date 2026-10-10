@@ -148,8 +148,25 @@ async function backfillAccesos() {
   for (const u of users) await seedAccesosForUser(u.id, u.rol);
 }
 
+function requireAcceso(clave) {
+  return async function requireAccesoMiddleware(req, res, next) {
+    const u = req.user;
+    if (!u || !u.rol) return res.status(401).json({ error: 'Token requerido' });
+    if (u.rol === 'SUPER_ADMIN') return next();
+    if (u.rol !== 'ADMIN') return res.status(403).json({ error: 'Acceso restringido' });
+    try {
+      const claves = await getAccesosForUser(u.id, u.rol);
+      if (claves.includes(clave)) return next();
+      return res.status(403).json({ error: 'No tienes acceso a este módulo' });
+    } catch (err) {
+      console.error('[latribu] comprobar acceso:', err.message);
+      return res.status(500).json({ error: 'No se pudo comprobar el acceso' });
+    }
+  };
+}
+
 module.exports = {
-  CATALOG_SEED, DEFAULTS_ADMIN,
+  CATALOG_SEED, DEFAULTS_ADMIN, requireAcceso,
   ensureAccesosSchema, backfillAccesos,
   getAllCatalog, getAllClaves,
   getAccesosForUser, setAccesosForUser, seedAccesosForUser,

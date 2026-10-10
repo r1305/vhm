@@ -85,3 +85,32 @@ SHOW CREATE TABLE tribu_suscripciones;  -- obtener el nombre de la FK
 ALTER TABLE tribu_suscripciones DROP FOREIGN KEY <nombre_fk>,
   ADD CONSTRAINT fk_ts_plan FOREIGN KEY (suscripcion_id) REFERENCES suscripciones(id) ON DELETE RESTRICT;
 ```
+
+## Archivos que no debe servir el servidor web
+
+La app vive dentro de `public_html/latribu`, así que LiteSpeed puede servir directamente
+cualquier archivo real de la carpeta (código, `package.json`, `.env`, `stderr.log`, …)
+sin pasar por Node.
+
+- El repo ya incluye `.htaccess` con `Require all denied` (y `Deny from all` para
+  Apache 2.2) en `src/`, `lib/`, `scripts/` y `test/`.
+- `node_modules/`, `package.json`, `.env`, `app.js` y `stderr.log` están en la raíz y
+  no se pueden proteger desde el repo: el `.htaccess` raíz de la app lo gestiona
+  cPanel/Passenger. Añade este bloque al `.htaccess` raíz (`public_html/latribu/.htaccess`),
+  **fuera** del bloque `# DO NOT REMOVE. CLOUDLINUX PASSENGER CONFIGURATION BEGIN/END`:
+
+```apache
+RedirectMatch 404 ^/latribu/(node_modules|src|lib|scripts|test)(/|$)
+<FilesMatch "^(package(-lock)?\.json|.*\.log|.*\.md|\.env.*|app\.js)$">
+Require all denied
+</FilesMatch>
+```
+
+  Solo bloquea archivos reales del disco: las rutas de la app (`/latribu/`, `/latribu/api/*`,
+  `/latribu/admin/*`, `/latribu/js/*`, …) no corresponden a archivos de la raíz y siguen
+  llegando a Passenger. La app no sirve ningún `.js` llamado `app.js` desde `public/`.
+- Comprobar tras guardarlo: `/latribu/package.json`, `/latribu/stderr.log`,
+  `/latribu/src/index.js` y `/latribu/node_modules/express/package.json` deben dar
+  403/404; `/latribu/`, `/latribu/health` y `/latribu/api/videos` deben responder normal.
+- Recomendado a medio plazo: mover la app fuera de `public_html` (p. ej. `~/apps/latribu`)
+  y dejar que cPanel solo publique la URL `/latribu` vía Passenger.

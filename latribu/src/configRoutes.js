@@ -2,6 +2,7 @@ const { Router } = require('express');
 const pool = require('./db');
 const { authMiddleware } = require('./auth');
 const { trialDaysFromEnv, formatRenewalDateLima } = require('../lib/tribuFunnel');
+const { requireAcceso } = require('./lib/accesos');
 
 const router = Router();
 
@@ -78,7 +79,7 @@ router.get('/redes', async (req, res) => {
 });
 
 // Admin: GET config completa
-router.get('/config', authMiddleware, requireAdmin, async (req, res) => {
+router.get('/config', authMiddleware, requireAdmin, requireAcceso('config'), async (req, res) => {
   try {
     const [rows] = await pool.execute('SELECT * FROM tribu_config WHERE id = 1');
     res.json(rows[0] || {});
@@ -86,7 +87,7 @@ router.get('/config', authMiddleware, requireAdmin, async (req, res) => {
 });
 
 // Admin: PUT config completa
-router.put('/config', authMiddleware, requireAdmin, async (req, res) => {
+router.put('/config', authMiddleware, requireAdmin, requireAcceso('config'), async (req, res) => {
   try {
     const {
       pixel_id, pixel_activo,

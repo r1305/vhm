@@ -153,20 +153,38 @@ async function cargar() {
   }
 }
 
+function mostrarPaywallBiblioteca() {
+  const cont = document.getElementById('contenido');
+  if (cont && !cont.parentElement.querySelector('.lock-banner')) {
+    cont.parentElement.insertAdjacentHTML('afterbegin', bannerSinSuscripcion());
+  }
+  document.querySelector('.lock-banner')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+async function obtenerUrlVideo(id) {
+  const res = await tribuFetch(`/videos/${id}/reproducir`);
+  if (res.status === 401) { window.location.href = `${BASE}/camino?login=1`; return null; }
+  if (res.status === 403) { mostrarPaywallBiblioteca(); return null; }
+  if (!res.ok) throw new Error('No se pudo cargar el video');
+  const d = await res.json();
+  return d.video_url || null;
+}
+
 async function abrirVideo(id) {
   if (!window.tribuUser) { window.location.href = `${BASE}/camino?login=1`; return; }
-  if (!tieneSuscripcion()) {
-    const cont = document.getElementById('contenido');
-    if (cont && !cont.parentElement.querySelector('.lock-banner')) {
-      cont.parentElement.insertAdjacentHTML('afterbegin', bannerSinSuscripcion());
-    }
-    document.querySelector('.lock-banner')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    return;
-  }
+  if (!tieneSuscripcion()) { mostrarPaywallBiblioteca(); return; }
   const v = videosData.find(x => x.id === id);
   if (!v) return;
+  let videoUrl;
+  try {
+    videoUrl = await obtenerUrlVideo(id);
+  } catch {
+    alert('No se pudo cargar el video. Inténtalo de nuevo.');
+    return;
+  }
+  if (!videoUrl) return;
   videoActual = v;
-  const embed = buildEmbed(v.video_url);
+  const embed = buildEmbed(videoUrl);
   document.getElementById('playerMount').innerHTML = embed.type === 'iframe'
     ? `<iframe src="${escapeHtml(embed.src)}" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>`
     : `<video src="${escapeHtml(embed.src)}" controls autoplay></video>`;

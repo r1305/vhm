@@ -168,7 +168,11 @@
     document.getElementById('culqi-activo').checked = !!d.activo;
     document.getElementById('culqi-modo').value = d.modo || 'sandbox';
     document.getElementById('culqi-pk').value = d.public_key || '';
-    document.getElementById('culqi-sk').value = d.secret_key || '';
+    const sk = document.getElementById('culqi-sk');
+    sk.value = '';
+    sk.placeholder = d.secret_key_configurada
+      ? 'Guardada (termina en ' + (d.secret_key_last4 || '····') + '). Déjala vacía para mantenerla'
+      : 'sk_test_...';
   }
 
   document.getElementById('btn-culqi-guardar').addEventListener('click', async () => {
@@ -178,9 +182,11 @@
       public_key: document.getElementById('culqi-pk').value.trim(),
       secret_key: document.getElementById('culqi-sk').value.trim(),
     };
+    if (!body.secret_key) delete body.secret_key;
     const r = await AdminApi.apiFetch('/config-culqi', { method: 'PUT', body: JSON.stringify(body) });
     const d = await r.json();
     AdminUtils.mostrarMsg(document.getElementById('culqi-msg'), r.ok ? 'Guardado' : (d.error || 'Error'), r.ok);
+    if (r.ok) loadCulqi();
   });
 
   // ── Config general (pixel, whatsapp, redes) ──

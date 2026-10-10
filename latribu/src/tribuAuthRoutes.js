@@ -111,8 +111,6 @@ const loginAttemptsCleanup = setInterval(() => {
 loginAttemptsCleanup.unref();
 
 function stopLoginAttemptsCleanup() { clearInterval(loginAttemptsCleanup); }
-process.on('SIGTERM', stopLoginAttemptsCleanup);
-process.on('SIGINT', stopLoginAttemptsCleanup);
 
 function signToken(user) {
   return jwt.sign({ id: user.id, email: user.email, tribu: true }, TRIBU_JWT_SECRET, { expiresIn: '7d' });
@@ -447,7 +445,7 @@ router.put('/perfil', tribuAuthMiddleware, async (req, res) => {
     if (nombre) { updates.push('nombre = ?'); params.push(nombre); }
     if (apellido) { updates.push('apellido = ?'); params.push(apellido); }
     if (email) { updates.push('email = ?'); params.push(email); }
-    if (telefono !== undefined) { updates.push('telefono = ?'); params.push(telefono); }
+    if ('telefono' in req.body) { updates.push('telefono = ?'); params.push(telefono); }
     updates.push('carrera = ?', 'hobbies = ?', 'a_que_te_dedicas = ?');
     params.push(carrera, hobbies, a_que_te_dedicas);
     if (Array.isArray(req.body.intereses)) {
@@ -640,4 +638,4 @@ router.put('/suscripciones/:id/auto-renovacion', tribuAuthMiddleware, async (req
   } catch (err) { console.error(err); res.status(500).json({ error: 'No se pudo actualizar la autorenovación' }); }
 });
 
-module.exports = { router, tribuAuthMiddleware, TRIBU_JWT_SECRET, issueSessionForUserId, userPayload, fetchUserPublic };
+module.exports = { router, tribuAuthMiddleware, TRIBU_JWT_SECRET, issueSessionForUserId, userPayload, fetchUserPublic, stopLoginAttemptsCleanup };

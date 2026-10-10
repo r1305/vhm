@@ -1,15 +1,17 @@
 const { Router } = require('express');
 const pool = require('./db');
 const { authMiddleware } = require('./auth');
+const { requireAcceso } = require('./lib/accesos');
 const { solicitarResetPassword, isMailerConfigured } = require('./lib/correosCuenta');
 
 const router = Router();
-router.use(authMiddleware);
 
 function requireAdmin(req, res, next) {
   if (req.user && (req.user.rol === 'SUPER_ADMIN' || req.user.rol === 'ADMIN')) return next();
   return res.status(403).json({ error: 'Acceso restringido' });
 }
+
+router.use(authMiddleware, requireAdmin, requireAcceso('tribu-users'));
 
 router.get('/', async (req, res) => {
   try {

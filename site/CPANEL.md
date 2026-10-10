@@ -124,3 +124,55 @@ El webhook de Culqi debe apuntar a **latribu**; `/site/api/tribu-pagos/*` ya no 
 ## Health check
 
 `https://vhm.com.pe/site/health` → `{ "ok": true, "admin": "html" }`
+
+## Archivos que no debe servir el servidor web
+
+Las apps viven dentro de `public_html`, así que LiteSpeed puede servir directamente
+cualquier archivo real (código, `package.json`, `.env`, `stderr.log`, …) sin pasar por Node.
+
+- El repo incluye `.htaccess` con `Require all denied` (y `Deny from all` para Apache 2.2)
+  en las carpetas de código: `site/{src,lib,scripts}`, `crm/{lib,routes,scripts,views}`,
+  `luma/src` y `latribu/{src,lib,scripts,test}`. Nunca en `public/`.
+- Lo que está en la raíz de cada app (`node_modules/`, `package.json`, `.env`, `stderr.log`,
+  `app.js`, scripts sueltos) solo se puede proteger desde el `.htaccess` raíz de cada app,
+  que gestiona cPanel/Passenger. Añade el bloque **fuera** de
+  `# DO NOT REMOVE. CLOUDLINUX PASSENGER CONFIGURATION BEGIN/END`.
+
+`public_html/site/.htaccess`:
+
+```apache
+RedirectMatch 404 ^/site/(node_modules|src|lib|scripts)(/|$)
+<FilesMatch "^(package(-lock)?\.json|.*\.log|.*\.md|\.env.*|app\.js|migrate-db\.js|flush-hosts\.js|.*\.sql|.*\.sh)$">
+Require all denied
+</FilesMatch>
+```
+
+`public_html/crm/.htaccess` (el CRM sirve `/crm/app.js` desde `public/`, así que aquí
+**no** se bloquean los `.js` sueltos):
+
+```apache
+RedirectMatch 404 ^/crm/(node_modules|lib|routes|scripts|views)(/|$)
+<FilesMatch "^(package(-lock)?\.json|.*\.log|.*\.md|\.env.*)$">
+Require all denied
+</FilesMatch>
+```
+
+`public_html/luma/.htaccess`:
+
+```apache
+RedirectMatch 404 ^/luma/(node_modules|src)(/|$)
+<FilesMatch "^(package(-lock)?\.json|.*\.log|.*\.md|\.env.*|app\.js)$">
+Require all denied
+</FilesMatch>
+```
+
+El de La Tribu está en `latribu/CPANEL.md`.
+
+- Riesgo pendiente en el CRM: `crm/app.js`, `crm/schema.js`, `crm/cron-wsp.js`,
+  `crm/reset-admin.js` y `crm/generate-icons.js` son archivos reales en la raíz. Si
+  LiteSpeed sirve los estáticos antes que Passenger, `/crm/app.js` devuelve el código del
+  servidor en lugar del `public/app.js`. Comprobarlo abriendo `https://vhm.com.pe/crm/app.js`:
+  si aparece `require('express')`, la solución definitiva es mover la app fuera de
+  `public_html`.
+- Recomendado: mover las apps Node fuera de `public_html` (p. ej. `~/apps/<app>`) y dejar
+  que cPanel solo publique la URL vía Passenger.

@@ -605,15 +605,18 @@ async function asegurarIndiceUnico(tabla, indice, columna) {
   try {
     const [existe] = await pool.query(`SHOW INDEX FROM \`${tabla}\` WHERE Key_name = ?`, [indice]);
     if (existe.length) return true;
-    const [dups] = await pool.query(
+    const [filas] = await pool.query(
       `SELECT \`${columna}\` AS valor, COUNT(*) AS total FROM \`${tabla}\`
         WHERE \`${columna}\` IS NOT NULL
         GROUP BY \`${columna}\` HAVING COUNT(*) > 1 LIMIT 5`
     );
+    const dups = filas.filter(f => f.valor !== null && f.valor !== undefined);
     if (dups.length) {
+      const vacias = dups.some(f => String(f.valor).trim() === '');
       console.warn(
         `[latribu/schema] No se crea el índice único ${indice} en ${tabla}.${columna}: hay valores duplicados ` +
-        `(al menos ${dups.length} valor(es) repetido(s); consulta: SELECT ${columna}, COUNT(*) FROM ${tabla} GROUP BY ${columna} HAVING COUNT(*) > 1). Corrige los duplicados y reinicia la app.`
+        `(al menos ${dups.length} valor(es) repetido(s)${vacias ? ', incluidas cadenas vacías \'\' (ponlas a NULL)' : ''}; ` +
+        `los NULL no cuentan; consulta: SELECT ${columna}, COUNT(*) FROM ${tabla} WHERE ${columna} IS NOT NULL GROUP BY ${columna} HAVING COUNT(*) > 1). Corrige los duplicados y reinicia la app.`
       );
       return false;
     }

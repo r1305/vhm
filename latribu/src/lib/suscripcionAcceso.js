@@ -34,8 +34,24 @@ async function sincronizarIsSuscribed(userId) {
   return subscribed;
 }
 
+const MSG_SUSCRIPCION_REQUERIDA = 'Necesitas una suscripción activa';
+
+async function requireSuscripcion(req, res, next) {
+  const userId = req.tribuUser && req.tribuUser.id;
+  if (!userId) return res.status(401).json({ error: 'Token requerido' });
+  try {
+    if (await usuarioTieneAcceso(userId)) return next();
+    return res.status(403).json({ error: MSG_SUSCRIPCION_REQUERIDA, code: 'SUSCRIPCION_REQUERIDA' });
+  } catch (err) {
+    console.error('[latribu] comprobar suscripción:', err.message);
+    return res.status(500).json({ error: 'No se pudo comprobar la suscripción' });
+  }
+}
+
 module.exports = {
   MAX_INTENTOS_RENOVACION,
+  MSG_SUSCRIPCION_REQUERIDA,
+  requireSuscripcion,
   graciaDias,
   accesoVigenteSql,
   usuarioTieneAcceso,

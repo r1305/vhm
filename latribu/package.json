@@ -7,7 +7,7 @@
     "start": "node app.js",
     "dev": "node --watch src/index.js",
     "setup": "node scripts/setup-admin.js",
-    "test": "node --test test/"
+    "test": "node --test test/*.test.js"
   },
   "engines": {
     "node": ">=22.0.0"

@@ -31,8 +31,6 @@ const loginAttemptsCleanup = setInterval(() => {
 loginAttemptsCleanup.unref();
 
 function stopLoginAttemptsCleanup() { clearInterval(loginAttemptsCleanup); }
-process.on('SIGTERM', stopLoginAttemptsCleanup);
-process.on('SIGINT', stopLoginAttemptsCleanup);
 
 router.post('/login', async (req, res) => {
   try {
@@ -68,3 +66,4 @@ router.post('/login', async (req, res) => {
 });
 
 module.exports = router;
+module.exports.stopLoginAttemptsCleanup = stopLoginAttemptsCleanup;

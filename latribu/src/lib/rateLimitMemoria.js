@@ -17,8 +17,6 @@ function asegurarLimpieza() {
 function detenerLimpieza() {
   if (limpiezaTimer) { clearInterval(limpiezaTimer); limpiezaTimer = null; }
 }
-process.on('SIGTERM', detenerLimpieza);
-process.on('SIGINT', detenerLimpieza);
 
 function crearLimitador({ max, ventanaMs }) {
   const lim = { max, ventanaMs, registros: new Map() };

@@ -1238,7 +1238,7 @@
           <div class="tribu-acceso-card-label">Calendario</div>
           <div class="tribu-acceso-card-hint">Eventos y actividades</div>
         </a>
-        <a href="#" class="tribu-acceso-card" onclick="event.preventDefault();ClaraChat.open()">
+        <a href="https://chatgpt.com/g/g-68fbdd94f4908191bf4bc65b8e92d540-clara-tu-guia-24-7-by-ps-guillermo" class="tribu-acceso-card" target="_blank" rel="noopener">
           <div class="tribu-acceso-card-icon">🤖</div>
           <div class="tribu-acceso-card-label">IA</div>
           <div class="tribu-acceso-card-hint">Tu aliada de bienestar</div>
@@ -1740,20 +1740,6 @@ function normalizarSuscripcionUsuario(user) {
 
 function tieneSuscripcion() {
   return !!(tribuUser && suscripcionVigente(tribuUser.suscripcion_activa));
-}
-
-function syncClaraWidget() {
-  if (typeof window.ClaraChat === 'undefined') return;
-  if (tieneSuscripcion()) {
-    window.ClaraChat.init({
-      getAuthHeaders: function () {
-        const t = getToken();
-        return t ? { Authorization: 'Bearer ' + t } : {};
-      }
-    });
-  } else {
-    window.ClaraChat.destroy();
-  }
 }
 
 let pageLoaderDepth = 0;
@@ -2307,7 +2293,7 @@ async function marcarTarjetaDefault(cardId) {
 
 async function verificarSesion() {
   const token = getToken();
-  if (!token) { tribuUser = null; renderNavAuth(); syncClaraWidget(); return; }
+  if (!token) { tribuUser = null; renderNavAuth(); return; }
   tribuUser = normalizarSuscripcionUsuario(getStoredUser());
   renderNavAuth();
   try {
@@ -2325,7 +2311,6 @@ async function verificarSesion() {
   }
   renderNavAuth();
   if (tribuUser && !tieneSuscripcion()) clearStaleLockUi();
-  syncClaraWidget();
 }
 
 function togglePw(id, btn) {
@@ -3324,17 +3309,42 @@ function verProximaActividad() {
   document.getElementById('evtFecha').textContent = String(ev.fecha).slice(0, 10);
   document.getElementById('evtHora').textContent = `${fmtHora(ev.hora_inicio)}${fin}`;
   document.getElementById('evtLugar').textContent = ev.lugar || '';
-  const linkRow = document.getElementById('evtLinkRow');
-  const linkEl = document.getElementById('evtLink');
-  if (ev.ubicacion) {
-    linkEl.href = ev.ubicacion;
-    linkEl.textContent = ev.ubicacion;
-    linkRow.style.display = 'flex';
-  } else {
-    linkRow.style.display = 'none';
-  }
+  mostrarEnlaceEvento(ev);
   document.getElementById('evtOverlay').classList.add('show');
   document.body.style.overflow = 'hidden';
+}
+
+let _enlaceEventoPedido = 0;
+async function mostrarEnlaceEvento(ev) {
+  const linkRow = document.getElementById('evtLinkRow');
+  const linkEl = document.getElementById('evtLink');
+  linkRow.style.display = 'none';
+  if (!ev.tiene_enlace) return;
+  const pedido = ++_enlaceEventoPedido;
+  if (!getToken()) {
+    linkEl.removeAttribute('href');
+    linkEl.textContent = 'Inicia sesión para ver el enlace';
+    linkRow.style.display = 'flex';
+    return;
+  }
+  try {
+    const res = await tribuFetch(`/eventos/${ev.id}/acceso`);
+    if (pedido !== _enlaceEventoPedido) return;
+    if (res.status === 401 || res.status === 403) {
+      linkEl.removeAttribute('href');
+      linkEl.textContent = res.status === 401
+        ? 'Inicia sesión para ver el enlace'
+        : 'Necesitas una suscripción activa para ver el enlace';
+      linkRow.style.display = 'flex';
+      return;
+    }
+    if (!res.ok) return;
+    const d = await res.json();
+    if (!d.ubicacion) return;
+    linkEl.href = d.ubicacion;
+    linkEl.textContent = d.ubicacion;
+    linkRow.style.display = 'flex';
+  } catch { /* sin enlace */ }
 }
 
 function fmtHora(t) {
@@ -3413,15 +3423,7 @@ function verEvento(id) {
   document.getElementById('evtFecha').textContent = String(ev.fecha).slice(0, 10);
   document.getElementById('evtHora').textContent = `${fmtHora(ev.hora_inicio)}${fin}`;
   document.getElementById('evtLugar').textContent = ev.lugar;
-  const linkRow = document.getElementById('evtLinkRow');
-  const linkEl = document.getElementById('evtLink');
-  if (ev.ubicacion) {
-    linkEl.href = ev.ubicacion;
-    linkEl.textContent = ev.ubicacion;
-    linkRow.style.display = 'flex';
-  } else {
-    linkRow.style.display = 'none';
-  }
+  mostrarEnlaceEvento(ev);
   document.getElementById('evtOverlay').classList.add('show');
   document.body.style.overflow = 'hidden';
 }
@@ -3563,17 +3565,30 @@ async function cargar() {
   } catch (e) {
     document.getElementById('contenido').innerHTML = '<div class="empty">No se pudieron cargar los recursos.</div>';
   }
-  syncClaraWidget();
 }
 
 async function abrirVideo(id) {
   if (!tribuUser) { videoPendiente = id; abrirAuth('authLogin'); return; }
-  if (!tieneSuscripcion()) { const cont = document.getElementById('contenido'); if (!cont.querySelector('.lock-banner')) cont.insertAdjacentHTML('afterbegin', bannerSinSuscripcion()); cont.querySelector('.lock-banner').scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
+  const mostrarPaywall = () => { const cont = document.getElementById('contenido'); if (!cont.querySelector('.lock-banner')) cont.insertAdjacentHTML('afterbegin', bannerSinSuscripcion()); cont.querySelector('.lock-banner').scrollIntoView({ behavior: 'smooth', block: 'center' }); };
+  if (!tieneSuscripcion()) { mostrarPaywall(); return; }
   const v = videosData.find(x => x.id === id);
   if (!v) return;
+
+  let videoUrl = null;
+  try {
+    const r = await tribuFetch(`/videos/${id}/reproducir`);
+    if (r.status === 401) { videoPendiente = id; abrirAuth('authLogin'); return; }
+    if (r.status === 403) { mostrarPaywall(); return; }
+    if (!r.ok) throw new Error();
+    videoUrl = (await r.json()).video_url;
+  } catch {
+    alert('No se pudo cargar el video. Inténtalo de nuevo.');
+    return;
+  }
+  if (!videoUrl) return;
   videoActual = v;
 
-  const embed = buildEmbed(v.video_url);
+  const embed = buildEmbed(videoUrl);
   const mount = document.getElementById('playerMount');
   mount.innerHTML = embed.type === 'iframe'
     ? `<iframe src="${escapeHtml(embed.src)}" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>`
@@ -4121,7 +4136,6 @@ function mostrarTribuHeroVideo(cfg) {
 </script>
 
 <script src="vendor/quill.min.js"></script>
-<script src="clara-chat.js"></script>
 
 </body>
 </html>

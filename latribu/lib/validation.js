@@ -49,6 +49,14 @@ function toYmd(val) {
   return s.slice(0, 10);
 }
 
+function toYmdLima(val) {
+  if (val == null || val === '') return null;
+  if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}/.test(val)) return val.slice(0, 10);
+  const d = val instanceof Date ? val : new Date(val);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
+}
+
 /**
  * Generate a random hex string
  * @param {number} bytes - Number of random bytes (default: 16)
@@ -63,5 +71,6 @@ module.exports = {
   sanitizePhone,
   sanitizeEmail,
   toYmd,
+  toYmdLima,
   randomHex
 };

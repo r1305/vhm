@@ -1,6 +1,7 @@
 const { Router } = require('express');
 const pool = require('./db');
 const { authMiddleware } = require('./auth');
+const { requireAcceso } = require('./lib/accesos');
 
 const router = Router();
 
@@ -20,7 +21,7 @@ router.get('/public', async (req, res) => {
   } catch { res.json({ activo: false, visible: false, data: [] }); }
 });
 
-router.use(authMiddleware);
+router.use(authMiddleware, requireAdmin, requireAcceso('config'));
 
 router.get('/config', requireAdmin, async (req, res) => {
   try {

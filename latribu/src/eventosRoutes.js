@@ -4,7 +4,8 @@ const { authMiddleware } = require('./auth');
 const { ensureSchema: ensureVideoSchema } = require('./schema');
 const { tribuAuthMiddleware } = require('./tribuAuthRoutes');
 const { buildEventIcs } = require('../lib/tribuEventoIcs');
-const { usuarioTieneAcceso } = require('./lib/suscripcionAcceso');
+const { usuarioTieneAcceso, requireSuscripcion } = require('./lib/suscripcionAcceso');
+const { toYmdLima } = require('../lib/validation');
 
 const router = Router();
 
@@ -96,7 +97,8 @@ function ahoraLimaHm() {
 }
 
 function eventoEsPasado(ev) {
-  const f = String(ev.fecha).slice(0, 10);
+  const f = toYmdLima(ev.fecha);
+  if (!f) return true;
   const hoy = hoyLimaYmd();
   if (f < hoy) return true;
   if (f > hoy) return false;
@@ -121,15 +123,28 @@ function icsFilename(ev) {
 router.get('/', async (req, res) => {
   try {
     const mes = String(req.query.mes || '').trim();
-    let sql = `SELECT id, nombre, fecha, hora_inicio, hora_fin, lugar, ubicacion,
+    let sql = `SELECT id, nombre, fecha, hora_inicio, hora_fin, lugar,
+                      (ubicacion IS NOT NULL AND ubicacion <> '') AS tiene_enlace,
                       descripcion, facilitador, tipo
                FROM tribu_eventos WHERE activo = 1`;
     const params = [];
     if (/^\d{4}-\d{2}$/.test(mes)) { sql += ' AND DATE_FORMAT(fecha, "%Y-%m") = ?'; params.push(mes); }
     sql += ' ORDER BY fecha ASC, hora_inicio ASC';
     const [rows] = await pool.execute(sql, params);
-    res.json(rows);
+    res.json(rows.map(({ ubicacion, ...ev }) => ({ ...ev, tiene_enlace: !!ev.tiene_enlace })));
   } catch (err) { res.status(500).json({ error: 'Error al obtener eventos' }); }
+});
+
+// Miembro con suscripción — enlace privado del evento
+router.get('/:id/acceso', tribuAuthMiddleware, requireSuscripcion, async (req, res) => {
+  try {
+    const ev = await fetchEventoActivo(req.params.id);
+    if (!ev) return res.status(404).json({ error: 'Evento no encontrado' });
+    res.set('Cache-Control', 'private, no-store');
+    res.json({ id: ev.id, ubicacion: ev.ubicacion || null });
+  } catch {
+    res.status(500).json({ error: 'No se pudo obtener el acceso al evento' });
+  }
 });
 
 // Miembro — ids de eventos reservados

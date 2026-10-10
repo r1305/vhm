@@ -19,6 +19,7 @@ const { issueSessionForUserId } = require('./tribuAuthRoutes');
 const { recordCulqiTransaction } = require('./tribuCulqiTransactionLog');
 const { getSavedCard, upsertSavedCard } = require('./tribuSavedCards');
 const { authMiddleware } = require('./auth');
+const { requireAcceso } = require('./lib/accesos');
 const { crearLimitador, ipDe, responder429 } = require('./lib/rateLimitMemoria');
 
 const router = Router();
@@ -429,7 +430,7 @@ router.post('/webhook', async (req, res) => {
   } catch (err) { console.error('[tribu-pagos webhook]', err.message); res.sendStatus(500); }
 });
 
-router.get('/transacciones', authMiddleware, requireAdmin, async (req, res) => {
+router.get('/transacciones', authMiddleware, requireAdmin, requireAcceso('config'), async (req, res) => {
   try {
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 50, 1), 200);
     const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
@@ -437,7 +438,7 @@ router.get('/transacciones', authMiddleware, requireAdmin, async (req, res) => {
     const where = status ? 'WHERE t.status = ?' : '';
     const params = status ? [status, limit, offset] : [limit, offset];
 
-    const [rows] = await pool.execute(
+    const [rows] = await pool.query(
       `SELECT t.id, t.culqi_charge_id, t.tribu_user_id, t.suscripcion_plan_id,
               t.tribu_suscripcion_id, t.amount_cents, t.currency_code, t.status,
               t.outcome_type, t.outcome_code, t.merchant_message, t.user_message,

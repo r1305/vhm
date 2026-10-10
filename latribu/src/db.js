@@ -29,7 +29,4 @@ pool.on('connection', (conn) => {
   });
 });
 
-process.on('SIGTERM', () => pool.end());
-process.on('SIGINT', () => pool.end());
-
 module.exports = pool;

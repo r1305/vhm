@@ -56,8 +56,6 @@ function closeMailer() {
     transporter = null;
   }
 }
-process.on('SIGTERM', closeMailer);
-process.on('SIGINT', closeMailer);
 
 function _resetForTests() {
   transporter = null;

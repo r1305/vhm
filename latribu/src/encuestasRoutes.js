@@ -3,8 +3,12 @@ const pool = require('./db');
 const { authMiddleware } = require('./auth');
 const { ensureSchema: ensureEncuestasSchema } = require('./schema');
 const { uniqueSlug } = require('./encuestasSlug');
+const { crearLimitador, ipDe, responder429 } = require('./lib/rateLimitMemoria');
 
 const router = Router();
+
+const MAX_TEXTO_RESPUESTA = 2000;
+const limiteResponderIp = crearLimitador({ max: 10, ventanaMs: 60 * 60 * 1000 });
 
 function requireAdmin(req, res, next) {
   if (req.user && (req.user.rol === 'SUPER_ADMIN' || req.user.rol === 'ADMIN')) return next();
@@ -98,6 +102,8 @@ router.get('/public/:slug', async (req, res) => {
 
 router.post('/public/:slug/responder', async (req, res) => {
   try {
+    const rl = limiteResponderIp.consumir(ipDe(req));
+    if (!rl.ok) return responder429(res, rl);
     await ensureEncuestasSchema();
     const [rows] = await pool.execute(
       'SELECT id FROM encuestas WHERE slug = ? AND activa = 1 LIMIT 1',
@@ -115,6 +121,9 @@ router.post('/public/:slug/responder', async (req, res) => {
         const texto = String(r?.texto || '').trim();
         if (p.obligatoria && !texto) {
           return res.status(400).json({ error: `La pregunta "${p.texto}" es obligatoria` });
+        }
+        if (texto.length > MAX_TEXTO_RESPUESTA) {
+          return res.status(400).json({ error: `La respuesta a "${p.texto}" supera los ${MAX_TEXTO_RESPUESTA} caracteres` });
         }
         continue;
       }

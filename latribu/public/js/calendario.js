@@ -58,15 +58,7 @@ function duracionMinutos(ev) {
 function fmtEventoWhen(ev) {
   const parts = [];
   if (ev.hora_inicio) {
-    const h = fmtHora(ev.hora_inicio);
-    const [hh, mm] = h.split(':').map(Number);
-    const d = new Date();
-    d.setHours(hh, mm, 0, 0);
-    parts.push(d.toLocaleTimeString('es-PE', {
-      timeZone: 'America/Lima',
-      hour: 'numeric',
-      minute: '2-digit',
-    }) + ' · Lima');
+    parts.push(fmtHora(ev.hora_inicio) + ' · Lima');
   }
   parts.push(`${duracionMinutos(ev)} min`);
   const host = ev.facilitador || ev.lugar || 'Equipo La Tribu';
@@ -379,17 +371,33 @@ function verEvento(id) {
   document.getElementById('evtHora').textContent = `${fmtHora(ev.hora_inicio)}${fin} · Lima`;
   document.getElementById('evtLugar').textContent = ev.lugar || '';
   const linkRow = document.getElementById('evtLinkRow');
-  const linkEl = document.getElementById('evtLink');
-  if (ev.ubicacion) {
-    linkEl.href = ev.ubicacion;
-    linkEl.textContent = ev.ubicacion;
-    linkRow.style.display = 'flex';
-  } else {
-    linkRow.style.display = 'none';
-  }
+  linkRow.style.display = 'none';
+  if (ev.tiene_enlace) cargarEnlaceEvento(ev.id);
   actualizarModalReserva(ev);
   document.getElementById('evtOverlay').classList.add('show');
   document.body.style.overflow = 'hidden';
+}
+
+async function cargarEnlaceEvento(id) {
+  const linkRow = document.getElementById('evtLinkRow');
+  const linkEl = document.getElementById('evtLink');
+  try {
+    const res = await tribuFetch(`/eventos/${id}/acceso`);
+    if (res.status === 401 || res.status === 403) {
+      linkEl.removeAttribute('href');
+      linkEl.textContent = res.status === 401
+        ? 'Inicia sesión para ver el enlace'
+        : 'Necesitas una suscripción activa para ver el enlace';
+      linkRow.style.display = 'flex';
+      return;
+    }
+    if (!res.ok) return;
+    const d = await res.json();
+    if (evtActualId !== Number(id) || !d.ubicacion) return;
+    linkEl.href = d.ubicacion;
+    linkEl.textContent = d.ubicacion;
+    linkRow.style.display = 'flex';
+  } catch { /* sin enlace */ }
 }
 
 async function reservarEventoActual() {

@@ -271,11 +271,7 @@
     const weekday = d.toLocaleDateString('es-PE', { weekday: 'long', timeZone: 'America/Lima' });
     let timeLine = 'Próximamente';
     if (e.hora_inicio) {
-      const h = String(e.hora_inicio).slice(0, 5);
-      const [hh, mm] = h.split(':').map(Number);
-      const td = new Date();
-      td.setHours(hh, mm, 0, 0);
-      timeLine = td.toLocaleTimeString('es-PE', { timeZone: 'America/Lima', hour: 'numeric', minute: '2-digit' }) + ' · Lima';
+      timeLine = String(e.hora_inicio).slice(0, 5) + ' · Lima';
     }
     const cat = escapeHtml(e.categoria || e.tipo || 'Encuentro');
     const title = escapeHtml(e.nombre || 'Actividad La Tribu');

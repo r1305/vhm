@@ -28,15 +28,7 @@
     const fecha = String(ev.fecha || '').slice(0, 10);
     const parts = [];
     if (ev.hora_inicio) {
-      const h = String(ev.hora_inicio).slice(0, 5);
-      const [hh, mm] = h.split(':').map(Number);
-      const d = new Date();
-      d.setHours(hh, mm, 0, 0);
-      parts.push(d.toLocaleTimeString('es-PE', {
-        timeZone: 'America/Lima',
-        hour: 'numeric',
-        minute: '2-digit',
-      }) + ' · Lima');
+      parts.push(String(ev.hora_inicio).slice(0, 5) + ' · Lima');
     }
     if (fecha) {
       parts.push(new Date(fecha + 'T12:00:00').toLocaleDateString('es-PE', {

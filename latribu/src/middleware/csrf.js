@@ -1,7 +1,8 @@
 const crypto = require('crypto');
+const { optionalSiteEnv } = require('../../lib/siteEnv');
 
 function createCsrfMiddleware() {
-  const CSRF_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
+  const CSRF_SECRET = optionalSiteEnv('JWT_SECRET', '') || crypto.randomBytes(32).toString('hex');
 
   function generateCsrfToken() {
     const token = crypto.randomBytes(32).toString('hex');

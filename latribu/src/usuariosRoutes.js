@@ -2,15 +2,16 @@ const { Router } = require('express');
 const bcrypt = require('bcryptjs');
 const pool = require('./db');
 const { authMiddleware } = require('./auth');
-const { seedAccesosForUser } = require('./lib/accesos');
+const { seedAccesosForUser, requireAcceso } = require('./lib/accesos');
 
 const router = Router();
-router.use(authMiddleware);
 
 function requireAdmin(req, res, next) {
   if (req.user && (req.user.rol === 'SUPER_ADMIN' || req.user.rol === 'ADMIN')) return next();
   return res.status(403).json({ error: 'Acceso restringido a administradores' });
 }
+
+router.use(authMiddleware, requireAdmin, requireAcceso('usuarios'));
 function isSuperAdmin(req) { return req.user?.rol === 'SUPER_ADMIN'; }
 
 router.get('/', async (req, res) => {
