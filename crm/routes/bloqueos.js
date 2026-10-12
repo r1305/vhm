@@ -1,13 +1,13 @@
 const { Router } = require('express');
 const pool = require('../lib/db');
-const { auth } = require('../lib/auth');
+const { requireMenuPermisoApi } = require('../lib/menuPermisos');
 
 const router = Router();
 const pid = v => { const n = parseInt(v,10); return isFinite(n) && n > 0 ? n : null; };
 const t   = (v, max=255) => v == null ? null : String(v).trim().slice(0,max) || null;
 
 // GET /api/bloqueos?terapeuta_id=X&desde=Y&hasta=Z
-router.get('/', auth, async (req, res) => {
+router.get('/', requireMenuPermisoApi('calendario'), async (req, res) => {
   try {
     const desde = req.query.desde || new Date().toISOString().slice(0,7) + '-01';
     const hasta = req.query.hasta || new Date().toISOString().slice(0,7) + '-31';
@@ -30,7 +30,7 @@ router.get('/', auth, async (req, res) => {
 });
 
 // POST /api/bloqueos
-router.post('/', auth, async (req, res) => {
+router.post('/', requireMenuPermisoApi('calendario'), async (req, res) => {
   try {
     const { fecha_inicio, fecha_fin, titulo = 'Bloqueado' } = req.body || {};
     let { hora_inicio, hora_fin } = req.body || {};
@@ -52,7 +52,7 @@ router.post('/', auth, async (req, res) => {
 });
 
 // DELETE /api/bloqueos/:id
-router.delete('/:id', auth, async (req, res) => {
+router.delete('/:id', requireMenuPermisoApi('calendario'), async (req, res) => {
   try {
     const id = pid(req.params.id);
     if (!id) return res.status(400).json({ error: 'ID inválido' });

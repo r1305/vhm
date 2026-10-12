@@ -7,7 +7,7 @@
 const { Router } = require('express');
 const crypto = require('crypto');
 const pool = require('../lib/db');
-const { auth } = require('../lib/auth');
+const { requireMenuPermisoApi } = require('../lib/menuPermisos');
 
 const router = Router();
 
@@ -107,7 +107,7 @@ router.post('/evento', async (req, res) => {
 });
 
 // ── Estadísticas (requiere auth) ──────────────────────────────
-router.get('/stats', auth, async (req, res) => {
+router.get('/stats', requireMenuPermisoApi('analitica'), async (req, res) => {
   try {
     const today = new Date().toISOString().slice(0, 10);
     const desde = /^\d{4}-\d{2}-\d{2}$/.test(req.query.desde) ? req.query.desde : today;

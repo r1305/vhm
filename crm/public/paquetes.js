@@ -26,7 +26,7 @@
             <span><i class="fas fa-calendar-check"></i> ${p.sesiones} sesiones</span>
             <span><i class="fas fa-hourglass-half"></i> Validez: ${p.validez_dias} días</span>
             <span><i class="fas fa-clock"></i> Sig. cuota: ${p.dias_siguiente_cuota || 15} días</span>
-            <span><i class="fas fa-coins"></i> S/ ${Number(p.precio).toFixed(2)}</span>
+            ${p.precio != null ? `<span><i class="fas fa-coins"></i> S/ ${Number(p.precio).toFixed(2)}</span>` : ''}
             <span><i class="fas fa-users"></i> Comunidad: ${p.accede_comunidad ? 'Sí' : 'No'}</span>
           </div>
           <div class="pkg-card-footer">

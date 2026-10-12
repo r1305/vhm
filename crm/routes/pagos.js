@@ -1,6 +1,7 @@
 const { Router } = require('express');
 const pool = require('../lib/db');
-const { auth, ownerFilter } = require('../lib/auth');
+const { ownerFilter } = require('../lib/auth');
+const { requireMenuPermisoApi } = require('../lib/menuPermisos');
 const { isStaffAdmin } = require('../lib/roles');
 
 const router = Router();
@@ -19,7 +20,7 @@ async function puedeOperarPaciente(req, res, pacienteId) {
   return true;
 }
 
-router.get('/', auth, async (req, res) => {
+router.get('/', requireMenuPermisoApi('pagos'), async (req, res) => {
   const paciente = pid(req.query.paciente_id);
   let sql = 'SELECT pg.*, p.nombre AS paciente_nombre FROM pagos pg JOIN pacientes p ON pg.paciente_id=p.id WHERE 1=1';
   const params = [];
@@ -31,7 +32,7 @@ router.get('/', auth, async (req, res) => {
   res.json(rows);
 });
 
-router.post('/', auth, async (req, res) => {
+router.post('/', requireMenuPermisoApi('pagos'), async (req, res) => {
   const { paciente_id, cita_id, monto, moneda='PEN', metodo='transferencia',
           referencia, notas, estado='completado' } = req.body || {};
   if (!paciente_id || !monto) return res.status(400).json({ error: 'paciente_id y monto requeridos' });
@@ -48,7 +49,7 @@ router.post('/', auth, async (req, res) => {
 });
 
 // Packs de sesiones
-router.get('/packs', auth, async (req, res) => {
+router.get('/packs', requireMenuPermisoApi('pagos'), async (req, res) => {
   const paciente = pid(req.query.paciente_id);
   let sql = 'SELECT pk.* FROM packs pk LEFT JOIN pacientes p ON pk.paciente_id=p.id WHERE 1=1';
   const params = [];
@@ -60,7 +61,7 @@ router.get('/packs', auth, async (req, res) => {
   res.json(rows);
 });
 
-router.post('/packs', auth, async (req, res) => {
+router.post('/packs', requireMenuPermisoApi('pagos'), async (req, res) => {
   const { paciente_id, nombre, sesiones_total=4, monto_total, vence_at } = req.body || {};
   if (!paciente_id || !monto_total) return res.status(400).json({ error: 'Campos requeridos' });
   if (!(await puedeOperarPaciente(req, res, pid(paciente_id)))) return;
@@ -72,7 +73,7 @@ router.post('/packs', auth, async (req, res) => {
   res.status(201).json({ id: r.insertId });
 });
 
-router.patch('/packs/:id/usar', auth, async (req, res) => {
+router.patch('/packs/:id/usar', requireMenuPermisoApi('pagos'), async (req, res) => {
   const id = pid(req.params.id);
   if (!id) return res.status(400).json({ error: 'ID inválido' });
   const [[pack]] = await pool.execute('SELECT paciente_id FROM packs WHERE id=?', [id]);

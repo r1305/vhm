@@ -1,6 +1,9 @@
 const { Router } = require('express');
 const pool = require('../lib/db');
-const { auth, ownerFilter } = require('../lib/auth');
+const { ownerFilter, ocultarMontosCitas } = require('../lib/auth');
+const { isStaffAdmin } = require('../lib/roles');
+const { puedeVerPaciente } = require('./pacientes');
+const { requireMenuPermisoApi } = require('../lib/menuPermisos');
 const { sendRecordatorioCita } = require('../lib/mailer');
 const { createMeetLink, isConnected } = require('../lib/googleMeet');
 const { getActivePacientePaquete } = require('../lib/paquetesPaciente');
@@ -15,7 +18,7 @@ const router = Router();
 const t = (v, max = 255) => v == null ? null : String(v).trim().slice(0, max) || null;
 const pid = (v) => { const n = parseInt(v, 10); return isFinite(n) && n > 0 ? n : null; };
 
-router.get('/', auth, async (req, res) => {
+router.get('/', requireMenuPermisoApi('agenda', 'calendario', 'mi_reporte'), async (req, res) => {
   try {
     const of = ownerFilter(req, 'c');
     const fecha  = t(req.query.fecha, 10);
@@ -41,7 +44,7 @@ router.get('/', auth, async (req, res) => {
     sql += ' ORDER BY c.fecha DESC';
     if (!paciente) sql += ' LIMIT 2000';
     const [rows] = await pool.execute(sql, params);
-    res.json(rows);
+    res.json(ocultarMontosCitas(req, rows));
   } catch { res.status(500).json({ error: 'Error al listar citas' }); }
 });
 
@@ -76,16 +79,19 @@ function gcalTitulo(pac, tipo) {
   return `${TIPO[tipo] || 'Sesión'}${pac ? ' — ' + pac.nombre + ' ' + pac.apellido : ''}`;
 }
 
-router.post('/', auth, async (req, res) => {
+router.post('/', requireMenuPermisoApi('agenda', 'calendario'), async (req, res) => {
   const { paciente_id, terapeuta_id, fecha, modalidad='presencial', tipo='seguimiento', estado='pendiente', notas } = req.body || {};
   let { hora_inicio, hora_fin } = req.body || {};
   if (!paciente_id || !terapeuta_id || !fecha)
     return res.status(400).json({ error: 'Campos requeridos faltantes' });
-  if (req.user.rol === 'terapeuta' && pid(terapeuta_id) !== req.user.id)
+  const staff = isStaffAdmin(req.user.rol);
+  if (!staff && pid(terapeuta_id) !== req.user.id)
     return res.status(403).json({ error: 'Solo puedes crear citas propias' });
   hora_inicio = hora_inicio || '17:00';
   hora_fin    = hora_fin    || '18:00';
   try {
+    if (!staff && !(pid(paciente_id) && await puedeVerPaciente(req, pid(paciente_id))))
+      return res.status(403).json({ error: 'Sin acceso al paciente' });
     const terapeutaConGcal = await googleCal.isConnected(pid(terapeuta_id)).catch(() => false);
     let meet_link = null;
     // Si el terapeuta NO tiene GCal, usar cuenta global como fallback para Meet
@@ -198,7 +204,7 @@ router.post('/agendar', async (req, res) => {
   }
 });
 
-router.delete('/:cid', auth, async (req, res) => {
+router.delete('/:cid', requireMenuPermisoApi('agenda', 'calendario'), async (req, res) => {
   const cid = pid(req.params.cid);
   if (!cid) return res.status(400).json({ error: 'ID inválido' });
   try {
@@ -219,7 +225,7 @@ router.delete('/:cid', auth, async (req, res) => {
   }
 });
 
-router.put('/:cid', auth, async (req, res) => {
+router.put('/:cid', requireMenuPermisoApi('agenda', 'calendario'), async (req, res) => {
   const cid = pid(req.params.cid);
   if (!cid) return res.status(400).json({ error: 'ID inválido' });
   const { fecha, hora_inicio, hora_fin, modalidad, tipo, estado, notas } = req.body || {};
@@ -298,7 +304,7 @@ router.put('/:cid', auth, async (req, res) => {
   }
 });
 
-router.patch('/:cid/estado', auth, async (req, res) => {
+router.patch('/:cid/estado', requireMenuPermisoApi('agenda', 'calendario'), async (req, res) => {
   const cid = pid(req.params.cid);
   if (!cid) return res.status(400).json({ error: 'ID inválido' });
   const { estado, notas, fecha } = req.body || {};
@@ -331,7 +337,7 @@ router.patch('/:cid/estado', auth, async (req, res) => {
 });
 
 // Enviar recordatorio manual
-router.post('/:cid/recordatorio', auth, async (req, res) => {
+router.post('/:cid/recordatorio', requireMenuPermisoApi('agenda', 'calendario'), async (req, res) => {
   try {
     const canal = req.body?.canal || 'email';
     const [[cita]] = await pool.execute(
@@ -342,6 +348,8 @@ router.post('/:cid/recordatorio', auth, async (req, res) => {
       [req.params.cid]
     );
     if (!cita) return res.status(404).json({ error: 'No encontrada' });
+    if (!isStaffAdmin(req.user.rol) && cita.terapeuta_id !== req.user.id)
+      return res.status(403).json({ error: 'Sin acceso' });
     const result = await sendRecordatorioCita(
       { nombre: cita.nombre, email: cita.email, telefono: cita.telefono },
       cita,

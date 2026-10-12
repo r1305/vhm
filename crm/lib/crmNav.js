@@ -1,7 +1,32 @@
-/** Ruta de inicio según rol (evita bucles hacia /dashboard para terapeutas). */
+/** Ruta de inicio: /inicio resuelve la primera vista permitida del usuario. */
 function getHomePath(user) {
   if (!user) return 'login';
-  return user.rol === 'terapeuta' ? 'agenda' : 'dashboard';
+  return 'inicio';
 }
 
-module.exports = { getHomePath };
+const VIEW_PATHS = [
+  ['dashboard', 'dashboard'],
+  ['agenda', 'agenda'],
+  ['calendario', 'calendario'],
+  ['pacientes', 'pacientes'],
+  ['paquetes', 'paquetes'],
+  ['whatsapp', 'whatsapp'],
+  ['mi_reporte', 'mi-reporte'],
+  ['disponibilidad', 'disponibilidad'],
+  ['historial', 'historial'],
+  ['encuestas', 'encuestas'],
+  ['analitica', 'analitica'],
+  ['integraciones', 'integraciones'],
+  ['terapeutas', 'terapeutas'],
+  ['reportes', 'reportes'],
+  ['permisos_menu', 'permisos-menu'],
+  ['reporte_financiero', 'reporte-financiero'],
+  ['reporte_financiero_detalles', 'reporte-financiero/detalles'],
+];
+
+function primeraVistaPermitida(permisos) {
+  const found = VIEW_PATHS.find(([clave]) => permisos.has(clave));
+  return found ? found[1] : null;
+}
+
+module.exports = { getHomePath, VIEW_PATHS, primeraVistaPermitida };

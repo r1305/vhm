@@ -1,6 +1,7 @@
 const { Router } = require('express');
 const pool = require('../lib/db');
-const { authAdmin } = require('../lib/auth');
+const { requireMenuPermisoApi } = require('../lib/menuPermisos');
+const { esSecreto, esMascara, configParaCliente } = require('../lib/configSecretos');
 
 const router = Router();
 
@@ -10,13 +11,10 @@ const ALLOWED = new Set([
   'recordatorio_24h_activo', 'recordatorio_24h_mensaje',
 ]);
 
-// Leer config completa (solo admin) — devuelve valores reales
-router.get('/', authAdmin, async (req, res) => {
+router.get('/', requireMenuPermisoApi('integraciones'), async (req, res) => {
   try {
     const [rows] = await pool.execute('SELECT clave, valor FROM configuracion ORDER BY clave');
-    const data = {};
-    for (const r of rows) data[r.clave] = r.valor || '';
-    res.json(data);
+    res.json(configParaCliente(rows));
   } catch (err) {
     console.error('[config/leer]:', err);
     res.status(500).json({ error: 'No se pudo cargar la configuración. Inténtalo nuevamente.' });
@@ -24,11 +22,12 @@ router.get('/', authAdmin, async (req, res) => {
 });
 
 // Guardar claves
-router.post('/', authAdmin, async (req, res) => {
+router.post('/', requireMenuPermisoApi('integraciones'), async (req, res) => {
   try {
     const entries = req.body || {};
     for (const [k, v] of Object.entries(entries)) {
-      if (!ALLOWED.has(k) || v === '') continue;
+      if (!ALLOWED.has(k) || v == null || v === '') continue;
+      if (esSecreto(k) && (String(v).trim() === '' || esMascara(v))) continue;
       await pool.execute(
         'INSERT INTO configuracion (clave, valor) VALUES (?,?) ON DUPLICATE KEY UPDATE valor=?',
         [k, String(v).trim(), String(v).trim()]

@@ -1,8 +1,8 @@
 const { Router } = require('express');
 const bcrypt = require('bcryptjs');
 const pool = require('../lib/db');
-const { auth, authAdmin } = require('../lib/auth');
-const { canAssignRole, canManageUser, listFilterForRole } = require('../lib/roles');
+const { requireMenuPermisoApi } = require('../lib/menuPermisos');
+const { canAssignRole, canManageUser, listFilterForRole, isStaffAdmin } = require('../lib/roles');
 const googleCal = require('../lib/googleCalendar');
 
 const router = Router();
@@ -17,7 +17,7 @@ async function getUserById(id) {
   return row || null;
 }
 
-router.get('/', auth, async (req, res) => {
+router.get('/', requireMenuPermisoApi('agenda', 'calendario', 'disponibilidad', 'pacientes', 'integraciones', 'terapeutas'), async (req, res) => {
   try {
     if (!['superadmin', 'admin', 'recepcion', 'terapeuta'].includes(req.user.rol)) {
       return res.status(403).json({ error: 'Sin acceso' });
@@ -40,12 +40,12 @@ router.get('/', auth, async (req, res) => {
   } catch (err) { console.error('[GET /terapeutas]', err); res.status(500).json({ error: 'Error' }); }
 });
 
-router.post('/', authAdmin, async (req, res) => {
+router.post('/', requireMenuPermisoApi('terapeutas'), async (req, res) => {
   const { nombre, apellido, username, email, telefono, password, rol = 'terapeuta', especialidad } = req.body || {};
   if (!nombre || !apellido || !username || !password)
     return res.status(400).json({ error: 'nombre, apellido, username y password requeridos' });
 
-  const safeRol = canAssignRole(req.user.rol, rol) ? rol : 'terapeuta';
+  const safeRol = canAssignRole(req.user.rol, rol) ? rol : null;
   if (safeRol !== rol) {
     return res.status(403).json({ error: 'No puedes crear usuarios con ese rol' });
   }
@@ -65,7 +65,7 @@ router.post('/', authAdmin, async (req, res) => {
   }
 });
 
-router.put('/:id', authAdmin, async (req, res) => {
+router.put('/:id', requireMenuPermisoApi('terapeutas'), async (req, res) => {
   const { nombre, apellido, username, especialidad, bio, activo, password, telefono, rol } = req.body || {};
   const id = parseInt(req.params.id, 10);
   const target = await getUserById(id);
@@ -95,15 +95,19 @@ router.put('/:id', authAdmin, async (req, res) => {
   } catch { res.status(500).json({ error: 'Error al actualizar' }); }
 });
 
-router.get('/:id/disponibilidad', auth, async (req, res) => {
+router.get('/:id/disponibilidad', requireMenuPermisoApi('disponibilidad', 'terapeutas'), async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!id) return res.status(400).json({ error: 'ID inválido' });
+  if (!isStaffAdmin(req.user.rol) && req.user.id !== id)
+    return res.status(403).json({ error: 'Sin acceso' });
   const [rows] = await pool.execute(
     'SELECT * FROM disponibilidad WHERE terapeuta_id = ? AND activo = 1 ORDER BY dia_semana, hora_inicio',
-    [req.params.id]
+    [id]
   );
   res.json(rows);
 });
 
-router.post('/:id/disponibilidad', auth, async (req, res) => {
+router.post('/:id/disponibilidad', requireMenuPermisoApi('disponibilidad', 'terapeutas'), async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (req.user.rol === 'terapeuta' && req.user.id !== id)
     return res.status(403).json({ error: 'Sin acceso' });
@@ -115,7 +119,7 @@ router.post('/:id/disponibilidad', auth, async (req, res) => {
   res.status(201).json({ ok: true });
 });
 
-router.delete('/:id/disponibilidad/:did', auth, async (req, res) => {
+router.delete('/:id/disponibilidad/:did', requireMenuPermisoApi('disponibilidad', 'terapeutas'), async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (req.user.rol === 'terapeuta' && req.user.id !== id)
     return res.status(403).json({ error: 'Sin acceso' });
@@ -123,7 +127,7 @@ router.delete('/:id/disponibilidad/:did', auth, async (req, res) => {
   res.json({ ok: true });
 });
 
-router.patch('/:id/presencial', auth, async (req, res) => {
+router.patch('/:id/presencial', requireMenuPermisoApi('disponibilidad'), async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (!id) return res.status(400).json({ error: 'ID inválido' });
   if (req.user.rol === 'terapeuta' && req.user.id !== id) {
@@ -169,7 +173,7 @@ router.get('/google/calendar-callback', async (req, res) => {
   }
 });
 
-router.get('/:id/google/auth-url', auth, async (req, res) => {
+router.get('/:id/google/auth-url', requireMenuPermisoApi('calendario', 'terapeutas'), async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (req.user.rol === 'terapeuta' && req.user.id !== id)
     return res.status(403).json({ error: 'Sin acceso' });
@@ -177,14 +181,14 @@ router.get('/:id/google/auth-url', auth, async (req, res) => {
   res.json({ url: googleCal.getAuthUrl(id, redirect) });
 });
 
-router.get('/:id/google/status', auth, async (req, res) => {
+router.get('/:id/google/status', requireMenuPermisoApi('calendario', 'terapeutas'), async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (req.user.rol === 'terapeuta' && req.user.id !== id)
     return res.status(403).json({ error: 'Sin acceso' });
   res.json({ connected: await googleCal.isConnected(id) });
 });
 
-router.get('/:id/google/events', auth, async (req, res) => {
+router.get('/:id/google/events', requireMenuPermisoApi('calendario', 'terapeutas'), async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (req.user.rol === 'terapeuta' && req.user.id !== id)
     return res.status(403).json({ error: 'Sin acceso' });
@@ -201,7 +205,7 @@ router.get('/:id/google/events', auth, async (req, res) => {
   }
 });
 
-router.delete('/:id/google', auth, async (req, res) => {
+router.delete('/:id/google', requireMenuPermisoApi('calendario', 'terapeutas'), async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (req.user.rol === 'terapeuta' && req.user.id !== id)
     return res.status(403).json({ error: 'Sin acceso' });

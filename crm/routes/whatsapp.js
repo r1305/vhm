@@ -2,8 +2,7 @@ const { Router } = require('express');
 const path = require('path');
 const multer = require('multer');
 const pool = require('../lib/db');
-const { auth } = require('../lib/auth');
-const { isStaffAdmin } = require('../lib/roles');
+const { requireMenuPermisoApi } = require('../lib/menuPermisos');
 const {
   loadOpenwaConfigFromDB,
   isOpenwaConfigured,
@@ -130,10 +129,6 @@ function mapAckStatus(status) {
 }
 
 const router = Router();
-
-function canAccessWhatsApp(user) {
-  return isStaffAdmin(user?.rol) || user?.rol === 'terapeuta';
-}
 
 function isLidPhone(digits) {
   const d = normalizePhone(digits);
@@ -666,14 +661,7 @@ async function syncMensajesFromOpenwa(conv, conversacionId) {
   }
 }
 
-function authWhatsApp(req, res, next) {
-  auth(req, res, () => {
-    if (!canAccessWhatsApp(req.user)) {
-      return res.status(403).json({ error: 'Acceso restringido' });
-    }
-    next();
-  });
-}
+const authWhatsApp = requireMenuPermisoApi('whatsapp');
 
 async function findPacienteByPhone(phone) {
   const digits = normalizePhone(phone);

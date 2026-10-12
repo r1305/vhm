@@ -1,6 +1,8 @@
 const { Router } = require('express');
 const pool = require('../lib/db');
-const { auth } = require('../lib/auth');
+const { ownerFilter, ocultarMontosCitas } = require('../lib/auth');
+const { isStaffAdmin } = require('../lib/roles');
+const { requireMenuPermisoApi } = require('../lib/menuPermisos');
 const { sendRecordatorioCita, sendFollowUp } = require('../lib/mailer');
 const { fechaValida } = require('../lib/reservaCita');
 
@@ -27,7 +29,7 @@ function parseTerapeutaId(v) {
 }
 
 // ── Reportes con filtro de fecha ──────────────────────────────
-router.get('/stats', auth, async (req, res) => {
+router.get('/stats', requireMenuPermisoApi('reportes', 'mi_reporte'), async (req, res) => {
   try {
     const rango = parseDateRange(req.query);
     if (rango.error) return res.status(400).json({ error: rango.error });
@@ -35,9 +37,11 @@ router.get('/stats', auth, async (req, res) => {
 
     const ter = parseTerapeutaId(req.query.terapeuta_id);
     if (ter.error) return res.status(400).json({ error: ter.error });
-    const { tid } = ter;
+    const staff = isStaffAdmin(req.user.rol);
+    const tid = staff ? ter.tid : req.user.id;
     const tidFilter  = tid ? ` AND terapeuta_id = ${tid}`   : '';
     const tidFilterC = tid ? ` AND c.terapeuta_id = ${tid}` : '';
+    const pacFilter  = staff ? '' : tidFilter;
 
     const [[kpis]] = await pool.execute(`
       SELECT
@@ -49,15 +53,15 @@ router.get('/stats', auth, async (req, res) => {
           WHERE fecha BETWEEN ? AND ? AND estado='cancelada'${tidFilter}) AS citas_canceladas,
         (SELECT COUNT(*) FROM citas
           WHERE fecha BETWEEN ? AND ? AND estado='no_show'${tidFilter}) AS no_shows,
-        (SELECT COALESCE(SUM(monto),0) FROM pagos
-          WHERE DATE(created_at) BETWEEN ? AND ? AND estado='completado') AS ingresos,
+        ${staff ? `(SELECT COALESCE(SUM(monto),0) FROM pagos
+          WHERE DATE(created_at) BETWEEN ? AND ? AND estado='completado')` : 'NULL'} AS ingresos,
         (SELECT COUNT(*) FROM pacientes
-          WHERE DATE(created_at) BETWEEN ? AND ?) AS pacientes_nuevos,
-        (SELECT COUNT(*) FROM pacientes WHERE estado='activo') AS pacientes_activos,
-        (SELECT COUNT(*) FROM pacientes WHERE estado='prospecto') AS prospectos
+          WHERE DATE(created_at) BETWEEN ? AND ?${pacFilter}) AS pacientes_nuevos,
+        (SELECT COUNT(*) FROM pacientes WHERE estado='activo'${pacFilter}) AS pacientes_activos,
+        (SELECT COUNT(*) FROM pacientes WHERE estado='prospecto'${pacFilter}) AS prospectos
     `, [
       desde, hasta, desde, hasta, desde, hasta, desde, hasta,
-      desde, hasta, desde, hasta
+      ...(staff ? [desde, hasta] : []), desde, hasta
     ]);
 
     const [citasPorEstado] = await pool.execute(`
@@ -81,18 +85,18 @@ router.get('/stats', auth, async (req, res) => {
     `, [desde, hasta]);
 
     // Ingresos por día
-    const [ingresosPorDia] = await pool.execute(`
+    const [ingresosPorDia] = staff ? await pool.execute(`
       SELECT DATE(created_at) AS dia, COALESCE(SUM(monto),0) AS total
       FROM pagos WHERE DATE(created_at) BETWEEN ? AND ? AND estado='completado'
       GROUP BY DATE(created_at) ORDER BY dia ASC
-    `, [desde, hasta]);
+    `, [desde, hasta]) : [null];
 
     // Ingresos por método de pago
-    const [ingresosPorMetodo] = await pool.execute(`
+    const [ingresosPorMetodo] = staff ? await pool.execute(`
       SELECT metodo, COUNT(*) AS cantidad, COALESCE(SUM(monto),0) AS total
       FROM pagos WHERE DATE(created_at) BETWEEN ? AND ? AND estado='completado'
       GROUP BY metodo ORDER BY total DESC
-    `, [desde, hasta]);
+    `, [desde, hasta]) : [null];
 
     // Modalidad de citas
     const [citasPorModalidad] = await pool.execute(`
@@ -106,14 +110,19 @@ router.get('/stats', auth, async (req, res) => {
     kpis.tasa_asistencia = totalCitas > 0
       ? Math.round((kpis.citas_realizadas / totalCitas) * 100)
       : null;
-    kpis.ingreso_promedio_cita = kpis.citas_realizadas > 0
-      ? Math.round((kpis.ingresos / kpis.citas_realizadas) * 100) / 100
-      : 0;
+    if (staff) {
+      kpis.ingreso_promedio_cita = kpis.citas_realizadas > 0
+        ? Math.round((kpis.ingresos / kpis.citas_realizadas) * 100) / 100
+        : 0;
+    } else {
+      delete kpis.ingresos;
+    }
 
     res.json({
       desde, hasta, kpis,
       citasPorEstado, citasPorTerapeuta, citasPorDia,
-      ingresosPorDia, ingresosPorMetodo, citasPorModalidad,
+      ...(staff ? { ingresosPorDia, ingresosPorMetodo } : {}),
+      citasPorModalidad,
     });
   } catch (err) {
     console.error('[reportes/stats] desde=%s hasta=%s terapeuta_id=%s:', req.query.desde, req.query.hasta, req.query.terapeuta_id, err);
@@ -122,24 +131,27 @@ router.get('/stats', auth, async (req, res) => {
 });
 
 // Dashboard KPIs (mantener para compatibilidad)
-router.get('/dashboard', auth, async (req, res) => {
+router.get('/dashboard', requireMenuPermisoApi('dashboard'), async (req, res) => {
   try {
+    const staff = isStaffAdmin(req.user.rol);
+    const own = ownerFilter(req);
     const [[kpis]] = await pool.execute(`
       SELECT
-        (SELECT COUNT(*) FROM pacientes WHERE estado='activo') AS pacientes_activos,
-        (SELECT COUNT(*) FROM pacientes WHERE estado='prospecto') AS prospectos,
-        (SELECT COUNT(*) FROM citas WHERE fecha=CURDATE() AND estado NOT IN ('cancelada','no_show')) AS citas_hoy,
-        (SELECT COUNT(*) FROM citas WHERE fecha>=CURDATE() AND fecha<=DATE_ADD(CURDATE(),INTERVAL 7 DAY) AND estado='pendiente') AS citas_semana,
-        (SELECT COALESCE(SUM(monto),0) FROM pagos WHERE MONTH(created_at)=MONTH(NOW()) AND estado='completado') AS ingresos_mes
-    `);
+        (SELECT COUNT(*) FROM pacientes WHERE estado='activo'${own.sql}) AS pacientes_activos,
+        (SELECT COUNT(*) FROM pacientes WHERE estado='prospecto'${own.sql}) AS prospectos,
+        (SELECT COUNT(*) FROM citas WHERE fecha=CURDATE() AND estado NOT IN ('cancelada','no_show')${own.sql}) AS citas_hoy,
+        (SELECT COUNT(*) FROM citas WHERE fecha>=CURDATE() AND fecha<=DATE_ADD(CURDATE(),INTERVAL 7 DAY) AND estado='pendiente'${own.sql}) AS citas_semana
+        ${staff ? `, (SELECT COALESCE(SUM(monto),0) FROM pagos WHERE MONTH(created_at)=MONTH(NOW()) AND estado='completado') AS ingresos_mes` : ''}
+    `, [...own.params, ...own.params, ...own.params, ...own.params]);
+    const of = ownerFilter(req, 'c');
     const [citasHoy] = await pool.execute(`
       SELECT c.*, p.nombre AS paciente_nombre, p.apellido AS paciente_apellido,
              t.nombre AS terapeuta_nombre
       FROM citas c JOIN pacientes p ON c.paciente_id=p.id
       JOIN terapeutas t ON c.terapeuta_id=t.id
-      WHERE c.fecha=CURDATE() ORDER BY c.fecha ASC LIMIT 20
-    `);
-    res.json({ kpis, citasHoy });
+      WHERE c.fecha=CURDATE()${of.sql} ORDER BY c.fecha ASC LIMIT 20
+    `, of.params);
+    res.json({ kpis, citasHoy: ocultarMontosCitas(req, citasHoy) });
   } catch (err) {
     console.error('[reportes/dashboard] usuario=%s:', req.user?.id, err);
     res.status(500).json({ error: 'No se pudieron cargar los indicadores. Inténtalo nuevamente.' });
@@ -147,7 +159,7 @@ router.get('/dashboard', auth, async (req, res) => {
 });
 
 // Procesar recordatorios pendientes (llamar desde cron o manualmente)
-router.post('/procesar-recordatorios', auth, async (req, res) => {
+router.post('/procesar-recordatorios', requireMenuPermisoApi('reportes'), async (req, res) => {
   if (req.user.rol !== 'superadmin') return res.status(403).json({ error: 'Solo superadmin' });
   const [pendientes] = await pool.execute(`
     SELECT r.*, p.nombre, p.email, p.apellido,
@@ -178,7 +190,7 @@ router.post('/procesar-recordatorios', auth, async (req, res) => {
 });
 
 // Follow-up pacientes inactivos (+15 días sin cita)
-router.post('/followup-inactivos', auth, async (req, res) => {
+router.post('/followup-inactivos', requireMenuPermisoApi('reportes'), async (req, res) => {
   if (req.user.rol !== 'superadmin') return res.status(403).json({ error: 'Solo superadmin' });
   const [inactivos] = await pool.execute(`
     SELECT p.id, p.nombre, p.email FROM pacientes p

@@ -1,6 +1,7 @@
 const { Router } = require('express');
 const pool = require('../lib/db');
 const { uniqueSlug } = require('../lib/encuestasSlug');
+const { requireMenuPermisoApi } = require('../lib/menuPermisos');
 
 const router = Router();
 
@@ -137,7 +138,7 @@ router.post('/public/:slug/responder', async (req, res) => {
 });
 
 // ── Admin ──
-router.get('/admin', requireSession, async (req, res) => {
+router.get('/admin', requireSession, requireMenuPermisoApi('encuestas'), async (req, res) => {
   try {
     const [rows] = await pool.execute(`
       SELECT e.id, e.titulo, e.descripcion, e.slug, e.activa, e.created_at, e.updated_at,
@@ -149,7 +150,7 @@ router.get('/admin', requireSession, async (req, res) => {
   } catch (err) { console.error(err); res.status(500).json({ error: 'Error al listar encuestas' }); }
 });
 
-router.get('/admin/:id', requireSession, async (req, res) => {
+router.get('/admin/:id', requireSession, requireMenuPermisoApi('encuestas'), async (req, res) => {
   try {
     const enc = await loadSurveyFull(Number(req.params.id));
     if (!enc) return res.status(404).json({ error: 'Encuesta no encontrada' });
@@ -157,7 +158,7 @@ router.get('/admin/:id', requireSession, async (req, res) => {
   } catch (err) { console.error(err); res.status(500).json({ error: 'Error al cargar encuesta' }); }
 });
 
-router.get('/admin/:id/resultados', requireSession, async (req, res) => {
+router.get('/admin/:id/resultados', requireSession, requireMenuPermisoApi('encuestas'), async (req, res) => {
   try {
     const encuestaId = Number(req.params.id);
     const enc = await loadSurveyFull(encuestaId);
@@ -195,7 +196,7 @@ router.get('/admin/:id/resultados', requireSession, async (req, res) => {
   } catch (err) { console.error(err); res.status(500).json({ error: 'Error al cargar resultados' }); }
 });
 
-router.post('/admin', requireSession, async (req, res) => {
+router.post('/admin', requireSession, requireMenuPermisoApi('encuestas'), async (req, res) => {
   try {
     const titulo = String(req.body.titulo || '').trim();
     if (!titulo) return res.status(400).json({ error: 'El título es obligatorio' });
@@ -214,7 +215,7 @@ router.post('/admin', requireSession, async (req, res) => {
   } catch (err) { console.error(err); res.status(500).json({ error: 'Error al crear encuesta' }); }
 });
 
-router.put('/admin/:id', requireSession, async (req, res) => {
+router.put('/admin/:id', requireSession, requireMenuPermisoApi('encuestas'), async (req, res) => {
   try {
     const id = Number(req.params.id);
     const [[exists]] = await pool.execute('SELECT id, slug FROM crm_encuestas WHERE id = ?', [id]);
@@ -235,7 +236,7 @@ router.put('/admin/:id', requireSession, async (req, res) => {
   } catch (err) { console.error(err); res.status(500).json({ error: 'Error al actualizar encuesta' }); }
 });
 
-router.delete('/admin/:id', requireSession, async (req, res) => {
+router.delete('/admin/:id', requireSession, requireMenuPermisoApi('encuestas'), async (req, res) => {
   try {
     const [r] = await pool.execute('DELETE FROM crm_encuestas WHERE id = ?', [Number(req.params.id)]);
     if (!r.affectedRows) return res.status(404).json({ error: 'Encuesta no encontrada' });

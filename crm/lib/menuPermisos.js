@@ -1,4 +1,6 @@
 const pool = require('./db');
+const { auth } = require('./auth');
+const { isSuperAdmin } = require('./roles');
 
 const HIDDEN_MENU_ITEMS = ['pagos'];
 
@@ -106,8 +108,47 @@ async function listUsersWithPermisos() {
   }));
 }
 
+function usuarioDeRequest(req) {
+  return req.user || req.session?.user || null;
+}
+
+function getMenuPermisosForRequest(req) {
+  const user = usuarioDeRequest(req);
+  if (!user) return Promise.resolve(new Set());
+  if (!req._menuPermisos || req._menuPermisosUid !== user.id) {
+    req._menuPermisos = getMenuPermisosForUser(user.id, user.rol || 'terapeuta');
+    req._menuPermisosUid = user.id;
+  }
+  return req._menuPermisos;
+}
+
+async function tieneMenuPermiso(req, claves) {
+  const user = usuarioDeRequest(req);
+  if (!user) return false;
+  if (isSuperAdmin(user.rol)) return true;
+  const permisos = await getMenuPermisosForRequest(req);
+  return claves.some(c => permisos.has(c));
+}
+
+function requireMenuPermisoApi(...claves) {
+  return function (req, res, next) {
+    auth(req, res, async () => {
+      try {
+        if (await tieneMenuPermiso(req, claves)) return next();
+        res.status(403).json({ error: 'Sin permiso para esta vista' });
+      } catch (err) {
+        console.error('[menuPermisos/api] claves=%s usuario=%s:', claves.join(','), req.user?.id, err);
+        res.status(500).json({ error: 'No se pudo verificar el permiso' });
+      }
+    });
+  };
+}
+
 module.exports = {
   HIDDEN_MENU_ITEMS,
+  getMenuPermisosForRequest,
+  tieneMenuPermiso,
+  requireMenuPermisoApi,
   getCatalog,
   getAllClaves,
   getMenuPermisosForUser,

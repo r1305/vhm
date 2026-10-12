@@ -1,9 +1,11 @@
 const express = require('express');
 const router  = express.Router();
 const db      = require('../lib/db');
-const { getHomePath } = require('../lib/crmNav');
+const { getHomePath, primeraVistaPermitida } = require('../lib/crmNav');
 const { isStaffAdmin, isSuperAdmin } = require('../lib/roles');
 const { SQL } = require('../lib/paquetesPaciente');
+const { getMenuPermisosForRequest, tieneMenuPermiso } = require('../lib/menuPermisos');
+const { configParaCliente } = require('../lib/configSecretos');
 
 const TITLES = {
   encuestas:       'Encuestas',
@@ -44,12 +46,6 @@ function requireSession(req, res, next) {
   res.redirect(`${req.app.locals.BASE}/login`);
 }
 
-// ── Middleware: solo admin ───────────────────────────────────────
-function requireAdmin(req, res, next) {
-  if (isStaffAdmin(req.session?.user?.rol)) return next();
-  res.redirect(`${req.app.locals.BASE}/${getHomePath(req.session?.user)}`);
-}
-
 function requireSuperAdmin(req, res, next) {
   if (isSuperAdmin(req.session?.user?.rol)) return next();
   res.redirect(`${req.app.locals.BASE}/${getHomePath(req.session?.user)}`);
@@ -58,11 +54,9 @@ function requireSuperAdmin(req, res, next) {
 function requireMenuPermiso(clave) {
   return async function (req, res, next) {
     const user = req.session?.user;
-    if (isSuperAdmin(user?.rol) || isStaffAdmin(user?.rol)) return next();
+    if (!user) return res.redirect(`${req.app.locals.BASE}/login`);
     try {
-      const { getMenuPermisosForUser } = require('../lib/menuPermisos');
-      const permisos = user ? await getMenuPermisosForUser(user.id, user.rol || 'terapeuta') : new Set();
-      if (permisos.has(clave)) return next();
+      if (await tieneMenuPermiso(req, [clave])) return next();
       res.redirect(`${req.app.locals.BASE}/${getHomePath(user)}`);
     } catch (err) { errorPagina(res, `permiso/${clave}`, err); }
   };
@@ -75,8 +69,10 @@ async function render(res, view, data = {}) {
   const BASE    = res.app.locals.BASE;
   const user    = data.user;
   const isAdmin = isStaffAdmin(user?.rol);
-  const { getMenuPermisosForUser } = require('../lib/menuPermisos');
-  const menuPermisos = await getMenuPermisosForUser(user.id, user?.rol || 'terapeuta');
+  let menuPermisos;
+  try {
+    menuPermisos = await getMenuPermisosForRequest(res.req);
+  } catch (err) { return errorPagina(res, `render/${view}`, err); }
   const scripts = data.scripts
     ? data.scripts.replace(/(\.js)(["'])/g, `$1?v=${res.app.locals.assetVersion}$2`)
     : '';
@@ -170,23 +166,32 @@ router.post('/logout', (req, res) => {
   req.session.destroy(() => res.redirect(`${req.app.locals.BASE}/login`));
 });
 
+// ── INICIO: primera vista permitida ─────────────────────────────
+router.get('/inicio', requireSession, async (req, res) => {
+  try {
+    const permisos = await getMenuPermisosForRequest(req);
+    const destino = primeraVistaPermitida(permisos);
+    if (destino) return res.redirect(`${req.app.locals.BASE}/${destino}`);
+    res.set('Cache-Control', 'no-store');
+    res.status(403).send(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>VHM CRM</title></head><body style="font-family:sans-serif;padding:40px"><p>Tu usuario no tiene vistas asignadas. Contacta al administrador.</p><form method="POST" action="${req.app.locals.BASE}/logout"><button>Salir</button></form></body></html>`);
+  } catch (err) { errorPagina(res, 'inicio', err); }
+});
+
 // ── MI REPORTE (terapeutas) ──────────────────────────────────────
-router.get('/mi-reporte', requireSession, (req, res) => {
+router.get('/mi-reporte', requireSession, requireMenuPermiso('mi_reporte'), (req, res) => {
   render(res, 'mi_reporte', { user: req.session.user, scripts: `<script src="${req.app.locals.BASE}/mi_reporte.js"></script>` });
 });
 
-router.get('/encuestas', requireSession, async (req, res) => {
+router.get('/encuestas', requireSession, requireMenuPermiso('encuestas'), async (req, res) => {
   render(res, 'encuestas', { user: req.session.user, scripts: `<script src="${req.app.locals.BASE}/encuestas.js?v=${req.app.locals.assetVersion}"></script>` });
 });
 
 // ── DASHBOARD ────────────────────────────────────────────────────
-router.get('/dashboard', requireSession, (req, res, next) => {
-  if (req.session.user.rol === 'terapeuta') {
-    return res.redirect(`${req.app.locals.BASE}/agenda`);
-  }
-  next();
-}, requireAdmin, async (req, res) => {
+router.get('/dashboard', requireSession, requireMenuPermiso('dashboard'), async (req, res) => {
   const user = req.session.user;
+  const propio = !isStaffAdmin(user.rol);
+  const own = (col) => propio ? ` AND ${col} = ?` : '';
+  const ownP = propio ? [user.id] : [];
   try {
     const [
       [ [{ pacientes_activos }] ],
@@ -201,12 +206,12 @@ router.get('/dashboard', requireSession, (req, res, next) => {
       [ packVencidos ],
       [ ocupacion ]
     ] = await Promise.all([
-      db.execute("SELECT COUNT(*) AS pacientes_activos FROM pacientes WHERE estado = 'activo'"),
-      db.execute(`SELECT COUNT(*) AS retenidos FROM pacientes p WHERE p.estado='activo' AND ${SQL.paquetesComprados('p')} >= 2`),
-      db.execute("SELECT COUNT(*) AS altas_mes FROM pacientes WHERE estado='alta' AND DATE_FORMAT(updated_at,'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')"),
-      db.execute(`SELECT COUNT(*) AS sin_paquete FROM pacientes p WHERE p.estado='activo' AND ${SQL.sinSesiones('p')}`),
-      db.execute("SELECT COUNT(*) AS no_show_mes FROM citas WHERE estado='no_show' AND DATE_FORMAT(fecha,'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')"),
-      db.execute("SELECT COUNT(*) AS citas_mes FROM citas WHERE estado IN ('realizada','no_show') AND DATE_FORMAT(fecha,'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')"),
+      db.execute(`SELECT COUNT(*) AS pacientes_activos FROM pacientes WHERE estado = 'activo'${own('terapeuta_id')}`, ownP),
+      db.execute(`SELECT COUNT(*) AS retenidos FROM pacientes p WHERE p.estado='activo' AND ${SQL.paquetesComprados('p')} >= 2${own('p.terapeuta_id')}`, ownP),
+      db.execute(`SELECT COUNT(*) AS altas_mes FROM pacientes WHERE estado='alta' AND DATE_FORMAT(updated_at,'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')${own('terapeuta_id')}`, ownP),
+      db.execute(`SELECT COUNT(*) AS sin_paquete FROM pacientes p WHERE p.estado='activo' AND ${SQL.sinSesiones('p')}${own('p.terapeuta_id')}`, ownP),
+      db.execute(`SELECT COUNT(*) AS no_show_mes FROM citas WHERE estado='no_show' AND DATE_FORMAT(fecha,'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')${own('terapeuta_id')}`, ownP),
+      db.execute(`SELECT COUNT(*) AS citas_mes FROM citas WHERE estado IN ('realizada','no_show') AND DATE_FORMAT(fecha,'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')${own('terapeuta_id')}`, ownP),
       db.execute(`
         SELECT p.id, p.nombre, p.apellido, p.telefono, t.nombre AS terapeuta_nombre,
                ${SQL.sesionesTotal('p')}          AS sesiones_total,
@@ -216,29 +221,29 @@ router.get('/dashboard', requireSession, (req, res, next) => {
         FROM pacientes p LEFT JOIN terapeutas t ON p.terapeuta_id = t.id
         WHERE p.estado = 'activo'
           AND ${SQL.paqueteNombre('p')} IS NOT NULL
-          AND ${SQL.sesionesPendientes('p')} <= 2
+          AND ${SQL.sesionesPendientes('p')} <= 2${own('p.terapeuta_id')}
         ORDER BY ${SQL.sesionesPendientes('p')} ASC, p.nombre ASC
         LIMIT 15
-      `),
+      `, ownP),
       db.execute(`
         SELECT p.id, p.nombre, p.apellido, p.telefono, t.nombre AS terapeuta_nombre,
                MAX(c.fecha) AS ultima_cita
         FROM pacientes p
         LEFT JOIN terapeutas t ON t.id = p.terapeuta_id
         LEFT JOIN citas c ON c.paciente_id = p.id AND c.estado = 'realizada'
-        WHERE p.estado = 'activo'
+        WHERE p.estado = 'activo'${own('p.terapeuta_id')}
         GROUP BY p.id
         HAVING ultima_cita IS NULL OR ultima_cita < DATE_SUB(CURDATE(), INTERVAL 30 DAY)
         ORDER BY ultima_cita ASC
         LIMIT 15
-      `),
+      `, ownP),
       db.execute(`
         SELECT p.id, p.nombre, p.apellido, p.telefono, t.nombre AS terapeuta_nombre,
                p.created_at
         FROM pacientes p LEFT JOIN terapeutas t ON t.id = p.terapeuta_id
-        WHERE p.estado = 'activo' AND ${SQL.sinSesiones('p')}
+        WHERE p.estado = 'activo' AND ${SQL.sinSesiones('p')}${own('p.terapeuta_id')}
         ORDER BY p.created_at DESC LIMIT 10
-      `),
+      `, ownP),
       db.execute(`
         SELECT p.id, p.nombre, p.apellido, p.telefono, t.nombre AS terapeuta_nombre,
                pp.nombre AS pack_nombre, pp.vence_at,
@@ -255,17 +260,17 @@ router.get('/dashboard', requireSession, (req, res, next) => {
             SELECT COUNT(*) FROM citas c
             WHERE c.paciente_id = p.id AND c.estado IN ('realizada','no_show')
               AND DATE(c.fecha) >= DATE(pp.fecha_inicio)
-          )) > 0
+          )) > 0${own('p.terapeuta_id')}
         ORDER BY pp.vence_at ASC LIMIT 10
-      `),
+      `, ownP),
       db.execute(`
         SELECT t.id, t.nombre, t.apellido,
                COUNT(p.id) AS pacientes_asignados
         FROM terapeutas t
         LEFT JOIN pacientes p ON p.terapeuta_id = t.id AND p.estado = 'activo'
-        WHERE t.activo = 1 AND t.rol = 'terapeuta'
+        WHERE t.activo = 1 AND t.rol = 'terapeuta'${own('t.id')}
         GROUP BY t.id ORDER BY pacientes_asignados DESC
-      `)
+      `, ownP)
     ]);
 
     const tasaRetencion   = pacientes_activos > 0 ? Math.round((retenidos / pacientes_activos) * 100) : 0;
@@ -289,7 +294,7 @@ router.get('/dashboard', requireSession, (req, res, next) => {
 });
 
 // ── CALENDARIO ─────────────────────────────────────────────────
-router.get('/calendario', requireSession, async (req, res) => {
+router.get('/calendario', requireSession, requireMenuPermiso('calendario'), async (req, res) => {
   const user = req.session.user;
   try {
     const [terapeutas] = await db.execute("SELECT id, nombre, apellido FROM terapeutas WHERE activo=1 AND rol='terapeuta' ORDER BY nombre");
@@ -298,19 +303,20 @@ router.get('/calendario', requireSession, async (req, res) => {
 });
 
 // ── AGENDA ───────────────────────────────────────────────────────
-router.get('/agenda', requireSession, async (req, res) => {
+router.get('/agenda', requireSession, requireMenuPermiso('agenda'), async (req, res) => {
   const user = req.session.user;
   try {
     const [terapeutas] = await db.execute("SELECT id, nombre, apellido FROM terapeutas WHERE activo=1 AND rol='terapeuta' ORDER BY nombre");
-    const qs = user.rol === 'terapeuta' ? 'WHERE terapeuta_id = ?' : 'WHERE 1';
-    const params = user.rol === 'terapeuta' ? [user.id] : [];
+    const propio = !isStaffAdmin(user.rol);
+    const qs = propio ? 'WHERE terapeuta_id = ?' : 'WHERE 1';
+    const params = propio ? [user.id] : [];
     const [pacientes] = await db.execute(`SELECT id, nombre, apellido FROM pacientes ${qs} ORDER BY nombre`, params);
     render(res, 'agenda', { user, terapeutas, pacientes, scripts: `<script src="${req.app.locals.BASE}/citas_modal.js"></script><script src="${req.app.locals.BASE}/agenda.js"></script>` });
   } catch (err) { errorPagina(res, 'agenda', err); }
 });
 
 // ── PACIENTES ────────────────────────────────────────────────────
-router.get('/pacientes', requireSession, async (req, res) => {
+router.get('/pacientes', requireSession, requireMenuPermiso('pacientes'), async (req, res) => {
   const user = req.session.user;
   try {
     const [terapeutas] = await db.execute("SELECT id, nombre, apellido FROM terapeutas WHERE activo=1 AND rol='terapeuta' ORDER BY nombre");
@@ -321,18 +327,19 @@ router.get('/pacientes', requireSession, async (req, res) => {
 });
 
 // ── HISTORIAL ────────────────────────────────────────────────────
-router.get('/historial', requireSession, async (req, res) => {
+router.get('/historial', requireSession, requireMenuPermiso('historial'), async (req, res) => {
   const user = req.session.user;
   try {
-    const qs = user.rol === 'terapeuta' ? 'WHERE terapeuta_id = ?' : 'WHERE 1';
+    const propio = !isStaffAdmin(user.rol);
+    const qs = propio ? 'WHERE terapeuta_id = ?' : 'WHERE 1';
     const [pacientes] = await db.execute(`SELECT id, nombre, apellido FROM pacientes ${qs} ORDER BY nombre`,
-      user.rol === 'terapeuta' ? [user.id] : []);
+      propio ? [user.id] : []);
     render(res, 'historial', { user, pacientes, scripts: `<script src="${req.app.locals.BASE}/history.js"></script>` });
   } catch (err) { errorPagina(res, 'historial', err); }
 });
 
 // ── DISPONIBILIDAD ──────────────────────────────────────────────
-router.get('/disponibilidad', requireSession, async (req, res) => {
+router.get('/disponibilidad', requireSession, requireMenuPermiso('disponibilidad'), async (req, res) => {
   const user = req.session.user;
   try {
     const isAdmin = isStaffAdmin(user.rol);
@@ -344,26 +351,26 @@ router.get('/disponibilidad', requireSession, async (req, res) => {
 });
 
 // ── TERAPEUTAS ───────────────────────────────────────────────────
-router.get('/terapeutas', requireSession, requireAdmin, async (req, res) => {
+router.get('/terapeutas', requireSession, requireMenuPermiso('terapeutas'), async (req, res) => {
   render(res, 'terapeutas', { user: req.session.user, scripts: `<script src="${req.app.locals.BASE}/terapeutas.js"></script>` });
 });
 
-router.get('/paquetes', requireSession, requireAdmin, async (req, res) => {
+router.get('/paquetes', requireSession, requireMenuPermiso('paquetes'), async (req, res) => {
   render(res, 'paquetes', { user: req.session.user, scripts: `<script src="${req.app.locals.BASE}/paquetes.js"></script>` });
 });
 
 // ── REPORTES ─────────────────────────────────────────────────────
-router.get('/reportes', requireSession, requireAdmin, async (req, res) => {
+router.get('/reportes', requireSession, requireMenuPermiso('reportes'), async (req, res) => {
   render(res, 'reportes', { user: req.session.user, scripts: `<script src="${req.app.locals.BASE}/reportes.js"></script>` });
 });
 
 // ── ANALÍTICA ────────────────────────────────────────────────────
-router.get('/analitica', requireSession, requireAdmin, async (req, res) => {
+router.get('/analitica', requireSession, requireMenuPermiso('analitica'), async (req, res) => {
   render(res, 'analitica', { user: req.session.user, scripts: `<script src="${req.app.locals.BASE}/web_analytics.js"></script>` });
 });
 
 // ── CENTRAL WHATSAPP ─────────────────────────────────────────────
-router.get('/whatsapp', requireSession, async (req, res) => {
+router.get('/whatsapp', requireSession, requireMenuPermiso('whatsapp'), async (req, res) => {
   render(res, 'whatsapp', {
     user: req.session.user,
     scripts: `<script src="${req.app.locals.BASE}/whatsapp.js"></script>`,
@@ -371,10 +378,10 @@ router.get('/whatsapp', requireSession, async (req, res) => {
 });
 
 // ── INTEGRACIONES ────────────────────────────────────────────────
-router.get('/integraciones', requireSession, requireAdmin, async (req, res) => {
+router.get('/integraciones', requireSession, requireMenuPermiso('integraciones'), async (req, res) => {
   try {
     const [rows] = await db.execute('SELECT clave, valor FROM configuracion');
-    const cfg    = Object.fromEntries(rows.map(r => [r.clave, r.valor]));
+    const cfg    = configParaCliente(rows);
     const [[cron]] = await db.execute('SELECT enabled, hora, minuto, dias, mensaje FROM cron_config WHERE id=1')
       .catch(() => [[{ enabled: 0, hora: 18, minuto: 0, dias: '1,2,3,4,5,6' }]]);
     const cronDias = String(cron?.dias || '').split(',').map(d => d.trim());

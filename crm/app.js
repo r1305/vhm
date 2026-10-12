@@ -180,7 +180,7 @@ router.use('/api/encuestas', require('./routes/encuestas'));
 router.use('/api/track',      require('./routes/tracker'));
 
 // Cron config
-router.get('/api/cron/config', require('./lib/auth').authAdmin, async (req, res) => {
+router.get('/api/cron/config', require('./lib/menuPermisos').requireMenuPermisoApi('integraciones'), async (req, res) => {
   try {
     const db = require('./lib/db');
     const [[row]] = await db.execute('SELECT enabled, hora, minuto, dias, mensaje FROM cron_config WHERE id=1');
@@ -188,7 +188,7 @@ router.get('/api/cron/config', require('./lib/auth').authAdmin, async (req, res)
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.post('/api/cron/config', require('./lib/auth').authAdmin, async (req, res) => {
+router.post('/api/cron/config', require('./lib/menuPermisos').requireMenuPermisoApi('integraciones'), async (req, res) => {
   try {
     const db = require('./lib/db');
     const { enabled, hora, minuto, dias, mensaje } = req.body;
@@ -204,7 +204,7 @@ router.post('/api/cron/config', require('./lib/auth').authAdmin, async (req, res
 
 // Vía única de cron: el endpoint manual no omite el guard (ver cron-wsp.js). 
 // No usar node-cron y este endpoint en paralelo para el mismo envío.
-router.post('/api/cron/ejecutar', require('./lib/auth').authAdmin, async (req, res) => {
+router.post('/api/cron/ejecutar', require('./lib/menuPermisos').requireMenuPermisoApi('integraciones'), async (req, res) => {
   try {
     const stats = await require('./cron-wsp').runCronWSP({ manual: true });
     res.json({ ok: true, message: 'Cron ejecutado', ...stats });
@@ -216,7 +216,7 @@ router.post('/api/cron/ejecutar', require('./lib/auth').authAdmin, async (req, r
 
 // Broadcast manual: requiere flag explícito para evitar uso accidental cuando cron programado existe.
 // Usar ?dailyCheckKey=wsp_broadcast:YYYY-MM-DD (clave diaria) o enviar { dailyCheckKey: 'wsp_broadcast:YYYY-MM-DD' }
-router.post('/api/cron/broadcast', require('./lib/auth').authAdmin, async (req, res) => {
+router.post('/api/cron/broadcast', require('./lib/menuPermisos').requireMenuPermisoApi('integraciones'), async (req, res) => {
   const { message, dailyCheckKey } = req.body || {};
   if (!message) return res.status(400).json({ error: 'message requerido' });
   const { getLimaDateKey } = require('./cron-wsp');
@@ -236,7 +236,7 @@ router.post('/api/cron/broadcast', require('./lib/auth').authAdmin, async (req, 
 });
 
 // Test WhatsApp openwa
-router.post('/api/whatsapp/test', require('./lib/auth').authAdmin, async (req, res) => {
+router.post('/api/whatsapp/test', require('./lib/menuPermisos').requireMenuPermisoApi('integraciones'), async (req, res) => {
   const { sendWhatsAppGreen } = require('./lib/greenapi');
   const { to, message } = req.body || {};
   if (!to || !message) return res.status(400).json({ error: 'to y message requeridos' });

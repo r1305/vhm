@@ -1,6 +1,8 @@
 const { Router } = require('express');
 const pool = require('../lib/db');
-const { auth, authAdmin } = require('../lib/auth');
+const { authAdmin } = require('../lib/auth');
+const { isStaffAdmin } = require('../lib/roles');
+const { requireMenuPermisoApi } = require('../lib/menuPermisos');
 const { normalizeDiasSiguienteCuota } = require('../lib/cuotasPlan');
 
 const router = Router();
@@ -10,28 +12,33 @@ const num = (v, def = 0) => {
   return Number.isFinite(n) ? n : def;
 };
 
-router.get('/', auth, async (req, res) => {
+router.get('/', requireMenuPermisoApi('paquetes', 'pacientes'), async (req, res) => {
   try {
     const soloActivos = req.query.activo === '1';
     const sql = soloActivos
       ? 'SELECT * FROM paquetes_catalogo WHERE activo = 1 ORDER BY nombre ASC'
       : 'SELECT * FROM paquetes_catalogo ORDER BY activo DESC, nombre ASC';
     const [rows] = await pool.execute(sql);
-    res.json(rows.map((r) => ({
-      ...r,
-      accede_comunidad: !!r.accede_comunidad,
-      activo: !!r.activo,
-      precio: Number(r.precio),
-      sesiones: Number(r.sesiones),
-      validez_dias: Number(r.validez_dias),
-      dias_siguiente_cuota: Number(r.dias_siguiente_cuota) || 15,
-    })));
+    const verPrecio = isStaffAdmin(req.user?.rol);
+    res.json(rows.map((r) => {
+      const out = {
+        ...r,
+        accede_comunidad: !!r.accede_comunidad,
+        activo: !!r.activo,
+        precio: Number(r.precio),
+        sesiones: Number(r.sesiones),
+        validez_dias: Number(r.validez_dias),
+        dias_siguiente_cuota: Number(r.dias_siguiente_cuota) || 15,
+      };
+      if (!verPrecio) delete out.precio;
+      return out;
+    }));
   } catch {
     res.status(500).json({ error: 'Error al listar paquetes' });
   }
 });
 
-router.post('/', authAdmin, async (req, res) => {
+router.post('/', requireMenuPermisoApi('paquetes'), authAdmin, async (req, res) => {
   const { nombre, sesiones, validez_dias, dias_siguiente_cuota, accede_comunidad, precio, activo } = req.body || {};
   if (!t(nombre, 120)) return res.status(400).json({ error: 'El nombre es obligatorio' });
   if (!(num(precio, 0) > 0)) return res.status(400).json({ error: 'El precio debe ser mayor a 0' });
@@ -58,7 +65,7 @@ router.post('/', authAdmin, async (req, res) => {
   }
 });
 
-router.put('/:id', authAdmin, async (req, res) => {
+router.put('/:id', requireMenuPermisoApi('paquetes'), authAdmin, async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (!id) return res.status(400).json({ error: 'ID inválido' });
   const { nombre, sesiones, validez_dias, dias_siguiente_cuota, accede_comunidad, precio, activo } = req.body || {};
@@ -86,7 +93,7 @@ router.put('/:id', authAdmin, async (req, res) => {
   }
 });
 
-router.delete('/:id', authAdmin, async (req, res) => {
+router.delete('/:id', requireMenuPermisoApi('paquetes'), authAdmin, async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (!id) return res.status(400).json({ error: 'ID inválido' });
   try {

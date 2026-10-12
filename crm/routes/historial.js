@@ -1,6 +1,6 @@
 const { Router } = require('express');
 const pool = require('../lib/db');
-const { auth } = require('../lib/auth');
+const { requireMenuPermisoApi } = require('../lib/menuPermisos');
 const { isStaffAdmin } = require('../lib/roles');
 
 const router = Router();
@@ -17,7 +17,7 @@ async function checkAccess(req, res, pacienteId) {
   return true;
 }
 
-router.get('/paciente/:pid', auth, async (req, res) => {
+router.get('/paciente/:pid', requireMenuPermisoApi('historial'), async (req, res) => {
   if (!(await checkAccess(req, res, req.params.pid))) return;
   const [rows] = await pool.execute(
     `SELECT h.*, t.nombre AS terapeuta_nombre
@@ -28,7 +28,7 @@ router.get('/paciente/:pid', auth, async (req, res) => {
   res.json(rows);
 });
 
-router.post('/paciente/:pid', auth, async (req, res) => {
+router.post('/paciente/:pid', requireMenuPermisoApi('historial'), async (req, res) => {
   if (!(await checkAccess(req, res, req.params.pid))) return;
   const { nota, tipo='evolucion', cita_id, fecha } = req.body || {};
   if (!nota) return res.status(400).json({ error: 'nota requerida' });
@@ -40,7 +40,7 @@ router.post('/paciente/:pid', auth, async (req, res) => {
   res.status(201).json({ id: r.insertId });
 });
 
-router.delete('/:id', auth, async (req, res) => {
+router.delete('/:id', requireMenuPermisoApi('historial'), async (req, res) => {
   if (req.user.rol !== 'superadmin') return res.status(403).json({ error: 'Solo superadmin' });
   await pool.execute('DELETE FROM historial_clinico WHERE id=?', [req.params.id]);
   res.json({ ok: true });

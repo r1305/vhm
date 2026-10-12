@@ -1,7 +1,8 @@
 const { Router } = require('express');
 const pool = require('../lib/db');
-const { auth, authAdmin, ownerFilter } = require('../lib/auth');
+const { authAdmin, ownerFilter } = require('../lib/auth');
 const { isStaffAdmin } = require('../lib/roles');
+const { requireMenuPermisoApi } = require('../lib/menuPermisos');
 
 const router = Router();
 const t = (v, max = 255) => v == null ? null : String(v).trim().slice(0, max) || null;
@@ -19,10 +20,12 @@ const {
   SQL,
 } = require('../lib/paquetesPaciente');
 
-router.get('/conteo-por-terapeuta', auth, async (req, res) => {
+router.get('/conteo-por-terapeuta', requireMenuPermisoApi('pacientes'), async (req, res) => {
   try {
+    const of = ownerFilter(req);
     const [rows] = await pool.execute(
-      'SELECT terapeuta_id, COUNT(*) AS total FROM pacientes WHERE terapeuta_id IS NOT NULL GROUP BY terapeuta_id'
+      `SELECT terapeuta_id, COUNT(*) AS total FROM pacientes WHERE terapeuta_id IS NOT NULL${of.sql} GROUP BY terapeuta_id`,
+      of.params
     );
     const map = {};
     rows.forEach(r => { map[r.terapeuta_id] = r.total; });
@@ -30,7 +33,7 @@ router.get('/conteo-por-terapeuta', auth, async (req, res) => {
   } catch { res.status(500).json({ error: 'Error' }); }
 });
 
-router.get('/', auth, async (req, res) => {
+router.get('/', requireMenuPermisoApi('agenda', 'calendario', 'pacientes'), async (req, res) => {
   try {
     const q = t(req.query.q, 80);
     const estado = t(req.query.estado, 20);
@@ -66,7 +69,7 @@ router.get('/', auth, async (req, res) => {
   } catch { res.status(500).json({ error: 'Error al listar pacientes' }); }
 });
 
-router.post('/tribu/rebuild-suscripciones', authAdmin, async (req, res) => {
+router.post('/tribu/rebuild-suscripciones', requireMenuPermisoApi('pacientes'), authAdmin, async (req, res) => {
   try {
     const result = await tribuProvision.rebuildAllTribuSubscriptions();
     res.json({ ok: true, ...result });
@@ -76,7 +79,7 @@ router.post('/tribu/rebuild-suscripciones', authAdmin, async (req, res) => {
   }
 });
 
-router.post('/:pid/tribu-usuario', authAdmin, async (req, res) => {
+router.post('/:pid/tribu-usuario', requireMenuPermisoApi('pacientes'), authAdmin, async (req, res) => {
   const pid = id(req.params.pid);
   if (!pid) return res.status(400).json({ error: 'ID inválido' });
   try {
@@ -95,7 +98,7 @@ router.post('/:pid/tribu-usuario', authAdmin, async (req, res) => {
   }
 });
 
-router.post('/', authAdmin, async (req, res) => {
+router.post('/', requireMenuPermisoApi('pacientes'), authAdmin, async (req, res) => {
   const { nombre, apellido, email, telefono, fecha_nacimiento, genero,
           motivo_consulta, fuente, fuente_detalle, terapeuta_id, estado = 'prospecto' } = req.body || {};
   if (!nombre || !apellido) return res.status(400).json({ error: 'nombre y apellido requeridos' });
@@ -113,7 +116,7 @@ router.post('/', authAdmin, async (req, res) => {
   } catch { res.status(500).json({ error: 'Error al crear paciente' }); }
 });
 
-router.get('/:pid', auth, async (req, res) => {
+router.get('/:pid', requireMenuPermisoApi('agenda', 'calendario', 'pacientes'), async (req, res) => {
   try {
     const pid = id(req.params.pid);
     if (!pid) return res.status(400).json({ error: 'ID inválido' });
@@ -128,7 +131,7 @@ router.get('/:pid', auth, async (req, res) => {
   } catch { res.status(500).json({ error: 'Error' }); }
 });
 
-router.put('/:pid', authAdmin, async (req, res) => {
+router.put('/:pid', requireMenuPermisoApi('pacientes'), authAdmin, async (req, res) => {
   const pid = id(req.params.pid);
   if (!pid) return res.status(400).json({ error: 'ID inválido' });
   const { nombre, apellido, email, telefono, fecha_nacimiento, genero,
@@ -147,6 +150,14 @@ router.put('/:pid', authAdmin, async (req, res) => {
   } catch { res.status(500).json({ error: 'Error al actualizar' }); }
 });
 
+function ocultarPreciosPaquetes(req, paquetes) {
+  if (isStaffAdmin(req.user?.rol)) return paquetes;
+  return paquetes.map(({ precio, ...pkg }) => ({
+    ...pkg,
+    cuotas: (pkg.cuotas || []).map(({ monto, ...c }) => c),
+  }));
+}
+
 async function puedeVerPaciente(req, pid) {
   if (isStaffAdmin(req.user?.rol)) return true;
   const [[p]] = await pool.execute(
@@ -164,7 +175,7 @@ async function authPaciente(req, res, next) {
 }
 
 // ── Resumen de sesiones (histórico completo, independiente del estado del paquete) ──
-router.get('/:pid/sesiones-resumen', auth, async (req, res) => {
+router.get('/:pid/sesiones-resumen', requireMenuPermisoApi('agenda', 'pacientes'), async (req, res) => {
   const pid = id(req.params.pid);
   if (!pid) return res.status(400).json({ error: 'ID inválido' });
   try {
@@ -174,19 +185,19 @@ router.get('/:pid/sesiones-resumen', auth, async (req, res) => {
 });
 
 // ── Paquetes adquiridos por paciente ──────────────────────────
-router.get('/:pid/paquetes-adquiridos', auth, async (req, res) => {
+router.get('/:pid/paquetes-adquiridos', requireMenuPermisoApi('pacientes'), async (req, res) => {
   const pid = id(req.params.pid);
   if (!pid) return res.status(400).json({ error: 'ID inválido' });
   try {
     if (!await puedeVerPaciente(req, pid)) return res.status(403).json({ error: 'Sin acceso' });
     const paquetes = await loadPacientePaquetes(pid);
-    res.json(paquetes);
+    res.json(ocultarPreciosPaquetes(req, paquetes));
   } catch {
     res.status(500).json({ error: 'Error al cargar paquetes' });
   }
 });
 
-router.post('/:pid/paquetes-adquiridos', authAdmin, async (req, res) => {
+router.post('/:pid/paquetes-adquiridos', requireMenuPermisoApi('pacientes'), authAdmin, async (req, res) => {
   const pid = id(req.params.pid);
   if (!pid) return res.status(400).json({ error: 'ID inválido' });
   try {
@@ -199,7 +210,7 @@ router.post('/:pid/paquetes-adquiridos', authAdmin, async (req, res) => {
   }
 });
 
-router.patch('/:pid/paquetes-adquiridos/:pkgId', authAdmin, async (req, res) => {
+router.patch('/:pid/paquetes-adquiridos/:pkgId', requireMenuPermisoApi('pacientes'), authAdmin, async (req, res) => {
   const pid = id(req.params.pid);
   const pkgId = id(req.params.pkgId);
   if (!pid || !pkgId) return res.status(400).json({ error: 'ID inválido' });
@@ -264,7 +275,7 @@ router.patch('/:pid/paquetes-adquiridos/:pkgId', authAdmin, async (req, res) => 
   }
 });
 
-router.delete('/:pid/paquetes-adquiridos/:pkgId', authAdmin, async (req, res) => {
+router.delete('/:pid/paquetes-adquiridos/:pkgId', requireMenuPermisoApi('pacientes'), authAdmin, async (req, res) => {
   const pid = id(req.params.pid);
   const pkgId = id(req.params.pkgId);
   if (!pid || !pkgId) return res.status(400).json({ error: 'ID inválido' });
@@ -278,7 +289,7 @@ router.delete('/:pid/paquetes-adquiridos/:pkgId', authAdmin, async (req, res) =>
   }
 });
 
-router.patch('/:pid/paquetes-adquiridos/cuotas/:cuotaId/pagar', authAdmin, async (req, res) => {
+router.patch('/:pid/paquetes-adquiridos/cuotas/:cuotaId/pagar', requireMenuPermisoApi('pacientes'), authAdmin, async (req, res) => {
   const pid = id(req.params.pid);
   const cuotaId = id(req.params.cuotaId);
   if (!pid || !cuotaId) return res.status(400).json({ error: 'ID inválido' });
@@ -292,7 +303,7 @@ router.patch('/:pid/paquetes-adquiridos/cuotas/:cuotaId/pagar', authAdmin, async
   }
 });
 
-router.get('/:pid/sesiones', auth, authPaciente, async (req, res) => {
+router.get('/:pid/sesiones', requireMenuPermisoApi('pacientes'), authPaciente, async (req, res) => {
   try {
     const [rows] = await pool.execute(
       'SELECT * FROM paciente_sesiones WHERE paciente_id=? ORDER BY fecha_inicio ASC, id ASC',
@@ -302,7 +313,7 @@ router.get('/:pid/sesiones', auth, authPaciente, async (req, res) => {
   } catch { res.status(500).json({ error: 'Error' }); }
 });
 
-router.post('/:pid/sesiones', auth, authPaciente, async (req, res) => {
+router.post('/:pid/sesiones', requireMenuPermisoApi('pacientes'), authPaciente, async (req, res) => {
   const { fecha_inicio, sesiones } = req.body || {};
   try {
     const [r] = await pool.execute(
@@ -313,7 +324,7 @@ router.post('/:pid/sesiones', auth, authPaciente, async (req, res) => {
   } catch { res.status(500).json({ error: 'Error al crear' }); }
 });
 
-router.put('/:pid/sesiones/:sid', auth, authPaciente, async (req, res) => {
+router.put('/:pid/sesiones/:sid', requireMenuPermisoApi('pacientes'), authPaciente, async (req, res) => {
   const sid = id(req.params.sid);
   if (!sid) return res.status(400).json({ error: 'ID inválido' });
   const { fecha_inicio, sesiones } = req.body || {};
@@ -326,7 +337,7 @@ router.put('/:pid/sesiones/:sid', auth, authPaciente, async (req, res) => {
   } catch { res.status(500).json({ error: 'Error al actualizar' }); }
 });
 
-router.delete('/:pid/sesiones/:sid', auth, authPaciente, async (req, res) => {
+router.delete('/:pid/sesiones/:sid', requireMenuPermisoApi('pacientes'), authPaciente, async (req, res) => {
   const sid = id(req.params.sid);
   if (!sid) return res.status(400).json({ error: 'ID inválido' });
   try {
@@ -339,3 +350,4 @@ router.delete('/:pid/sesiones/:sid', auth, authPaciente, async (req, res) => {
 });
 
 module.exports = router;
+module.exports.puedeVerPaciente = puedeVerPaciente;

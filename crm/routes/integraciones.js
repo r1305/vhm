@@ -1,7 +1,7 @@
 'use strict';
 
 const { Router } = require('express');
-const { authAdmin } = require('../lib/auth');
+const { requireMenuPermisoApi } = require('../lib/menuPermisos');
 const { getAuthUrl, saveTokens, isConnected, disconnect } = require('../lib/googleMeet');
 const { google } = require('googleapis');
 
@@ -11,15 +11,15 @@ const REDIRECT_URI  = process.env.GOOGLE_REDIRECT_URI || 'https://vhm.com.pe/crm
 
 const router = Router();
 
-router.get('/google/auth-url', authAdmin, (req, res) => {
+router.get('/google/auth-url', requireMenuPermisoApi('integraciones'), (req, res) => {
   res.json({ url: getAuthUrl() });
 });
 
-router.get('/google/status', authAdmin, async (req, res) => {
+router.get('/google/status', requireMenuPermisoApi('integraciones'), async (req, res) => {
   res.json({ connected: await isConnected() });
 });
 
-router.delete('/google', authAdmin, async (req, res) => {
+router.delete('/google', requireMenuPermisoApi('integraciones'), async (req, res) => {
   await disconnect();
   res.json({ ok: true });
 });

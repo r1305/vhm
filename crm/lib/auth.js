@@ -60,4 +60,9 @@ function ownerFilter(req, alias = '') {
   return { sql: ` AND ${col} = ?`, params: [req.user.id] };
 }
 
-module.exports = { signToken, auth, authAdmin, authSuperAdmin, ownerFilter };
+function ocultarMontosCitas(req, rows) {
+  if (isStaffAdmin(req.user?.rol)) return rows;
+  return rows.map(({ monto, pagado, ...c }) => c);
+}
+
+module.exports = { signToken, auth, authAdmin, authSuperAdmin, ownerFilter, ocultarMontosCitas };

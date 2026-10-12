@@ -57,12 +57,18 @@ function togglePwd(id, btn) {
   document.getElementById('btnSaveOpenwa')?.addEventListener('click', async () => {
     try {
       const url = document.getElementById('openwa-url').value.trim();
-      await api('/config', { method:'POST', body: {
+      const body = {
         openwa_url:            url,
         openwa_api_key:        document.getElementById('openwa-api-key').value.trim(),
         openwa_session:        document.getElementById('openwa-session').value.trim(),
         openwa_webhook_token:  document.getElementById('openwa-webhook-token').value.trim(),
-      }, successMessage: 'Configuración WhatsApp guardada' });
+      };
+      ['openwa_api_key', 'openwa_webhook_token'].forEach(k => { if (!body[k]) delete body[k]; });
+      await api('/config', { method:'POST', body, successMessage: 'Configuración WhatsApp guardada' });
+      ['openwa-api-key', 'openwa-webhook-token'].forEach(id => {
+        const inp = document.getElementById(id);
+        if (inp && inp.value) { inp.placeholder = 'Guardado. Déjalo vacío para mantenerlo'; inp.value = ''; }
+      });
       const el = document.getElementById('openwa-status');
       if (el) { el.textContent = url ? 'Configurado' : 'Sin configurar'; el.className = 'badge '+(url?'badge-green':'badge-yellow'); }
     } catch (err) { toast(err.message, 'danger'); }
