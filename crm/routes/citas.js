@@ -210,7 +210,7 @@ router.delete('/:cid', requireMenuPermisoApi('agenda', 'calendario'), async (req
   try {
     const [[cita]] = await pool.execute('SELECT estado, terapeuta_id, gcal_event_id FROM citas WHERE id=?', [cid]);
     if (!cita) return res.status(404).json({ error: 'No encontrada' });
-    const esAdmin = req.user.rol !== 'terapeuta';
+    const esAdmin = isStaffAdmin(req.user.rol);
     if (!esAdmin && cita.estado !== 'pendiente') return res.status(400).json({ error: 'Solo se pueden eliminar citas pendientes' });
     if (!esAdmin && cita.terapeuta_id !== req.user.id)
       return res.status(403).json({ error: 'Sin acceso' });
@@ -232,7 +232,7 @@ router.put('/:cid', requireMenuPermisoApi('agenda', 'calendario'), async (req, r
   try {
     const [[cita]] = await pool.execute('SELECT * FROM citas WHERE id=?', [cid]);
     if (!cita) return res.status(404).json({ error: 'No encontrada' });
-    const esAdmin = req.user.rol !== 'terapeuta';
+    const esAdmin = isStaffAdmin(req.user.rol);
     if (!esAdmin && cita.terapeuta_id !== req.user.id)
       return res.status(403).json({ error: 'Sin acceso' });
     const updates = {};
@@ -311,13 +311,13 @@ router.patch('/:cid/estado', requireMenuPermisoApi('agenda', 'calendario'), asyn
   try {
     const [[cita]] = await pool.execute('SELECT terapeuta_id FROM citas WHERE id=?', [cid]);
     if (!cita) return res.status(404).json({ error: 'No encontrada' });
-    if (req.user.rol === 'terapeuta' && cita.terapeuta_id !== req.user.id)
+    if (!isStaffAdmin(req.user.rol) && cita.terapeuta_id !== req.user.id)
       return res.status(403).json({ error: 'Sin acceso' });
     const sets = ['estado=?'];
     const vals = [estado];
     if (notas) { sets.push('notas=?'); vals.push(t(notas, 2000)); }
     if (fecha != null && fecha !== '') {
-      if (req.user.rol === 'terapeuta') {
+      if (!isStaffAdmin(req.user.rol)) {
         return res.status(403).json({ error: 'Sin permiso para cambiar la fecha' });
       }
       const fechaVal = t(fecha, 10);

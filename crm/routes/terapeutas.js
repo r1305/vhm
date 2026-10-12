@@ -109,7 +109,7 @@ router.get('/:id/disponibilidad', requireMenuPermisoApi('disponibilidad', 'terap
 
 router.post('/:id/disponibilidad', requireMenuPermisoApi('disponibilidad', 'terapeutas'), async (req, res) => {
   const id = parseInt(req.params.id, 10);
-  if (req.user.rol === 'terapeuta' && req.user.id !== id)
+  if (!isStaffAdmin(req.user.rol) && req.user.id !== id)
     return res.status(403).json({ error: 'Sin acceso' });
   const { dia_semana, hora_inicio, hora_fin } = req.body || {};
   await pool.execute(
@@ -121,7 +121,7 @@ router.post('/:id/disponibilidad', requireMenuPermisoApi('disponibilidad', 'tera
 
 router.delete('/:id/disponibilidad/:did', requireMenuPermisoApi('disponibilidad', 'terapeutas'), async (req, res) => {
   const id = parseInt(req.params.id, 10);
-  if (req.user.rol === 'terapeuta' && req.user.id !== id)
+  if (!isStaffAdmin(req.user.rol) && req.user.id !== id)
     return res.status(403).json({ error: 'Sin acceso' });
   await pool.execute('DELETE FROM disponibilidad WHERE id=? AND terapeuta_id=?', [req.params.did, id]);
   res.json({ ok: true });
@@ -130,7 +130,7 @@ router.delete('/:id/disponibilidad/:did', requireMenuPermisoApi('disponibilidad'
 router.patch('/:id/presencial', requireMenuPermisoApi('disponibilidad'), async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (!id) return res.status(400).json({ error: 'ID inválido' });
-  if (req.user.rol === 'terapeuta' && req.user.id !== id) {
+  if (!isStaffAdmin(req.user.rol) && req.user.id !== id) {
     return res.status(403).json({ error: 'Sin acceso' });
   }
   const habilitado = req.body?.presencial_habilitado !== false
@@ -175,7 +175,7 @@ router.get('/google/calendar-callback', async (req, res) => {
 
 router.get('/:id/google/auth-url', requireMenuPermisoApi('calendario', 'terapeutas'), async (req, res) => {
   const id = parseInt(req.params.id, 10);
-  if (req.user.rol === 'terapeuta' && req.user.id !== id)
+  if (!isStaffAdmin(req.user.rol) && req.user.id !== id)
     return res.status(403).json({ error: 'Sin acceso' });
   const redirect = req.query.redirect || 'terapeutas';
   res.json({ url: googleCal.getAuthUrl(id, redirect) });
@@ -183,14 +183,14 @@ router.get('/:id/google/auth-url', requireMenuPermisoApi('calendario', 'terapeut
 
 router.get('/:id/google/status', requireMenuPermisoApi('calendario', 'terapeutas'), async (req, res) => {
   const id = parseInt(req.params.id, 10);
-  if (req.user.rol === 'terapeuta' && req.user.id !== id)
+  if (!isStaffAdmin(req.user.rol) && req.user.id !== id)
     return res.status(403).json({ error: 'Sin acceso' });
   res.json({ connected: await googleCal.isConnected(id) });
 });
 
 router.get('/:id/google/events', requireMenuPermisoApi('calendario', 'terapeutas'), async (req, res) => {
   const id = parseInt(req.params.id, 10);
-  if (req.user.rol === 'terapeuta' && req.user.id !== id)
+  if (!isStaffAdmin(req.user.rol) && req.user.id !== id)
     return res.status(403).json({ error: 'Sin acceso' });
   const desde = String(req.query.desde || '').slice(0, 10);
   const hasta = String(req.query.hasta || '').slice(0, 10);
@@ -207,7 +207,7 @@ router.get('/:id/google/events', requireMenuPermisoApi('calendario', 'terapeutas
 
 router.delete('/:id/google', requireMenuPermisoApi('calendario', 'terapeutas'), async (req, res) => {
   const id = parseInt(req.params.id, 10);
-  if (req.user.rol === 'terapeuta' && req.user.id !== id)
+  if (!isStaffAdmin(req.user.rol) && req.user.id !== id)
     return res.status(403).json({ error: 'Sin acceso' });
   await googleCal.disconnect(id);
   res.json({ ok: true });

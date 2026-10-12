@@ -1,6 +1,7 @@
 const { Router } = require('express');
 const pool = require('../lib/db');
 const { requireMenuPermisoApi } = require('../lib/menuPermisos');
+const { isStaffAdmin } = require('../lib/roles');
 
 const router = Router();
 const pid = v => { const n = parseInt(v,10); return isFinite(n) && n > 0 ? n : null; };
@@ -15,7 +16,7 @@ router.get('/', requireMenuPermisoApi('calendario'), async (req, res) => {
                FROM bloqueos b JOIN terapeutas t ON b.terapeuta_id = t.id
                WHERE b.fecha_inicio <= ? AND b.fecha_fin >= ?`;
     const params = [hasta, desde];
-    if (req.user.rol === 'terapeuta') {
+    if (!isStaffAdmin(req.user.rol)) {
       sql += ' AND b.terapeuta_id = ?'; params.push(req.user.id);
     } else if (req.query.terapeuta_id) {
       sql += ' AND b.terapeuta_id = ?'; params.push(pid(req.query.terapeuta_id));
@@ -37,7 +38,7 @@ router.post('/', requireMenuPermisoApi('calendario'), async (req, res) => {
     if (!fecha_inicio || !fecha_fin) return res.status(400).json({ error: 'fecha_inicio y fecha_fin requeridos' });
     hora_inicio = hora_inicio || '00:00';
     hora_fin    = hora_fin    || '23:59';
-    const terId = req.user.rol === 'terapeuta'
+    const terId = !isStaffAdmin(req.user.rol)
       ? req.user.id
       : (pid(req.body.terapeuta_id) || req.user.id);
     const [r] = await pool.execute(
@@ -58,7 +59,7 @@ router.delete('/:id', requireMenuPermisoApi('calendario'), async (req, res) => {
     if (!id) return res.status(400).json({ error: 'ID inválido' });
     const [[b]] = await pool.execute('SELECT terapeuta_id FROM bloqueos WHERE id=?', [id]);
     if (!b) return res.status(404).json({ error: 'No encontrado' });
-    if (req.user.rol === 'terapeuta' && b.terapeuta_id !== req.user.id)
+    if (!isStaffAdmin(req.user.rol) && b.terapeuta_id !== req.user.id)
       return res.status(403).json({ error: 'Sin acceso' });
     await pool.execute('DELETE FROM bloqueos WHERE id=?', [id]);
     res.json({ ok: true });

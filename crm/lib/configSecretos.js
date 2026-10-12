@@ -15,9 +15,16 @@ function esSecreto(clave) {
   return CLAVES_SECRETAS.has(clave) || PATRON_SECRETO.test(String(clave || ''));
 }
 
-function enmascarar(valor) {
+function esValorJson(clave, v) {
+  if (clave === 'google_tokens') return true;
+  const c = v.trim().charAt(0);
+  return c === '{' || c === '[';
+}
+
+function enmascarar(valor, clave) {
   const v = valor == null ? '' : String(valor);
   if (!v) return '';
+  if (esValorJson(clave, v)) return MASCARA;
   return MASCARA + (v.length > 8 ? v.slice(-4) : '');
 }
 
@@ -30,7 +37,7 @@ function configParaCliente(rows) {
   for (const r of rows) {
     const valor = r.valor || '';
     if (esSecreto(r.clave)) {
-      data[r.clave] = enmascarar(valor);
+      data[r.clave] = enmascarar(valor, r.clave);
       data[`${r.clave}_configurada`] = !!valor;
     } else {
       data[r.clave] = valor;

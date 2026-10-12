@@ -103,7 +103,7 @@ router.post('/', requireMenuPermisoApi('pacientes'), authAdmin, async (req, res)
           motivo_consulta, fuente, fuente_detalle, terapeuta_id, estado = 'prospecto' } = req.body || {};
   if (!nombre || !apellido) return res.status(400).json({ error: 'nombre y apellido requeridos' });
   try {
-    const tid = id(terapeuta_id) || (req.user.rol === 'terapeuta' ? req.user.id : null);
+    const tid = id(terapeuta_id) || (!isStaffAdmin(req.user.rol) ? req.user.id : null);
     const [r] = await pool.execute(
       `INSERT INTO pacientes (nombre,apellido,email,telefono,fecha_nacimiento,genero,
         motivo_consulta,fuente,fuente_detalle,terapeuta_id,estado)
