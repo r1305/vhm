@@ -141,7 +141,7 @@ router.get('/dashboard', requireMenuPermisoApi('dashboard'), async (req, res) =>
         (SELECT COUNT(*) FROM pacientes WHERE estado='prospecto'${own.sql}) AS prospectos,
         (SELECT COUNT(*) FROM citas WHERE fecha=CURDATE() AND estado NOT IN ('cancelada','no_show')${own.sql}) AS citas_hoy,
         (SELECT COUNT(*) FROM citas WHERE fecha>=CURDATE() AND fecha<=DATE_ADD(CURDATE(),INTERVAL 7 DAY) AND estado='pendiente'${own.sql}) AS citas_semana
-        ${staff ? `, (SELECT COALESCE(SUM(monto),0) FROM pagos WHERE MONTH(created_at)=MONTH(NOW()) AND estado='completado') AS ingresos_mes` : ''}
+        ${staff ? `, (SELECT COALESCE(SUM(monto),0) FROM pagos WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL DAYOFMONTH(CURDATE())-1 DAY) AND created_at < DATE_ADD(DATE_SUB(CURDATE(), INTERVAL DAYOFMONTH(CURDATE())-1 DAY), INTERVAL 1 MONTH) AND estado='completado') AS ingresos_mes` : ''}
     `, [...own.params, ...own.params, ...own.params, ...own.params]);
     const of = ownerFilter(req, 'c');
     const [citasHoy] = await pool.execute(`
