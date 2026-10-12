@@ -55,6 +55,21 @@ function requireSuperAdmin(req, res, next) {
   res.redirect(`${req.app.locals.BASE}/${getHomePath(req.session?.user)}`);
 }
 
+function requireMenuPermiso(clave) {
+  return async function (req, res, next) {
+    const user = req.session?.user;
+    if (isSuperAdmin(user?.rol) || isStaffAdmin(user?.rol)) return next();
+    try {
+      const { getMenuPermisosForUser } = require('../lib/menuPermisos');
+      const permisos = user ? await getMenuPermisosForUser(user.id, user.rol || 'terapeuta') : new Set();
+      if (permisos.has(clave)) return next();
+      res.redirect(`${req.app.locals.BASE}/${getHomePath(user)}`);
+    } catch (err) { errorPagina(res, `permiso/${clave}`, err); }
+  };
+}
+
+const puedeRepararPaquetes = (user) => ['admin', 'superadmin'].includes(user?.rol);
+
 // ── Helper render con layout ─────────────────────────────────────
 async function render(res, view, data = {}) {
   const BASE    = res.app.locals.BASE;
@@ -384,9 +399,9 @@ async function asegurarPreciosPaquetes() {
   }
 }
 
-router.get('/reporte-financiero', requireSession, requireAdmin, async (req, res) => {
+router.get('/reporte-financiero', requireSession, requireMenuPermiso('reporte_financiero'), async (req, res) => {
   try {
-    await asegurarPreciosPaquetes();
+    if (puedeRepararPaquetes(req.session.user)) await asegurarPreciosPaquetes();
     const esFecha = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s || '');
     const desde = req.query.desde;
     const hasta = req.query.hasta;
@@ -492,7 +507,7 @@ const fechaHoyLima = () =>
   new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(new Date());
 
 // ── REPORTE FINANCIERO · DETALLES (paquetes paginados) ─────────
-router.get('/reporte-financiero/detalles', requireSession, requireAdmin, async (req, res) => {
+router.get('/reporte-financiero/detalles', requireSession, requireMenuPermiso('reporte_financiero_detalles'), async (req, res) => {
   try {
     const esFecha = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s || '');
     let desde = req.query.desde;
@@ -502,7 +517,7 @@ router.get('/reporte-financiero/detalles', requireSession, requireAdmin, async (
       const hoy = fechaHoyLima();
       return res.redirect(302, `${req.app.locals.BASE}/reporte-financiero/detalles?desde=${hoy}&hasta=${hoy}`);
     }
-    await asegurarPreciosPaquetes();
+    if (puedeRepararPaquetes(req.session.user)) await asegurarPreciosPaquetes();
     const filterDate = (col) =>
       ` AND ${col} BETWEEN ${db.escape(desde + ' 00:00:00')} AND ${db.escape(hasta + ' 23:59:59')}`;
     const ppPrecioEff = 'COALESCE(NULLIF(pp.precio, 0), pc.precio, 0)';
