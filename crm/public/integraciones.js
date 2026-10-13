@@ -116,9 +116,11 @@ function togglePwd(id, btn) {
   document.getElementById('btnEjecutarCron')?.addEventListener('click', async () => {
     const message = document.getElementById('cron-mensaje-broadcast').value.trim();
     if (!message) { toast('Escribe el mensaje recordatorio antes de ejecutar', 'danger'); return; }
+    const terapeutasCron = await api('/cron/terapeutas', { loader: false }).catch(() => []);
+    const destinatariosCron = terapeutasCron.filter(t => t.recibe && t.tiene_telefono && t.tiene_pacientes);
     const okCron = await confirmDialog({
       title: 'Ejecutar recordatorio',
-      message: '¿Enviar el recordatorio a todos los terapeutas con rol Terapeuta y teléfono registrado?',
+      message: `¿Enviar el recordatorio a ${destinatariosCron.length} terapeuta(s) (seleccionados, con teléfono y con pacientes asignados)?`,
       confirmLabel: 'Enviar ahora',
     });
     if (!okCron) return;
@@ -148,9 +150,9 @@ function togglePwd(id, btn) {
   document.getElementById('btnBroadcast')?.addEventListener('click', async () => {
     const message = document.getElementById('cron-mensaje-broadcast').value.trim();
     if (!message) { toast('Escribe un mensaje antes de enviar', 'danger'); return; }
-    const terapeutas  = await api('/terapeutas').catch(() => []);
-    const conTelefono = terapeutas.filter(t => t.activo && t.rol === 'terapeuta' && t.telefono && String(t.telefono).trim());
-    if (!conTelefono.length) { toast('Ningún terapeuta con rol Terapeuta tiene teléfono registrado', 'danger'); return; }
+    const terapeutas  = await api('/cron/terapeutas').catch(() => []);
+    const conTelefono = terapeutas.filter(t => t.recibe && t.tiene_telefono && t.tiene_pacientes);
+    if (!conTelefono.length) { toast('Ningún terapeuta seleccionado tiene teléfono y pacientes asignados', 'danger'); return; }
     const okBroadcast = await confirmDialog({
       title: 'Enviar broadcast',
       message: `¿Enviar este mensaje a ${conTelefono.length} terapeuta(s)?\n\n${message}`,
@@ -165,6 +167,83 @@ function togglePwd(id, btn) {
       });
     } catch (err) { toast('Error: '+err.message, 'danger'); }
   });
+
+  const recList = document.getElementById('rec-terapeutas-list');
+  const recCount = document.getElementById('rec-terapeutas-count');
+
+  function recChecks() {
+    return recList ? [...recList.querySelectorAll('input.rec-terapeuta')] : [];
+  }
+
+  function updateRecCount() {
+    if (!recCount) return;
+    const all = recChecks();
+    recCount.textContent = `${all.filter(c => c.checked).length} de ${all.length}`;
+  }
+
+  function renderRecTerapeutas(lista) {
+    if (!recList) return;
+    recList.textContent = '';
+    if (!lista.length) {
+      const span = document.createElement('span');
+      span.style.cssText = 'font-size:13px;color:var(--text-muted)';
+      span.textContent = 'No hay terapeutas activos.';
+      recList.appendChild(span);
+    }
+    lista.forEach(t => {
+      const label = document.createElement('label');
+      label.style.cssText = 'display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.className = 'rec-terapeuta';
+      cb.value = String(t.id);
+      cb.checked = !!t.recibe;
+      cb.style.cssText = 'width:16px;height:16px';
+      cb.addEventListener('change', updateRecCount);
+      const name = document.createElement('span');
+      name.textContent = `${t.nombre} ${t.apellido || ''}`.trim() + (t.tiene_telefono ? '' : ' (sin teléfono)');
+      label.append(cb, name);
+      if (!t.tiene_pacientes) {
+        const nota = document.createElement('span');
+        nota.style.cssText = 'font-size:12px;color:var(--text-muted)';
+        nota.textContent = 'sin pacientes — no recibirá el recordatorio aunque esté marcado';
+        label.appendChild(nota);
+      }
+      recList.appendChild(label);
+    });
+    updateRecCount();
+  }
+
+  async function loadRecTerapeutas() {
+    if (!recList) return;
+    try {
+      renderRecTerapeutas(await api('/cron/terapeutas', { loader: false }));
+    } catch (err) {
+      recList.textContent = 'No se pudo cargar la lista.';
+      toast(err.message, 'danger');
+    }
+  }
+
+  document.getElementById('btnRecSelAll')?.addEventListener('click', () => {
+    recChecks().forEach(c => { c.checked = true; });
+    updateRecCount();
+  });
+  document.getElementById('btnRecSelNone')?.addEventListener('click', () => {
+    recChecks().forEach(c => { c.checked = false; });
+    updateRecCount();
+  });
+  document.getElementById('btnSaveRecTerapeutas')?.addEventListener('click', async () => {
+    try {
+      const ids = recChecks().filter(c => c.checked).map(c => Number(c.value));
+      const r = await api('/cron/terapeutas', {
+        method: 'PUT',
+        body: { terapeuta_ids: ids },
+        successMessage: 'Selección de terapeutas guardada',
+      });
+      renderRecTerapeutas(r.terapeutas || []);
+    } catch (err) { toast(err.message, 'danger'); }
+  });
+  loadRecTerapeutas();
 
   document.getElementById('btnEnviarManual')?.addEventListener('click', async () => {
     const to = await promptDialog({

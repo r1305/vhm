@@ -179,6 +179,8 @@ router.use('/api/whatsapp',      require('./routes/whatsapp'));
 router.use('/api/encuestas', require('./routes/encuestas'));
 router.use('/api/track',      require('./routes/tracker'));
 
+router.use('/api/cron/terapeutas', require('./routes/cronTerapeutas'));
+
 // Cron config
 router.get('/api/cron/config', require('./lib/menuPermisos').requireMenuPermisoApi('integraciones'), async (req, res) => {
   try {

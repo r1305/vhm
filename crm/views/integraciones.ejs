@@ -48,5 +48,17 @@
       </div>
     </div>
   </div>
+  <div class="card">
+    <div class="card-header"><span><i class="fas fa-user-check" style="color:var(--primary)"></i> Terapeutas que reciben recordatorios</span><span class="badge badge-gray" id="rec-terapeutas-count"></span></div>
+    <div class="card-body">
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px">Solo los terapeutas marcados que tengan pacientes activos asignados reciben el recordatorio de WhatsApp (envío automático, "Ejecutar ahora" y "Enviar a todos").</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+        <button type="button" class="btn btn-outline btn-sm" id="btnRecSelAll"><i class="fas fa-check-double"></i> Seleccionar todos</button>
+        <button type="button" class="btn btn-outline btn-sm" id="btnRecSelNone"><i class="fas fa-times"></i> Desmarcar todos</button>
+      </div>
+      <div id="rec-terapeutas-list" style="display:flex;flex-direction:column;gap:6px;max-height:280px;overflow:auto;margin-bottom:12px"><span style="font-size:13px;color:var(--text-muted)">Cargando…</span></div>
+      <button type="button" class="btn btn-primary btn-sm" id="btnSaveRecTerapeutas"><i class="fas fa-save"></i> Guardar selección</button>
+    </div>
+  </div>
 </div>
 

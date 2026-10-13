@@ -285,6 +285,15 @@ async function ensureSchema() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
 
+    // Terapeutas excluidos del recordatorio WhatsApp (sin fila = recibe)
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS cron_terapeutas_excluidos (
+        terapeuta_id INT NOT NULL PRIMARY KEY,
+        created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (terapeuta_id) REFERENCES terapeutas(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
     // Re-agregar hora_inicio y hora_fin a citas con defaults
     try { await conn.execute("ALTER TABLE citas ADD COLUMN hora_inicio TIME NOT NULL DEFAULT '17:00:00'"); } catch (_) {}
     try { await conn.execute("ALTER TABLE citas ADD COLUMN hora_fin TIME NOT NULL DEFAULT '18:00:00'"); } catch (_) {}

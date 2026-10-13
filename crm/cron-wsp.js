@@ -69,15 +69,18 @@ async function sendBroadcastToTerapeutas(message) {
   const stats = { enviados: 0, omitidos: 0, errores: [] };
 
   const [terapeutas] = await pool.execute(
-    `SELECT nombre, telefono FROM terapeutas
-     WHERE activo = 1
-       AND rol = 'terapeuta'
-       AND telefono IS NOT NULL
-       AND TRIM(telefono) != ''`
+    `SELECT t.nombre, t.telefono FROM terapeutas t
+     LEFT JOIN cron_terapeutas_excluidos x ON x.terapeuta_id = t.id
+     WHERE t.activo = 1
+       AND t.rol = 'terapeuta'
+       AND x.terapeuta_id IS NULL
+       AND EXISTS (SELECT 1 FROM pacientes p WHERE p.terapeuta_id = t.id AND p.estado = 'activo')
+       AND t.telefono IS NOT NULL
+       AND TRIM(t.telefono) != ''`
   );
 
   if (!terapeutas.length) {
-    console.log('[cron-wsp] Ningún terapeuta activo con rol terapeuta y teléfono');
+    console.log('[cron-wsp] Ningún terapeuta activo, seleccionado, con pacientes y con teléfono');
     return stats;
   }
 
