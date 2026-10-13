@@ -11,18 +11,34 @@
 </head>
 <body>
   <div class="login-container">
-    <div class="login-box">
-      <img src="../logo_vhm.jpeg" alt="VHM" class="logo" id="login-logo">
-      <h2>Panel de Administración</h2>
-      <p>Ingresa para gestionar tu sitio VHM</p>
-      <div class="error" id="login-error"></div>
-      <input type="text" id="login-user" placeholder="Usuario" autocomplete="username">
-      <div class="pw-wrap">
-        <input type="password" id="login-pass" placeholder="Contraseña" autocomplete="current-password">
-        <button type="button" class="pw-toggle" id="pw-toggle" aria-label="Mostrar contraseña">👁</button>
+    <aside class="login-aside">
+      <div class="login-aside-inner">
+        <span class="brand-mark lg" aria-hidden="true">LT</span>
+        <h1>La Tribu</h1>
+        <p>Panel de gestión de contenidos, comunidad y suscripciones.</p>
+        <ul class="login-points">
+          <li><span aria-hidden="true">🎬</span> Videos, categorías y eventos</li>
+          <li><span aria-hidden="true">📊</span> Encuestas y plantillas de mensajes</li>
+          <li><span aria-hidden="true">🫂</span> Miembros, administradores y accesos</li>
+        </ul>
       </div>
-      <button type="button" id="login-btn"><span id="login-btn-text">Ingresar</span></button>
-    </div>
+    </aside>
+    <main class="login-panel">
+      <div class="login-box">
+        <img src="../logo_vhm.jpeg" alt="VHM" class="logo" id="login-logo">
+        <h2>Panel de Administración</h2>
+        <p>Ingresa para gestionar tu sitio VHM</p>
+        <div class="error" id="login-error" role="alert"></div>
+        <label for="login-user">Usuario</label>
+        <input type="text" id="login-user" placeholder="Usuario" autocomplete="username">
+        <label for="login-pass">Contraseña</label>
+        <div class="pw-wrap">
+          <input type="password" id="login-pass" placeholder="Contraseña" autocomplete="current-password">
+          <button type="button" class="pw-toggle" id="pw-toggle" aria-label="Mostrar contraseña">👁</button>
+        </div>
+        <button type="button" id="login-btn"><span id="login-btn-text">Ingresar</span></button>
+      </div>
+    </main>
   </div>
   <script src="js/api.js"></script>
   <script src="js/auth.js"></script>

@@ -15,7 +15,8 @@
       <div><h2>⚙️ Ajustes</h2><p>Configuración general de La Tribu</p></div>
     </div>
 
-    <div class="sub-tabs">
+    <div class="settings-layout">
+    <div class="sub-tabs" aria-label="Secciones de ajustes">
       <button type="button" data-tab="suscripciones" class="active">💳 Suscripciones</button>
       <button type="button" data-tab="culqi">🏦 Culqi</button>
       <button type="button" data-tab="pixel">📊 Pixel</button>
@@ -24,6 +25,7 @@
       <button type="button" data-tab="landing">🏠 Landing</button>
       <button type="button" data-tab="comunidad">🫂 Comunidad</button>
     </div>
+    <div class="settings-panels">
 
     <!-- SUSCRIPCIONES -->
     <div data-panel="suscripciones">
@@ -163,6 +165,9 @@
       </div>
     </div>
 
+    </div>
+    </div>
+
     <!-- MODAL CHIP -->
     <div class="modal-overlay" id="modal-chip">
       <div class="modal">
@@ -173,8 +178,8 @@
         <div class="modal-body">
           <input type="hidden" id="chip-id">
           <input type="hidden" id="chip-tipo">
-          <div class="form-group"><label>Etiqueta</label><input type="text" id="chip-label" placeholder="Ej: Meditación" maxlength="80"></div>
-          <div class="form-group"><label>Orden</label><input type="number" id="chip-orden" value="0" min="0"></div>
+          <div class="form-group"><label for="chip-label">Etiqueta</label><input type="text" id="chip-label" placeholder="Ej: Meditación" maxlength="80"></div>
+          <div class="form-group"><label for="chip-orden">Orden</label><input type="number" id="chip-orden" value="0" min="0"></div>
           <div class="form-group" style="display:flex;align-items:center;gap:12px">
             <label style="margin:0">Activo</label>
             <label class="switch"><input type="checkbox" id="chip-activo" checked><span class="slider"></span></label>
@@ -193,9 +198,16 @@
           <button type="button" class="modal-close" data-modal-close="modal-plan">✕</button>
         </div>
         <div class="modal-body">
-          <div class="form-group"><label>Nombre</label><input type="text" id="pf-nombre" placeholder="Plan Base"></div>
-          <div class="form-group"><label>Precio (S/)</label><input type="number" id="pf-precio" placeholder="39.90" step="0.01" min="0"></div>
-          <div class="form-group"><label>Vigencia (días)</label><input type="number" id="pf-vigencia" placeholder="30" min="1" value="30"></div>
+          <div class="form-section">
+            <div class="form-section-title"><span class="step">1</span>Plan</div>
+            <div class="form-group"><label for="pf-nombre">Nombre</label><input type="text" id="pf-nombre" placeholder="Plan Base"></div>
+            <div class="form-grid">
+              <div class="form-group"><label for="pf-precio">Precio (S/)</label><input type="number" id="pf-precio" placeholder="39.90" step="0.01" min="0"></div>
+              <div class="form-group"><label for="pf-vigencia">Vigencia (días)</label><input type="number" id="pf-vigencia" placeholder="30" min="1" value="30"></div>
+            </div>
+          </div>
+          <div class="form-section">
+            <div class="form-section-title"><span class="step">2</span>Descripción</div>
           <div class="form-group">
             <label style="display:flex;align-items:center;justify-content:space-between">
               <span>Descripción</span>
@@ -205,6 +217,7 @@
               </span>
             </label>
             <div id="pf-descripcion-editor" style="min-height:90px"></div>
+          </div>
           </div>
         </div>
         <div class="modal-footer">

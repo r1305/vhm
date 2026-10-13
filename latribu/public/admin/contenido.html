@@ -7,26 +7,58 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/admin.css">
   <script src="js/base.js"></script>
+  <style>
+    .cf-field.form-group { padding: 14px 0; border-bottom: 1px solid var(--border-color); margin: 0; }
+    .cf-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; flex-wrap: wrap; }
+    .cf-head label, .cf-head legend { font-size: .9rem; font-weight: 600; color: var(--text-primary); margin: 0 0 6px; padding: 0; }
+    .cf-field fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+    .cf-help { font-size: .78rem; color: var(--text-muted); margin: 6px 0 0; line-height: 1.45; }
+    .cf-marcas { font-size: .78rem; margin: 6px 0 0; padding-left: 18px; color: var(--text-secondary); }
+    .cf-marcas code, .cf-aviso code { font-weight: 700; }
+    .cf-aviso { font-size: .78rem; margin: 6px 0; padding: 8px 10px; border-left: 4px solid #d97706; background: var(--bg-hover); border-radius: 6px; }
+    .cf-error { font-size: .8rem; font-weight: 600; color: #b91c1c; margin: 6px 0 0; }
+    [data-theme="dark"] .cf-error { color: #fca5a5; }
+    .cf-field [aria-invalid="true"] { border: 2px dashed #b91c1c !important; }
+    .cf-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+    .cf-row { display: flex; gap: 6px; align-items: flex-start; }
+    .cf-row > .cf-grow { flex: 1; min-width: 0; }
+    .cf-item { border: 1px solid var(--border-color); border-radius: 10px; padding: 10px 12px; }
+    .cf-item-title { font-size: .78rem; font-weight: 700; color: var(--text-secondary); margin: 0 0 6px; }
+    .cf-sub { margin-top: 8px; }
+    .cf-sub label { font-size: .8rem; font-weight: 600; display: block; margin-bottom: 4px; }
+    .cf-btns { display: flex; gap: 4px; flex-shrink: 0; }
+    .cf-add { margin-top: 8px; }
+    .cf-avanzado { margin-top: 18px; font-size: .85rem; }
+    .cf-avanzado summary { cursor: pointer; font-weight: 600; color: var(--text-secondary); }
+    .cf-avanzado textarea { width: 100%; margin: 8px 0; font-family: ui-monospace, monospace; font-size: .78rem; padding: 12px; border-radius: 10px; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary); box-sizing: border-box; }
+    #contenido-msg ul { margin: 6px 0 0; padding-left: 18px; }
+  </style>
 </head>
 <body>
   <div id="admin-root"><div id="page-main" style="display:none">
     <div class="section-header">
-      <div><h2>📄 Contenido del sitio</h2><p>Textos de la landing y pantallas del miembro (JSON por sección)</p></div>
+      <div><h2>📄 Contenido del sitio</h2><p>Textos de la landing y pantallas del miembro. Elige una sección, cambia los textos y pulsa «Guardar cambios».</p></div>
     </div>
-    <div style="display:grid;grid-template-columns:minmax(220px,280px) 1fr;gap:20px;align-items:start">
-      <div class="card"><div class="card-body" style="padding:12px">
+    <div class="split-layout">
+      <div class="card"><div class="card-header"><h3>Secciones</h3></div><div class="card-body" style="padding:12px">
         <div id="contenido-slugs" style="display:flex;flex-direction:column;gap:4px"></div>
       </div></div>
-      <div class="card"><div class="card-body">
+      <div class="card"><div class="card-body padded">
         <h3 id="contenido-slug-title" style="margin:0 0 8px;font-size:1rem">—</h3>
         <p id="contenido-slug-hint" style="font-size:.82rem;color:var(--text-muted);margin:0 0 12px"></p>
-        <textarea id="contenido-json" rows="22" style="width:100%;font-family:ui-monospace,monospace;font-size:.78rem;padding:12px;border-radius:10px;border:1px solid var(--border-color);background:var(--bg-input);color:var(--text-primary);box-sizing:border-box"></textarea>
-        <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:14px">
-          <button type="button" class="btn btn-primary" id="btn-contenido-guardar">💾 Guardar</button>
-          <button type="button" class="btn btn-outline" id="btn-contenido-formatear">Formatear JSON</button>
-          <button type="button" class="btn btn-outline" id="btn-contenido-restaurar">Restaurar default</button>
+        <form id="contenido-form" novalidate aria-labelledby="contenido-slug-title"></form>
+        <div class="form-actions">
+          <button type="button" class="btn btn-primary" id="btn-contenido-guardar">💾 Guardar cambios</button>
+          <button type="button" class="btn btn-outline" id="btn-contenido-restaurar">↺ Restaurar toda la sección al texto original</button>
         </div>
-        <div class="msg-box" id="contenido-msg" style="margin-top:12px"></div>
+        <div class="msg-box" id="contenido-msg" role="status" aria-live="polite" tabindex="-1" style="margin-top:12px"></div>
+        <details class="cf-avanzado" id="contenido-avanzado">
+          <summary>Ver/editar JSON (avanzado)</summary>
+          <p class="cf-help">Solo para personal técnico. Los cambios aquí se pasan al formulario con «Aplicar»; después pulsa «Guardar cambios».</p>
+          <label for="contenido-json" class="sr-only">JSON de la sección</label>
+          <textarea id="contenido-json" rows="16" spellcheck="false"></textarea>
+          <button type="button" class="btn btn-outline btn-sm" id="btn-contenido-aplicar-json">Aplicar JSON al formulario</button>
+        </details>
       </div></div>
     </div>
   </div></div>

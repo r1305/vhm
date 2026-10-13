@@ -18,6 +18,12 @@
 
   function canSee(itemId) { return AdminAuth.hasAccess(itemId); }
 
+  function themeLabel() {
+    return AdminAuth.state.theme === 'dark'
+      ? '<span aria-hidden="true">☀️</span><span class="theme-text">Modo claro</span>'
+      : '<span aria-hidden="true">🌙</span><span class="theme-text">Modo oscuro</span>';
+  }
+
   /**
    * Devuelve la pagina a la que puede ir el usuario, o null si no tiene ninguna.
    *
@@ -91,8 +97,9 @@
       return items.filter(canSee).map(function (id) {
         const item = NAV_META[id];
         const active = id === page ? ' active' : '';
-        return '<button type="button" class="nav-item' + active + '" data-href="' + item.href + '">' +
-          '<span class="nav-icon">' + item.icon + '</span> ' + AdminApi.escapeHtml(item.label) + '</button>';
+        const current = id === page ? ' aria-current="page"' : '';
+        return '<button type="button" class="nav-item' + active + '"' + current + ' data-href="' + item.href + '">' +
+          '<span class="nav-icon" aria-hidden="true">' + item.icon + '</span> ' + AdminApi.escapeHtml(item.label) + '</button>';
       }).join('');
     }
 
@@ -104,26 +111,30 @@
       '<div class="sidebar-overlay" id="sidebar-overlay"></div>' +
       '<aside class="sidebar" id="sidebar">' +
         '<div class="sidebar-brand">' +
+          '<span class="brand-mark" aria-hidden="true">LT</span>' +
           '<div class="brand-text"><div class="brand-title">La Tribu Admin</div><div class="brand-sub">Panel de gestión</div></div>' +
         '</div>' +
-        '<nav class="sidebar-nav">' +
+        '<nav class="sidebar-nav" aria-label="Secciones del panel">' +
           '<div class="nav-label">Principal</div>' + navHtml(navPrincipal) +
           '<div class="nav-label">Configuración</div>' + navHtml(navConfig) +
         '</nav>' +
         '<div class="sidebar-footer">' +
-          '<div class="user-card"><div class="user-avatar">' + AdminApi.escapeHtml(initial) + '</div>' +
-            '<div><div class="user-name">' + AdminApi.escapeHtml(user.nombre || user.username || 'Usuario') + '</div>' +
-            '<div class="user-rol">' + rolLabel + '</div></div></div>' +
-          '<button type="button" class="btn-theme" id="btn-theme" style="width:100%;padding:10px;margin-bottom:6px;border:1px solid var(--border-strong);background:var(--bg-card);border-radius:10px;font-size:.85rem;color:var(--text-secondary);font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">' +
-            (AdminAuth.state.theme === 'dark' ? '☀️ Modo claro' : '🌙 Modo oscuro') + '</button>' +
-          '<button type="button" class="btn-logout" id="btn-logout"><span>🚪</span> Cerrar sesión</button>' +
+          '<div class="user-card"><div class="user-avatar" aria-hidden="true">' + AdminApi.escapeHtml(initial) + '</div>' +
+            '<div class="user-meta"><div class="user-name">' + AdminApi.escapeHtml(user.nombre || user.username || 'Usuario') + '</div>' +
+            '<div class="user-rol">' + rolLabel + '</div></div>' +
+            '<button type="button" class="btn-logout" id="btn-logout" title="Cerrar sesión"><span aria-hidden="true">🚪</span><span class="sr-only">Cerrar sesión</span></button>' +
+          '</div>' +
         '</div>' +
       '</aside>' +
       '<div class="main-wrapper">' +
-        '<div class="topbar">' +
-          '<button type="button" class="hamburger" id="btn-hamburger">☰</button>' +
-          '<div class="page-title">' + AdminApi.escapeHtml(title) + '</div>' +
-        '</div>' +
+        '<header class="topbar">' +
+          '<button type="button" class="hamburger" id="btn-hamburger" aria-label="Abrir menú">☰</button>' +
+          '<div class="crumbs"><span class="crumb-root">La Tribu Admin</span><span class="crumb-sep" aria-hidden="true">/</span>' +
+            '<span class="page-title">' + AdminApi.escapeHtml(title) + '</span></div>' +
+          '<div class="topbar-actions">' +
+            '<button type="button" class="btn-theme" id="btn-theme">' + themeLabel() + '</button>' +
+          '</div>' +
+        '</header>' +
         '<div class="content" id="admin-content"></div>' +
       '</div>';
 
@@ -136,7 +147,7 @@
     document.getElementById('btn-logout').addEventListener('click', AdminAuth.logout);
     document.getElementById('btn-theme').addEventListener('click', function () {
       AdminAuth.toggleTheme();
-      this.innerHTML = AdminAuth.state.theme === 'dark' ? '☀️ Modo claro' : '🌙 Modo oscuro';
+      this.innerHTML = themeLabel();
     });
 
     const sidebar = document.getElementById('sidebar');

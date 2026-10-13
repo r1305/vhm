@@ -17,25 +17,27 @@
         <p>Pacientes importados con acceso a La Tribu</p>
       </div>
     </div>
+    <div class="filter-row">
+      <input type="text" id="inp-busqueda" placeholder="Buscar por nombre, correo o celular…" aria-label="Buscar usuarios" style="flex:1">
+      <div class="toolbar-end">
+        <label for="sel-per-page">Ver por página</label>
+        <select id="sel-per-page">
+          <option value="10">10</option>
+          <option value="20">20</option>
+          <option value="30">30</option>
+          <option value="40">40</option>
+          <option value="50">50</option>
+        </select>
+      </div>
+    </div>
     <div class="card">
       <div class="card-body">
-        <div class="filter-row" style="margin-bottom:16px">
-          <input type="text" id="inp-busqueda" placeholder="Buscar por nombre, correo o celular…" style="flex:1;min-width:200px">
-          <div style="display:flex;align-items:center;gap:8px;white-space:nowrap">
-            <span style="font-size:.85rem;color:var(--text-muted)">Ver por página</span>
-            <select id="sel-per-page">
-              <option value="10">10</option>
-              <option value="20">20</option>
-              <option value="30">30</option>
-              <option value="40">40</option>
-              <option value="50">50</option>
-            </select>
-          </div>
-        </div>
         <div id="tribu-body"></div>
-        <div id="pg-wrap" style="display:none">
-          <div id="pg-buttons" style="display:flex;justify-content:center;align-items:center;gap:8px;margin-top:20px;flex-wrap:wrap"></div>
-          <div id="pg-total" style="text-align:center;font-size:.8rem;color:#9ca3af;margin-top:8px"></div>
+      </div>
+      <div id="pg-wrap" style="display:none">
+        <div class="card-footer">
+          <div id="pg-total" class="pager-total"></div>
+          <div id="pg-buttons" class="pager"></div>
         </div>
       </div>
     </div>

@@ -28,6 +28,8 @@
           <button type="button" class="modal-close" data-modal-close="modal-usuario">✕</button>
         </div>
         <div class="modal-body">
+          <div class="form-section">
+          <div class="form-section-title"><span class="step">1</span>Datos personales</div>
           <div class="form-group">
             <label for="f-username">Nombre de usuario</label>
             <input type="text" id="f-username" placeholder="usuario" autocomplete="username">
@@ -40,6 +42,9 @@
             <label for="f-email">Email</label>
             <input type="email" id="f-email" placeholder="usuario@correo.com" autocomplete="email">
           </div>
+          </div>
+          <div class="form-section">
+          <div class="form-section-title"><span class="step">2</span>Acceso</div>
           <div class="form-group">
             <label for="f-password">Contraseña <span class="optional" id="f-password-hint">(obligatoria para nuevos usuarios)</span></label>
             <input type="password" id="f-password" placeholder="••••••••" autocomplete="new-password">
@@ -50,6 +55,7 @@
               <option value="ADMIN">Administrador</option>
               <option value="SUPER_ADMIN" id="opt-super-admin" style="display:none">Super Admin</option>
             </select>
+          </div>
           </div>
         </div>
         <div class="modal-footer">
