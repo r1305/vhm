@@ -5,6 +5,12 @@ let categoriasData = [];
 let videoActual = null;
 let filtroCategoria = 'all';
 let busqueda = '';
+let tagsData = [];
+let filtroTags = new Set();
+let perfilTagIds = [];
+let recomendadosIds = [];
+let ordenVista = 'para_ti';
+let personalizado = false;
 
 function getLikedSet() {
   try { return new Set(JSON.parse(localStorage.getItem('vhm_liked_videos') || '[]')); } catch { return new Set(); }
@@ -30,12 +36,26 @@ function duracionLabel(d) {
   return s;
 }
 
+function tagsCardHtml(v) {
+  const tags = Array.isArray(v.tags) ? v.tags : [];
+  if (!tags.length) return '';
+  const perfil = new Set(perfilTagIds);
+  const visibles = tags
+    .slice()
+    .sort((a, b) => (perfil.has(b.id) ? 1 : 0) - (perfil.has(a.id) ? 1 : 0))
+    .slice(0, 4);
+  return `<div class="lib-guide-card-tags">${visibles.map(t =>
+    `<span class="lib-guide-card-tag${perfil.has(t.id) ? ' match' : ''}">${escapeHtml(t.label)}</span>`
+  ).join('')}</div>`;
+}
+
 function guideCardHtml(v) {
   const cat = escapeHtml((v.categoria_nombre || 'La Tribu').toUpperCase());
   const dur = escapeHtml(duracionLabel(v.duracion) || '');
   const meta = [dur, cat].filter(Boolean).join(' · ');
   const sub = escapeHtml(v.subtitulo || String(v.descripcion || '').slice(0, 120));
-  return `<button type="button" class="lib-guide-card" onclick="abrirVideo(${v.id})">
+  const vid = Number.parseInt(v.id, 10) || 0;
+  return `<button type="button" class="lib-guide-card" onclick="abrirVideo(${vid})">
     <div class="lib-guide-cover">
       <span class="lib-guide-cover-kicker">La Tribu · Guía práctica</span>
       <span class="lib-guide-cover-title">${escapeHtml(v.titulo || 'Recurso')}</span>
@@ -44,6 +64,7 @@ function guideCardHtml(v) {
       ${meta ? `<div class="lib-guide-meta">${meta}</div>` : ''}
       <h3>${escapeHtml(v.titulo || '')}</h3>
       <p>${sub || 'Contenido para acompañarte en tu camino.'}</p>
+      ${tagsCardHtml(v)}
     </div>
   </button>`;
 }
@@ -65,12 +86,108 @@ function bannerSinSuscripcion() {
 
 function videosFiltrados() {
   const q = busqueda.trim().toLowerCase();
-  return videosData.filter(v => {
+  const rows = videosData.filter(v => {
     if (filtroCategoria !== 'all' && String(v.categoria_id) !== String(filtroCategoria)) return false;
+    if (filtroTags.size && !(v.tags || []).some(t => filtroTags.has(t.id))) return false;
     if (!q) return true;
-    const blob = `${v.titulo} ${v.subtitulo} ${v.descripcion || ''} ${v.categoria_nombre || ''}`.toLowerCase();
+    const tagsTxt = (v.tags || []).map(t => t.label).join(' ');
+    const blob = `${v.titulo} ${v.subtitulo} ${v.descripcion || ''} ${v.categoria_nombre || ''} ${tagsTxt}`.toLowerCase();
     return blob.includes(q);
   });
+  if (personalizado && ordenVista === 'catalogo') {
+    rows.sort((a, b) => (a.posicion || 0) - (b.posicion || 0));
+  }
+  return rows;
+}
+
+function perfilTagsDisponibles() {
+  const ids = new Set(tagsData.map(t => t.id));
+  return perfilTagIds.filter(id => ids.has(id));
+}
+
+function renderTags() {
+  const wrap = document.getElementById('libTags');
+  if (!wrap) return;
+  if (!tagsData.length) { wrap.hidden = true; wrap.innerHTML = ''; return; }
+  wrap.hidden = false;
+  const perfil = perfilTagsDisponibles();
+  const esPerfil = perfil.length > 0 && filtroTags.size === perfil.length && perfil.every(id => filtroTags.has(id));
+  let html = '<span class="lib-guide-tags-label">Intereses y objetivos</span>';
+  if (perfil.length) {
+    html += `<button type="button" class="lib-guide-filter is-tag is-perfil${esPerfil ? ' on' : ''}" data-tag-perfil="1" aria-pressed="${esPerfil}">Mis intereses</button>`;
+  }
+  html += tagsData.map(t => {
+    const on = filtroTags.has(t.id);
+    const id = Number.parseInt(t.id, 10) || 0;
+    return `<button type="button" class="lib-guide-filter is-tag${on ? ' on' : ''}" data-tag-id="${id}" aria-pressed="${on}">${escapeHtml(t.label)}</button>`;
+  }).join('');
+  if (filtroTags.size) {
+    html += '<button type="button" class="lib-guide-filter is-tag" data-tag-clear="1">Quitar filtro</button>';
+  }
+  wrap.innerHTML = html;
+}
+
+function onTagsClick(e) {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  if (btn.hasAttribute('data-tag-clear')) {
+    filtroTags = new Set();
+  } else if (btn.hasAttribute('data-tag-perfil')) {
+    const perfil = perfilTagsDisponibles();
+    const esPerfil = filtroTags.size === perfil.length && perfil.every(id => filtroTags.has(id));
+    filtroTags = esPerfil ? new Set() : new Set(perfil);
+  } else if (btn.hasAttribute('data-tag-id')) {
+    const id = Number.parseInt(btn.getAttribute('data-tag-id'), 10);
+    if (filtroTags.has(id)) filtroTags.delete(id); else filtroTags.add(id);
+  } else {
+    return;
+  }
+  renderTags();
+  pintarGrid();
+}
+
+function pintarRecomendados() {
+  const sec = document.getElementById('libReco');
+  const grid = document.getElementById('libRecoGrid');
+  if (!sec || !grid) return;
+  const rows = recomendadosIds
+    .map(id => videosData.find(v => v.id === id))
+    .filter(Boolean);
+  if (!rows.length) { sec.hidden = true; grid.innerHTML = ''; return; }
+  sec.hidden = false;
+  const locked = !tieneSuscripcion();
+  grid.innerHTML = `<div class="lib-guide-grid ${locked ? 'tribu-locked' : ''}">${rows.map(guideCardHtml).join('')}</div>`;
+}
+
+function prepararOrden() {
+  const wrap = document.getElementById('libOrderWrap');
+  const sel = document.getElementById('libOrder');
+  if (!wrap || !sel) return;
+  const visible = personalizado && perfilTagIds.length > 0;
+  wrap.hidden = !visible;
+  if (!visible) ordenVista = 'catalogo';
+  sel.value = ordenVista;
+}
+
+async function obtenerVideos() {
+  if (window.tribuUser && typeof tribuFetch === 'function') {
+    try {
+      const res = await tribuFetch('/videos/para-ti');
+      if (res.ok) {
+        const d = await res.json();
+        if (d && Array.isArray(d.videos)) {
+          personalizado = true;
+          perfilTagIds = Array.isArray(d.perfil_tag_ids) ? d.perfil_tag_ids : [];
+          recomendadosIds = Array.isArray(d.recomendados) ? d.recomendados : [];
+          return d.videos;
+        }
+      }
+    } catch {}
+  }
+  const res = await fetch(`${API}/videos`);
+  if (!res.ok) throw new Error();
+  const d = await res.json();
+  return Array.isArray(d) ? d : [];
 }
 
 function renderFiltros() {
@@ -111,7 +228,7 @@ async function applyBibliotecaCopy() {
   TribuContenido.setText(document.querySelector('.member-page-eyebrow'), c.eyebrow);
   TribuContenido.setText(document.querySelector('.member-page-hero h1'), c.titulo);
   TribuContenido.setText(document.querySelector('.member-page-lead'), c.lead);
-  TribuContenido.setText(document.querySelector('.lib-guide-section h2'), c.section_titulo);
+  TribuContenido.setText(document.querySelector('.lib-guide-main h2'), c.section_titulo);
   TribuContenido.setText(document.querySelector('.lib-guide-note'), c.nota);
   const lbl = document.querySelector('.lib-guide-search-label');
   const inp = document.getElementById('libSearch');
@@ -124,12 +241,17 @@ async function cargar() {
   const cont = document.getElementById('contenido');
   window._tribuLoaderStart();
   try {
-    const [vRes, cRes] = await Promise.all([fetch(`${API}/videos`), fetch(`${API}/videos/categorias`)]);
-    if (!vRes.ok) throw new Error();
-    videosData = await vRes.json();
+    const [vData, cRes, tRes] = await Promise.all([
+      obtenerVideos(),
+      fetch(`${API}/videos/categorias`),
+      fetch(`${API}/videos/tags`).catch(() => null),
+    ]);
+    videosData = vData;
     categoriasData = cRes.ok ? await cRes.json() : [];
+    tagsData = tRes && tRes.ok ? await tRes.json() : [];
     if (!Array.isArray(videosData)) videosData = [];
     if (!Array.isArray(categoriasData)) categoriasData = [];
+    if (!Array.isArray(tagsData)) tagsData = [];
 
     if (!videosData.length) {
       cont.innerHTML = '<div class="empty">Próximamente nuevos recursos disponibles.</div>';
@@ -137,6 +259,9 @@ async function cargar() {
     }
 
     renderFiltros();
+    renderTags();
+    prepararOrden();
+    pintarRecomendados();
     pintarGrid();
     if (!tieneSuscripcion()) {
       cont.insertAdjacentHTML('beforebegin', bannerSinSuscripcion());
@@ -237,6 +362,13 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarPlayer
 
 document.getElementById('libSearch')?.addEventListener('input', (e) => {
   busqueda = e.target.value;
+  pintarGrid();
+});
+
+document.getElementById('libTags')?.addEventListener('click', onTagsClick);
+
+document.getElementById('libOrder')?.addEventListener('change', (e) => {
+  ordenVista = e.target.value === 'catalogo' ? 'catalogo' : 'para_ti';
   pintarGrid();
 });
 

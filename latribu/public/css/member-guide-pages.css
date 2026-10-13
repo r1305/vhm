@@ -211,6 +211,76 @@
   margin-top: 18px;
   line-height: 1.5;
 }
+.lib-guide-tags-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+.lib-guide-tags-label {
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin-right: 4px;
+}
+.lib-guide-filter.is-tag {
+  padding: 6px 12px;
+  font-size: .74rem;
+}
+.lib-guide-filter.is-perfil {
+  border-style: dashed;
+}
+.lib-guide-order {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: .78rem;
+  color: var(--text-secondary);
+}
+.lib-guide-order select {
+  padding: 6px 10px;
+  border-radius: var(--radius-chip);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-primary, inherit);
+  font-size: .78rem;
+}
+.lib-guide-reco {
+  margin-bottom: 28px;
+}
+.lib-guide-reco[hidden],
+.lib-guide-tags-bar[hidden],
+.lib-guide-order[hidden] {
+  display: none;
+}
+.lib-guide-reco-lead {
+  font-size: .84rem;
+  color: var(--text-secondary);
+  margin: -8px 0 14px;
+}
+.lib-guide-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 10px;
+}
+.lib-guide-card-tag {
+  font-size: .66rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: var(--radius-chip);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+.lib-guide-card-tag.match {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--on-primary);
+}
 
 /* —— Calendario (#calendar) —— */
 body.member-page.calendar .cal-info-line {

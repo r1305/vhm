@@ -16,6 +16,8 @@
   var editandoVideoId = null;
   var thumbFile = null;
   var eliminarThumb = false;
+  var catalogoTags = { intereses: [], objetivos: [] };
+  var tagsSeleccionados = [];
 
   /* ── state: categorias tab ── */
   var categoriasAdmin = [];
@@ -142,6 +144,47 @@
     } catch (e) { /* optional */ }
   }
 
+  async function cargarCatalogoTags() {
+    var tipos = ['intereses', 'objetivos'];
+    await Promise.all(tipos.map(async function (tipo) {
+      try {
+        var res = await AdminApi.apiFetch('/tribu-catalogo/admin/' + tipo, { headers: AdminApi.authHeaders() });
+        if (!res.ok) return;
+        var data = await res.json();
+        catalogoTags[tipo] = Array.isArray(data) ? data : [];
+      } catch (e) { /* optional */ }
+    }));
+  }
+
+  function renderTagsModal() {
+    ['intereses', 'objetivos'].forEach(function (tipo) {
+      var box = document.getElementById('vf-tags-' + tipo);
+      if (!box) return;
+      var lista = catalogoTags[tipo].filter(function (c) {
+        return c.activo || tagsSeleccionados.indexOf(c.id) >= 0;
+      });
+      if (!lista.length) {
+        box.innerHTML = '<span class="field-hint">Sin opciones en el catálogo</span>';
+        return;
+      }
+      box.innerHTML = lista.map(function (c) {
+        var on = tagsSeleccionados.indexOf(c.id) >= 0;
+        return '<button type="button" class="vf-tag-chip' + (on ? ' on' : '') + (c.activo ? '' : ' inactivo') + '" data-tag-id="' + c.id + '" aria-pressed="' + on + '">' +
+          AdminApi.escapeHtml(c.label) + (c.activo ? '' : ' (inactivo)') + '</button>';
+      }).join('');
+    });
+  }
+
+  function onTagChipClick(e) {
+    var btn = e.target.closest('[data-tag-id]');
+    if (!btn) return;
+    var id = parseInt(btn.getAttribute('data-tag-id'), 10);
+    var idx = tagsSeleccionados.indexOf(id);
+    if (idx >= 0) tagsSeleccionados.splice(idx, 1);
+    else tagsSeleccionados.push(id);
+    renderTagsModal();
+  }
+
   async function cargarVideos() {
     try {
       var qs = 'search=' + encodeURIComponent(videoSearch) +
@@ -212,6 +255,8 @@
     document.getElementById('vf-duracion').value = '';
     document.getElementById('vf-descripcion').value = '';
     document.getElementById('vf-activo').value = '1';
+    tagsSeleccionados = [];
+    renderTagsModal();
     thumbFile = null;
     eliminarThumb = false;
     document.getElementById('vf-thumbnail').value = '';
@@ -229,6 +274,8 @@
     document.getElementById('vf-duracion').value = v.duracion || '';
     document.getElementById('vf-descripcion').value = v.descripcion || '';
     document.getElementById('vf-activo').value = v.activo ? '1' : '0';
+    tagsSeleccionados = Array.isArray(v.tag_ids) ? v.tag_ids.slice() : [];
+    renderTagsModal();
     thumbFile = null;
     eliminarThumb = false;
     document.getElementById('vf-thumbnail').value = '';
@@ -257,6 +304,7 @@
     fd.append('duracion', document.getElementById('vf-duracion').value);
     fd.append('descripcion', document.getElementById('vf-descripcion').value);
     fd.append('activo', document.getElementById('vf-activo').value);
+    fd.append('tag_ids', JSON.stringify(tagsSeleccionados));
     if (thumbFile) fd.append('thumbnail', thumbFile);
     if (eliminarThumb) fd.append('eliminar_thumbnail', 'true');
 
@@ -274,7 +322,7 @@
       if (res.ok) {
         AdminUtils.hideModal('modal-video');
         cargarVideos();
-        toast('Video guardado', 'success');
+        toast(data.aviso || 'Video guardado', data.aviso ? 'error' : 'success');
       } else {
         toast(data.error || 'Error al guardar', 'error');
       }
@@ -727,7 +775,7 @@
     if (tabsLoaded[tab]) return;
     tabsLoaded[tab] = true;
     if (tab === 'resumen') cargarStats();
-    else if (tab === 'videos') { cargarCategorias(); cargarVideos(); }
+    else if (tab === 'videos') { cargarCategorias(); cargarCatalogoTags(); cargarVideos(); }
     else if (tab === 'categorias') cargarCategoriasAdmin();
     else if (tab === 'textos') cargarLanding();
     else if (tab === 'eventos') cargarEventos();
@@ -753,6 +801,8 @@
     });
     document.getElementById('btn-nuevo-video').addEventListener('click', mostrarModalVideo);
     document.getElementById('btn-guardar-video').addEventListener('click', guardarVideo);
+    document.getElementById('vf-tags-intereses').addEventListener('click', onTagChipClick);
+    document.getElementById('vf-tags-objetivos').addEventListener('click', onTagChipClick);
     document.getElementById('vid-pg-prev').addEventListener('click', function () {
       if (videoPage > 1) { videoPage--; cargarVideos(); }
     });

@@ -27,9 +27,23 @@
     <label class="lib-guide-search-label" for="libSearch">Buscar por tema o título</label>
     <input type="search" id="libSearch" class="lib-guide-search" placeholder="Por ejemplo: ansiedad, límites o relaciones" autocomplete="off">
     <div class="lib-guide-filters" id="libFilters" role="tablist" aria-label="Filtrar por tema"></div>
+    <div class="lib-guide-tags-bar" id="libTags" aria-label="Filtrar por intereses y objetivos" hidden></div>
+    <div class="lib-guide-order" id="libOrderWrap" hidden>
+      <label for="libOrder">Ordenar</label>
+      <select id="libOrder">
+        <option value="para_ti">Para ti</option>
+        <option value="catalogo">Catálogo</option>
+      </select>
+    </div>
   </div>
 
-  <section class="lib-guide-section">
+  <section class="lib-guide-section lib-guide-reco" id="libReco" hidden>
+    <h2>Recomendados para ti</h2>
+    <p class="lib-guide-reco-lead">Según los intereses y objetivos de tu perfil.</p>
+    <div id="libRecoGrid"></div>
+  </section>
+
+  <section class="lib-guide-section lib-guide-main">
     <h2>Un recurso para cada momento.</h2>
     <div id="contenido">
       <div class="member-empty">Cargando recursos…</div>

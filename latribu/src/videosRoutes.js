@@ -317,6 +317,130 @@ function eliminarArchivoLocal(thumbUrl) {
   }
 }
 
+const MAX_TAGS_VIDEO = 20;
+const MAX_RECOMENDADOS = 6;
+
+function parseTagIds(raw) {
+  if (raw === undefined || raw === null) return [];
+  let lista = raw;
+  if (typeof raw === 'string') {
+    const s = raw.trim();
+    if (!s) return [];
+    try { lista = JSON.parse(s); } catch (_) { lista = s.split(','); }
+  }
+  if (!Array.isArray(lista)) lista = [lista];
+  const ids = new Set();
+  for (const x of lista) {
+    const n = Number.parseInt(x, 10);
+    if (Number.isInteger(n) && n > 0) ids.add(n);
+    if (ids.size >= MAX_TAGS_VIDEO) break;
+  }
+  return [...ids];
+}
+
+function labelsDePerfil(valor) {
+  let lista = valor;
+  if (typeof valor === 'string') {
+    try { lista = JSON.parse(valor); } catch (_) { return []; }
+  }
+  if (!Array.isArray(lista)) return [];
+  return lista
+    .filter(x => typeof x === 'string')
+    .map(x => x.trim().slice(0, 80))
+    .filter(Boolean)
+    .slice(0, 10);
+}
+
+async function tagsPorVideo(videoIds) {
+  const mapa = new Map();
+  if (!videoIds.length) return mapa;
+  const [rows] = await pool.query(
+    `SELECT vt.video_id, c.id, c.tipo, c.label
+       FROM video_tags vt
+       JOIN tribu_catalogo_chips c ON c.id = vt.chip_id
+      WHERE c.activo = 1 AND vt.video_id IN (?)
+      ORDER BY c.tipo ASC, c.orden ASC, c.id ASC`,
+    [videoIds]
+  );
+  for (const r of rows) {
+    if (!mapa.has(r.video_id)) mapa.set(r.video_id, []);
+    mapa.get(r.video_id).push({ id: r.id, tipo: r.tipo, label: r.label });
+  }
+  return mapa;
+}
+
+async function listarVideosPublicos() {
+  const [rows] = await pool.execute(
+    `SELECT v.id, v.categoria_id, v.titulo, v.subtitulo, v.descripcion,
+            v.thumbnail_url, v.duracion, v.vistas, v.likes, v.orden,
+            c.nombre AS categoria_nombre
+       FROM videos v
+       LEFT JOIN video_categorias c ON c.id = v.categoria_id
+      WHERE v.activo = 1
+      ORDER BY v.orden ASC, v.fecha_creacion DESC`
+  );
+  const mapa = await tagsPorVideo(rows.map(r => r.id));
+  for (const r of rows) r.tags = mapa.get(r.id) || [];
+  return rows;
+}
+
+function filtrarPorTags(rows, tagIds) {
+  if (!tagIds.length) return rows;
+  const set = new Set(tagIds);
+  return rows.filter(r => r.tags.some(t => set.has(t.id)));
+}
+
+async function chipsDelPerfil(tribuUserId) {
+  const [[u]] = await pool.execute(
+    'SELECT intereses, objetivos FROM tribu_users WHERE id = ? LIMIT 1',
+    [tribuUserId]
+  );
+  if (!u) return [];
+  const intereses = labelsDePerfil(u.intereses);
+  const objetivos = labelsDePerfil(u.objetivos);
+  const conds = [];
+  const params = [];
+  if (intereses.length) { conds.push("(tipo = 'intereses' AND label IN (?))"); params.push(intereses); }
+  if (objetivos.length) { conds.push("(tipo = 'objetivos' AND label IN (?))"); params.push(objetivos); }
+  if (!conds.length) return [];
+  const [rows] = await pool.query(
+    `SELECT id FROM tribu_catalogo_chips WHERE activo = 1 AND (${conds.join(' OR ')})`,
+    params
+  );
+  return rows.map(r => r.id);
+}
+
+async function guardarTagsVideo(videoId, tagIds) {
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    await conn.query('DELETE FROM video_tags WHERE video_id = ?', [videoId]);
+    if (tagIds.length) {
+      await conn.query(
+        'INSERT INTO video_tags (video_id, chip_id) SELECT ?, id FROM tribu_catalogo_chips WHERE id IN (?)',
+        [videoId, tagIds]
+      );
+    }
+    await conn.commit();
+  } catch (err) {
+    try { await conn.rollback(); } catch (_) {}
+    throw err;
+  } finally {
+    conn.release();
+  }
+}
+
+async function guardarTagsSiVienen(videoId, body) {
+  if (!body || body.tag_ids === undefined) return null;
+  try {
+    await guardarTagsVideo(videoId, parseTagIds(body.tag_ids));
+    return null;
+  } catch (err) {
+    console.error('[videos] guardar etiquetas:', err.message);
+    return 'El video se guardó, pero no se pudieron guardar las etiquetas.';
+  }
+}
+
 /* =========================================================
    RUTAS PÚBLICAS
    ========================================================= */
@@ -407,20 +531,59 @@ router.get('/categorias', async (req, res) => {
 router.get('/', async (req, res) => {
   try {
     await ensureVideoSchema();
-    const [rows] = await pool.execute(
-      `SELECT v.id, v.categoria_id, v.titulo, v.subtitulo, v.descripcion,
-              v.thumbnail_url, v.duracion, v.vistas, v.likes, v.orden,
-              c.nombre AS categoria_nombre
-         FROM videos v
-         LEFT JOIN video_categorias c ON c.id = v.categoria_id
-        WHERE v.activo = 1
-        ORDER BY v.orden ASC, v.fecha_creacion DESC`
-    );
-    res.json(rows);
+    const rows = await listarVideosPublicos();
+    res.json(filtrarPorTags(rows, parseTagIds(req.query.tags)));
   } catch (err) {
     console.error(err);
     if (publicListFallback(res, err, 'videos')) return;
     res.status(500).json({ error: 'Error al obtener videos' });
+  }
+});
+
+router.get('/tags', async (req, res) => {
+  try {
+    await ensureVideoSchema();
+    const [rows] = await pool.query(
+      `SELECT c.id, c.tipo, c.label, COUNT(DISTINCT v.id) AS total_videos
+         FROM tribu_catalogo_chips c
+         JOIN video_tags vt ON vt.chip_id = c.id
+         JOIN videos v ON v.id = vt.video_id AND v.activo = 1
+        WHERE c.activo = 1
+        GROUP BY c.id, c.tipo, c.label, c.orden
+        ORDER BY c.tipo ASC, c.orden ASC, c.id ASC`
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    if (publicListFallback(res, err, 'tags')) return;
+    res.status(500).json({ error: 'Error al obtener etiquetas' });
+  }
+});
+
+router.get('/para-ti', tribuAuthMiddleware, async (req, res) => {
+  try {
+    await ensureVideoSchema();
+    const perfilIds = await chipsDelPerfil(req.tribuUser.id);
+    const perfil = new Set(perfilIds);
+    const rows = await listarVideosPublicos();
+    rows.forEach((r, i) => {
+      r.posicion = i;
+      r.coincidencias = r.tags.filter(t => perfil.has(t.id)).length;
+    });
+    rows.sort((a, b) => b.coincidencias - a.coincidencias);
+    const recomendados = rows
+      .filter(r => r.coincidencias > 0)
+      .slice(0, MAX_RECOMENDADOS)
+      .map(r => r.id);
+    res.set('Cache-Control', 'private, no-store');
+    res.json({
+      perfil_tag_ids: perfilIds,
+      recomendados,
+      videos: filtrarPorTags(rows, parseTagIds(req.query.tags)),
+    });
+  } catch (err) {
+    console.error('[videos] para-ti:', err.message);
+    res.status(500).json({ error: 'Error al obtener recomendaciones' });
   }
 });
 
@@ -583,13 +746,15 @@ router.get('/admin', authMiddleware, async (req, res) => {
     const totalPages = Math.max(1, Math.ceil(total / limit));
 
     const [rows] = await pool.query(
-      `SELECT v.*, c.nombre AS categoria_nombre, u.nombre AS creado_por_nombre
+      `SELECT v.*, c.nombre AS categoria_nombre, u.nombre AS creado_por_nombre,
+              (SELECT GROUP_CONCAT(vt.chip_id) FROM video_tags vt WHERE vt.video_id = v.id) AS tag_ids
        FROM videos v
        LEFT JOIN video_categorias c ON c.id = v.categoria_id
        LEFT JOIN tribu_admins u ON v.creado_por = u.id
        WHERE ${where} ORDER BY ${sortCol} ${orderDir} LIMIT ? OFFSET ?`,
       [...params, limit, offset]
     );
+    for (const r of rows) r.tag_ids = r.tag_ids ? String(r.tag_ids).split(',').map(Number).filter(Number.isInteger) : [];
     res.json({ data: rows, page, totalPages, total });
   } catch (err) {
     console.error(err);
@@ -639,7 +804,8 @@ router.post('/', authMiddleware, requireAdmin, uploadMiniatura, async (req, res)
         req.user.id
       ]
     );
-    res.status(201).json({ id: result.insertId, message: 'Video creado' });
+    const avisoTags = await guardarTagsSiVienen(result.insertId, req.body);
+    res.status(201).json({ id: result.insertId, message: 'Video creado', ...(avisoTags ? { aviso: avisoTags } : {}) });
   } catch (err) {
     if (guardada) eliminarArchivoLocal(guardada);
     if (err.status === 400) return res.status(400).json({ error: err.message });
@@ -716,7 +882,8 @@ router.put('/:id', authMiddleware, requireAdmin, uploadMiniatura, async (req, re
       return res.status(404).json({ error: 'Video no encontrado' });
     }
     if (anteriorABorrar) eliminarArchivoLocal(anteriorABorrar);
-    res.json({ message: 'Video actualizado' });
+    const avisoTags = await guardarTagsSiVienen(Number(req.params.id), req.body);
+    res.json({ message: 'Video actualizado', ...(avisoTags ? { aviso: avisoTags } : {}) });
   } catch (err) {
     if (guardada) eliminarArchivoLocal(guardada);
     if (err.status === 400) return res.status(400).json({ error: err.message });

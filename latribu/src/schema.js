@@ -541,6 +541,18 @@ async function crearEsquema() {
       await pool.query('INSERT INTO tribu_catalogo_chips (tipo, label, orden) VALUES (?, ?, ?)', ['objetivos', objetivos[i], i]);
   }
 
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS video_tags (
+      video_id INT NOT NULL,
+      chip_id  INT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (video_id, chip_id),
+      KEY idx_vt_chip (chip_id),
+      CONSTRAINT fk_vt_video FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE,
+      CONSTRAINT fk_vt_chip FOREIGN KEY (chip_id) REFERENCES tribu_catalogo_chips(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+
   // ── Perfil extendido (migración) ──
   const [cols] = await pool.query('SHOW COLUMNS FROM tribu_users');
   const colNames = cols.map(c => c.Field);

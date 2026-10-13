@@ -20,6 +20,12 @@
     .top-title { flex: 1; font-size: .85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .top-num { font-size: .85rem; font-weight: 600; color: var(--text-secondary); white-space: nowrap; }
     .stats-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+    .vf-tags-group { margin-bottom: 10px; }
+    .vf-tags-title { font-size: .78rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; }
+    .vf-tags-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .vf-tag-chip { border: 1px solid var(--border-color); background: transparent; color: var(--text-secondary); border-radius: 999px; padding: 4px 10px; font-size: .78rem; cursor: pointer; }
+    .vf-tag-chip.on { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
+    .vf-tag-chip.inactivo { opacity: .6; }
     @media (max-width: 768px) {
       .summary-cards { grid-template-columns: repeat(2, 1fr); }
       .stats-grid-2 { grid-template-columns: 1fr; }
@@ -243,6 +249,18 @@
           </div>
           <div class="form-group"><label>Duración <span class="optional">(se autocompleta en Loom)</span></label><input type="text" id="vf-duracion" placeholder="1h 25min"></div>
           <div class="form-group"><label>Descripción</label><textarea id="vf-descripcion" rows="3" placeholder="Breve descripción del recurso..."></textarea></div>
+          <div class="form-group">
+            <label>Etiquetas <span class="optional">(intereses y objetivos del perfil)</span></label>
+            <div class="vf-tags-group">
+              <div class="vf-tags-title">Intereses</div>
+              <div class="vf-tags-chips" id="vf-tags-intereses"></div>
+            </div>
+            <div class="vf-tags-group">
+              <div class="vf-tags-title">Objetivos</div>
+              <div class="vf-tags-chips" id="vf-tags-objetivos"></div>
+            </div>
+            <div class="field-hint">Se usan para filtrar la biblioteca y recomendar videos según el perfil. El catálogo se edita en Ajustes → Comunidad.</div>
+          </div>
           <div class="form-group">
             <label>Miniatura <span class="optional">(opcional)</span></label>
             <div class="file-drop" id="vf-thumb-drop">
