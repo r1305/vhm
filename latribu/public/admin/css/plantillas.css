@@ -6,7 +6,8 @@
   border-radius: 16px;
   overflow: hidden;
 }
-.plantilla-evento.open { border-color: var(--color-primary); }
+.plantilla-evento { box-shadow: var(--shadow-card, var(--shadow-soft)); transition: border-color .2s, box-shadow .2s; }
+.plantilla-evento:hover, .plantilla-evento.open { border-color: var(--color-primary); }
 
 .plantilla-evento-summary {
   display: flex; align-items: center; gap: 12px; flex-wrap: wrap;

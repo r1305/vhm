@@ -9,7 +9,8 @@
   <link rel="stylesheet" href="css/admin.css">
   <style>
     .enc-list { display: flex; flex-direction: column; gap: 12px; }
-    .enc-item { border: 1px solid var(--border-color); border-radius: 14px; background: var(--bg-card); overflow: hidden; }
+    .enc-item { border: 1px solid var(--border-color); border-radius: 14px; background: var(--bg-card); overflow: hidden; box-shadow: var(--shadow-card, var(--shadow-soft)); transition: border-color .2s, box-shadow .2s; }
+    .enc-item:hover, .enc-item.open { border-color: var(--color-primary); }
     .enc-head {
       display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
       padding: 16px 18px; cursor: pointer; transition: background .15s;

@@ -23,7 +23,8 @@
     .vf-tags-group { margin-bottom: 10px; }
     .vf-tags-title { font-size: .78rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; }
     .vf-tags-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-    .vf-tag-chip { border: 1px solid var(--border-color); background: transparent; color: var(--text-secondary); border-radius: 999px; padding: 4px 10px; font-size: .78rem; cursor: pointer; }
+    .vf-tag-chip { border: 1px solid var(--border-color); background: transparent; color: var(--text-secondary); border-radius: 999px; padding: 4px 10px; font-size: .78rem; cursor: pointer; transition: background .15s, border-color .15s, color .15s; }
+    .vf-tag-chip:hover:not(.on) { border-color: var(--color-primary); color: var(--text-primary); }
     .vf-tag-chip.on { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
     .vf-tag-chip.inactivo { opacity: .6; }
     @media (max-width: 768px) {
