@@ -3,6 +3,7 @@ const pool = require('./db');
 const { authMiddleware } = require('./auth');
 const { ensureSchema } = require('./schema');
 const { listSlugs, getDefault, getMeta } = require('../lib/tribuContenidoDefaults');
+const { describirCampos, validarDatos, combinarConDefaults, DONDE } = require('../lib/tribuContenidoCampos');
 
 const router = Router();
 
@@ -23,8 +24,11 @@ async function readDatos(slug) {
   );
   if (!rows.length) return getDefault(slug);
   const raw = rows[0].datos;
-  const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
-  return parsed;
+  let parsed = raw;
+  if (typeof raw === 'string') {
+    try { parsed = JSON.parse(raw); } catch { parsed = null; }
+  }
+  return combinarConDefaults(slug, parsed);
 }
 
 function isKnownSlug(slug) {
@@ -44,7 +48,7 @@ router.get('/admin/:slug', authMiddleware, requireAdmin, async (req, res) => {
   if (!isKnownSlug(slug)) return res.status(404).json({ error: 'Sección no encontrada' });
   try {
     const datos = await readDatos(slug);
-    res.json({ slug, datos, default: getDefault(slug), meta: getMeta(slug) });
+    res.json({ slug, datos, default: getDefault(slug), meta: { ...getMeta(slug), donde: DONDE[slug] || '' }, campos: describirCampos(slug) });
   } catch {
     res.status(500).json({ error: 'Error al leer contenido' });
   }
@@ -57,6 +61,10 @@ router.put('/admin/:slug', authMiddleware, requireAdmin, async (req, res) => {
   const datos = req.body?.datos;
   if (!datos || typeof datos !== 'object' || Array.isArray(datos)) {
     return res.status(400).json({ error: 'Se requiere un objeto JSON en "datos"' });
+  }
+  const errores = validarDatos(slug, datos);
+  if (errores.length) {
+    return res.status(400).json({ error: 'Hay campos con problemas. Revísalos y vuelve a guardar.', errores });
   }
   try {
     const json = JSON.stringify(datos);
