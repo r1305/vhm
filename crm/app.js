@@ -14,7 +14,7 @@ const { getHomePath } = require('./lib/crmNav');
 
 const app  = express();
 const BASE = (process.env.APP_MOUNT_PATH || '/crm').replace(/\/$/, '');
-const ASSET_VERSION = process.env.CRM_ASSET_VERSION || '20250916a';
+const ASSET_VERSION = process.env.CRM_ASSET_VERSION || '20261013a';
 
 app.set('trust proxy', 1);
 app.set('view engine', 'ejs');

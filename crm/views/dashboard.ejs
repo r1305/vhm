@@ -11,6 +11,91 @@
   <% }) %>
 </div>
 
+<%
+  const ESTADO_LBL = { pendiente:'Pendiente', confirmada:'Confirmada', reagendada:'Reagendada', realizada:'Realizada', cancelada:'Cancelada', no_show:'No show' };
+  const ESTADO_COL = { pendiente:'#A66A13', confirmada:'#3E6FA4', reagendada:'#64B5CE', realizada:'#237A68', cancelada:'#B64A5A', no_show:'#8A8F98' };
+  const estTotal = citasEstado.reduce((s, r) => s + Number(r.total), 0);
+  let acc = 0;
+  const donut = citasEstado.map(r => { const a = acc; acc += Number(r.total) / estTotal * 100; return `${ESTADO_COL[r.estado] || '#8A8F98'} ${a}% ${acc}%`; }).join(',');
+  const maxDia = Math.max(1, ...serieDias.map(d => d.total));
+  const maxTer = Math.max(1, ...citasTerapeuta.map(t => Number(t.total)));
+  const vend = Number(sesiones.vendidas), usadas = Number(sesiones.usadas);
+  const pctUso = vend > 0 ? Math.min(100, Math.round(usadas / vend * 100)) : 0;
+%>
+<div class="dash-period">
+  <span>Periodo:</span>
+  <% [7, 30, 90].forEach(n => { %>
+  <a class="btn btn-sm <%= n === dias ? 'btn-primary' : 'btn-outline' %>" href="?dias=<%= n %>"><%= n %> días</a>
+  <% }) %>
+</div>
+
+<div class="kpi-grid">
+  <% periodoKpis.forEach(k => { %>
+  <div class="kpi-card">
+    <div class="kpi-label"><%= k.label %></div>
+    <div class="kpi-value"><%= k.value %></div>
+    <div class="kpi-sub"><%= k.sub %></div>
+  </div>
+  <% }) %>
+</div>
+
+<div class="dash-grid dash-charts">
+  <div class="card dash-wide">
+    <div class="card-header"><span><i class="fas fa-chart-column"></i> Citas por día (sin canceladas)</span><span class="dash-badge"><%= desde %> a <%= hoy %></span></div>
+    <div class="card-body">
+      <% if (serieDias.some(d => d.total)) { %>
+      <svg class="dash-bars" viewBox="0 0 <%= serieDias.length * 10 %> 100" preserveAspectRatio="none" role="img" aria-label="Citas por día">
+        <% serieDias.forEach((d, i) => { const h = d.total / maxDia * 90; %>
+        <rect x="<%= i * 10 + 1 %>" y="<%= 100 - h %>" width="8" height="<%= h %>" rx="1" fill="#176B87"><title><%= d.dia %>: <%= d.total %></title></rect>
+        <% }) %>
+      </svg>
+      <div class="dash-axis"><span><%= serieDias[0].dia %></span><span>máx. <%= maxDia %>/día</span><span><%= serieDias[serieDias.length - 1].dia %></span></div>
+      <% } else { %><div class="list-empty">Sin citas en este periodo</div><% } %>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span><i class="fas fa-chart-pie"></i> Citas por estado</span></div>
+    <div class="card-body">
+      <% if (estTotal > 0) { %>
+      <div class="dash-donut-wrap">
+        <div class="dash-donut" style="background:conic-gradient(<%= donut %>)"><span><%= estTotal %></span></div>
+        <div class="dash-legend">
+          <% citasEstado.forEach(r => { %>
+          <div><i style="background:<%= ESTADO_COL[r.estado] || '#8A8F98' %>"></i><%= ESTADO_LBL[r.estado] || r.estado %> <strong><%= r.total %></strong></div>
+          <% }) %>
+        </div>
+      </div>
+      <% } else { %><div class="list-empty">Sin citas en este periodo</div><% } %>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span><i class="fas fa-user-doctor"></i> Citas por terapeuta</span></div>
+    <div class="card-body">
+      <% if (citasTerapeuta.length) { %>
+      <% citasTerapeuta.forEach(t => { %>
+      <div class="dash-hbar">
+        <div class="dash-hbar-label" title="<%= t.nombre %> <%= t.apellido %>"><%= t.nombre %> <%= t.apellido ? t.apellido[0] + '.' : '' %></div>
+        <div class="dash-hbar-track"><div style="width:<%= Number(t.total) / maxTer * 100 %>%"></div></div>
+        <div class="dash-hbar-val"><%= t.total %></div>
+      </div>
+      <% }) %>
+      <% } else { %><div class="list-empty">Sin terapeutas activos</div><% } %>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span><i class="fas fa-ticket"></i> Sesiones de pacientes activos</span></div>
+    <div class="card-body">
+      <% if (vend > 0) { %>
+      <div class="dash-hbar-track dash-hbar-lg"><div style="width:<%= pctUso %>%"></div></div>
+      <div class="dash-axis"><span><%= usadas %> usadas (<%= pctUso %>%)</span><span><%= Number(sesiones.pendientes) %> pendientes</span><span><%= vend %> vendidas</span></div>
+      <% } else { %><div class="list-empty">Sin sesiones vendidas</div><% } %>
+    </div>
+  </div>
+</div>
+
 <div class="dash-grid">
 
   <%/* ── Próximos a agotar sesiones ── */%>

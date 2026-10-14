@@ -192,6 +192,9 @@ router.get('/dashboard', requireSession, requireMenuPermiso('dashboard'), async 
   const propio = !isStaffAdmin(user.rol);
   const own = (col) => propio ? ` AND ${col} = ?` : '';
   const ownP = propio ? [user.id] : [];
+  const dias = [7, 30, 90].includes(Number(req.query.dias)) ? Number(req.query.dias) : 30;
+  const hoy = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(new Date());
+  const desde = new Date(Date.parse(`${hoy}T12:00:00Z`) - (dias - 1) * 86400000).toISOString().slice(0, 10);
   try {
     const [
       [ [{ pacientes_activos }] ],
@@ -204,7 +207,12 @@ router.get('/dashboard', requireSession, requireMenuPermiso('dashboard'), async 
       [ enRiesgo ],
       [ sinPaquete ],
       [ packVencidos ],
-      [ ocupacion ]
+      [ ocupacion ],
+      [ citasEstado ],
+      [ citasDiaRows ],
+      [ citasTerapeuta ],
+      [ [sesiones] ],
+      [ [ingresosRow] ]
     ] = await Promise.all([
       db.execute(`SELECT COUNT(*) AS pacientes_activos FROM pacientes WHERE estado = 'activo'${own('terapeuta_id')}`, ownP),
       db.execute(`SELECT COUNT(*) AS retenidos FROM pacientes p WHERE p.estado='activo' AND ${SQL.paquetesComprados('p')} >= 2${own('p.terapeuta_id')}`, ownP),
@@ -270,8 +278,34 @@ router.get('/dashboard', requireSession, requireMenuPermiso('dashboard'), async 
         LEFT JOIN pacientes p ON p.terapeuta_id = t.id AND p.estado = 'activo'
         WHERE t.activo = 1 AND t.rol = 'terapeuta'${own('t.id')}
         GROUP BY t.id ORDER BY pacientes_asignados DESC
-      `, ownP)
+      `, ownP),
+      db.execute(`SELECT estado, COUNT(*) AS total FROM citas WHERE fecha BETWEEN ? AND ?${own('terapeuta_id')} GROUP BY estado`, [desde, hoy, ...ownP]),
+      db.execute(`SELECT DATE_FORMAT(fecha,'%Y-%m-%d') AS dia, COUNT(*) AS total FROM citas WHERE fecha BETWEEN ? AND ? AND estado <> 'cancelada'${own('terapeuta_id')} GROUP BY fecha`, [desde, hoy, ...ownP]),
+      db.execute(`
+        SELECT t.nombre, t.apellido, COUNT(c.id) AS total,
+               COALESCE(SUM(c.estado = 'realizada'), 0) AS realizadas
+        FROM terapeutas t
+        LEFT JOIN citas c ON c.terapeuta_id = t.id AND c.fecha BETWEEN ? AND ? AND c.estado <> 'cancelada'
+        WHERE t.activo = 1 AND t.rol = 'terapeuta'${own('t.id')}
+        GROUP BY t.id ORDER BY total DESC
+      `, [desde, hoy, ...ownP]),
+      db.execute(`
+        SELECT COALESCE(SUM(${SQL.sesionesTotal('p')}), 0)      AS vendidas,
+               COALESCE(SUM(${SQL.citasConfirmadas('p')}), 0)   AS usadas,
+               COALESCE(SUM(${SQL.sesionesPendientes('p')}), 0) AS pendientes
+        FROM pacientes p WHERE p.estado = 'activo'${own('p.terapeuta_id')}
+      `, ownP),
+      propio ? Promise.resolve([[{ ingresos: null }]])
+             : db.execute(`SELECT COALESCE(SUM(monto), 0) AS ingresos FROM pagos WHERE estado = 'completado' AND DATE(created_at) BETWEEN ? AND ?`, [desde, hoy])
     ]);
+
+    const estadoTotal = (e) => Number(citasEstado.find(r => r.estado === e)?.total || 0);
+    const citasPeriodo = citasEstado.reduce((s, r) => s + Number(r.total), 0);
+    const porDia = Object.fromEntries(citasDiaRows.map(r => [r.dia, Number(r.total)]));
+    const serieDias = Array.from({ length: dias }, (_, i) => {
+      const dia = new Date(Date.parse(`${desde}T12:00:00Z`) + i * 86400000).toISOString().slice(0, 10);
+      return { dia, total: porDia[dia] || 0 };
+    });
 
     const tasaRetencion   = pacientes_activos > 0 ? Math.round((retenidos / pacientes_activos) * 100) : 0;
     const tasaNoShow      = citas_mes > 0 ? Math.round((no_show_mes / citas_mes) * 100) : 0;
@@ -284,8 +318,18 @@ router.get('/dashboard', requireSession, requireMenuPermiso('dashboard'), async 
       { label: 'Sin sesiones',        value: sin_paquete, sub: 'activos que nunca compraron', state: sin_paquete > 0 ? 'warn' : null },
     ];
 
+    const asistencia = estadoTotal('realizada') + estadoTotal('no_show');
+    const periodoKpis = [
+      { label: 'Citas del periodo', value: citasPeriodo - estadoTotal('cancelada'), sub: `${estadoTotal('cancelada')} canceladas` },
+      { label: 'Realizadas', value: estadoTotal('realizada'), sub: `${estadoTotal('no_show')} no show` },
+      { label: 'Asistencia', value: asistencia ? `${Math.round(estadoTotal('realizada') / asistencia * 100)}%` : '—', sub: 'realizadas vs no show' },
+      { label: 'Sesiones pendientes', value: Number(sesiones.pendientes), sub: `${Number(sesiones.usadas)} usadas de ${Number(sesiones.vendidas)} vendidas` },
+    ];
+    if (ingresosRow.ingresos != null) periodoKpis.push({ label: 'Ingresos del periodo', value: `S/ ${Number(ingresosRow.ingresos).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, sub: 'pagos completados' });
+
     render(res, 'dashboard', {
-      user, kpis,
+      user, kpis, periodoKpis, dias, desde, hoy,
+      citasEstado, serieDias, citasTerapeuta, sesiones,
       proximosAgotar, enRiesgo,
       sinPaquete, packVencidos, ocupacion,
       scripts: `<script src="${req.app.locals.BASE}/dashboard.js"></script>`
