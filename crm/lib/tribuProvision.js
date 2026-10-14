@@ -2,18 +2,15 @@ const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const { getPool, isConfigured } = require('./tribuDb');
 
-const PLAN_PRECIO = 89.9;
-
 function normalizeEmail(email) {
   return email ? String(email).trim().toLowerCase() : '';
 }
 
 async function getPlanVipId(conn) {
   const [[plan]] = await conn.execute(
-    'SELECT id FROM suscripciones WHERE precio = ? ORDER BY id ASC LIMIT 1',
-    [PLAN_PRECIO]
+    'SELECT id FROM suscripciones ORDER BY precio ASC, id ASC LIMIT 1'
   );
-  if (!plan) throw errorValidacion('No existe plan de suscripción S/ 89.90 en La Tribu');
+  if (!plan) throw errorValidacion('No existe plan de suscripción en La Tribu');
   return plan.id;
 }
 
