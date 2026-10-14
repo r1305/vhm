@@ -13,7 +13,7 @@ const { getHomePath } = require('./lib/crmNav');
 function crearApp({ basePath = '/crm', alCambiarCron = () => {} } = {}) {
   const app  = express();
   const BASE = String(basePath).replace(/\/$/, '');
-  const ASSET_VERSION = env('ASSET_VERSION') || '20261013b';
+  const ASSET_VERSION = env('ASSET_VERSION') || '20261014a';
 
   app.set('trust proxy', 1);
   app.set('view engine', 'ejs');

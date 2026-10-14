@@ -635,7 +635,10 @@ router.get('/distribucion', requireSession, requireMenuPermiso('distribucion'), 
   try {
     const user = req.session.user;
     const ppPrecioEff = 'COALESCE(NULLIF(pp.precio, 0), pc.precio, 0)';
-    const { desde, hasta, hayRango, filterDate } = rangoFechas(req.query);
+    const hoyLima = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Lima' });
+    const { desde, hasta, hayRango, filterDate } = rangoFechas(
+      req.query.desde || req.query.hasta ? req.query : { desde: hoyLima.slice(0, 8) + '01', hasta: hoyLima }
+    );
     const propio = isStaffAdmin(user.rol) ? '' : ' AND t.id = ?';
     const [terapeutas] = await db.execute(
       `SELECT t.id, t.nombre, t.apellido, COUNT(pp.id) AS paquetes,

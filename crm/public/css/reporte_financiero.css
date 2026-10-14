@@ -96,7 +96,7 @@
   color: var(--text-primary);
 }
 .rf-table tr:last-child td { border-bottom: none; }
-.rf-num { text-align: right; font-variant-numeric: tabular-nums; }
+.rf-table th.rf-num, .rf-num { text-align: right; font-variant-numeric: tabular-nums; }
 
 @media (max-width: 900px) {
   .rf-grid-2 { grid-template-columns: 1fr; }
