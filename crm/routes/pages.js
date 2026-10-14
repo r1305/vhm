@@ -62,7 +62,6 @@ function requireMenuPermiso(clave) {
   };
 }
 
-const puedeRepararPaquetes = (user) => ['admin', 'superadmin'].includes(user?.rol);
 
 // ── Helper render con layout ─────────────────────────────────────
 async function render(res, view, data = {}) {
@@ -443,22 +442,8 @@ router.get('/integraciones', requireSession, requireMenuPermiso('integraciones')
 });
 
 // ── REPORTE FINANCIERO ──────────────────────────────────────────
-// Antes de calcular cifras, asegura que cada paquete asignado a un paciente tenga
-// precio y cuotas coherentes; si no, el paciente desaparecería del reporte o
-// figuraría con S/ 0.
-async function asegurarPreciosPaquetes() {
-  try {
-    const { repairPaquetesPrecioInconsistente } = require('../lib/paquetesPaciente');
-    const n = await repairPaquetesPrecioInconsistente();
-    if (n > 0) console.log(`[crm] Reporte financiero: reparados ${n} paquetes con precio/cuotas inconsistentes`);
-  } catch (err) {
-    console.error('[crm] asegurarPreciosPaquetes:', err.message);
-  }
-}
-
 router.get('/reporte-financiero', requireSession, requireMenuPermiso('reporte_financiero'), async (req, res) => {
   try {
-    if (puedeRepararPaquetes(req.session.user)) await asegurarPreciosPaquetes();
     const esFecha = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s || '');
     const desde = req.query.desde;
     const hasta = req.query.hasta;
@@ -574,7 +559,6 @@ router.get('/reporte-financiero/detalles', requireSession, requireMenuPermiso('r
       const hoy = fechaHoyLima();
       return res.redirect(302, `${req.app.locals.BASE}/reporte-financiero/detalles?desde=${hoy}&hasta=${hoy}`);
     }
-    if (puedeRepararPaquetes(req.session.user)) await asegurarPreciosPaquetes();
     const filterDate = (col) =>
       ` AND ${col} BETWEEN ${db.escape(desde + ' 00:00:00')} AND ${db.escape(hasta + ' 23:59:59')}`;
     const ppPrecioEff = 'COALESCE(NULLIF(pp.precio, 0), pc.precio, 0)';

@@ -425,7 +425,7 @@ router.post('/admin/upload/imagen-evento', authMiddleware, requireAdmin, (req, r
       return res.status(400).json({ error: msg });
     }
     if (!req.file) return res.status(400).json({ error: 'No se recibió imagen' });
-    const base = (res.locals.basePath || process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
+    const base = (res.locals.basePath || require('./mount').basePath() || '').replace(/\/$/, '');
     const url = buildPublicUploadUrl(base, req.file.filename);
     res.json({ ok: true, url });
   });

@@ -1,0 +1,324 @@
+const env = require('./lib/env');
+const path    = require('path');
+const express = require('express');
+const cors    = require('cors');
+const helmet  = require('helmet');
+const session = require('express-session');
+const MySQLStore = require('express-mysql-session')(session);
+const { rateLimit } = require('express-rate-limit');
+
+const { ensureSchema } = require('./schema');
+const { getHomePath } = require('./lib/crmNav');
+
+function crearApp({ basePath = '/crm', alCambiarCron = () => {} } = {}) {
+  const app  = express();
+  const BASE = String(basePath).replace(/\/$/, '');
+  const ASSET_VERSION = env('ASSET_VERSION') || '20261013b';
+
+  app.set('trust proxy', 1);
+  app.set('view engine', 'ejs');
+  app.set('views', path.join(__dirname, 'views'));
+  app.locals.BASE = BASE;
+  app.locals.assetVersion = ASSET_VERSION;
+
+  // Cabeceras de seguridad (A1). CSP deshabilitada por ahora para no romper el
+  // front (inline scripts / assets); activar con una política propia cuando se
+  // revise el HTML. CORP en 'cross-origin' para no bloquear la carga de assets
+  // desde otros orígenes permitidos.
+  app.use(helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  }));
+
+  try { app.use(require('compression')({ threshold: 1024 })); } catch (_) {}
+
+  // CORS (A3) — lista fija de orígenes. Nunca '*' junto con credentials:true.
+  const frontendUrl = String(env('FRONTEND_URL') || '').trim().replace(/\/+$/, '');
+  if (!frontendUrl) {
+    console.warn('[crm/cors] FRONTEND_URL no definida — se usa la lista fija de orígenes permitidos');
+  } else if (frontendUrl === '*') {
+    console.warn('[crm/cors] FRONTEND_URL="*" no permitido con credentials — ignorado');
+  }
+  const allowedOrigins = [
+    'https://vhm.com.pe',
+    'https://www.vhm.com.pe',
+    'http://vhm.com.pe',
+    'http://www.vhm.com.pe',
+    ...(frontendUrl && frontendUrl !== '*' && frontendUrl !== 'null' ? [frontendUrl] : []),
+    'http://localhost:3001',
+    'http://localhost:3000',
+    'http://localhost:3002',
+    'http://localhost:3003',
+    'http://localhost:3004',
+    'http://127.0.0.1:3001',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:3002',
+    'http://127.0.0.1:3003',
+    'http://127.0.0.1:3004',
+    ...(env('CORS_EXTRA') || '').split(',').map(o => o.trim()).filter(Boolean),
+  ];
+  app.use(cors({
+    origin: (origin, cb) => {
+      if (env('DEBUG_CORS') === '1') {
+        console.log('[crm/cors-debug]', { origin, NODE_ENV: process.env.NODE_ENV });
+      }
+      if (!origin) return cb(null, true); // Same-origin, SSR, no Origin header
+      try {
+        const u = new URL(origin);
+        const h = u.hostname;
+        if (h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === '::ffff:127.0.0.1') {
+          return cb(null, true);
+        }
+        if (h === 'vhm.com.pe' || h.endsWith('.vhm.com.pe')) {
+          return cb(null, true);
+        }
+      } catch (e) {
+        if (env('DEBUG_CORS') === '1') console.log('[crm/cors-debug] invalid url', e.message);
+      }
+      if (allowedOrigins.includes(origin)) return cb(null, true);
+      if (process.env.NODE_ENV !== 'production') {
+        return cb(null, true);
+      }
+      cb(new Error('CORS no permitido'));
+    },
+    credentials: true,
+  }));
+
+  app.use(express.json({ limit: '1mb' }));
+  app.use(express.urlencoded({ extended: true }));
+
+  const SESSION_MAX_AGE = 10 * 60 * 60 * 1000; // 10h
+  const sessionStore = new MySQLStore({
+    createDatabaseTable: false,
+    clearExpired: true,
+    checkExpirationInterval: 15 * 60 * 1000,
+    expiration: SESSION_MAX_AGE,
+    endConnectionOnClose: false,
+  }, require('./lib/db'));
+
+  app.use(session({
+    secret: env('SESSION_SECRET') || (process.env.NODE_ENV === 'production' ? (() => { throw new Error('FATAL: SESSION_SECRET not defined in production'); })() : 'crm_session_secret_change_me'),
+    store: sessionStore,
+    resave: false,
+    saveUninitialized: false,
+    cookie: { httpOnly: true, maxAge: SESSION_MAX_AGE },
+  }));
+
+  app.use(express.static(path.join(__dirname, 'public'), { maxAge: '1h', index: false }));
+
+  // Rate limiting (C2). Van DESPUÉS del static: los assets existentes se sirven
+  // arriba y no consumen presupuesto; solo se limitan páginas y API.
+  // Nota: el contador es por IP (trust proxy = 1). Varias personas detrás de la
+  // misma IP de oficina comparten presupuesto: subir RATE_LIMIT_MAX si hace falta.
+  const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: Number(env('RATE_LIMIT_MAX')) || 100,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: { error: 'Demasiadas solicitudes. Intenta de nuevo en unos minutos.' },
+  });
+
+  if (process.env.NODE_ENV === 'production') {
+    const authLimiter = rateLimit({
+      windowMs: 15 * 60 * 1000,
+      limit: Number(env('AUTH_RATE_LIMIT_MAX')) || 10,
+      standardHeaders: 'draft-7',
+      legacyHeaders: false,
+      message: { error: 'Demasiados intentos. Espera 15 minutos.' },
+    });
+    app.use([
+      '/api/auth/login',
+      '/api/auth/register',
+      '/api/auth/forgot-password',
+      '/api/auth/reset-password',
+      '/login',
+    ], authLimiter);
+  }
+  app.use(apiLimiter);
+
+  function sendHtml(res, file) {
+    const fs = require('fs');
+    const fp = path.join(__dirname, 'public', file);
+    if (!fs.existsSync(fp)) return res.status(404).send('Not found');
+    let html = fs.readFileSync(fp, 'utf8');
+    html = html.replace(/(<head[^>]*>)/i,
+      `$1\n  <script>window.__APP_BASE__=${JSON.stringify(BASE)};</script>`);
+    res.type('html').send(html);
+  }
+
+  // Rutas MPA (páginas)
+  app.use(require('./routes/pages'));
+
+  const router = express.Router();
+
+  router.get('/health', (_, res) => res.json({ ok: true, service: 'vhm-crm' }));
+
+  const citasRouter = require('./routes/citas');
+  router.post('/api/citas/agendar',     citasRouter);
+  router.get ('/api/citas/disponibles', citasRouter);
+
+  // Tracker web — publico (sin auth)
+  router.post('/api/track/sesion', require('./routes/tracker'));
+  router.post('/api/track/evento', require('./routes/tracker'));
+
+  router.use('/api/auth',       require('./routes/auth'));
+  router.use('/api/terapeutas', require('./routes/terapeutas'));
+  router.use('/api/pacientes',  require('./routes/pacientes'));
+  router.use('/api/paquetes',   require('./routes/paquetes'));
+  router.use('/api/citas',      citasRouter);
+  router.use('/api/bloqueos',    require('./routes/bloqueos'));
+  router.use('/api/publico',     require('./routes/publico'));
+  router.use('/api/historial',  require('./routes/historial'));
+  router.use('/api/pagos',      require('./routes/pagos'));
+  router.use('/api/reportes',   require('./routes/reportes'));
+  router.use('/api/config',        require('./routes/config'));
+  router.use('/api/integraciones', require('./routes/integraciones'));
+  router.use('/api/whatsapp',      require('./routes/whatsapp'));
+  router.use('/api/encuestas', require('./routes/encuestas'));
+  router.use('/api/track',      require('./routes/tracker'));
+
+  router.use('/api/cron/terapeutas', require('./routes/cronTerapeutas'));
+
+  // Cron config
+  router.get('/api/cron/config', require('./lib/menuPermisos').requireMenuPermisoApi('integraciones'), async (req, res) => {
+    try {
+      const db = require('./lib/db');
+      const [[row]] = await db.execute('SELECT enabled, hora, minuto, dias, mensaje FROM cron_config WHERE id=1');
+      res.json(row || { enabled: 0, hora: 18, minuto: 0, dias: '1,2,3,4,5,6', mensaje: '' });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  router.post('/api/cron/config', require('./lib/menuPermisos').requireMenuPermisoApi('integraciones'), async (req, res) => {
+    try {
+      const db = require('./lib/db');
+      const { enabled, hora, minuto, dias, mensaje } = req.body;
+      const mensajeVal = mensaje != null ? String(mensaje).trim().slice(0, 4000) : null;
+      await db.execute(
+        'UPDATE cron_config SET enabled=?, hora=?, minuto=?, dias=?, mensaje=? WHERE id=1',
+        [enabled ? 1 : 0, Number(hora), Number(minuto), dias, mensajeVal || null]
+      );
+      alCambiarCron();
+      res.json({ ok: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  // Vía única de cron: el endpoint manual no omite el guard (ver cron-wsp.js). 
+  // No usar node-cron y este endpoint en paralelo para el mismo envío.
+  router.post('/api/cron/ejecutar', require('./lib/menuPermisos').requireMenuPermisoApi('integraciones'), async (req, res) => {
+    try {
+      const stats = await require('./cron-wsp').runCronWSP({ manual: true });
+      res.json({ ok: true, message: 'Cron ejecutado', ...stats });
+    } catch (err) {
+      console.error('[cron manual]', err.message);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Broadcast manual: requiere flag explícito para evitar uso accidental cuando cron programado existe.
+  // Usar ?dailyCheckKey=wsp_broadcast:YYYY-MM-DD (clave diaria) o enviar { dailyCheckKey: 'wsp_broadcast:YYYY-MM-DD' }
+  router.post('/api/cron/broadcast', require('./lib/menuPermisos').requireMenuPermisoApi('integraciones'), async (req, res) => {
+    const { message, dailyCheckKey } = req.body || {};
+    if (!message) return res.status(400).json({ error: 'message requerido' });
+    const { getLimaDateKey } = require('./cron-wsp');
+    const expectedKey = `wsp_broadcast:${getLimaDateKey()}`;
+    const providedKey = dailyCheckKey || req.query.dailyCheckKey;
+    if (!providedKey || providedKey !== expectedKey) {
+      return res.status(400).json({ error: 'Flag diario requerido: dailyCheckKey=' + expectedKey });
+    }
+    try {
+      const { sendBroadcastToTerapeutas } = require('./cron-wsp');
+      const { loadOpenwaConfigFromDB, isOpenwaConfigured } = require('./lib/greenapi');
+      await loadOpenwaConfigFromDB();
+      if (!isOpenwaConfigured()) return res.json({ ok: true, enviados: 0, omitidos: 0, sinConfig: true });
+      const stats = await sendBroadcastToTerapeutas(message.trim());
+      res.json({ ok: true, ...stats });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  // Test WhatsApp openwa
+  router.post('/api/whatsapp/test', require('./lib/menuPermisos').requireMenuPermisoApi('integraciones'), async (req, res) => {
+    const { sendWhatsAppGreen } = require('./lib/greenapi');
+    const { to, message } = req.body || {};
+    if (!to || !message) return res.status(400).json({ error: 'to y message requeridos' });
+    try {
+      const result = await sendWhatsAppGreen({ to, message });
+      res.json(result);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  router.get('/', (req, res) => res.redirect(`${BASE}/${getHomePath(req.session?.user)}`));
+  router.get('*', (req, res) => {
+    if (req.path.startsWith('/api')) return res.status(404).json({ error: 'Ruta no encontrada' });
+    res.redirect(`${BASE}/${getHomePath(req.session?.user)}`);
+  });
+
+  app.use(router);
+
+  return { app, sessionStore };
+}
+
+// Cargar config de BD al arrancar (SMTP, WA)
+async function loadConfigFromDB() {
+  try {
+    const dbPool = require('./lib/db');
+    const [rows] = await dbPool.execute('SELECT clave, valor FROM configuracion');
+    const map = {
+      smtp_host:    'SMTP_HOST',    smtp_port:   'SMTP_PORT',
+      smtp_user:    'SMTP_USER',    smtp_pass:   'SMTP_PASS',
+      smtp_from:    'SMTP_FROM',    smtp_secure: 'SMTP_SECURE',
+      sms_gateway_url:   'SMS_GATEWAY_URL',
+      sms_gateway_token: 'SMS_GATEWAY_TOKEN',
+      sms_gateway_type:  'SMS_GATEWAY_TYPE',
+      openwa_url:            'OPENWA_URL',
+      openwa_api_key:        'OPENWA_API_KEY',
+      openwa_session:        'OPENWA_SESSION',
+      openwa_webhook_token:  'OPENWA_WEBHOOK_TOKEN',
+    };
+    for (const r of rows) {
+      if (r.valor && map[r.clave]) env.set(map[r.clave], r.valor);
+    }
+    console.log('[crm] Config cargada desde BD');
+  } catch (err) {
+    console.warn('[crm] No se pudo cargar config:', err.message);
+  }
+}
+
+async function prepararDatos() {
+  await ensureSchema();
+  await loadConfigFromDB();
+  // Generar íconos PWA si no existen o son inválidos
+  try {
+    const fs = require('fs');
+    const zlib = require('zlib');
+    const iconDir = path.join(__dirname, 'public', 'icons');
+    if (!fs.existsSync(iconDir)) fs.mkdirSync(iconDir, { recursive: true });
+    function crc32(buf) {
+      let c = 0xFFFFFFFF;
+      const t = [];
+      for (let i = 0; i < 256; i++) { let v = i; for (let j = 0; j < 8; j++) v = (v&1)?0xEDB88320^(v>>>1):v>>>1; t[i]=v; }
+      for (let i = 0; i < buf.length; i++) c = t[(c^buf[i])&0xFF]^(c>>>8);
+      return (c^0xFFFFFFFF)>>>0;
+    }
+    function pngChunk(type, data) {
+      const t=Buffer.from(type,'ascii'), len=Buffer.alloc(4), crc=Buffer.alloc(4);
+      len.writeUInt32BE(data.length); crc.writeUInt32BE(crc32(Buffer.concat([t,data])));
+      return Buffer.concat([len,t,data,crc]);
+    }
+    function makePNG(size) {
+      const ihdr=Buffer.alloc(13); ihdr.writeUInt32BE(size,0); ihdr.writeUInt32BE(size,4); ihdr[8]=8; ihdr[9]=2;
+      const row=Buffer.alloc(1+size*3); row[0]=0;
+      for(let x=0;x<size;x++){row[1+x*3]=124;row[2+x*3]=58;row[3+x*3]=237;}
+      const raw=Buffer.concat(Array(size).fill(row));
+      return Buffer.concat([Buffer.from([137,80,78,71,13,10,26,10]),pngChunk('IHDR',ihdr),pngChunk('IDAT',zlib.deflateSync(raw)),pngChunk('IEND',Buffer.alloc(0))]);
+    }
+    for (const size of [192, 512]) {
+      const fp = path.join(iconDir, `icon-${size}.png`);
+      const buf = fs.existsSync(fp) ? fs.readFileSync(fp) : Buffer.alloc(0);
+      const valid = buf.length > 100 && buf.slice(0,4).toString('hex') === '89504e47';
+      if (!valid) { fs.writeFileSync(fp, makePNG(size)); console.log(`[pwa] icon-${size}.png generado`); }
+    }
+  } catch (err) { console.warn('[pwa] No se pudieron generar íconos:', err.message); }
+}
+
+module.exports = { crearApp, prepararDatos };

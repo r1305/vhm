@@ -1,0 +1,20 @@
+# Solo aplica si el repo se clona dentro del docroot (p. ej. ~/public_html).
+# cPanel/CloudLinux añade aquí su bloque PASSENGER al crear la Node.js App: no lo borres.
+Options -Indexes
+
+<IfModule mod_alias.c>
+    RedirectMatch 404 (?i)(^|/)\.git(/|$)
+    RedirectMatch 404 (?i)(^|/)node_modules(/|$)
+    RedirectMatch 404 (?i)^/docs(/|$)
+    RedirectMatch 404 (?i)^/(lib|unificado)(/|$)
+</IfModule>
+
+<FilesMatch "(?i)^(AGENTS\.md.*|cookie\.txt|package(-lock)?\.json|.*\.sh|\.env.*|\.gitignore|\.htaccess)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>

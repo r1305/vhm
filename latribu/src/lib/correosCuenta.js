@@ -1,3 +1,4 @@
+const env = require('../../lib/env');
 const crypto = require('crypto');
 const pool = require('../db');
 const { sendMail, isMailerConfigured } = require('../../lib/mailer');
@@ -19,7 +20,7 @@ function esTokenValido(token) {
 }
 
 function siteUrl() {
-  const raw = (process.env.SITE_URL || '').replace(/\/$/, '');
+  const raw = (env('SITE_URL') || '').replace(/\/$/, '');
   return /^https?:\/\//i.test(raw) ? raw : '';
 }
 

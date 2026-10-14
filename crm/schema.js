@@ -1,3 +1,4 @@
+const env = require('./lib/env');
 const pool = require('./lib/db');
 
 async function seedSuperadmin(conn) {
@@ -6,7 +7,7 @@ async function seedSuperadmin(conn) {
   );
   if (existing) return false;
   const bcrypt = require('bcryptjs');
-  const envPwd = process.env.CRM_ADMIN_INITIAL_PASSWORD;
+  const envPwd = env('ADMIN_INITIAL_PASSWORD');
   const password = envPwd || require('crypto').randomBytes(24).toString('base64url');
   const hash = await bcrypt.hash(password, 12);
   await conn.execute(
@@ -549,64 +550,6 @@ async function ensureSchema() {
     await conn.execute("DELETE FROM usuario_menu_permisos WHERE item = 'pagos'");
     await conn.execute("DELETE FROM menu_permisos WHERE item = 'pagos'");
 
-    // Fusionar conversaciones WA duplicadas del mismo teléfono (últimos 9 dígitos)
-    const [allConvs] = await conn.execute(
-      'SELECT id, phone, ultimo_mensaje_at FROM wa_conversaciones ORDER BY ultimo_mensaje_at DESC, id DESC'
-    );
-    const seenTails = new Map();
-    for (const row of allConvs) {
-      const digits = String(row.phone || '').replace(/\D/g, '');
-      if (digits.length < 10 || digits.length > 13) continue;
-      const tail = digits.slice(-9);
-      const primaryId = seenTails.get(tail);
-      if (!primaryId) {
-        seenTails.set(tail, row.id);
-        continue;
-      }
-      await conn.execute(
-        'UPDATE wa_mensajes SET conversacion_id = ? WHERE conversacion_id = ?',
-        [primaryId, row.id]
-      );
-      await conn.execute('DELETE FROM wa_conversaciones WHERE id = ?', [row.id]);
-    }
-
-    // Fusionar chats @lid (ID interno WA) con el teléfono real del mismo contacto
-    const [lidConvs] = await conn.execute(
-      `SELECT id, phone, chat_id, contact_name, paciente_id, ultimo_mensaje_at, lid_chat_id
-       FROM wa_conversaciones
-       WHERE chat_id LIKE '%@lid'
-          OR lid_chat_id IS NOT NULL
-          OR LENGTH(REPLACE(phone,'+','')) > 13`
-    );
-    for (const lidRow of lidConvs) {
-      const lidId = lidRow.lid_chat_id || (String(lidRow.chat_id).includes('@lid') ? lidRow.chat_id : null);
-      const [match] = await conn.execute(
-        `SELECT id FROM wa_conversaciones
-         WHERE id != ?
-           AND LENGTH(REPLACE(phone,'+','')) BETWEEN 10 AND 13
-           AND (
-             paciente_id IS NOT NULL AND paciente_id = ?
-             OR (contact_name IS NOT NULL AND contact_name <> '' AND contact_name = ?)
-             OR ABS(TIMESTAMPDIFF(HOUR, ultimo_mensaje_at, ?)) <= 72
-           )
-         ORDER BY ultimo_mensaje_at DESC, id DESC LIMIT 1`,
-        [lidRow.id, lidRow.paciente_id, lidRow.contact_name, lidRow.ultimo_mensaje_at]
-      );
-      if (!match.length) continue;
-      const primaryId = match[0].id;
-      await conn.execute(
-        'UPDATE wa_mensajes SET conversacion_id = ? WHERE conversacion_id = ?',
-        [primaryId, lidRow.id]
-      );
-      if (lidId) {
-        await conn.execute(
-          'UPDATE wa_conversaciones SET lid_chat_id = COALESCE(lid_chat_id, ?) WHERE id = ?',
-          [lidId, primaryId]
-        );
-      }
-      await conn.execute('DELETE FROM wa_conversaciones WHERE id = ?', [lidRow.id]);
-    }
-
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS crm_encuestas (
         id          INT AUTO_INCREMENT PRIMARY KEY,
@@ -735,16 +678,72 @@ async function ensureSchema() {
   } finally {
     conn.release();
   }
-
-  try {
-    const { repairPaquetesPrecioInconsistente } = require('./lib/paquetesPaciente');
-    const repaired = await repairPaquetesPrecioInconsistente();
-    if (repaired > 0) {
-      console.log(`[crm] Reparados ${repaired} paciente_paquetes con precio=0 inconsistente`);
-    }
-  } catch (err) {
-    console.error('[crm] repairPaquetesPrecioInconsistente:', err.message);
-  }
 }
 
-module.exports = { ensureSchema, seedSuperadmin };
+async function fusionarChatsWhatsappTelefono(conn) {
+  let fusionados = 0;
+  const [allConvs] = await conn.execute(
+    'SELECT id, phone, ultimo_mensaje_at FROM wa_conversaciones ORDER BY ultimo_mensaje_at DESC, id DESC'
+  );
+  const seenTails = new Map();
+  for (const row of allConvs) {
+    const digits = String(row.phone || '').replace(/\D/g, '');
+    if (digits.length < 10 || digits.length > 13) continue;
+    const tail = digits.slice(-9);
+    const primaryId = seenTails.get(tail);
+    if (!primaryId) {
+      seenTails.set(tail, row.id);
+      continue;
+    }
+    await conn.execute(
+      'UPDATE wa_mensajes SET conversacion_id = ? WHERE conversacion_id = ?',
+      [primaryId, row.id]
+    );
+    await conn.execute('DELETE FROM wa_conversaciones WHERE id = ?', [row.id]);
+    fusionados++;
+  }
+  return fusionados;
+}
+
+async function fusionarChatsWhatsappLid(conn) {
+  let fusionados = 0;
+  const [lidConvs] = await conn.execute(
+    `SELECT id, phone, chat_id, contact_name, paciente_id, ultimo_mensaje_at, lid_chat_id
+     FROM wa_conversaciones
+     WHERE chat_id LIKE '%@lid'
+        OR lid_chat_id IS NOT NULL
+        OR LENGTH(REPLACE(phone,'+','')) > 13`
+  );
+  for (const lidRow of lidConvs) {
+    const lidId = lidRow.lid_chat_id || (String(lidRow.chat_id).includes('@lid') ? lidRow.chat_id : null);
+    const [match] = await conn.execute(
+      `SELECT id FROM wa_conversaciones
+       WHERE id != ?
+         AND LENGTH(REPLACE(phone,'+','')) BETWEEN 10 AND 13
+         AND (
+           paciente_id IS NOT NULL AND paciente_id = ?
+           OR (contact_name IS NOT NULL AND contact_name <> '' AND contact_name = ?)
+           OR ABS(TIMESTAMPDIFF(HOUR, ultimo_mensaje_at, ?)) <= 72
+         )
+       ORDER BY ultimo_mensaje_at DESC, id DESC LIMIT 1`,
+      [lidRow.id, lidRow.paciente_id, lidRow.contact_name, lidRow.ultimo_mensaje_at]
+    );
+    if (!match.length) continue;
+    const primaryId = match[0].id;
+    await conn.execute(
+      'UPDATE wa_mensajes SET conversacion_id = ? WHERE conversacion_id = ?',
+      [primaryId, lidRow.id]
+    );
+    if (lidId) {
+      await conn.execute(
+        'UPDATE wa_conversaciones SET lid_chat_id = COALESCE(lid_chat_id, ?) WHERE id = ?',
+        [lidId, primaryId]
+      );
+    }
+    await conn.execute('DELETE FROM wa_conversaciones WHERE id = ?', [lidRow.id]);
+    fusionados++;
+  }
+  return fusionados;
+}
+
+module.exports = { ensureSchema, seedSuperadmin, fusionarChatsWhatsappTelefono, fusionarChatsWhatsappLid };

@@ -27,7 +27,7 @@ const uploadEventoImagen = multer({
 });
 
 function buildPublicUploadUrl(basePath, filename) {
-  const base = (basePath || process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
+  const base = (basePath || require('./mount').basePath() || '').replace(/\/$/, '');
   return `${base}/uploads/eventos/${filename}`;
 }
 

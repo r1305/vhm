@@ -1,6 +1,7 @@
 /**
  * Helpers del funnel de conversión (zona America/Lima vía lib/db.js en SQL).
  */
+const env = require('./env');
 const crypto = require('crypto');
 
 const TRIAL_DAYS_DEFAULT = 7;
@@ -14,7 +15,7 @@ function splitDisplayName(raw) {
 }
 
 function trialDaysFromEnv() {
-  const n = parseInt(process.env.TRIBU_TRIAL_DIAS, 10);
+  const n = parseInt(env('TRIAL_DIAS'), 10);
   return Number.isFinite(n) && n > 0 ? n : TRIAL_DAYS_DEFAULT;
 }
 

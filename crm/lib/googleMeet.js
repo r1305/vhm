@@ -1,11 +1,12 @@
 'use strict';
+const env = require('./env');
 
 const { google } = require('googleapis');
 const pool = require('./db');
 
-const CLIENT_ID     = process.env.GOOGLE_CLIENT_ID;
-const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-const REDIRECT_URI  = process.env.GOOGLE_REDIRECT_URI || 'https://vhm.com.pe/crm/api/integraciones/google/callback';
+const CLIENT_ID     = env('GOOGLE_CLIENT_ID');
+const CLIENT_SECRET = env('GOOGLE_CLIENT_SECRET');
+const REDIRECT_URI  = env('GOOGLE_REDIRECT_URI') || 'https://vhm.com.pe/crm/api/integraciones/google/callback';
 
 function getOAuth2Client() {
   return new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);

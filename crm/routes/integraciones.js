@@ -1,13 +1,14 @@
 'use strict';
+const env = require('../lib/env');
 
 const { Router } = require('express');
 const { requireMenuPermisoApi } = require('../lib/menuPermisos');
 const { getAuthUrl, saveTokens, isConnected, disconnect } = require('../lib/googleMeet');
 const { google } = require('googleapis');
 
-const CLIENT_ID     = process.env.GOOGLE_CLIENT_ID;
-const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-const REDIRECT_URI  = process.env.GOOGLE_REDIRECT_URI || 'https://vhm.com.pe/crm/api/integraciones/google/callback';
+const CLIENT_ID     = env('GOOGLE_CLIENT_ID');
+const CLIENT_SECRET = env('GOOGLE_CLIENT_SECRET');
+const REDIRECT_URI  = env('GOOGLE_REDIRECT_URI') || 'https://vhm.com.pe/crm/api/integraciones/google/callback';
 
 const router = Router();
 
@@ -26,7 +27,7 @@ router.delete('/google', requireMenuPermisoApi('integraciones'), async (req, res
 
 // Callback OAuth2 — Google redirige aquí con ?code=
 router.get('/google/callback', async (req, res) => {
-  const BASE = (process.env.APP_MOUNT_PATH || '/crm').replace(/\/$/, '');
+  const BASE = req.app.locals.BASE;
   const { code } = req.query;
   if (!code) return res.redirect(`${BASE}/integraciones?google=error`);
   try {

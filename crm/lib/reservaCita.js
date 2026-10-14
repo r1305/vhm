@@ -1,3 +1,4 @@
+const env = require('./env');
 const { evaluateBooking } = require('./paquetesPaciente');
 
 const normHora = (v) => {
@@ -25,8 +26,8 @@ const cuerpoErrorPublico = (err) => {
 const MSG_NO_DISPONIBLE = 'Ese horario no está disponible';
 
 const entero = (v, def) => { const n = parseInt(v, 10); return Number.isFinite(n) && n >= 0 ? n : def; };
-const VENTANA_MIN_HORAS = entero(process.env.VENTANA_MIN_HORAS, 24);
-const VENTANA_MAX_DIAS = entero(process.env.VENTANA_MAX_DIAS, 15);
+const VENTANA_MIN_HORAS = entero(env('VENTANA_MIN_HORAS'), 24);
+const VENTANA_MAX_DIAS = entero(env('VENTANA_MAX_DIAS'), 15);
 const MSG_FUERA_VENTANA = `Solo puedes agendar con al menos ${VENTANA_MIN_HORAS} horas de anticipación y hasta ${VENTANA_MAX_DIAS} días`;
 
 const fechaLimaDe = (d) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(d);

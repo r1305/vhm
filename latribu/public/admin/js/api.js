@@ -11,13 +11,13 @@
 
   function authHeaders() {
     const token = localStorage.getItem('token');
-    const csrf = getCookie('csrf_token') || '';
+    const csrf = getCookie('csrf_tribu') || '';
     return { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token, 'X-CSRF-Token': csrf };
   }
 
   function formHeaders() {
     const token = localStorage.getItem('token');
-    const csrf = getCookie('csrf_token') || '';
+    const csrf = getCookie('csrf_tribu') || '';
     return { Authorization: 'Bearer ' + token, 'X-CSRF-Token': csrf };
   }
 

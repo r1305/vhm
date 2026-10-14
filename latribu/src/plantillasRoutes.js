@@ -1,4 +1,5 @@
 const { Router } = require('express');
+const { basePath } = require('../lib/mount');
 const pool = require('./db');
 const { authMiddleware } = require('./auth');
 const { ensureSchema } = require('./schema');
@@ -26,7 +27,7 @@ function parseFecha(str) {
 // ── Multer para fotos de plantillas ──
 // Las fotos viven en public/uploads/ sin subcarpeta, como antes.
 const DESTINO = '';
-const ASSET_BASE = (process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
+const ASSET_BASE = (basePath() || '').replace(/\/$/, '');
 const upload = crearUploadImagen({ limiteBytes: 8 * 1024 * 1024 });
 
 const uploadFoto = (req, res, next) =>

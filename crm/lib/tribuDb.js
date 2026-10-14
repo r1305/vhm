@@ -1,10 +1,10 @@
-require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
+const env = require('./env');
 const mysql = require('mysql2/promise');
 
-const host = process.env.TRIBU_DB_HOST || process.env.DB_HOST || '127.0.0.1';
-const user = process.env.TRIBU_DB_USER || process.env.DB_USER || 'root';
-const password = process.env.TRIBU_DB_PASSWORD ?? process.env.DB_PASSWORD ?? '';
-const database = process.env.TRIBU_DB_NAME || '';
+const host = env('TRIBU_DB_HOST') || env('DB_HOST') || '127.0.0.1';
+const user = env('TRIBU_DB_USER') || env('DB_USER') || 'root';
+const password = env('TRIBU_DB_PASSWORD') ?? env('DB_PASSWORD') ?? '';
+const database = env('TRIBU_DB_NAME') || '';
 
 let pool = null;
 
@@ -19,12 +19,12 @@ function getPool() {
   if (!pool) {
     pool = mysql.createPool({
       host,
-      port: parseInt(process.env.TRIBU_DB_PORT || process.env.DB_PORT || '3306', 10),
+      port: parseInt(env('TRIBU_DB_PORT') || env('DB_PORT') || '3306', 10),
       user,
       password,
       database,
       waitForConnections: true,
-      connectionLimit: parseInt(process.env.TRIBU_DB_POOL_MAX || '3', 10),
+      connectionLimit: parseInt(env('TRIBU_DB_POOL_MAX') || '3', 10),
       timezone: '-05:00',
     });
   }

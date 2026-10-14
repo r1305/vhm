@@ -1,4 +1,6 @@
+const env = require('../lib/env');
 const { Router } = require('express');
+const { basePath } = require('../lib/mount');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const pool = require('./db');
@@ -16,8 +18,8 @@ const {
 } = require('./lib/correosCuenta');
 
 const router = Router();
-const BASE = (process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
-const ASSET_BASE = (process.env.SITE_URL || '').replace(/\/$/, '') || BASE;
+const BASE = (basePath() || '').replace(/\/$/, '');
+const ASSET_BASE = (env('SITE_URL') || '').replace(/\/$/, '') || BASE;
 
 // Los avatares viven en public/uploads/tribu/.
 const DESTINO_AVATAR = 'tribu';

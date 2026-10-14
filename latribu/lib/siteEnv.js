@@ -1,11 +1,9 @@
+const env = require('./env');
+
 function siteEnv(name) {
-  const prefix = process.env.APP_SITE_PREFIX || '';
-  const prefixed = prefix ? `${prefix}${name}` : '';
-  const v = prefixed ? process.env[prefixed] : undefined;
+  const v = env(name);
   if (v != null && v !== '') return v;
-  const fallback = process.env[name];
-  if (fallback != null && fallback !== '') return fallback;
-  throw new Error(`Missing env: ${prefixed || name}`);
+  throw new Error(`Missing env: ${env.prefijo}${name}`);
 }
 
 function optionalSiteEnv(name, defaultValue) {

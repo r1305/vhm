@@ -11,7 +11,7 @@
 
   function authHeaders() {
     const token = localStorage.getItem('token');
-    const csrf = getCookie('csrf_token') || '';
+    const csrf = getCookie('csrf_site') || '';
     return {
       'Content-Type': 'application/json',
       Authorization: 'Bearer ' + token,
@@ -21,7 +21,7 @@
 
   function formHeaders() {
     const token = localStorage.getItem('token');
-    const csrf = getCookie('csrf_token') || '';
+    const csrf = getCookie('csrf_site') || '';
     return {
       Authorization: 'Bearer ' + token,
       'X-CSRF-Token': csrf,

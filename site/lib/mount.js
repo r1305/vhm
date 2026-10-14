@@ -9,4 +9,15 @@ function rewriteRootPaths(html, base) {
   return html.replace(pattern, `$1="${b}/`);
 }
 
-module.exports = { rewriteRootPaths };
+const env = require('./env');
+let basePathFijo = null;
+
+function setBasePath(p) {
+  basePathFijo = String(p || '').replace(/\/$/, '');
+}
+
+function basePath() {
+  return basePathFijo ?? (env('APP_MOUNT_PATH') || '');
+}
+
+module.exports = { rewriteRootPaths, setBasePath, basePath };

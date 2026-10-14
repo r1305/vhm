@@ -1,3 +1,4 @@
+const env = require('./env');
 const pool = require('./db');
 const { sendWhatsAppGreen, loadOpenwaConfigFromDB, isOpenwaConfigured } = require('./greenapi');
 const { normalizePhone } = require('./openwa');
@@ -6,10 +7,10 @@ const { normHora, instanteLima } = require('./reservaCita');
 const entero = (v, def) => { const n = parseInt(v, 10); return Number.isFinite(n) && n >= 0 ? n : def; };
 
 const REC24_CRON = '*/10 * * * *';
-const REC24_HORAS_ANTES = entero(process.env.REC24_HORAS_ANTES, 24);
-const REC24_MIN_HORAS_ANTES = entero(process.env.REC24_MIN_HORAS_ANTES, 2);
-const REC24_MAX_INTENTOS = entero(process.env.REC24_MAX_INTENTOS, 3);
-const REC24_LOCK_MIN = Math.max(1, entero(process.env.REC24_LOCK_MIN, 15));
+const REC24_HORAS_ANTES = entero(env('REC24_HORAS_ANTES'), 24);
+const REC24_MIN_HORAS_ANTES = entero(env('REC24_MIN_HORAS_ANTES'), 2);
+const REC24_MAX_INTENTOS = entero(env('REC24_MAX_INTENTOS'), 3);
+const REC24_LOCK_MIN = Math.max(1, entero(env('REC24_LOCK_MIN'), 15));
 const REC24_LIMITE = 200;
 const REC24_MAX_TIMEOUTS_SEGUIDOS = 2;
 const ESTADOS_RECORDATORIO = ['pendiente', 'confirmada', 'reagendada'];
@@ -35,7 +36,7 @@ const MODALIDAD_LABEL = {
 const limaDateTime = (ms) => new Date(ms - 5 * HORA_MS).toISOString().slice(0, 19).replace('T', ' ');
 
 function envInterruptor() {
-  const v = String(process.env.RECORDATORIO_24H_ENABLED ?? '').trim().toLowerCase();
+  const v = String(env('RECORDATORIO_24H_ENABLED') ?? '').trim().toLowerCase();
   if (['0', 'false', 'off', 'no'].includes(v)) return false;
   if (['1', 'true', 'on', 'si', 'sí'].includes(v)) return true;
   return null;

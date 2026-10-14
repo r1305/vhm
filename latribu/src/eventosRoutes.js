@@ -1,4 +1,6 @@
+const env = require('../lib/env');
 const { Router } = require('express');
+const { basePath } = require('../lib/mount');
 const pool = require('./db');
 const { authMiddleware } = require('./auth');
 const { ensureSchema: ensureVideoSchema } = require('./schema');
@@ -202,10 +204,10 @@ router.get('/:id/ics', tribuAuthMiddleware, async (req, res) => {
     if (!ok) return res.status(403).json({ error: 'Necesitas una suscripción activa' });
     const ev = await fetchEventoActivo(req.params.id);
     if (!ev) return res.status(404).json({ error: 'Evento no encontrado' });
-    const base = (process.env.SITE_URL || process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
+    const base = (env('SITE_URL') || basePath() || '').replace(/\/$/, '');
     const calUrl = base ? `${base}/calendario` : '';
     const body = buildEventIcs(ev, {
-      uidHost: process.env.SITE_URL || 'latribu.vhm.pe',
+      uidHost: env('SITE_URL') || 'latribu.vhm.pe',
       calUrl,
     });
     res.setHeader('Content-Type', 'text/calendar; charset=utf-8');

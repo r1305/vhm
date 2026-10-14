@@ -31,9 +31,9 @@ function createCsrfMiddleware() {
     const basePath = res.locals.basePath || '';
     
     if (req.method === 'GET') {
-      const existing = req.cookies?.csrf_token;
+      const existing = req.cookies?.csrf_tribu;
       if (!existing || !validateCsrfToken(existing)) {
-        res.cookie('csrf_token', generateCsrfToken(), csrfCookieOptions(basePath));
+        res.cookie('csrf_tribu', generateCsrfToken(), csrfCookieOptions(basePath));
       }
     }
     
@@ -58,7 +58,7 @@ function createCsrfMiddleware() {
       
       if (!isPublicPost && !isPublicEncuestaPost && !isPublicVideoAction && !isTribuBearer) {
         const headerToken = req.headers['x-csrf-token'] || req.headers['csrf-token'];
-        const cookieToken = req.cookies?.csrf_token;
+        const cookieToken = req.cookies?.csrf_tribu;
         if (!validateCsrfToken(headerToken) || !validateCsrfToken(cookieToken) || headerToken !== cookieToken) {
           return res.status(403).json({ error: 'Token CSRF inválido' });
         }

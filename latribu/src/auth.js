@@ -1,4 +1,4 @@
-require('dotenv').config();
+const env = require('../lib/env');
 const { siteEnv } = require('../lib/siteEnv');
 const AuthService = require('./services/authService');
 
@@ -6,7 +6,7 @@ let JWT_SECRET;
 try {
   JWT_SECRET = siteEnv('JWT_SECRET');
 } catch (_) {
-  JWT_SECRET = process.env.JWT_SECRET;
+  JWT_SECRET = env('JWT_SECRET');
 }
 if (!JWT_SECRET) throw new Error('JWT_SECRET is required in .env');
 

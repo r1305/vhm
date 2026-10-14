@@ -1,6 +1,7 @@
 /**
  * Culqi — cargos únicos + tarjetas guardadas (Customer/Card API) para renovaciones.
  */
+const env = require('../lib/env');
 const crypto = require('crypto');
 const pool = require('./db');
 
@@ -65,7 +66,7 @@ function parseExternalRef(ref) {
 }
 
 function getWebhookUrl() {
-  const siteUrl = (process.env.SITE_URL || '').replace(/\/$/, '');
+  const siteUrl = (env('SITE_URL') || '').replace(/\/$/, '');
   if (!siteUrl || !/^https?:\/\//i.test(siteUrl)) return undefined;
   return `${siteUrl}/api/tribu-pagos/webhook`;
 }
@@ -468,7 +469,7 @@ async function vaultCustomerCardSafe(params) {
  * y se valida monto, moneda, referencia y estado.
  */
 function webhookSecretState() {
-  const secret = String(process.env.CULQI_WEBHOOK_SECRET || '');
+  const secret = String(env('CULQI_WEBHOOK_SECRET') || '');
   const production = process.env.NODE_ENV === 'production';
   return { secret, configured: !!secret, failClosed: production && !secret };
 }
@@ -484,7 +485,7 @@ function validateWebhookSignature(req) {
   const { secret } = webhookSecretState();
   if (!secret) return process.env.NODE_ENV !== 'production';
 
-  const mode = String(process.env.CULQI_WEBHOOK_AUTH || 'hmac').toLowerCase();
+  const mode = String(env('CULQI_WEBHOOK_AUTH') || 'hmac').toLowerCase();
   if (mode === 'basic') {
     const auth = String(req.headers.authorization || '');
     if (!auth.startsWith('Basic ')) return false;

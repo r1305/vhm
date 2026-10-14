@@ -1,3 +1,4 @@
+const env = require('./env');
 const pool = require('./db');
 
 let ready = null;
@@ -14,7 +15,7 @@ const ACCESOS_SISTEMA = [
 
 async function seedAdminProtegido(db) {
   const bcrypt = require('bcryptjs');
-  const bootstrapPwd = process.env.LUMA_BOOTSTRAP_PASSWORD;
+  const bootstrapPwd = env('BOOTSTRAP_PASSWORD');
   const [existing] = await db.query('SELECT id FROM luma_admins WHERE protegido = 1 LIMIT 1');
   if (!existing.length) {
     const password = bootstrapPwd || require('crypto').randomBytes(24).toString('base64url');

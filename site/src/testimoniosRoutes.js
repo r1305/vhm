@@ -1,6 +1,7 @@
 const { Router } = require('express');
 const path = require('path');
 const fs = require('fs');
+const { basePath } = require('../lib/mount');
 const crypto = require('crypto');
 const multer = require('multer');
 const pool = require('./db');
@@ -101,7 +102,7 @@ router.get('/admin', authMiddleware, requireAdmin, async (req, res) => {
 router.post('/', authMiddleware, requireAdmin, upload.single('foto'), async (req, res) => {
   try {
     const { autor, texto, activo } = req.body;
-    const BASE = (process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
+    const BASE = (basePath() || '').replace(/\/$/, '');
     const foto_url = req.file ? `${BASE}/uploads/${req.file.filename}` : null;
 
     if (!autor && !texto && !foto_url)
@@ -135,7 +136,7 @@ router.put('/:id', authMiddleware, requireAdmin, upload.single('foto'), async (r
           if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
         }
       }
-      const BASE = (process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
+      const BASE = (basePath() || '').replace(/\/$/, '');
       foto_url = `${BASE}/uploads/${req.file.filename}`;
     }
 

@@ -1,3 +1,4 @@
+const env = require('../lib/env');
 const { Router } = require('express');
 const pool = require('../lib/db');
 const { requireMenuPermisoApi } = require('../lib/menuPermisos');
@@ -35,15 +36,15 @@ router.post('/', requireMenuPermisoApi('integraciones'), async (req, res) => {
     }
     const [rows] = await pool.execute('SELECT clave, valor FROM configuracion');
     for (const r of rows) {
-      if (r.clave === 'smtp_host')       process.env.SMTP_HOST       = r.valor || '';
-      if (r.clave === 'smtp_port')       process.env.SMTP_PORT       = r.valor || '';
-      if (r.clave === 'smtp_user')       process.env.SMTP_USER       = r.valor || '';
-      if (r.clave === 'smtp_pass')       process.env.SMTP_PASS       = r.valor || '';
-      if (r.clave === 'smtp_from')       process.env.SMTP_FROM       = r.valor || '';
-      if (r.clave === 'openwa_url')            process.env.OPENWA_URL            = r.valor || '';
-      if (r.clave === 'openwa_api_key')        process.env.OPENWA_API_KEY        = r.valor || '';
-      if (r.clave === 'openwa_session')        process.env.OPENWA_SESSION        = r.valor || '';
-      if (r.clave === 'openwa_webhook_token')  process.env.OPENWA_WEBHOOK_TOKEN  = r.valor || '';
+      if (r.clave === 'smtp_host')       env.set('SMTP_HOST', r.valor || '');
+      if (r.clave === 'smtp_port')       env.set('SMTP_PORT', r.valor || '');
+      if (r.clave === 'smtp_user')       env.set('SMTP_USER', r.valor || '');
+      if (r.clave === 'smtp_pass')       env.set('SMTP_PASS', r.valor || '');
+      if (r.clave === 'smtp_from')       env.set('SMTP_FROM', r.valor || '');
+      if (r.clave === 'openwa_url')            env.set('OPENWA_URL', r.valor || '');
+      if (r.clave === 'openwa_api_key')        env.set('OPENWA_API_KEY', r.valor || '');
+      if (r.clave === 'openwa_session')        env.set('OPENWA_SESSION', r.valor || '');
+      if (r.clave === 'openwa_webhook_token')  env.set('OPENWA_WEBHOOK_TOKEN', r.valor || '');
     }
     res.json({ ok: true });
   } catch (err) {

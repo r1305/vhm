@@ -1,3 +1,4 @@
+const env = require('../lib/env');
 const { Router } = require('express');
 const path = require('path');
 const multer = require('multer');
@@ -576,7 +577,7 @@ async function syncMensajesLimitado(conv, conversacionId, { forzar = false } = {
 async function syncMensajesFromOpenwa(conv, conversacionId) {
   if (!isOpenwaConfigured()) return;
   await loadOpenwaConfigFromDB();
-  const sessionId = process.env.OPENWA_SESSION || '';
+  const sessionId = env('OPENWA_SESSION') || '';
   const tail = isWhatsAppPhone(conv.phone) ? phoneTail(conv.phone) : '';
   const collected = new Map();
 
@@ -923,7 +924,7 @@ async function insertMensaje({
 router.post('/webhook', async (req, res) => {
   try {
     await loadOpenwaConfigFromDB();
-    const token = process.env.OPENWA_WEBHOOK_TOKEN || '';
+    const token = env('OPENWA_WEBHOOK_TOKEN') || '';
     const authHeader = req.headers.authorization || '';
     const bearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
     if (token && bearer !== token) {
@@ -1274,7 +1275,7 @@ router.get('/mensajes/:id/media', authWhatsApp, async (req, res) => {
     if (!isOpenwaConfigured()) return res.status(400).json({ error: 'OpenWA no configurado' });
 
     await loadOpenwaConfigFromDB();
-    const sessionId = process.env.OPENWA_SESSION || '';
+    const sessionId = env('OPENWA_SESSION') || '';
     const mime = msg.media_mime || guessMediaMime(msg.tipo);
     const chatJids = collectMediaChatJids(msg);
 
@@ -1328,11 +1329,11 @@ router.get('/status', authWhatsApp, async (req, res) => {
   try {
     await loadOpenwaConfigFromDB();
     const origin = `${req.protocol}://${req.get('host')}`;
-    const mount = (process.env.APP_MOUNT_PATH || '/crm').replace(/\/$/, '');
+    const mount = req.app.locals.BASE;
     res.json({
       configured: isOpenwaConfigured(),
       webhookUrl: `${origin}${mount}/api/whatsapp/webhook`,
-      hasWebhookToken: Boolean(process.env.OPENWA_WEBHOOK_TOKEN),
+      hasWebhookToken: Boolean(env('OPENWA_WEBHOOK_TOKEN')),
     });
   } catch (err) {
     console.error('[whatsapp/status]:', err);

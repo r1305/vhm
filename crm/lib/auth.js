@@ -1,16 +1,17 @@
+const env = require('./env');
 const jwt = require('jsonwebtoken');
 const { isStaffAdmin, isSuperAdmin } = require('./roles');
 
-const SECRET = process.env.JWT_SECRET;
+const SECRET = env('JWT_SECRET');
 if (!SECRET) {
   if (process.env.NODE_ENV === 'production') {
     throw new Error('FATAL: JWT_SECRET is not defined in production environment');
   } else {
     console.warn('[crm/auth] ⚠️ JWT_SECRET no configurado — usando fallback inseguro para desarrollo. Define JWT_SECRET en .env');
-    process.env.JWT_SECRET = 'crm_dev_secret_change_me';
+    env.set('JWT_SECRET', 'crm_dev_secret_change_me');
   }
 }
-const FINAL_SECRET = process.env.JWT_SECRET;
+const FINAL_SECRET = env('JWT_SECRET');
 
 // TODO(A4): el JWT viaja en el header Authorization (Bearer) y no en cookie.
 // La cookie de sesión ya es httpOnly (app.js), pero si algún día se sirve el

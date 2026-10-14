@@ -1,3 +1,4 @@
+const env = require('../lib/env');
 const { Router } = require('express');
 const crypto = require('crypto');
 const pool = require('./db');
@@ -61,7 +62,7 @@ function requireAdmin(req, res, next) {
 }
 
 function validateCronToken(req) {
-  const secret = process.env.TRIBU_RENOVACION_CRON_SECRET;
+  const secret = env('RENOVACION_CRON_SECRET');
   if (!secret) return false;
   const token = req.headers['x-cron-token'];
   if (!token || typeof token !== 'string') return false;

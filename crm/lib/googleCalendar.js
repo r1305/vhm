@@ -1,11 +1,12 @@
 'use strict';
+const env = require('./env');
 
 const { google } = require('googleapis');
 const pool = require('./db');
 
-const CLIENT_ID     = process.env.GOOGLE_CLIENT_ID;
-const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-const BASE_REDIRECT = process.env.GOOGLE_CALENDAR_REDIRECT_URI
+const CLIENT_ID     = env('GOOGLE_CLIENT_ID');
+const CLIENT_SECRET = env('GOOGLE_CLIENT_SECRET');
+const BASE_REDIRECT = env('GOOGLE_CALENDAR_REDIRECT_URI')
   || 'https://vhm.com.pe/crm/api/terapeutas/google/calendar-callback';
 
 function getOAuth2Client() {

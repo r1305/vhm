@@ -1,10 +1,10 @@
-require('dotenv').config();
+const env = require('../lib/env');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const express = require('express');
 const cors = require('cors');
-const { rewriteRootPaths } = require('../lib/mount');
+const { rewriteRootPaths, basePath } = require('../lib/mount');
 const reclamosRoutes = require('./routes');
 const authRoutes = require('./authRoutes');
 const usuariosRoutes = require('./usuariosRoutes');
@@ -31,7 +31,7 @@ try {
   }));
 } catch (_) { /* optional */ }
 
-const corsOrigin = process.env.CORS_ORIGIN;
+const corsOrigin = env('CORS_ORIGIN');
 app.use(cors({
   origin: (origin, cb) => {
     if (!origin) return cb(null, true);
@@ -56,9 +56,9 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(require('cookie-parser')());
 
 function crmPublicUrl() {
-  if (process.env.CRM_PUBLIC_URL) return String(process.env.CRM_PUBLIC_URL).replace(/\/$/, '');
+  if (env('CRM_PUBLIC_URL')) return String(env('CRM_PUBLIC_URL')).replace(/\/$/, '');
   try {
-    if (process.env.SITE_URL) return `${new URL(process.env.SITE_URL).origin}/crm`;
+    if (env('URL')) return `${new URL(env('URL')).origin}/crm`;
   } catch (_) { /* ignore */ }
   return 'https://vhm.com.pe/crm';
 }
@@ -94,14 +94,14 @@ app.use((req, res, next) => {
 });
 
 // Base path para montaje bajo un prefijo (ej. /site)
-const BASE_PATH = (process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
+const BASE_PATH = (basePath() || '').replace(/\/$/, '');
 app.use((req, res, next) => {
   res.locals.basePath = BASE_PATH;
   next();
 });
 
 // CSRF protection (double-submit cookie pattern) - must be after BASE_PATH
-const CSRF_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
+const CSRF_SECRET = env('JWT_SECRET') || crypto.randomBytes(32).toString('hex');
 function generateCsrfToken() {
   const token = crypto.randomBytes(32).toString('hex');
   const sig = crypto.createHmac('sha256', CSRF_SECRET).update(token).digest('hex').slice(0, 16);
@@ -124,12 +124,12 @@ function csrfCookieOptions() {
 }
 function setCsrfCookie(res) {
   const token = generateCsrfToken();
-  res.cookie('csrf_token', token, csrfCookieOptions());
+  res.cookie('csrf_site', token, csrfCookieOptions());
 }
 app.use((req, res, next) => {
   // Renovar cookie CSRF en GET si falta o quedó inválida (p. ej. tras cambiar JWT_SECRET)
   if (req.method === 'GET') {
-    const existing = req.cookies?.csrf_token;
+    const existing = req.cookies?.csrf_site;
     if (!existing || !validateCsrfToken(existing)) {
       setCsrfCookie(res);
     }
@@ -140,7 +140,7 @@ app.use((req, res, next) => {
     const isPublicPost = req.method === 'POST' && publicPostPaths.some(p => req.path === p);
     if (!isPublicPost) {
       const headerToken = req.headers['x-csrf-token'] || req.headers['csrf-token'];
-      const cookieToken = req.cookies?.csrf_token;
+      const cookieToken = req.cookies?.csrf_site;
       if (!validateCsrfToken(headerToken) || !validateCsrfToken(cookieToken) || headerToken !== cookieToken) {
         return res.status(403).json({ error: 'Token CSRF inválido' });
       }
@@ -170,7 +170,7 @@ app.use((req, res, next) => {
 });
 
 function sendPublicHtml(res, filename) {
-  const base = ((res.locals && res.locals.basePath) || process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
+  const base = ((res.locals && res.locals.basePath) || basePath() || '').replace(/\/$/, '');
   const filePath = path.join(__dirname, '../public', filename);
   let html = fs.readFileSync(filePath, 'utf8');
   const inlineBase = inlineAppConfig(base);
@@ -201,7 +201,7 @@ const ADMIN_PAGES = [
 ];
 
 function sendAdminHtml(res, filename) {
-  const base = ((res.locals && res.locals.basePath) || process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
+  const base = ((res.locals && res.locals.basePath) || basePath() || '').replace(/\/$/, '');
   const filePath = path.join(ADMIN_DIR, filename);
   if (!fs.existsSync(filePath)) {
     return res.status(404).type('text/plain').send('Admin page not found: ' + filename);
@@ -244,7 +244,7 @@ app.get('/', (req, res) => sendPublicHtml(res, 'index.html'));
 
 // Fallback para __app_base__.js cuando se corre standalone (sin gateway)
 app.get('/__app_base__.js', (req, res) => {
-  const base = ((res.locals && res.locals.basePath) || process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
+  const base = ((res.locals && res.locals.basePath) || basePath() || '').replace(/\/$/, '');
   res.type('application/javascript').set('Cache-Control', 'no-store').send(`window.__APP_BASE__=${JSON.stringify(base)};`);
 });
 
@@ -309,7 +309,7 @@ app.get('/api/deploy-info', (req, res) => {
     pid: process.pid,
     uptimeSec: Math.round(process.uptime()),
     memoryMb: Math.round(process.memoryUsage().rss / 1024 / 1024),
-    dbPoolMax: process.env.DB_POOL_MAX || '3',
+    dbPoolMax: env('DB_POOL_MAX') || '3',
     adminDir: fs.existsSync(ADMIN_DIR),
     adminJs: fs.existsSync(path.join(ADMIN_DIR, 'js', 'api.js')),
     tribuHeroMedia: heroMedia,
@@ -317,7 +317,7 @@ app.get('/api/deploy-info', (req, res) => {
 });
 
 app.get(['/admin', '/admin/'], (req, res) => {
-  const base = (res.locals.basePath || process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
+  const base = (res.locals.basePath || basePath() || '').replace(/\/$/, '');
   res.redirect(base + '/admin/login.html');
 });
 

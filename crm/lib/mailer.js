@@ -1,14 +1,15 @@
+const env = require('./env');
 const nodemailer = require('nodemailer');
 
 function getTransport() {
-  const host = process.env.SMTP_HOST;
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
+  const host = env('SMTP_HOST');
+  const user = env('SMTP_USER');
+  const pass = env('SMTP_PASS');
   if (!host || !user || !pass) return null;
   return nodemailer.createTransport({
     host,
-    port: parseInt(process.env.SMTP_PORT || '587', 10),
-    secure: process.env.SMTP_SECURE === '1',
+    port: parseInt(env('SMTP_PORT') || '587', 10),
+    secure: env('SMTP_SECURE') === '1',
     auth: { user, pass },
   });
 }
@@ -20,7 +21,7 @@ async function sendMail({ to, subject, html, text }) {
     return { skipped: true };
   }
   await t.sendMail({
-    from: process.env.SMTP_FROM || 'VHM CRM <noreply@vhm.com.pe>',
+    from: env('SMTP_FROM') || 'VHM CRM <noreply@vhm.com.pe>',
     to,
     subject: String(subject).slice(0, 200),
     text: text || '',
@@ -36,9 +37,9 @@ async function sendMail({ to, subject, html, text }) {
      WA_FROM=whatsapp:+14155238886   (sandbox Twilio o número aprobado)
 */
 async function sendWhatsApp({ to, message }) {
-  const sid   = process.env.WA_ACCOUNT_SID;
-  const token = process.env.WA_AUTH_TOKEN;
-  const from  = process.env.WA_FROM;
+  const sid   = env('WA_ACCOUNT_SID');
+  const token = env('WA_AUTH_TOKEN');
+  const from  = env('WA_FROM');
 
   if (!sid || !token || !from) {
     console.log('[crm/whatsapp] No configurado — omitido:', to);

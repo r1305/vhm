@@ -1,4 +1,4 @@
-require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
+const env = require('./env');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
@@ -18,7 +18,7 @@ try {
   app.use(compression({ threshold: 1024 }));
 } catch (_) {}
 
-const corsOrigin = process.env.CORS_ORIGIN;
+const corsOrigin = env('CORS_ORIGIN');
 app.use(cors({
   origin: (origin, cb) => {
     if (!origin) return cb(null, true);
@@ -52,11 +52,11 @@ app.use((req, res, next) => {
   next();
 });
 
-const BASE_PATH = (process.env.APP_MOUNT_PATH || '/luma').replace(/\/$/, '');
+const BASE_PATH = require('./mount').basePath().replace(/\/$/, '');
 app.use((req, res, next) => { res.locals.basePath = BASE_PATH; next(); });
 
 // CSRF (double-submit cookie)
-const CSRF_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
+const CSRF_SECRET = env('JWT_SECRET') || crypto.randomBytes(32).toString('hex');
 function generateCsrfToken() {
   const token = crypto.randomBytes(32).toString('hex');
   const sig = crypto.createHmac('sha256', CSRF_SECRET).update(token).digest('hex').slice(0, 16);
@@ -71,10 +71,10 @@ function validateCsrfToken(token) {
 }
 app.use((req, res, next) => {
   if (req.method === 'GET') {
-    const existing = req.cookies?.csrf_token;
+    const existing = req.cookies?.csrf_luma;
     if (!existing || !validateCsrfToken(existing)) {
       const token = generateCsrfToken();
-      res.cookie('csrf_token', token, { httpOnly: false, sameSite: 'strict', path: BASE_PATH || '/', secure: process.env.NODE_ENV === 'production' });
+      res.cookie('csrf_luma', token, { httpOnly: false, sameSite: 'strict', path: BASE_PATH || '/', secure: process.env.NODE_ENV === 'production' });
     }
   }
   if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {
@@ -83,7 +83,7 @@ app.use((req, res, next) => {
     const isAuthLogin = req.method === 'POST' && req.path === '/api/auth/login';
     if (!isPublic && !isAuthLogin) {
       const headerToken = req.headers['x-csrf-token'] || req.headers['csrf-token'];
-      const cookieToken = req.cookies?.csrf_token;
+      const cookieToken = req.cookies?.csrf_luma;
       if (!validateCsrfToken(headerToken) || !validateCsrfToken(cookieToken) || headerToken !== cookieToken)
         return res.status(403).json({ error: 'Token CSRF inválido' });
     }

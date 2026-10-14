@@ -3,6 +3,7 @@
  * Variables: OPENWA_URL, OPENWA_API_KEY, OPENWA_SESSION
  */
 
+const env = require('./env');
 const pool = require('./db');
 
 async function loadOpenwaConfigFromDB() {
@@ -11,22 +12,22 @@ async function loadOpenwaConfigFromDB() {
   );
   for (const r of rows) {
     if (!r.valor) continue;
-    if (r.clave === 'openwa_url')            process.env.OPENWA_URL            = r.valor;
-    if (r.clave === 'openwa_api_key')        process.env.OPENWA_API_KEY        = r.valor;
-    if (r.clave === 'openwa_session')        process.env.OPENWA_SESSION        = r.valor;
-    if (r.clave === 'openwa_webhook_token')  process.env.OPENWA_WEBHOOK_TOKEN  = r.valor;
+    if (r.clave === 'openwa_url')            env.set('OPENWA_URL', r.valor);
+    if (r.clave === 'openwa_api_key')        env.set('OPENWA_API_KEY', r.valor);
+    if (r.clave === 'openwa_session')        env.set('OPENWA_SESSION', r.valor);
+    if (r.clave === 'openwa_webhook_token')  env.set('OPENWA_WEBHOOK_TOKEN', r.valor);
   }
 }
 
 function isOpenwaConfigured() {
   return Boolean(
-    process.env.OPENWA_URL &&
-    process.env.OPENWA_API_KEY &&
-    process.env.OPENWA_SESSION
+    env('OPENWA_URL') &&
+    env('OPENWA_API_KEY') &&
+    env('OPENWA_SESSION')
   );
 }
 
-const DEFAULT_COUNTRY_CODE = process.env.WA_DEFAULT_COUNTRY_CODE || '51';
+const DEFAULT_COUNTRY_CODE = env('WA_DEFAULT_COUNTRY_CODE') || '51';
 
 function normalizePhone(phone) {
   const raw = String(phone || '').trim();
@@ -55,9 +56,9 @@ function toChatId(phoneOrJid) {
 }
 
 function getOpenwaConfig() {
-  const baseUrl = (process.env.OPENWA_URL || '').replace(/\/$/, '');
-  const apiKey = process.env.OPENWA_API_KEY || '';
-  const sessionId = process.env.OPENWA_SESSION || '';
+  const baseUrl = (env('OPENWA_URL') || '').replace(/\/$/, '');
+  const apiKey = env('OPENWA_API_KEY') || '';
+  const sessionId = env('OPENWA_SESSION') || '';
   return { baseUrl, apiKey, sessionId };
 }
 
@@ -204,7 +205,7 @@ async function openwaFetch(path, options = {}, retries = 3) {
 
 async function sendWhatsApp({ to, message }) {
   await loadOpenwaConfigFromDB();
-  const sessionId = process.env.OPENWA_SESSION || '';
+  const sessionId = env('OPENWA_SESSION') || '';
   const chatId = toChatId(to);
   if (!sessionId || !chatId) throw new Error('OpenWA no configurado');
 
@@ -216,13 +217,13 @@ async function sendWhatsApp({ to, message }) {
 }
 
 async function getChats(sessionId) {
-  const sid = sessionId || process.env.OPENWA_SESSION;
+  const sid = sessionId || env('OPENWA_SESSION');
   const qs = sid ? `?sessionId=${encodeURIComponent(sid)}` : '';
   return openwaFetch(`/api/chats${qs}`);
 }
 
 async function getChatMessages(chatId, sessionId) {
-  const sid = sessionId || process.env.OPENWA_SESSION;
+  const sid = sessionId || env('OPENWA_SESSION');
   const qs = sid ? `?sessionId=${encodeURIComponent(sid)}` : '';
   return openwaFetch(`/api/chats/${encodeURIComponent(chatId)}/messages${qs}`);
 }
@@ -230,14 +231,14 @@ async function getChatMessages(chatId, sessionId) {
 async function searchMessagesByPhone(phone, sessionId) {
   const digits = normalizePhone(phone);
   if (!digits) return [];
-  const sid = sessionId || process.env.OPENWA_SESSION;
+  const sid = sessionId || env('OPENWA_SESSION');
   const params = new URLSearchParams({ phone: digits, limit: '200' });
   if (sid) params.set('sessionId', sid);
   return openwaFetch(`/api/chats/search/messages?${params}`);
 }
 
 async function getSessionMessages(sessionId, limit = 200) {
-  const sid = sessionId || process.env.OPENWA_SESSION;
+  const sid = sessionId || env('OPENWA_SESSION');
   if (!sid) return [];
   const params = new URLSearchParams({ limit: String(Math.min(limit, 300)) });
   return openwaFetch(`/api/sessions/${encodeURIComponent(sid)}/messages?${params}`);
@@ -270,7 +271,7 @@ async function resolvePhoneJid(phone) {
 }
 
 async function markChatRead({ chatId, messageIds, sessionId }) {
-  const sid = sessionId || process.env.OPENWA_SESSION;
+  const sid = sessionId || env('OPENWA_SESSION');
   if (!sid || !chatId) return { ok: false, read: 0 };
   const params = new URLSearchParams({ sessionId: sid });
   return openwaFetch(`/api/chats/${encodeURIComponent(chatId)}/read?${params}`, {
@@ -281,7 +282,7 @@ async function markChatRead({ chatId, messageIds, sessionId }) {
 
 async function getSessionMessagesByPhone(phone, sessionId, limit = 300) {
   const digits = normalizePhone(phone);
-  const sid = sessionId || process.env.OPENWA_SESSION;
+  const sid = sessionId || env('OPENWA_SESSION');
   if (!digits || !sid) return [];
   const params = new URLSearchParams({ phone: digits, limit: String(Math.min(limit, 300)) });
   return openwaFetch(`/api/sessions/${encodeURIComponent(sid)}/messages?${params}`);

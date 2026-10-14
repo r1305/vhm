@@ -1,6 +1,7 @@
 const { Router } = require('express');
 const path = require('path');
 const fs = require('fs');
+const { basePath } = require('../lib/mount');
 const multer = require('multer');
 const { authMiddleware } = require('./auth');
 
@@ -38,7 +39,7 @@ router.get('/', (req, res) => {
   const exts = ['.jpg', '.jpeg', '.png', '.webp'];
   for (const ext of exts) {
     if (fs.existsSync(HERO_FILE + ext)) {
-      const base = (res.locals.basePath || process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
+      const base = (res.locals.basePath || basePath() || '').replace(/\/$/, '');
       return res.json({ url: `${base}/uploads/hero-portada${ext}?v=${Date.now()}` });
     }
   }
@@ -53,7 +54,7 @@ router.post('/', authMiddleware, requireAdmin, upload.single('imagen'), (req, re
     const f = HERO_FILE + ext;
     if (f !== req.file.path && fs.existsSync(f)) fs.unlinkSync(f);
   });
-  const base = (res.locals.basePath || process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
+  const base = (res.locals.basePath || basePath() || '').replace(/\/$/, '');
   const ext = path.extname(req.file.filename);
   res.json({ ok: true, url: `${base}/uploads/hero-portada${ext}?v=${Date.now()}` });
 });

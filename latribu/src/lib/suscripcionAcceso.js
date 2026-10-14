@@ -1,9 +1,10 @@
+const env = require('../../lib/env');
 const pool = require('../db');
 
 const MAX_INTENTOS_RENOVACION = 4;
 
 function graciaDias() {
-  const n = Number.parseInt(process.env.TRIBU_GRACIA_DIAS, 10);
+  const n = Number.parseInt(env('GRACIA_DIAS'), 10);
   return Number.isFinite(n) && n >= 0 && n <= 30 ? n : 3;
 }
 

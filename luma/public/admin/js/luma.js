@@ -19,10 +19,10 @@
     return m ? decodeURIComponent(m[1]) : null;
   }
   function authHeaders() {
-    return { 'Content-Type': 'application/json', Authorization: 'Bearer ' + getToken(), 'X-CSRF-Token': getCookie('csrf_token') || '' };
+    return { 'Content-Type': 'application/json', Authorization: 'Bearer ' + getToken(), 'X-CSRF-Token': getCookie('csrf_luma') || '' };
   }
   function uploadHeaders() {
-    return { Authorization: 'Bearer ' + getToken(), 'X-CSRF-Token': getCookie('csrf_token') || '' };
+    return { Authorization: 'Bearer ' + getToken(), 'X-CSRF-Token': getCookie('csrf_luma') || '' };
   }
   function mediaUrl(url) {
     if (!url) return '';

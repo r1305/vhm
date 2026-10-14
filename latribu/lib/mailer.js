@@ -1,3 +1,4 @@
+const env = require('./env');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 
@@ -22,7 +23,7 @@ let avisoSinSmtp = false;
 let avisoRespaldoEnv = false;
 
 function nombreBdConfigEmail() {
-  const nombre = String(process.env.EMAIL_CONFIG_DB_NAME || EMAIL_CONFIG_DB_POR_DEFECTO).trim();
+  const nombre = String(env('EMAIL_CONFIG_DB_NAME') || EMAIL_CONFIG_DB_POR_DEFECTO).trim();
   if (!/^[A-Za-z0-9_]+$/.test(nombre)) {
     const err = new Error('EMAIL_CONFIG_DB_NAME inválido');
     err.code = 'EMAIL_CONFIG_DB_NAME_INVALIDO';
@@ -58,17 +59,17 @@ function configDesdeFila(row) {
 }
 
 function configDesdeEnv() {
-  const host = process.env.SMTP_HOST;
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
+  const host = env('SMTP_HOST');
+  const user = env('SMTP_USER');
+  const pass = env('SMTP_PASS');
   if (!host || !user || !pass) return null;
   return {
     host,
-    port: parseInt(process.env.SMTP_PORT || '587', 10),
-    secure: process.env.SMTP_SECURE === '1' || process.env.SMTP_SECURE === 'true',
+    port: parseInt(env('SMTP_PORT') || '587', 10),
+    secure: env('SMTP_SECURE') === '1' || env('SMTP_SECURE') === 'true',
     user,
     pass,
-    from: process.env.SMTP_FROM || FROM_POR_DEFECTO,
+    from: env('SMTP_FROM') || FROM_POR_DEFECTO,
   };
 }
 

@@ -11,7 +11,7 @@
  * Si usas node-cron en app.js, no configures también el CLI (mismo guard evita doble envío).
  */
 
-require('dotenv').config({ path: __dirname + '/.env' });
+if (require.main === module) require('dotenv').config({ path: __dirname + '/.env' });
 process.env.TZ = 'America/Lima';
 const pool = require('./lib/db');
 const { sendWhatsAppGreen, loadOpenwaConfigFromDB, isOpenwaConfigured } = require('./lib/greenapi');

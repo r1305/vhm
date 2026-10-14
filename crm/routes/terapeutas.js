@@ -1,3 +1,4 @@
+const env = require('../lib/env');
 const { Router } = require('express');
 const bcrypt = require('bcryptjs');
 const pool = require('../lib/db');
@@ -151,7 +152,7 @@ router.patch('/:id/presencial', requireMenuPermisoApi('disponibilidad'), async (
 
 // Callback OAuth2 — debe ir ANTES de /:id para no colisionar
 router.get('/google/calendar-callback', async (req, res) => {
-  const BASE = (process.env.APP_MOUNT_PATH || '/crm').replace(/\/$/, '');
+  const BASE = req.app.locals.BASE;
   const { code, state } = req.query;
   if (!code || !state) return res.redirect(`${BASE}/terapeutas?gcal=error`);
   try {
@@ -160,8 +161,8 @@ router.get('/google/calendar-callback', async (req, res) => {
     const redirect = decoded.redirect || 'terapeutas';
     if (!terapeutaId) throw new Error('state inválido');
     const auth = new (require('googleapis').google.auth.OAuth2)(
-      process.env.GOOGLE_CLIENT_ID,
-      process.env.GOOGLE_CLIENT_SECRET,
+      env('GOOGLE_CLIENT_ID'),
+      env('GOOGLE_CLIENT_SECRET'),
       googleCal.BASE_REDIRECT
     );
     const { tokens } = await auth.getToken(code);

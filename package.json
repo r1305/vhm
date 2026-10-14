@@ -1,0 +1,24 @@
+{
+  "name": "vhm",
+  "version": "1.0.0",
+  "private": true,
+  "description": "VHM unificado: crm, latribu, luma y site en un solo proceso Express",
+  "main": "unificado/app.js",
+  "scripts": {
+    "start": "node unificado/app.js",
+    "test": "node --test unificado/test/arranque.test.js"
+  },
+  "workspaces": [
+    "crm",
+    "latribu",
+    "luma",
+    "site"
+  ],
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "express": "^4.18.2"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

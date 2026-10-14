@@ -1,4 +1,6 @@
+const env = require('../lib/env');
 const { Router } = require('express');
+const { basePath } = require('../lib/mount');
 const jwt = require('jsonwebtoken');
 const pool = require('./db');
 const { authMiddleware, JWT_SECRET } = require('./auth');
@@ -10,8 +12,8 @@ const { usuarioTieneAcceso, requireSuscripcion, MSG_SUSCRIPCION_REQUERIDA } = re
 
 const router = Router();
 
-const BASE = (process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
-const ASSET_BASE = (process.env.SITE_URL || '').replace(/\/$/, '') || BASE;
+const BASE = (basePath() || '').replace(/\/$/, '');
+const ASSET_BASE = (env('SITE_URL') || '').replace(/\/$/, '') || BASE;
 const DESTINO = 'tribu/posts';
 const UPLOAD_URL_BASE = `${ASSET_BASE}/uploads/${DESTINO}`;
 

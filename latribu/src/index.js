@@ -1,14 +1,10 @@
-require('dotenv').config();
-// Ensure APP_MOUNT_PATH is set; fallback to '/latribu' for development
-if (!process.env.APP_MOUNT_PATH) {
-  process.env.APP_MOUNT_PATH = '/latribu';
-}
+const env = require('../lib/env');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const express = require('express');
 const cors = require('cors');
-const { rewriteRootPaths } = require('../lib/mount');
+const { rewriteRootPaths, basePath } = require('../lib/mount');
 const { createCsrfMiddleware } = require('./middleware/csrf');
 
 const app = express();
@@ -20,7 +16,7 @@ try {
   app.use(compression({ threshold: 1024 }));
 } catch (_) { /* optional */ }
 
-const corsOrigin = process.env.CORS_ORIGIN;
+const corsOrigin = env('CORS_ORIGIN');
 app.use(cors({
   origin: (origin, cb) => {
     if (!origin) return cb(null, true);
@@ -63,8 +59,8 @@ app.use((req, res, next) => (esRutaEditor(req.path) ? jsonEditor : jsonNormal)(r
 app.use((req, res, next) => (esRutaEditor(req.path) ? urlencodedEditor : urlencodedNormal)(req, res, next));
 app.use(require('cookie-parser')());
 
-const BASE_PATH = (process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
-const SITE_URL = (process.env.SITE_URL || '').replace(/\/$/, '');
+const BASE_PATH = (basePath() || '').replace(/\/$/, '');
+const SITE_URL = (env('SITE_URL') || '').replace(/\/$/, '');
 app.use((req, res, next) => { res.locals.basePath = BASE_PATH; next(); });
 
 // CSRF protection
@@ -94,7 +90,7 @@ const ADMIN_DIR = path.join(__dirname, '../public/admin');
 const ADMIN_PAGES = ['login.html', 'videos.html', 'tribu-users.html', 'plantillas.html', 'encuestas.html', 'testimonios.html', 'posts.html', 'contenido.html', 'usuarios.html', 'config.html', 'accesos.html', 'index.html'];
 
 function sendAdminHtml(res, filename) {
-  const base = ((res.locals && res.locals.basePath) || process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
+  const base = ((res.locals && res.locals.basePath) || basePath() || '').replace(/\/$/, '');
   const filePath = path.join(ADMIN_DIR, filename);
   if (!fs.existsSync(filePath)) return res.status(404).type('text/plain').send('Admin page not found: ' + filename);
   let html = fs.readFileSync(filePath, 'utf8');
@@ -116,7 +112,7 @@ function sendAdminAsset(subdir, file, res) {
 }
 
 function sendPublicHtml(res, filename) {
-  const base = ((res.locals && res.locals.basePath) || process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
+  const base = ((res.locals && res.locals.basePath) || basePath() || '').replace(/\/$/, '');
   const filePath = path.join(__dirname, '../public', filename);
   if (!fs.existsSync(filePath)) return res.status(404).type('text/plain').send('Not found: ' + filename);
   let html = fs.readFileSync(filePath, 'utf8');
@@ -146,7 +142,7 @@ function detenerCronLatribu() {
 }
 
 function programarCronRenovaciones() {
-  if (process.env.TRIBU_RENOVACION_CRON_ENABLED !== '1') return;
+  if (env('RENOVACION_CRON_ENABLED') !== '1') return;
   if (renovacionesTimer || cronDetenido) return;
   const { runRenovacionesSuscripciones } = require('./tribuRenovaciones');
   renovacionesTimer = setInterval(async () => {
@@ -167,7 +163,8 @@ function programarCronRenovaciones() {
 }
 
 function programarCronTribu() {
-  if (process.env.TRIBU_CRON_ENABLED !== '1') return;
+  if (env('CRON_ENABLED') !== '1') return;
+  if (cronTribuTimer || cronDetenido) return;
   const { renovarPassword } = require('./tribuAccessRoutes');
   function msHastaProximoMiercoles12() {
     const ahora = new Date();
@@ -217,7 +214,7 @@ ADMIN_PAGES.forEach(page => {
 });
 
 app.get(['/admin', '/admin/'], (req, res) => {
-  const base = (res.locals.basePath || process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
+  const base = (res.locals.basePath || basePath() || '').replace(/\/$/, '');
   res.redirect(base + '/admin/login.html');
 });
 
@@ -233,14 +230,14 @@ app.get('/restablecer-contrasena', (req, res) => {
   sendPublicHtml(res, 'restablecer-contrasena.html');
 });
 app.get('/empezar', (req, res) => {
-  const base = (res.locals.basePath || process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
+  const base = (res.locals.basePath || basePath() || '').replace(/\/$/, '');
   res.redirect(base + '/empezar/que-buscas');
 });
 app.get('/empezar/que-buscas', (req, res) => sendPublicHtml(res, 'empezar.html'));
 app.get('/empezar/como-empezar', (req, res) => sendPublicHtml(res, 'empezar.html'));
 app.get('/empezar/intereses', (req, res) => sendPublicHtml(res, 'empezar.html'));
 app.get('/empezar/primer-paso', (req, res) => {
-  const base = (res.locals.basePath || process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
+  const base = (res.locals.basePath || basePath() || '').replace(/\/$/, '');
   res.redirect(302, base + '/inicio');
 });
 app.get('/bienestar', (req, res) => sendPublicHtml(res, 'bienestar.html'));
@@ -250,7 +247,7 @@ app.get('/estados', (req, res) => sendPublicHtml(res, 'estados.html'));
 app.get('/biblioteca', (req, res) => sendPublicHtml(res, 'recursos.html'));
 app.get('/membresia', (req, res) => sendPublicHtml(res, 'suscripciones.html'));
 app.get('/suscripciones', (req, res) => {
-  const base = (res.locals.basePath || process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
+  const base = (res.locals.basePath || basePath() || '').replace(/\/$/, '');
   res.redirect(301, base + '/membresia');
 });
 
@@ -323,3 +320,8 @@ app.use((err, req, res, next) => {
 
 module.exports = app;
 module.exports.detenerCronLatribu = detenerCronLatribu;
+module.exports.iniciarCronLatribu = () => {
+  cronDetenido = false;
+  programarCronTribu();
+  programarCronRenovaciones();
+};

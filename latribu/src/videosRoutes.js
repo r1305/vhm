@@ -1,4 +1,6 @@
+const env = require('../lib/env');
 const { Router } = require('express');
+const { basePath } = require('../lib/mount');
 const { Readable } = require('stream');
 const { pipeline } = require('stream/promises');
 const pool = require('./db');
@@ -217,7 +219,7 @@ function landingPayload(row) {
 // --- Subida de miniaturas con validación por contenido ---
 // Las miniaturas viven en public/uploads/ sin subcarpeta, como antes.
 const DESTINO_MINIATURA = '';
-const ASSET_BASE = (process.env.SITE_URL || process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
+const ASSET_BASE = (env('SITE_URL') || basePath() || '').replace(/\/$/, '');
 const upload = crearUploadImagen({ limiteBytes: 5 * 1024 * 1024 });
 
 const uploadMiniatura = (req, res, next) =>

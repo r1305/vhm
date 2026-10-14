@@ -1,4 +1,5 @@
 const { Router } = require('express');
+const { basePath } = require('../lib/mount');
 const pool = require('./db');
 const { authMiddleware } = require('./auth');
 const { crearUploadImagen, guardarImagen, borrarImagen } = require('./lib/subidaImagen');
@@ -7,7 +8,7 @@ const router = Router();
 
 // Las fotos viven en public/uploads/ sin subcarpeta, como antes.
 const DESTINO = '';
-const BASE = (process.env.APP_MOUNT_PATH || '').replace(/\/$/, '');
+const BASE = (basePath() || '').replace(/\/$/, '');
 
 const upload = crearUploadImagen({ limiteBytes: 5 * 1024 * 1024 });
 
