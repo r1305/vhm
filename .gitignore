@@ -18,3 +18,5 @@ temp_*.txt
 temp_*.html
 temp_*.diff
 staged*.diff
+
+latribu/.claude/
