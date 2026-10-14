@@ -30,7 +30,7 @@ const sinPrecio = terapeutas.reduce((a, t) => a + Number(t.sin_precio), 0);
   <% if (terapeutas.length) { %>
   <div class="rf-table-wrap">
     <table class="rf-table">
-      <thead><tr><th>Terapeuta</th><th>Paquetes</th><% if (verMontos) { %><th>Ingresos</th><% } %></tr></thead>
+      <thead><tr><th>Terapeuta</th><th class="rf-num">Paquetes</th><% if (verMontos) { %><th class="rf-num">Ingresos</th><% } %></tr></thead>
       <tbody>
         <% terapeutas.forEach(t => { %>
         <tr>
