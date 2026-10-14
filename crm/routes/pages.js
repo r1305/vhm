@@ -639,7 +639,7 @@ router.get('/distribucion', requireSession, requireMenuPermiso('distribucion'), 
        LEFT JOIN pacientes p ON p.terapeuta_id = t.id
        LEFT JOIN paciente_paquetes pp ON pp.paciente_id = p.id
        LEFT JOIN paquetes_catalogo pc ON pc.id = pp.paquete_catalogo_id
-       WHERE t.rol = 'terapeuta'${propio}
+       WHERE t.rol = 'terapeuta' AND t.activo = 1${propio}
        GROUP BY t.id, t.nombre, t.apellido
        ORDER BY ingresos DESC, t.nombre`,
       propio ? [user.id] : []
