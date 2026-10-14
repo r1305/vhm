@@ -29,7 +29,9 @@ function crearAppUnificada({ cargarEnv = true } = {}) {
   // Lo que una sub-app no resuelve no debe caer en el middleware de site (CSRF, CSP).
   app.use(['/crm', '/luma', '/latribu'], (req, res) => res.status(404).type('text/plain').send('Not found'));
   // Compatibilidad: la BD guarda fotos con el prefijo /site de la versión standalone.
-  app.use('/site/uploads', express.static(path.join(RAIZ, 'site/public/uploads'), { maxAge: '1d', index: false }));
+  app.get(['/site', '/site/'], (req, res) => res.redirect(301, '/'));
+  app.use('/site/media', express.static(path.join(RAIZ, 'media'), { maxAge: '1h', index: false }));
+  app.use('/site', express.static(path.join(RAIZ, 'site/public'), { maxAge: '1d', index: false }));
   app.use('/', site);
 
   // Solo el proceso unificado programa crons, una vez: las factorías crearApp no lo hacen.
