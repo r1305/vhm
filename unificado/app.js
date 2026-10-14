@@ -71,6 +71,6 @@ function arrancar() {
   iniciarCrons().catch((err) => console.error('[vhm-unificado] Init error:', err.message));
 }
 
-if (typeof PhusionPassenger !== 'undefined' || require.main === module) arrancar();
+if (process.env.NODE_ENV !== 'test') arrancar();
 
 module.exports = { crearAppUnificada };
