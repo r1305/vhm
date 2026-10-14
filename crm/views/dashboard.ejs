@@ -1,3 +1,25 @@
+<div class="card" style="margin-bottom:16px">
+  <div class="card-body" style="padding:14px 18px">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:8px">
+        <label class="form-label" style="margin:0;white-space:nowrap">Desde</label>
+        <input type="date" class="form-control" id="rfDesde" style="width:150px" value="<%= desde %>">
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <label class="form-label" style="margin:0;white-space:nowrap">Hasta</label>
+        <input type="date" class="form-control" id="rfHasta" style="width:150px" value="<%= hasta %>">
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-outline btn-sm" data-rf-preset="hoy">Hoy</button>
+        <button class="btn btn-outline btn-sm" data-rf-preset="semana">Esta semana</button>
+        <button class="btn btn-outline btn-sm" data-rf-preset="mes">Este mes</button>
+        <button class="btn btn-outline btn-sm" data-rf-preset="mes3">3 meses</button>
+      </div>
+      <button class="btn btn-primary btn-sm" id="btnAplicarFiltroRF"><i class="fas fa-search"></i> Aplicar</button>
+    </div>
+  </div>
+</div>
+
 <%/* ── KPIs ── */%>
 <div class="kpi-grid" id="kpiGrid">
   <% kpis.forEach(k => { %>
@@ -22,12 +44,6 @@
   const vend = Number(sesiones.vendidas), usadas = Number(sesiones.usadas);
   const pctUso = vend > 0 ? Math.min(100, Math.round(usadas / vend * 100)) : 0;
 %>
-<div class="dash-period">
-  <span>Periodo:</span>
-  <% [7, 30, 90].forEach(n => { %>
-  <a class="btn btn-sm <%= n === dias ? 'btn-primary' : 'btn-outline' %>" href="?dias=<%= n %>"><%= n %> días</a>
-  <% }) %>
-</div>
 
 <div class="kpi-grid">
   <% periodoKpis.forEach(k => { %>
@@ -41,7 +57,7 @@
 
 <div class="dash-grid dash-charts">
   <div class="card dash-wide">
-    <div class="card-header"><span><i class="fas fa-chart-column"></i> Citas por día (sin canceladas)</span><span class="dash-badge"><%= desde %> a <%= hoy %></span></div>
+    <div class="card-header"><span><i class="fas fa-chart-column"></i> Citas por día (sin canceladas)</span><span class="dash-badge"><%= desde %> a <%= hasta %></span></div>
     <div class="card-body">
       <% if (serieDias.some(d => d.total)) { %>
       <svg class="dash-bars" viewBox="0 0 <%= serieDias.length * 10 %> 100" preserveAspectRatio="none" role="img" aria-label="Citas por día">

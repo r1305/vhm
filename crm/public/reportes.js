@@ -156,12 +156,7 @@
     if (rfDesdeEl && rfHastaEl && !rfDesdeEl.value && !rfHastaEl.value) {
       setPreset('hoy');
     }
-    const rfListPath = () => {
-      const base = window.__APP_BASE__ || '';
-      return window.location.pathname.includes('/detalles')
-        ? `${base}/reporte-financiero/detalles`
-        : `${base}/reporte-financiero`;
-    };
+    const rfListPath = () => window.location.pathname;
     const irConFiltro = () => {
       window.showCrmLoader?.('Aplicando filtro…');
       const desde = rfDesdeEl.value;

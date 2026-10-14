@@ -35,7 +35,6 @@
 .badge-sesiones-cero { background: var(--warning-bg); color: var(--warning); }
 .badge-riesgo { background: var(--danger-bg); color: var(--danger); }
 
-.dash-period { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 16px 0; font-size: 13px; color: var(--text-muted); }
 .dash-charts { margin-bottom: 16px; }
 .dash-wide { grid-column: 1 / -1; }
 .dash-bars { width: 100%; height: 140px; display: block; }

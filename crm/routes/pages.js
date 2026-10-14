@@ -192,9 +192,15 @@ router.get('/dashboard', requireSession, requireMenuPermiso('dashboard'), async 
   const propio = !isStaffAdmin(user.rol);
   const own = (col) => propio ? ` AND ${col} = ?` : '';
   const ownP = propio ? [user.id] : [];
-  const dias = [7, 30, 90].includes(Number(req.query.dias)) ? Number(req.query.dias) : 30;
   const hoy = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(new Date());
-  const desde = new Date(Date.parse(`${hoy}T12:00:00Z`) - (dias - 1) * 86400000).toISOString().slice(0, 10);
+  const diaMs = 86400000;
+  const esFecha = (s) => { if (typeof s !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false; const d = new Date(`${s}T12:00:00Z`); return !isNaN(d) && d.toISOString().slice(0, 10) === s; };
+  const sumaDias = (f, n) => new Date(Date.parse(`${f}T12:00:00Z`) + n * diaMs).toISOString().slice(0, 10);
+  const hayRango = esFecha(req.query.desde) && esFecha(req.query.hasta) && req.query.desde <= req.query.hasta;
+  const hasta = hayRango ? req.query.hasta : hoy;
+  let desde = hayRango ? req.query.desde : sumaDias(hoy, -29);
+  if (Date.parse(`${hasta}T12:00:00Z`) - Date.parse(`${desde}T12:00:00Z`) > 365 * diaMs) desde = sumaDias(hasta, -365);
+  const dias = Math.round((Date.parse(`${hasta}T12:00:00Z`) - Date.parse(`${desde}T12:00:00Z`)) / diaMs) + 1;
   try {
     const [
       [ [{ pacientes_activos }] ],
@@ -216,10 +222,10 @@ router.get('/dashboard', requireSession, requireMenuPermiso('dashboard'), async 
     ] = await Promise.all([
       db.execute(`SELECT COUNT(*) AS pacientes_activos FROM pacientes WHERE estado = 'activo'${own('terapeuta_id')}`, ownP),
       db.execute(`SELECT COUNT(*) AS retenidos FROM pacientes p WHERE p.estado='activo' AND ${SQL.paquetesComprados('p')} >= 2${own('p.terapeuta_id')}`, ownP),
-      db.execute(`SELECT COUNT(*) AS altas_mes FROM pacientes WHERE estado='alta' AND DATE_FORMAT(updated_at,'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')${own('terapeuta_id')}`, ownP),
+      db.execute(`SELECT COUNT(*) AS altas_mes FROM pacientes WHERE estado='alta' AND DATE(updated_at) BETWEEN ? AND ?${own('terapeuta_id')}`, [desde, hasta, ...ownP]),
       db.execute(`SELECT COUNT(*) AS sin_paquete FROM pacientes p WHERE p.estado='activo' AND ${SQL.sinSesiones('p')}${own('p.terapeuta_id')}`, ownP),
-      db.execute(`SELECT COUNT(*) AS no_show_mes FROM citas WHERE estado='no_show' AND DATE_FORMAT(fecha,'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')${own('terapeuta_id')}`, ownP),
-      db.execute(`SELECT COUNT(*) AS citas_mes FROM citas WHERE estado IN ('realizada','no_show') AND DATE_FORMAT(fecha,'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')${own('terapeuta_id')}`, ownP),
+      db.execute(`SELECT COUNT(*) AS no_show_mes FROM citas WHERE estado='no_show' AND fecha BETWEEN ? AND ?${own('terapeuta_id')}`, [desde, hasta, ...ownP]),
+      db.execute(`SELECT COUNT(*) AS citas_mes FROM citas WHERE estado IN ('realizada','no_show') AND fecha BETWEEN ? AND ?${own('terapeuta_id')}`, [desde, hasta, ...ownP]),
       db.execute(`
         SELECT p.id, p.nombre, p.apellido, p.telefono, t.nombre AS terapeuta_nombre,
                ${SQL.sesionesTotal('p')}          AS sesiones_total,
@@ -279,8 +285,8 @@ router.get('/dashboard', requireSession, requireMenuPermiso('dashboard'), async 
         WHERE t.activo = 1 AND t.rol = 'terapeuta'${own('t.id')}
         GROUP BY t.id ORDER BY pacientes_asignados DESC
       `, ownP),
-      db.execute(`SELECT estado, COUNT(*) AS total FROM citas WHERE fecha BETWEEN ? AND ?${own('terapeuta_id')} GROUP BY estado`, [desde, hoy, ...ownP]),
-      db.execute(`SELECT DATE_FORMAT(fecha,'%Y-%m-%d') AS dia, COUNT(*) AS total FROM citas WHERE fecha BETWEEN ? AND ? AND estado <> 'cancelada'${own('terapeuta_id')} GROUP BY fecha`, [desde, hoy, ...ownP]),
+      db.execute(`SELECT estado, COUNT(*) AS total FROM citas WHERE fecha BETWEEN ? AND ?${own('terapeuta_id')} GROUP BY estado`, [desde, hasta, ...ownP]),
+      db.execute(`SELECT DATE_FORMAT(fecha,'%Y-%m-%d') AS dia, COUNT(*) AS total FROM citas WHERE fecha BETWEEN ? AND ? AND estado <> 'cancelada'${own('terapeuta_id')} GROUP BY fecha`, [desde, hasta, ...ownP]),
       db.execute(`
         SELECT t.nombre, t.apellido, COUNT(c.id) AS total,
                COALESCE(SUM(c.estado = 'realizada'), 0) AS realizadas
@@ -288,7 +294,7 @@ router.get('/dashboard', requireSession, requireMenuPermiso('dashboard'), async 
         LEFT JOIN citas c ON c.terapeuta_id = t.id AND c.fecha BETWEEN ? AND ? AND c.estado <> 'cancelada'
         WHERE t.activo = 1 AND t.rol = 'terapeuta'${own('t.id')}
         GROUP BY t.id ORDER BY total DESC
-      `, [desde, hoy, ...ownP]),
+      `, [desde, hasta, ...ownP]),
       db.execute(`
         SELECT COALESCE(SUM(${SQL.sesionesTotal('p')}), 0)      AS vendidas,
                COALESCE(SUM(${SQL.citasConfirmadas('p')}), 0)   AS usadas,
@@ -296,7 +302,7 @@ router.get('/dashboard', requireSession, requireMenuPermiso('dashboard'), async 
         FROM pacientes p WHERE p.estado = 'activo'${own('p.terapeuta_id')}
       `, ownP),
       propio ? Promise.resolve([[{ ingresos: null }]])
-             : db.execute(`SELECT COALESCE(SUM(monto), 0) AS ingresos FROM pagos WHERE estado = 'completado' AND DATE(created_at) BETWEEN ? AND ?`, [desde, hoy])
+             : db.execute(`SELECT COALESCE(SUM(monto), 0) AS ingresos FROM pagos WHERE estado = 'completado' AND DATE(created_at) BETWEEN ? AND ?`, [desde, hasta])
     ]);
 
     const estadoTotal = (e) => Number(citasEstado.find(r => r.estado === e)?.total || 0);
@@ -313,8 +319,8 @@ router.get('/dashboard', requireSession, requireMenuPermiso('dashboard'), async 
     const kpis = [
       { label: 'Pacientes activos',   value: pacientes_activos, sub: null, state: null },
       { label: 'Tasa de retención',   value: `${tasaRetencion}%`, sub: `${retenidos} con 2+ paquetes`, state: tasaRetencion >= 50 ? 'ok' : 'warn' },
-      { label: 'No-show del mes',     value: `${tasaNoShow}%`, sub: `${no_show_mes} de ${citas_mes} citas`, state: tasaNoShow > 15 ? 'warn' : 'ok' },
-      { label: 'Altas este mes',      value: altas_mes, sub: 'tratamientos finalizados', state: null },
+      { label: 'No-show del periodo',     value: `${tasaNoShow}%`, sub: `${no_show_mes} de ${citas_mes} citas`, state: tasaNoShow > 15 ? 'warn' : 'ok' },
+      { label: 'Altas del periodo',      value: altas_mes, sub: 'tratamientos finalizados', state: null },
       { label: 'Sin sesiones',        value: sin_paquete, sub: 'activos que nunca compraron', state: sin_paquete > 0 ? 'warn' : null },
     ];
 
@@ -328,11 +334,11 @@ router.get('/dashboard', requireSession, requireMenuPermiso('dashboard'), async 
     if (ingresosRow.ingresos != null) periodoKpis.push({ label: 'Ingresos del periodo', value: `S/ ${Number(ingresosRow.ingresos).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, sub: 'pagos completados' });
 
     render(res, 'dashboard', {
-      user, kpis, periodoKpis, dias, desde, hoy,
+      user, kpis, periodoKpis, dias, desde, hasta,
       citasEstado, serieDias, citasTerapeuta, sesiones,
       proximosAgotar, enRiesgo,
       sinPaquete, packVencidos, ocupacion,
-      scripts: `<script src="${req.app.locals.BASE}/dashboard.js"></script>`
+      scripts: `<script src="${req.app.locals.BASE}/dashboard.js"></script><script src="${req.app.locals.BASE}/reportes.js"></script>`
     });
   } catch (err) { errorPagina(res, 'dashboard', err); }
 });
