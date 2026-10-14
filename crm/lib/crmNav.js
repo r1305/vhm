@@ -22,6 +22,7 @@ const VIEW_PATHS = [
   ['permisos_menu', 'permisos-menu'],
   ['reporte_financiero', 'reporte-financiero'],
   ['reporte_financiero_detalles', 'reporte-financiero/detalles'],
+  ['distribucion', 'distribucion'],
 ];
 
 function primeraVistaPermitida(permisos) {

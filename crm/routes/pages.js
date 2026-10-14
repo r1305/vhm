@@ -24,6 +24,7 @@ const TITLES = {
   permisos_menu:        'Permisos de menú',
   reporte_financiero:   'Reporte Financiero · Dashboard',
   reporte_financiero_detalles: 'Reporte Financiero · Detalles',
+  distribucion:    'Distribución',
 };
 
 const ESTADO_CITA_CSS = {
@@ -621,6 +622,30 @@ router.get('/reporte-financiero/detalles', requireSession, requireMenuPermiso('r
       scripts: `<script src="${req.app.locals.BASE}/reportes.js"></script>`,
     });
   } catch (err) { errorPagina(res, 'reporte-financiero/detalles', err); }
+});
+
+// ── DISTRIBUCIÓN (ingresos por terapeuta) ───────────────────────
+// Ingreso = suma del precio de todos los paquetes asignados a sus pacientes; sin precio cuenta 0.
+router.get('/distribucion', requireSession, requireMenuPermiso('distribucion'), async (req, res) => {
+  try {
+    const user = req.session.user;
+    const ppPrecioEff = 'COALESCE(NULLIF(pp.precio, 0), pc.precio, 0)';
+    const propio = isStaffAdmin(user.rol) ? '' : ' AND t.id = ?';
+    const [terapeutas] = await db.execute(
+      `SELECT t.id, t.nombre, t.apellido, COUNT(pp.id) AS paquetes,
+              COALESCE(SUM(${ppPrecioEff}),0) AS ingresos,
+              COALESCE(SUM(pp.id IS NOT NULL AND ${ppPrecioEff} = 0),0) AS sin_precio
+       FROM terapeutas t
+       LEFT JOIN pacientes p ON p.terapeuta_id = t.id
+       LEFT JOIN paciente_paquetes pp ON pp.paciente_id = p.id
+       LEFT JOIN paquetes_catalogo pc ON pc.id = pp.paquete_catalogo_id
+       WHERE t.rol = 'terapeuta'${propio}
+       GROUP BY t.id, t.nombre, t.apellido
+       ORDER BY ingresos DESC, t.nombre`,
+      propio ? [user.id] : []
+    );
+    render(res, 'distribucion', { user, terapeutas, verMontos: isStaffAdmin(user.rol) });
+  } catch (err) { errorPagina(res, 'distribucion', err); }
 });
 
 // ── PERMISOS DE MENÚ ───────────────────────────────────────────
