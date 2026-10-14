@@ -442,17 +442,22 @@ router.get('/integraciones', requireSession, requireMenuPermiso('integraciones')
   } catch (err) { errorPagina(res, 'integraciones', err); }
 });
 
+// Filtro de fechas compartido (?desde=&hasta=) del reporte financiero y distribución.
+function rangoFechas(query) {
+  const esFecha = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s || '');
+  const { desde, hasta } = query;
+  const hayRango = esFecha(desde) && esFecha(hasta) && desde <= hasta;
+  const filterDate = (col) => {
+    if (!hayRango) return '';
+    return ` AND ${col} BETWEEN ${db.escape(desde + ' 00:00:00')} AND ${db.escape(hasta + ' 23:59:59')}`;
+  };
+  return { desde, hasta, hayRango, filterDate };
+}
+
 // ── REPORTE FINANCIERO ──────────────────────────────────────────
 router.get('/reporte-financiero', requireSession, requireMenuPermiso('reporte_financiero'), async (req, res) => {
   try {
-    const esFecha = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s || '');
-    const desde = req.query.desde;
-    const hasta = req.query.hasta;
-    const hayRango = esFecha(desde) && esFecha(hasta) && desde <= hasta;
-    const filterDate = (col) => {
-      if (!hayRango) return '';
-      return ` AND ${col} BETWEEN ${db.escape(desde + ' 00:00:00')} AND ${db.escape(hasta + ' 23:59:59')}`;
-    };
+    const { desde, hasta, hayRango, filterDate } = rangoFechas(req.query);
     const fechaCobro = 'COALESCE(c.pagado_at, c.fecha_pago)';
     const ppPrecioEff = 'COALESCE(NULLIF(pp.precio, 0), pc.precio, 0)';
     const joinCatalogo = 'LEFT JOIN paquetes_catalogo pc ON pc.id = pp.paquete_catalogo_id';
@@ -630,6 +635,7 @@ router.get('/distribucion', requireSession, requireMenuPermiso('distribucion'), 
   try {
     const user = req.session.user;
     const ppPrecioEff = 'COALESCE(NULLIF(pp.precio, 0), pc.precio, 0)';
+    const { desde, hasta, hayRango, filterDate } = rangoFechas(req.query);
     const propio = isStaffAdmin(user.rol) ? '' : ' AND t.id = ?';
     const [terapeutas] = await db.execute(
       `SELECT t.id, t.nombre, t.apellido, COUNT(pp.id) AS paquetes,
@@ -637,14 +643,18 @@ router.get('/distribucion', requireSession, requireMenuPermiso('distribucion'), 
               COALESCE(SUM(pp.id IS NOT NULL AND ${ppPrecioEff} = 0),0) AS sin_precio
        FROM terapeutas t
        LEFT JOIN pacientes p ON p.terapeuta_id = t.id
-       LEFT JOIN paciente_paquetes pp ON pp.paciente_id = p.id
+       LEFT JOIN paciente_paquetes pp ON pp.paciente_id = p.id${filterDate('pp.fecha_inicio')}
        LEFT JOIN paquetes_catalogo pc ON pc.id = pp.paquete_catalogo_id
        WHERE t.rol = 'terapeuta' AND t.activo = 1${propio}
        GROUP BY t.id, t.nombre, t.apellido
        ORDER BY ingresos DESC, t.nombre`,
       propio ? [user.id] : []
     );
-    render(res, 'distribucion', { user, terapeutas, verMontos: isStaffAdmin(user.rol) });
+    render(res, 'distribucion', {
+      user, terapeutas, verMontos: isStaffAdmin(user.rol),
+      desde: hayRango ? desde : '', hasta: hayRango ? hasta : '',
+      scripts: `<script src="${req.app.locals.BASE}/reportes.js"></script>`,
+    });
   } catch (err) { errorPagina(res, 'distribucion', err); }
 });
 
