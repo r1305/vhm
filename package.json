@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "description": "VHM unificado: crm, latribu, luma y site en un solo proceso Express",
-  "main": "unificado/app.js",
+  "main": "app.js",
   "scripts": {
-    "start": "node unificado/app.js",
-    "test": "node --test unificado/test/arranque.test.js"
+    "start": "node app.js",
+    "test": "node --test test/arranque.test.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

@@ -1,6 +1,6 @@
 # Variables de entorno: clave vieja → clave nueva
 
-La app unificada (`node unificado/app.js`) lee un solo `.env` en la raíz o las variables de la Node.js App de cPanel. Cada app lee solo sus claves con prefijo a través de `lib/env.js`; ninguna escribe en `process.env`. Solo `NODE_ENV`, `PORT` y `TZ` se comparten sin prefijo.
+La app unificada (`node app.js`) lee un solo `.env` en la raíz o las variables de la Node.js App de cPanel. Cada app lee solo sus claves con prefijo a través de `lib/env.js`; ninguna escribe en `process.env`. Solo `NODE_ENV`, `PORT` y `TZ` se comparten sin prefijo.
 
 | App | Prefijo | Regla |
 |-----|---------|-------|
