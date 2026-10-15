@@ -55,13 +55,15 @@
           <a class="nav-item <%= view === 'pacientes'  ? 'active' : '' %>" href="<%= BASE %>/pacientes"><i class="fas fa-users"></i><span> Pacientes</span></a>
           <% } %>
           <% if (grupoVisible(menuPermisos, 'chats')) { %>
-          <div class="nav-item nav-item-parent"><i class="fas fa-comments"></i><span> Chats</span></div>
+          <button type="button" class="nav-item nav-chats-toggle" id="navChatsToggle" aria-expanded="true" aria-controls="nav-chats-items"><i class="fas fa-comments"></i><span> Chats</span><i class="fas fa-chevron-down nav-parent-chevron" aria-hidden="true"></i></button>
+          <div class="nav-chats-items" id="nav-chats-items">
           <% if (menuPermisos.has('whatsapp')) { %>
           <a class="nav-item nav-item-sub <%= view === 'whatsapp'   ? 'active' : '' %>" href="<%= BASE %>/whatsapp"><i class="fab fa-whatsapp"></i><span> WhatsApp</span></a>
           <% } %>
           <% if (menuPermisos.has('social')) { %>
           <a class="nav-item nav-item-sub <%= view === 'social'     ? 'active' : '' %>" href="<%= BASE %>/social"><i class="fab fa-instagram"></i><span> Instagram</span></a>
           <% } %>
+          </div>
           <% } %>
           <% if (menuPermisos.has('mi_reporte')) { %>
           <a class="nav-item <%= view === 'mi_reporte'     ? 'active' : '' %>" href="<%= BASE %>/mi-reporte"><i class="fas fa-chart-bar"></i><span> Mi reporte</span></a>
@@ -245,6 +247,26 @@
 </div>
 
 <script src="<%= BASE %>/app.js?v=<%= assetVersion %>"></script>
+<script>
+  (function () {
+    var KEY = 'crm-nav-chats';
+    var btn = document.getElementById('navChatsToggle');
+    var panel = document.getElementById('nav-chats-items');
+    if (!btn || !panel) return;
+    function pintar(abierto) {
+      panel.hidden = !abierto;
+      btn.setAttribute('aria-expanded', abierto ? 'true' : 'false');
+    }
+    var guardado = null;
+    try { guardado = localStorage.getItem(KEY); } catch (e) {}
+    pintar(guardado !== 'collapsed');
+    btn.addEventListener('click', function () {
+      var abierto = btn.getAttribute('aria-expanded') !== 'true';
+      pintar(abierto);
+      try { localStorage.setItem(KEY, abierto ? 'expanded' : 'collapsed'); } catch (e) {}
+    });
+  })();
+</script>
 <script>
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('<%= BASE %>/sw.js?v=<%= assetVersion %>').catch(() => {});
