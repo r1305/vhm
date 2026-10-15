@@ -6,7 +6,7 @@ const { isStaffAdmin, isSuperAdmin } = require('../lib/roles');
 const { SQL } = require('../lib/paquetesPaciente');
 const { getMenuPermisosForRequest, tieneMenuPermiso } = require('../lib/menuPermisos');
 const { configParaCliente, enmascarar } = require('../lib/configSecretos');
-const { MENU_GRUPOS } = require('../lib/menuGrupos');
+const { GRUPOS_UI, grupoVisible } = require('../lib/menuGrupos');
 
 const TITLES = {
   encuestas:       'Encuestas',
@@ -80,7 +80,7 @@ async function render(res, view, data = {}) {
     : '';
   const locals  = {
     ...data,
-    BASE, title: TITLES[view] || view, view, user, isAdmin, menuPermisos,
+    BASE, title: TITLES[view] || view, view, user, isAdmin, menuPermisos, grupoVisible,
     scripts, assetVersion: res.app.locals.assetVersion, partialView: view,
   };
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
@@ -700,13 +700,13 @@ router.get('/distribucion', requireSession, requireMenuPermiso('distribucion'), 
 
 // ── PERMISOS DE MENÚ ───────────────────────────────────────────
 router.get('/permisos-menu', requireSession, requireSuperAdmin, async (req, res) => {
-  render(res, 'permisos_menu', { user: req.session.user, scripts: `<script src="${req.app.locals.BASE}/permisos_menu.js"></script>` });
+  render(res, 'permisos_menu', { user: req.session.user, scripts: `<script src="${req.app.locals.BASE}/menu_grupos_ui.js"></script><script src="${req.app.locals.BASE}/permisos_menu.js"></script>` });
 });
 
 router.get('/api/menu-permisos/catalogo', requireSession, requireSuperAdmin, async (req, res) => {
   const { getCatalog } = require('../lib/menuPermisos');
   const catalog = await getCatalog();
-  res.json({ items: catalog, grupos: MENU_GRUPOS });
+  res.json({ items: catalog, grupos: GRUPOS_UI });
 });
 
 router.get('/api/menu-permisos', requireSession, requireSuperAdmin, async (req, res) => {

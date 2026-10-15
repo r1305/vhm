@@ -723,7 +723,6 @@ async function ensureSchema() {
       ['reporte_financiero_detalles','Reporte Financiero · Detalles','fa-list',22],
       ['distribucion','Distribución','fa-hand-holding-dollar',23],
       ['social','Mensajes sociales','fa-instagram',24],
-      ['chats','Chats (acceso total)','fa-comments',25],
     ];
     for (const [clave, label, icon, orden] of CATALOG_ITEMS) {
       await conn.execute(
@@ -744,6 +743,14 @@ async function ensureSchema() {
     await conn.execute(`DELETE FROM usuario_menu_permisos WHERE item IN (${retiredPh})`, RETIRED_MENU_ITEMS);
     await conn.execute(`DELETE FROM menu_permisos WHERE item IN (${retiredPh})`, RETIRED_MENU_ITEMS);
     await conn.execute(`DELETE FROM crm_menu_items WHERE clave IN (${retiredPh})`, RETIRED_MENU_ITEMS);
+
+    // 'chats' es solo un agrupador de la UI (sin clave de permiso): se elimina del catálogo solo si nadie lo tiene asignado
+    await conn.execute(
+      `DELETE FROM crm_menu_items WHERE clave = 'chats'
+       AND NOT EXISTS (SELECT 1 FROM crm_usuario_menu_accesos a WHERE a.menu_id = crm_menu_items.id)
+       AND NOT EXISTS (SELECT 1 FROM menu_permisos WHERE item = 'chats')
+       AND NOT EXISTS (SELECT 1 FROM usuario_menu_permisos WHERE item = 'chats')`
+    );
 
     console.log('[crm] Schema OK');
   } finally {

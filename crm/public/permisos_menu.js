@@ -52,18 +52,27 @@
 
   function itemHtml(item, activos, extra) {
     const sub = extra && extra.sub;
+    const attrs = sub ? `data-padre="${extra.padre}"` : (extra && extra.grupo ? 'data-grupo="1"' : 'data-item-hoja="1"');
     return `
           <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;${sub ? 'margin-left:24px;' : ''}border:1px solid var(--border);border-radius:8px;cursor:pointer;background:var(--card-bg)">
-            <input type="checkbox" data-item="${item.key}" ${sub ? `data-padre="${extra.padre}"` : ''} ${activos.has(item.key) ? 'checked' : ''} style="width:16px;height:16px;cursor:pointer">
+            <input type="checkbox" data-item="${item.key}" ${attrs} ${activos.has(item.key) ? 'checked' : ''} style="width:16px;height:16px;cursor:pointer">
             <i class="fas ${item.icon}" style="width:16px;color:var(--primary)"></i>
             <span style="font-size:13px">${item.label}</span>
           </label>`;
   }
 
-  function sincronizarHijos() {
-    document.querySelectorAll('#permisosPanel input[data-padre]').forEach(h => {
-      const padre = document.querySelector(`#permisosPanel input[data-item="${h.dataset.padre}"]`);
-      h.disabled = !!(padre && padre.checked);
+  function hojasMarcadas() {
+    return new Set([...document.querySelectorAll('#permisosPanel input[data-item]:checked')]
+      .filter(el => !el.dataset.grupo).map(el => el.dataset.item));
+  }
+
+  function refrescarPadres() {
+    const marcados = hojasMarcadas();
+    document.querySelectorAll('#permisosPanel input[data-grupo]').forEach(p => {
+      const g = GRUPOS[p.dataset.item];
+      const estado = window.MenuGruposUI.estadoPadre(marcados, g.hijos);
+      p.checked = estado === 'marcado';
+      p.indeterminate = estado === 'indeterminado';
     });
   }
 
@@ -71,28 +80,42 @@
     if (!userActivo) return;
     const activos = new Set(userActivo.items || []);
     const hijoDe = {};
-    Object.entries(GRUPOS).forEach(([padre, hijos]) => hijos.forEach(h => { hijoDe[h] = padre; }));
+    Object.entries(GRUPOS).forEach(([padre, g]) => g.hijos.forEach(h => { hijoDe[h] = padre; }));
     const porClave = Object.fromEntries(ITEMS.map(i => [i.key, i]));
     const html = [];
+    const emitidos = new Set();
     ITEMS.forEach(item => {
-      if (hijoDe[item.key] && porClave[hijoDe[item.key]]) return;
-      html.push(itemHtml(item, activos));
-      (GRUPOS[item.key] || []).forEach(k => {
-        if (porClave[k]) html.push(itemHtml(porClave[k], activos, { sub: true, padre: item.key }));
+      const padre = hijoDe[item.key];
+      if (!padre) { html.push(itemHtml(item, activos)); return; }
+      if (emitidos.has(padre)) return;
+      emitidos.add(padre);
+      const g = GRUPOS[padre];
+      html.push(itemHtml({ key: padre, label: g.label, icon: g.icon }, new Set(), { grupo: true }));
+      g.hijos.forEach(k => {
+        if (porClave[k]) html.push(itemHtml(porClave[k], activos, { sub: true, padre }));
       });
     });
     const panel = document.getElementById('permisosPanel');
     panel.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${html.join('')}</div>`;
-    panel.querySelectorAll('input[data-item]').forEach(el => {
-      if (GRUPOS[el.dataset.item]) el.addEventListener('change', sincronizarHijos);
+    panel.querySelectorAll('input[data-grupo]').forEach(p => {
+      p.addEventListener('change', () => {
+        const g = GRUPOS[p.dataset.item];
+        const marcados = window.MenuGruposUI.aplicarPadre(hojasMarcadas(), g.hijos, p.checked);
+        g.hijos.forEach(h => {
+          const el = panel.querySelector(`input[data-item="${h}"]`);
+          if (el) el.checked = marcados.has(h);
+        });
+        refrescarPadres();
+      });
     });
-    sincronizarHijos();
+    panel.querySelectorAll('input[data-padre]').forEach(h => h.addEventListener('change', refrescarPadres));
+    refrescarPadres();
   }
 
   async function save() {
     if (!userActivo) return;
     const items = [...document.querySelectorAll('#permisosPanel input[data-item]:checked')]
-      .map(el => el.dataset.item);
+      .filter(el => !el.dataset.grupo).map(el => el.dataset.item);
     const data = await api('/menu-permisos', {
       method: 'POST',
       body: { userId: userActivo.id, items },

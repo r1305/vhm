@@ -1,22 +1,13 @@
-const MENU_GRUPOS = {
-  chats: ['whatsapp', 'social'],
+const GRUPOS_UI = {
+  chats: { label: 'Chats', icon: 'fa-comments', hijos: ['whatsapp', 'social'] },
 };
 
 function hijosDe(padre) {
-  return MENU_GRUPOS[padre] || [];
-}
-
-function expandirGrupos(permisos) {
-  const out = new Set(permisos);
-  for (const [padre, hijos] of Object.entries(MENU_GRUPOS)) {
-    if (permisos.has(padre)) for (const h of hijos) out.add(h);
-  }
-  return out;
+  return GRUPOS_UI[padre] ? GRUPOS_UI[padre].hijos : [];
 }
 
 function grupoVisible(permisos, padre) {
-  if (permisos.has(padre)) return true;
   return hijosDe(padre).some(h => permisos.has(h));
 }
 
-module.exports = { MENU_GRUPOS, hijosDe, expandirGrupos, grupoVisible };
+module.exports = { GRUPOS_UI, hijosDe, grupoVisible };

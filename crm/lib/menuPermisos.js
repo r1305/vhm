@@ -1,7 +1,6 @@
 const pool = require('./db');
 const { auth } = require('./auth');
 const { isSuperAdmin } = require('./roles');
-const { expandirGrupos } = require('./menuGrupos');
 
 const HIDDEN_MENU_ITEMS = ['pagos'];
 
@@ -42,14 +41,14 @@ async function getMenuPermisosForUser(userId, rol) {
     const items = new Set(rows.map(r => r.clave));
     items.delete('permisos_menu');
     for (const h of HIDDEN_MENU_ITEMS) items.delete(h);
-    return expandirGrupos(items);
+    return items;
   }
   // fallback: permisos del rol desde menu_permisos
   const [rolRows] = await pool.execute('SELECT item FROM menu_permisos WHERE rol = ?', [rol]);
   const items = new Set(rolRows.map(r => r.item).filter(i => allClaves.includes(i)));
   items.delete('permisos_menu');
   for (const h of HIDDEN_MENU_ITEMS) items.delete(h);
-  return expandirGrupos(items);
+  return items;
 }
 
 async function setMenuPermisosForUser(userId, claves, rol) {
