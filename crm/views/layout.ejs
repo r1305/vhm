@@ -117,7 +117,7 @@
       </div>
       <% } %>
 
-      <% const rfItems = ['reporte_financiero','reporte_financiero_detalles']; %>
+      <% const rfItems = ['reporte_financiero','reporte_financiero_detalles','distribucion']; %>
       <% const showReporteFin = rfItems.some(i => menuPermisos.has(i)); %>
       <% if (showReporteFin) { %>
       <div class="nav-group collapsed" data-nav-group="reporte-financiero">
@@ -131,6 +131,9 @@
           <% } %>
           <% if (menuPermisos.has('reporte_financiero_detalles')) { %>
           <a class="nav-item nav-item-sub <%= view === 'reporte_financiero_detalles' ? 'active' : '' %>" href="<%= BASE %>/reporte-financiero/detalles"><i class="fas fa-list"></i><span> Detalles</span></a>
+          <% } %>
+          <% if (menuPermisos.has('distribucion')) { %>
+          <a class="nav-item nav-item-sub <%= view === 'distribucion' ? 'active' : '' %>" href="<%= BASE %>/distribucion"><i class="fas fa-hand-holding-dollar"></i><span> Distribución</span></a>
           <% } %>
         </div>
       </div>

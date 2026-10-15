@@ -1,0 +1,54 @@
+<%
+const sol = (n) => 'S/ ' + Number(n).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const total = terapeutas.reduce((a, t) => a + Number(t.ingresos), 0);
+const sinPrecio = terapeutas.reduce((a, t) => a + Number(t.sin_precio), 0);
+%>
+<div class="card" style="margin-bottom:16px">
+  <div class="card-body" style="padding:14px 18px">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:8px">
+        <label class="form-label" style="margin:0;white-space:nowrap">Desde</label>
+        <input type="date" class="form-control" id="rfDesde" style="width:150px" value="<%= typeof desde !== 'undefined' ? desde : '' %>">
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <label class="form-label" style="margin:0;white-space:nowrap">Hasta</label>
+        <input type="date" class="form-control" id="rfHasta" style="width:150px" value="<%= typeof hasta !== 'undefined' ? hasta : '' %>">
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-outline btn-sm" data-rf-preset="hoy">Hoy</button>
+        <button class="btn btn-outline btn-sm" data-rf-preset="semana">Esta semana</button>
+        <button class="btn btn-outline btn-sm" data-rf-preset="mes">Este mes</button>
+        <button class="btn btn-outline btn-sm" data-rf-preset="mes3">3 meses</button>
+      </div>
+      <button class="btn btn-primary btn-sm" id="btnAplicarFiltroRF"><i class="fas fa-search"></i> Aplicar</button>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header"><span><i class="fas fa-hand-holding-dollar"></i> Ingresos por terapeuta</span></div>
+  <% if (terapeutas.length) { %>
+  <div class="rf-table-wrap">
+    <table class="rf-table">
+      <thead><tr><th>Terapeuta</th><th class="rf-num">Paquetes</th><% if (verMontos) { %><% meses.forEach((m, i) => { %><th class="rf-num"><%= mesesEtiqueta[i] %></th><% }) %><th class="rf-num"><%= meses.length ? 'Total' : 'Ingresos' %></th><% } %></tr></thead>
+      <tbody>
+        <% terapeutas.forEach(t => { %>
+        <tr>
+          <td><%= t.nombre %> <%= t.apellido %></td>
+          <td class="rf-num"><%= t.paquetes %></td>
+          <% if (verMontos) { %><% meses.forEach(m => { %><td class="rf-num"><%= sol(t.porMes[m] || 0) %></td><% }) %><td class="rf-num rf-ok"><%= sol(t.ingresos) %></td><% } %>
+        </tr>
+        <% }) %>
+        <tr>
+          <td><strong>Total</strong></td>
+          <td class="rf-num"><strong><%= terapeutas.reduce((a, t) => a + Number(t.paquetes), 0) %></strong></td>
+          <% if (verMontos) { %><% meses.forEach(m => { %><td class="rf-num"><strong><%= sol(terapeutas.reduce((a, t) => a + (t.porMes[m] || 0), 0)) %></strong></td><% }) %><td class="rf-num"><strong><%= sol(total) %></strong></td><% } %>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <% if (verMontos && sinPrecio) { %>
+  <div class="card-body" style="font-size:12px;color:var(--text-muted)"><i class="fas fa-triangle-exclamation"></i> <%= sinPrecio %> paquete(s) asignado(s) sin precio se cuentan como S/ 0,00.</div>
+  <% } %>
+  <% } else { %><div class="list-empty">Sin datos</div><% } %>
+</div>

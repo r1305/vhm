@@ -2,12 +2,6 @@
 
 Reglas del proyecto. Leer antes de tocar código.
 
-## Modo ponytail al inicio
-
-- Al iniciar cada sesión, activa el skill `ponytail` en nivel `full` antes de responder (equivale a `/ponytail full`), y mantenlo hasta que el usuario diga `stop ponytail` o `normal mode`.
-- Con ponytail activo, prioriza el cambio más pequeño que funcione completo: reutiliza lo existente, no añadas código ni opciones que nadie pidió, y termina cada respuesta con una o dos líneas sobre lo que omitiste o no comprobaste y los riesgos que el usuario debe conocer.
-- No recortes validaciones de entrada, manejo de errores que evite pérdida de datos, seguridad ni lo que el usuario pidió.
-
 ## Zona horaria: SIEMPRE America/Lima
 
 El proyecto opera 100% en hora de Lima (UTC−5, sin horario de verano).

@@ -42,8 +42,8 @@ echo "    node $(node -v) / npm $(npm -v)"
 npm install --omit=dev
 
 echo ""
-echo "==> [3/4] Verificando sintaxis de unificado/app.js..."
-node --check unificado/app.js || fallo "node --check unificado/app.js falló; NO se reinicia la app."
+echo "==> [3/4] Verificando sintaxis de app.js..."
+node --check app.js || fallo "node --check app.js falló; NO se reinicia la app."
 
 echo ""
 echo "==> [4/4] Reiniciando app (Passenger: tmp/restart.txt)..."

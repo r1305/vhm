@@ -24,6 +24,7 @@ const TITLES = {
   permisos_menu:        'Permisos de menú',
   reporte_financiero:   'Reporte Financiero · Dashboard',
   reporte_financiero_detalles: 'Reporte Financiero · Detalles',
+  distribucion:    'Distribución',
 };
 
 const ESTADO_CITA_CSS = {
@@ -441,17 +442,22 @@ router.get('/integraciones', requireSession, requireMenuPermiso('integraciones')
   } catch (err) { errorPagina(res, 'integraciones', err); }
 });
 
+// Filtro de fechas compartido (?desde=&hasta=) del reporte financiero y distribución.
+function rangoFechas(query) {
+  const esFecha = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s || '');
+  const { desde, hasta } = query;
+  const hayRango = esFecha(desde) && esFecha(hasta) && desde <= hasta;
+  const filterDate = (col) => {
+    if (!hayRango) return '';
+    return ` AND ${col} BETWEEN ${db.escape(desde + ' 00:00:00')} AND ${db.escape(hasta + ' 23:59:59')}`;
+  };
+  return { desde, hasta, hayRango, filterDate };
+}
+
 // ── REPORTE FINANCIERO ──────────────────────────────────────────
 router.get('/reporte-financiero', requireSession, requireMenuPermiso('reporte_financiero'), async (req, res) => {
   try {
-    const esFecha = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s || '');
-    const desde = req.query.desde;
-    const hasta = req.query.hasta;
-    const hayRango = esFecha(desde) && esFecha(hasta) && desde <= hasta;
-    const filterDate = (col) => {
-      if (!hayRango) return '';
-      return ` AND ${col} BETWEEN ${db.escape(desde + ' 00:00:00')} AND ${db.escape(hasta + ' 23:59:59')}`;
-    };
+    const { desde, hasta, hayRango, filterDate } = rangoFechas(req.query);
     const fechaCobro = 'COALESCE(c.pagado_at, c.fecha_pago)';
     const ppPrecioEff = 'COALESCE(NULLIF(pp.precio, 0), pc.precio, 0)';
     const joinCatalogo = 'LEFT JOIN paquetes_catalogo pc ON pc.id = pp.paquete_catalogo_id';
@@ -621,6 +627,62 @@ router.get('/reporte-financiero/detalles', requireSession, requireMenuPermiso('r
       scripts: `<script src="${req.app.locals.BASE}/reportes.js"></script>`,
     });
   } catch (err) { errorPagina(res, 'reporte-financiero/detalles', err); }
+});
+
+// ── DISTRIBUCIÓN (ingresos por terapeuta) ───────────────────────
+// Ingreso = suma del precio de todos los paquetes asignados a sus pacientes; sin precio cuenta 0.
+router.get('/distribucion', requireSession, requireMenuPermiso('distribucion'), async (req, res) => {
+  try {
+    const user = req.session.user;
+    const ppPrecioEff = 'COALESCE(NULLIF(pp.precio, 0), pc.precio, 0)';
+    const hoyLima = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Lima' });
+    const { desde, hasta, hayRango, filterDate } = rangoFechas(
+      req.query.desde || req.query.hasta ? req.query : { desde: hoyLima.slice(0, 8) + '01', hasta: hoyLima }
+    );
+    const propio = isStaffAdmin(user.rol) ? '' : ' AND t.id = ?';
+    const [filas] = await db.execute(
+      `SELECT t.id, t.nombre, t.apellido, DATE_FORMAT(pp.fecha_inicio, '%Y-%m') AS mes, COUNT(pp.id) AS paquetes,
+              COALESCE(SUM(${ppPrecioEff}),0) AS ingresos,
+              COALESCE(SUM(pp.id IS NOT NULL AND ${ppPrecioEff} = 0),0) AS sin_precio
+       FROM terapeutas t
+       LEFT JOIN pacientes p ON p.terapeuta_id = t.id
+       LEFT JOIN paciente_paquetes pp ON pp.paciente_id = p.id${filterDate('pp.fecha_inicio')}
+       LEFT JOIN paquetes_catalogo pc ON pc.id = pp.paquete_catalogo_id
+       WHERE t.rol = 'terapeuta' AND t.activo = 1${propio}
+       GROUP BY t.id, t.nombre, t.apellido, mes`,
+      propio ? [user.id] : []
+    );
+    let meses = [];
+    if (hayRango) {
+      let [a, m] = desde.slice(0, 7).split('-').map(Number);
+      const fin = hasta.slice(0, 7);
+      for (;;) {
+        const k = `${a}-${String(m).padStart(2, '0')}`;
+        if (k > fin) break;
+        meses.push(k);
+        if (m === 12) { a++; m = 1; } else m++;
+      }
+    } else {
+      meses = [...new Set(filas.map(f => f.mes).filter(Boolean))].sort();
+    }
+    const MESES_ES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+    const mesesEtiqueta = meses.map(k => `${MESES_ES[Number(k.slice(5)) - 1]} ${k.slice(0, 4)}`);
+    const porId = new Map();
+    for (const f of filas) {
+      let t = porId.get(f.id);
+      if (!t) { t = { id: f.id, nombre: f.nombre, apellido: f.apellido, paquetes: 0, ingresos: 0, sin_precio: 0, porMes: {} }; porId.set(f.id, t); }
+      t.paquetes += Number(f.paquetes);
+      t.ingresos += Number(f.ingresos);
+      t.sin_precio += Number(f.sin_precio);
+      if (f.mes) t.porMes[f.mes] = Number(f.ingresos);
+    }
+    const terapeutas = [...porId.values()].sort((x, y) => y.ingresos - x.ingresos || x.nombre.localeCompare(y.nombre));
+    render(res, 'distribucion', {
+      user, terapeutas, meses: meses.length > 1 ? meses : [], mesesEtiqueta, verMontos: isStaffAdmin(user.rol),
+      desde: hayRango ? desde : '', hasta: hayRango ? hasta : '',
+      scripts: `<script src="${req.app.locals.BASE}/reportes.js"></script>`,
+    });
+  } catch (err) { errorPagina(res, 'distribucion', err); }
 });
 
 // ── PERMISOS DE MENÚ ───────────────────────────────────────────

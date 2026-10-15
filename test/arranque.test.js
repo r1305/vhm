@@ -49,9 +49,9 @@ test('entry unificado monta crm, luma, latribu y site en un solo servidor', asyn
 });
 
 test('cargador de entorno: prefijo por app, ajustes privados y comunes compartidos', () => {
-  const envVhm = require('../../lib/env');
-  const crm = require('../../crm/lib/env');
-  const tribu = require('../../latribu/lib/env');
+  const envVhm = require('../lib/env');
+  const crm = require('../crm/lib/env');
+  const tribu = require('../latribu/lib/env');
   assert.equal(crm('DB_NAME'), 'test_unificado');
   assert.notEqual(crm('JWT_SECRET'), process.env.JWT_SECRET);
   assert.notEqual(crm('JWT_SECRET'), tribu('JWT_SECRET'));

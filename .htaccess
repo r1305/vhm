@@ -6,7 +6,7 @@ Options -Indexes
     RedirectMatch 404 (?i)(^|/)\.git(/|$)
     RedirectMatch 404 (?i)(^|/)node_modules(/|$)
     RedirectMatch 404 (?i)^/docs(/|$)
-    RedirectMatch 404 (?i)^/(lib|unificado)(/|$)
+    RedirectMatch 404 (?i)^/(lib|unificado|test)(/|$)
 </IfModule>
 
 <FilesMatch "(?i)^(AGENTS\.md.*|cookie\.txt|package(-lock)?\.json|.*\.sh|\.env.*|\.gitignore|\.htaccess)$">

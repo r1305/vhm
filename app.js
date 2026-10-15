@@ -2,10 +2,10 @@ process.env.TZ = 'America/Lima';
 
 const path = require('path');
 const express = require('express');
-const envVhm = require('../lib/env');
-const { crearGracefulShutdown, registrarSenales } = require('../latribu/src/lib/apagado');
+const envVhm = require('./lib/env');
+const { crearGracefulShutdown, registrarSenales } = require('./latribu/src/lib/apagado');
 
-const RAIZ = path.join(__dirname, '..');
+const RAIZ = __dirname;
 const APPS = ['latribu', 'crm', 'luma', 'site'];
 
 // Cada app lee sus variables con prefijo (CRM_, TRIBU_, LUMA_, SITE_) desde process.env o el .env raíz
@@ -14,11 +14,11 @@ function crearAppUnificada({ cargarEnv = true } = {}) {
   envVhm.configurar({ estricto: true, archivos: cargarEnv });
   envVhm.aplicarComunes(APPS.map((n) => path.join(RAIZ, n)));
 
-  const crones = require('../crm/crones');
-  const crm = require('../crm/crearApp').crearApp({ basePath: '/crm', alCambiarCron: () => crones.scheduleCron() });
-  const luma = require('../luma/crearApp').crearApp({ basePath: '/luma' });
-  const latribu = require('../latribu/crearApp').crearApp({ basePath: '/latribu' });
-  const site = require('../site/crearApp').crearApp({ basePath: '' });
+  const crones = require('./crm/crones');
+  const crm = require('./crm/crearApp').crearApp({ basePath: '/crm', alCambiarCron: () => crones.scheduleCron() });
+  const luma = require('./luma/crearApp').crearApp({ basePath: '/luma' });
+  const latribu = require('./latribu/crearApp').crearApp({ basePath: '/latribu' });
+  const site = require('./site/crearApp').crearApp({ basePath: '' });
 
   const app = express();
   app.set('trust proxy', 1);
@@ -37,24 +37,24 @@ function crearAppUnificada({ cargarEnv = true } = {}) {
   // Solo el proceso unificado programa crons, una vez: las factorías crearApp no lo hacen.
   async function iniciarCrons() {
     latribu.iniciarCronLatribu();
-    await require('../crm/crearApp').prepararDatos();
+    await require('./crm/crearApp').prepararDatos();
     await crones.iniciarCrons();
   }
 
   async function cerrar() {
     crones.detenerCrons();
     latribu.detenerCronLatribu();
-    require('../latribu/src/authRoutes').stopLoginAttemptsCleanup();
-    require('../latribu/src/tribuAuthRoutes').stopLoginAttemptsCleanup();
-    require('../latribu/src/lib/rateLimitMemoria').detenerLimpieza();
+    require('./latribu/src/authRoutes').stopLoginAttemptsCleanup();
+    require('./latribu/src/tribuAuthRoutes').stopLoginAttemptsCleanup();
+    require('./latribu/src/lib/rateLimitMemoria').detenerLimpieza();
     await Promise.allSettled([
       () => crm.sessionStore.close(),
-      () => require('../crm/lib/db').end(),
-      () => require('../crm/lib/tribuDb').closePool(),
-      () => require('../latribu/src/db').end(),
-      () => require('../latribu/lib/mailer').closeMailer(),
-      () => require('../luma/src/db').end(),
-      () => require('../site/src/db').end(),
+      () => require('./crm/lib/db').end(),
+      () => require('./crm/lib/tribuDb').closePool(),
+      () => require('./latribu/src/db').end(),
+      () => require('./latribu/lib/mailer').closeMailer(),
+      () => require('./luma/src/db').end(),
+      () => require('./site/src/db').end(),
     ].map((f) => Promise.resolve().then(f)));
   }
 
