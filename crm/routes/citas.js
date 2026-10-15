@@ -249,8 +249,22 @@ router.put('/:cid', requireMenuPermisoApi('agenda', 'calendario'), async (req, r
         return res.status(400).json({ error: 'Fecha inválida' });
       updates.fecha = fechaVal;
     }
-    if (hora_inicio != null) updates.hora_inicio = t(hora_inicio, 8) || cita.hora_inicio;
-    if (hora_fin != null) updates.hora_fin = t(hora_fin, 8) || cita.hora_fin;
+    if (hora_inicio != null) {
+      if (String(hora_inicio).trim() === '') updates.hora_inicio = String(cita.hora_inicio).slice(0, 5);
+      else {
+        const hIni = normHora(hora_inicio);
+        if (!hIni) return res.status(400).json({ error: 'Hora de inicio inválida' });
+        updates.hora_inicio = hIni.slice(0, 5);
+      }
+    }
+    if (hora_fin != null) {
+      if (String(hora_fin).trim() === '') updates.hora_fin = String(cita.hora_fin).slice(0, 5);
+      else {
+        const hFin = normHora(hora_fin);
+        if (!hFin) return res.status(400).json({ error: 'Hora de fin inválida' });
+        updates.hora_fin = hFin.slice(0, 5);
+      }
+    }
     if (modalidad != null) updates.modalidad = modalidad;
     if (tipo != null) updates.tipo = tipo;
     if (estado != null) updates.estado = estado;
