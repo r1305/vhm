@@ -5,7 +5,7 @@ const { getHomePath, primeraVistaPermitida } = require('../lib/crmNav');
 const { isStaffAdmin, isSuperAdmin } = require('../lib/roles');
 const { SQL } = require('../lib/paquetesPaciente');
 const { getMenuPermisosForRequest, tieneMenuPermiso } = require('../lib/menuPermisos');
-const { configParaCliente } = require('../lib/configSecretos');
+const { configParaCliente, enmascarar } = require('../lib/configSecretos');
 
 const TITLES = {
   encuestas:       'Encuestas',
@@ -19,6 +19,7 @@ const TITLES = {
   integraciones:   'Integraciones',
   paquetes:        'Paquetes',
   whatsapp:        'Central WhatsApp',
+  social:          'Mensajes sociales',
   calendario:      'Calendario',
   disponibilidad:  'Mi disponibilidad',
   permisos_menu:        'Permisos de menú',
@@ -427,6 +428,14 @@ router.get('/whatsapp', requireSession, requireMenuPermiso('whatsapp'), async (r
   });
 });
 
+// ── MENSAJES SOCIALES (Instagram) ────────────────────────────────
+router.get('/social', requireSession, requireMenuPermiso('social'), async (req, res) => {
+  render(res, 'social', {
+    user: req.session.user,
+    scripts: `<script src="${req.app.locals.BASE}/social.js"></script>`,
+  });
+});
+
 // ── INTEGRACIONES ────────────────────────────────────────────────
 router.get('/integraciones', requireSession, requireMenuPermiso('integraciones'), async (req, res) => {
   try {
@@ -436,9 +445,12 @@ router.get('/integraciones', requireSession, requireMenuPermiso('integraciones')
       .catch(() => [[{ enabled: 0, hora: 18, minuto: 0, dias: '1,2,3,4,5,6' }]]);
     const cronDias = String(cron?.dias || '').split(',').map(d => d.trim());
     const origin   = `${req.protocol}://${req.get('host')}`;
+    const [[socialCuenta]] = await db.execute(
+      "SELECT external_id, nombre, access_token FROM social_cuentas WHERE canal = 'instagram' ORDER BY id LIMIT 1"
+    ).catch(() => [[null]]);
     const { isConnected } = require('../lib/googleMeet');
     const googleConnected = await isConnected().catch(() => false);
-    render(res, 'integraciones', { user: req.session.user, cfg, cron: cron || {}, cronDias, origin, googleConnected, scripts: `<script src="${req.app.locals.BASE}/integraciones.js"></script>` });
+    render(res, 'integraciones', { user: req.session.user, cfg, cron: cron || {}, cronDias, origin, googleConnected, socialCuenta: socialCuenta ? { external_id: socialCuenta.external_id, nombre: socialCuenta.nombre || '', token: enmascarar(socialCuenta.access_token, 'access_token'), tiene_token: !!socialCuenta.access_token } : null, scripts: `<script src="${req.app.locals.BASE}/integraciones.js"></script>` });
   } catch (err) { errorPagina(res, 'integraciones', err); }
 });
 

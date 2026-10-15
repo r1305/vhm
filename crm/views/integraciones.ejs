@@ -24,6 +24,21 @@
     </div>
   </div>
   <div class="card">
+    <div class="card-header"><span><i class="fab fa-instagram" style="color:#E1306C"></i> Instagram (Meta)</span><span class="badge <%= (socialCuenta && socialCuenta.tiene_token && cfg.meta_app_secret_configurada) ? 'badge-green' : 'badge-yellow' %>" id="meta-status"><%= (socialCuenta && socialCuenta.tiene_token && cfg.meta_app_secret_configurada) ? 'Configurado' : 'Sin configurar' %></span></div>
+    <div class="card-body">
+      <div class="form-group"><label class="form-label">App ID</label><input class="form-control" id="meta-app-id" value="<%= cfg.meta_app_id || '' %>" placeholder="ID de la app de Meta"></div>
+      <div class="form-group"><label class="form-label">App Secret</label><div class="pwd-wrapper"><input type="password" class="form-control" id="meta-app-secret" value="" autocomplete="new-password" placeholder="<%= cfg.meta_app_secret_configurada ? 'Guardado (' + cfg.meta_app_secret + '). Déjalo vacío para mantenerlo' : 'App secret' %>"><button type="button" class="pwd-toggle" onclick="togglePwd('meta-app-secret',this)" tabindex="-1"><i class="fas fa-eye"></i></button></div></div>
+      <div class="form-group"><label class="form-label">Verify token (webhook)</label><div class="pwd-wrapper"><input type="password" class="form-control" id="meta-verify-token" value="" autocomplete="new-password" placeholder="<%= cfg.meta_verify_token_configurada ? 'Guardado (' + cfg.meta_verify_token + '). Déjalo vacío para mantenerlo' : 'texto-secreto-que-tambien-pones-en-Meta' %>"><button type="button" class="pwd-toggle" onclick="togglePwd('meta-verify-token',this)" tabindex="-1"><i class="fas fa-eye"></i></button></div></div>
+      <div class="form-group"><label class="form-label">ID de la cuenta de Instagram</label><input class="form-control" id="meta-ig-id" value="<%= socialCuenta ? socialCuenta.external_id : '' %>" placeholder="ID numérico de la cuenta profesional" inputmode="numeric"></div>
+      <div class="form-group"><label class="form-label">Nombre (opcional)</label><input class="form-control" id="meta-ig-nombre" value="<%= socialCuenta ? socialCuenta.nombre : '' %>"></div>
+      <div class="form-group"><label class="form-label">Token de acceso de la página</label><div class="pwd-wrapper"><input type="password" class="form-control" id="meta-page-token" value="" autocomplete="new-password" placeholder="<%= socialCuenta && socialCuenta.tiene_token ? 'Guardado (' + socialCuenta.token + '). Déjalo vacío para mantenerlo' : 'EAAG...' %>"><button type="button" class="pwd-toggle" onclick="togglePwd('meta-page-token',this)" tabindex="-1"><i class="fas fa-eye"></i></button></div></div>
+      <div style="display:flex;gap:8px"><button class="btn btn-primary btn-sm" id="btnSaveMeta"><i class="fas fa-save"></i> Guardar</button></div>
+      <hr style="margin:14px 0;border-color:var(--border)">
+      <p style="font-size:12px;color:var(--text-muted)"><strong>Webhook URL (configurar en Meta, campo messages):</strong></p>
+      <code style="font-size:11px;word-break:break-all;background:var(--bg);padding:6px 8px;border-radius:6px;display:block;margin-top:4px"><%= origin %><%= BASE %>/api/social/webhook</code>
+    </div>
+  </div>
+  <div class="card">
     <div class="card-header"><span><i class="fas fa-clock" style="color:var(--primary)"></i> Cron WhatsApp terapeutas</span><span class="badge <%= cron.enabled ? 'badge-green' : 'badge-gray' %>" id="cron-status"><%= cron.enabled ? 'Activo' : 'Desactivado' %></span></div>
     <div class="card-body">
       <div class="form-group" style="display:flex;align-items:center;gap:10px"><label class="form-label" style="margin:0">Activar envío automático</label><input type="checkbox" id="cron-enabled" <%= cron.enabled ? 'checked' : '' %> style="width:18px;height:18px;cursor:pointer"></div>

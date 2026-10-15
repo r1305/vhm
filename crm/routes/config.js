@@ -9,6 +9,7 @@ const router = Router();
 const ALLOWED = new Set([
   'smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from', 'smtp_secure',
   'openwa_url', 'openwa_api_key', 'openwa_session', 'openwa_webhook_token',
+  'meta_app_id', 'meta_app_secret', 'meta_verify_token',
   'recordatorio_24h_activo', 'recordatorio_24h_mensaje',
 ]);
 
@@ -41,6 +42,9 @@ router.post('/', requireMenuPermisoApi('integraciones'), async (req, res) => {
       if (r.clave === 'smtp_user')       env.set('SMTP_USER', r.valor || '');
       if (r.clave === 'smtp_pass')       env.set('SMTP_PASS', r.valor || '');
       if (r.clave === 'smtp_from')       env.set('SMTP_FROM', r.valor || '');
+      if (r.clave === 'meta_app_id')           env.set('META_APP_ID', r.valor || '');
+      if (r.clave === 'meta_app_secret')       env.set('META_APP_SECRET', r.valor || '');
+      if (r.clave === 'meta_verify_token')     env.set('META_VERIFY_TOKEN', r.valor || '');
       if (r.clave === 'openwa_url')            env.set('OPENWA_URL', r.valor || '');
       if (r.clave === 'openwa_api_key')        env.set('OPENWA_API_KEY', r.valor || '');
       if (r.clave === 'openwa_session')        env.set('OPENWA_SESSION', r.valor || '');

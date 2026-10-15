@@ -85,7 +85,12 @@ function crearApp({ basePath = '/crm', alCambiarCron = () => {} } = {}) {
     credentials: true,
   }));
 
-  app.use(express.json({ limit: '1mb' }));
+  app.use(express.json({
+    limit: '1mb',
+    verify: (req, _res, buf) => {
+      if (req.originalUrl.includes('/api/social/webhook')) req.rawBody = buf;
+    },
+  }));
   app.use(express.urlencoded({ extended: true }));
 
   const SESSION_MAX_AGE = 10 * 60 * 60 * 1000; // 10h
@@ -117,6 +122,7 @@ function crearApp({ basePath = '/crm', alCambiarCron = () => {} } = {}) {
     standardHeaders: 'draft-7',
     legacyHeaders: false,
     message: { error: 'Demasiadas solicitudes. Intenta de nuevo en unos minutos.' },
+    skip: (req) => req.path.startsWith('/api/social/webhook'),
   });
 
   if (process.env.NODE_ENV === 'production') {
@@ -175,6 +181,7 @@ function crearApp({ basePath = '/crm', alCambiarCron = () => {} } = {}) {
   router.use('/api/config',        require('./routes/config'));
   router.use('/api/integraciones', require('./routes/integraciones'));
   router.use('/api/whatsapp',      require('./routes/whatsapp'));
+  router.use('/api/social',        require('./routes/social'));
   router.use('/api/encuestas', require('./routes/encuestas'));
   router.use('/api/track',      require('./routes/tracker'));
 
@@ -274,6 +281,9 @@ async function loadConfigFromDB() {
       openwa_api_key:        'OPENWA_API_KEY',
       openwa_session:        'OPENWA_SESSION',
       openwa_webhook_token:  'OPENWA_WEBHOOK_TOKEN',
+      meta_app_id:           'META_APP_ID',
+      meta_app_secret:       'META_APP_SECRET',
+      meta_verify_token:     'META_VERIFY_TOKEN',
     };
     for (const r of rows) {
       if (r.valor && map[r.clave]) env.set(map[r.clave], r.valor);

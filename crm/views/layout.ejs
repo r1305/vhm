@@ -33,7 +33,7 @@
       <span>VHM CRM</span>
     </div>
     <nav class="sidebar-nav">
-      <% const principalItems = ['dashboard','agenda','calendario','pacientes','whatsapp','mi_reporte','disponibilidad']; %>
+      <% const principalItems = ['dashboard','agenda','calendario','pacientes','whatsapp','social','mi_reporte','disponibilidad']; %>
       <% const showPrincipal = principalItems.some(i => menuPermisos.has(i)); %>
       <% if (showPrincipal) { %>
       <div class="nav-group collapsed" data-nav-group="principal">
@@ -56,6 +56,9 @@
           <% } %>
           <% if (menuPermisos.has('whatsapp')) { %>
           <a class="nav-item <%= view === 'whatsapp'   ? 'active' : '' %>" href="<%= BASE %>/whatsapp"><i class="fab fa-whatsapp"></i><span> WhatsApp</span></a>
+          <% } %>
+          <% if (menuPermisos.has('social')) { %>
+          <a class="nav-item <%= view === 'social'     ? 'active' : '' %>" href="<%= BASE %>/social"><i class="fab fa-instagram"></i><span> Instagram</span></a>
           <% } %>
           <% if (menuPermisos.has('mi_reporte')) { %>
           <a class="nav-item <%= view === 'mi_reporte'     ? 'active' : '' %>" href="<%= BASE %>/mi-reporte"><i class="fas fa-chart-bar"></i><span> Mi reporte</span></a>

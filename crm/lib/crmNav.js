@@ -11,6 +11,7 @@ const VIEW_PATHS = [
   ['pacientes', 'pacientes'],
   ['paquetes', 'paquetes'],
   ['whatsapp', 'whatsapp'],
+  ['social', 'social'],
   ['mi_reporte', 'mi-reporte'],
   ['disponibilidad', 'disponibilidad'],
   ['historial', 'historial'],

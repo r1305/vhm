@@ -1,0 +1,47 @@
+<div class="sc-inbox">
+  <aside class="sc-sidebar">
+    <div class="sc-sidebar-header">
+      <div class="sc-sidebar-title">
+        <i class="fab fa-instagram"></i>
+        <span>Instagram</span>
+      </div>
+      <button class="btn btn-sm btn-outline" id="scBtnMetricas" title="Métricas"><i class="fas fa-chart-column"></i></button>
+    </div>
+    <div class="sc-search">
+      <i class="fas fa-search"></i>
+      <input type="text" id="scSearch" placeholder="Buscar por nombre o usuario...">
+    </div>
+    <div class="sc-chat-list" id="scChatList">
+      <div class="sc-empty">Cargando conversaciones...</div>
+    </div>
+  </aside>
+
+  <section class="sc-panel">
+    <header class="sc-panel-header" id="scPanelHeader">
+      <div class="sc-contact">
+        <div class="sc-avatar" id="scAvatar">?</div>
+        <div>
+          <div class="sc-contact-name" id="scContactName">Selecciona una conversación</div>
+          <div class="sc-contact-meta" id="scContactMeta"></div>
+        </div>
+      </div>
+      <div class="sc-assign" id="scAssign" style="display:none">
+        <label for="scAssignSelect">Asignada a</label>
+        <select class="form-control" id="scAssignSelect"></select>
+      </div>
+    </header>
+
+    <div class="sc-messages" id="scMessages">
+      <div class="sc-empty">Selecciona un chat para ver los mensajes</div>
+    </div>
+    <div class="sc-metrics" id="scMetrics" style="display:none"></div>
+
+    <div class="sc-window-note" id="scWindowNote" style="display:none"></div>
+    <footer class="sc-compose" id="scCompose" style="display:none">
+      <input type="text" id="scInput" placeholder="Escribe una respuesta..." autocomplete="off" maxlength="900">
+      <button type="button" class="btn btn-primary" id="scSendBtn"><i class="fas fa-paper-plane"></i></button>
+    </footer>
+  </section>
+</div>
+
+<div class="sc-status-banner" id="scStatusBanner" style="display:none"></div>

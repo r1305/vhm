@@ -534,6 +534,71 @@ async function ensureSchema() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
 
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS social_cuentas (
+        id            INT AUTO_INCREMENT PRIMARY KEY,
+        canal         ENUM('instagram','tiktok') NOT NULL DEFAULT 'instagram',
+        external_id   VARCHAR(64) NOT NULL,
+        nombre        VARCHAR(120) DEFAULT NULL,
+        access_token  TEXT DEFAULT NULL,
+        activo        TINYINT NOT NULL DEFAULT 1,
+        created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY uk_social_cuenta (canal, external_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS social_conversaciones (
+        id                  INT AUTO_INCREMENT PRIMARY KEY,
+        canal               ENUM('instagram','tiktok') NOT NULL DEFAULT 'instagram',
+        cuenta_id           INT NOT NULL,
+        external_id         VARCHAR(64) NOT NULL,
+        nombre              VARCHAR(150) DEFAULT NULL,
+        username            VARCHAR(100) DEFAULT NULL,
+        asignado_a          INT DEFAULT NULL,
+        estado              ENUM('abierta','cerrada') NOT NULL DEFAULT 'abierta',
+        ultimo_mensaje      VARCHAR(255) DEFAULT NULL,
+        ultimo_mensaje_at   TIMESTAMP NULL DEFAULT NULL,
+        ultimo_entrante_at  TIMESTAMP NULL DEFAULT NULL,
+        no_leidos           INT NOT NULL DEFAULT 0,
+        created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY uk_social_conv (canal, cuenta_id, external_id),
+        KEY idx_social_conv_asignado (asignado_a),
+        KEY idx_social_conv_ultimo (ultimo_mensaje_at),
+        FOREIGN KEY (cuenta_id) REFERENCES social_cuentas(id) ON DELETE CASCADE,
+        FOREIGN KEY (asignado_a) REFERENCES terapeutas(id) ON DELETE SET NULL
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS social_mensajes (
+        id               INT AUTO_INCREMENT PRIMARY KEY,
+        conversacion_id  INT NOT NULL,
+        canal            ENUM('instagram','tiktok') NOT NULL DEFAULT 'instagram',
+        mid              VARCHAR(191) NOT NULL,
+        direccion        ENUM('incoming','outgoing') NOT NULL,
+        tipo             VARCHAR(20) NOT NULL DEFAULT 'text',
+        cuerpo           TEXT DEFAULT NULL,
+        enviado_por      INT DEFAULT NULL,
+        recibido_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        respondido_at    TIMESTAMP NULL DEFAULT NULL,
+        respondido_por   INT DEFAULT NULL,
+        created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uk_social_mid (mid),
+        KEY idx_social_msg_recibido (recibido_at),
+        KEY idx_social_msg_canal_conv (canal, conversacion_id),
+        KEY idx_social_msg_pend (conversacion_id, direccion, respondido_at),
+        FOREIGN KEY (conversacion_id) REFERENCES social_conversaciones(id) ON DELETE CASCADE,
+        FOREIGN KEY (enviado_por) REFERENCES terapeutas(id) ON DELETE SET NULL,
+        FOREIGN KEY (respondido_por) REFERENCES terapeutas(id) ON DELETE SET NULL
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
+    for (const rol of ['superadmin', 'admin', 'recepcion'])
+      await conn.execute('INSERT IGNORE INTO menu_permisos (rol, item) VALUES (?,?)', [rol, 'social']);
+
     for (const rol of ['superadmin', 'admin', 'recepcion'])
       await conn.execute('INSERT IGNORE INTO menu_permisos (rol, item) VALUES (?,?)', [rol, 'whatsapp']);
 
@@ -657,6 +722,7 @@ async function ensureSchema() {
       ['reporte_financiero','Reporte Financiero · Dashboard','fa-sack-dollar',21],
       ['reporte_financiero_detalles','Reporte Financiero · Detalles','fa-list',22],
       ['distribucion','Distribución','fa-hand-holding-dollar',23],
+      ['social','Mensajes sociales','fa-instagram',24],
     ];
     for (const [clave, label, icon, orden] of CATALOG_ITEMS) {
       await conn.execute(

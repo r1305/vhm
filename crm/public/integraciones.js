@@ -74,6 +74,34 @@ function togglePwd(id, btn) {
     } catch (err) { toast(err.message, 'danger'); }
   });
 
+  document.getElementById('btnSaveMeta')?.addEventListener('click', async () => {
+    try {
+      const cfgBody = {
+        meta_app_id:       document.getElementById('meta-app-id').value.trim(),
+        meta_app_secret:   document.getElementById('meta-app-secret').value.trim(),
+        meta_verify_token: document.getElementById('meta-verify-token').value.trim(),
+      };
+      Object.keys(cfgBody).forEach(k => { if (!cfgBody[k]) delete cfgBody[k]; });
+      if (Object.keys(cfgBody).length) await api('/config', { method: 'POST', body: cfgBody });
+      const igId = document.getElementById('meta-ig-id').value.trim();
+      if (igId) {
+        await api('/social/cuenta', {
+          method: 'PUT',
+          body: {
+            external_id: igId,
+            nombre: document.getElementById('meta-ig-nombre').value.trim(),
+            access_token: document.getElementById('meta-page-token').value.trim(),
+          },
+        });
+      }
+      ['meta-app-secret', 'meta-verify-token', 'meta-page-token'].forEach(id => {
+        const inp = document.getElementById(id);
+        if (inp && inp.value) { inp.placeholder = 'Guardado. Déjalo vacío para mantenerlo'; inp.value = ''; }
+      });
+      toast('Configuración de Instagram guardada', 'success');
+    } catch (err) { toast(err.message, 'danger'); }
+  });
+
   document.getElementById('btnTestOpenwa')?.addEventListener('click', async () => {
     const to = await promptDialog({
       title: 'Enviar prueba WhatsApp',
