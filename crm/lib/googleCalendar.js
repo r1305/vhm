@@ -194,7 +194,20 @@ async function deleteEvent(terapeutaId, gcalEventId) {
   await calendar.events.delete({ calendarId, eventId: gcalEventId });
 }
 
+const CLAVES_SENSIBLES = /token|secret|authorization|password|client_id|code_verifier/i;
+
+function detalleErrorGoogle(e) {
+  const resp = e && e.response;
+  if (!resp) return e && e.message ? e.message : String(e);
+  let data;
+  try {
+    data = JSON.stringify(resp.data, (k, v) => (CLAVES_SENSIBLES.test(k) ? '[omitido]' : v));
+  } catch (_) { data = '[no serializable]'; }
+  return `code=${e.code} status=${resp.status} data=${data}`;
+}
+
 module.exports = {
+  detalleErrorGoogle,
   getAuthUrl, saveTokens, getTokens, isConnected, disconnect,
   getBusySlots, getEvents, createEvent, updateEvent, deleteEvent,
   BASE_REDIRECT,

@@ -275,7 +275,7 @@ router.post('/:username/agendar', async (req, res) => {
       meet_link = await createMeetLink({
         titulo: `Sesión VHM — ${t(nombre,120)}`,
         fecha: fechaVal, horaInicio: horaInicio.slice(0, 5), horaFin: horaFin.slice(0, 5),
-      }).catch(e => { console.error('[meet]', e.message); return null; });
+      }).catch(e => { console.error('[meet]', googleCal.detalleErrorGoogle(e)); return null; });
       if (meet_link) {
         await pool.execute('UPDATE citas SET meet_link=? WHERE id=?', [meet_link, rc.insertId])
           .catch(e => console.error('[publico/agendar] meet_link cita=%s:', rc.insertId, e));

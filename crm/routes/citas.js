@@ -87,8 +87,15 @@ router.post('/', requireMenuPermisoApi('agenda', 'calendario'), async (req, res)
   const staff = isStaffAdmin(req.user.rol);
   if (!staff && pid(terapeuta_id) !== req.user.id)
     return res.status(403).json({ error: 'Solo puedes crear citas propias' });
-  hora_inicio = hora_inicio || '17:00';
-  hora_fin    = hora_fin    || '18:00';
+  const fechaVal = t(fecha, 10);
+  if (!fechaValida(fechaVal)) return res.status(400).json({ error: 'Fecha inválida' });
+  const horaIniNorm = normHora(hora_inicio || '17:00');
+  const horaFinNorm = normHora(hora_fin || '18:00');
+  if (!horaIniNorm) return res.status(400).json({ error: 'Hora de inicio inválida' });
+  if (!horaFinNorm) return res.status(400).json({ error: 'Hora de fin inválida' });
+  hora_inicio = horaIniNorm.slice(0, 5);
+  hora_fin    = horaFinNorm.slice(0, 5);
+  if (hora_fin <= hora_inicio) return res.status(400).json({ error: 'Horario inválido' });
   try {
     if (!staff && !(pid(paciente_id) && await puedeVerPaciente(req, pid(paciente_id))))
       return res.status(403).json({ error: 'Sin acceso al paciente' });
@@ -99,15 +106,15 @@ router.post('/', requireMenuPermisoApi('agenda', 'calendario'), async (req, res)
       const [[pac]] = await pool.execute('SELECT nombre, apellido FROM pacientes WHERE id=?', [pid(paciente_id)]);
       meet_link = await createMeetLink({
         titulo: `Sesión VHM${pac ? ' — ' + pac.nombre + ' ' + pac.apellido : ''}`,
-        fecha, horaInicio: hora_inicio, horaFin: hora_fin,
-      }).catch(e => { console.error('[meet]', e.message); return null; });
+        fecha: fechaVal, horaInicio: hora_inicio, horaFin: hora_fin,
+      }).catch(e => { console.error('[meet]', googleCal.detalleErrorGoogle(e)); return null; });
     }
     const paqueteActivo = await getActivePacientePaquete(pid(paciente_id)).catch(() => null);
     const pacientePaqueteId = paqueteActivo?.id || null;
     const [r] = await pool.execute(
       `INSERT INTO citas (paciente_id,terapeuta_id,fecha,hora_inicio,hora_fin,modalidad,tipo,estado,notas,meet_link,paciente_paquete_id)
        VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
-      [pid(paciente_id), pid(terapeuta_id), fecha, hora_inicio, hora_fin, modalidad, tipo, estado, t(notas,2000), meet_link, pacientePaqueteId]
+      [pid(paciente_id), pid(terapeuta_id), fechaVal, hora_inicio, hora_fin, modalidad, tipo, estado, t(notas,2000), meet_link, pacientePaqueteId]
     );
     await pool.execute(
       `UPDATE pacientes SET estado='confirmado' WHERE id=? AND estado='prospecto'`,
@@ -120,7 +127,7 @@ router.post('/', requireMenuPermisoApi('agenda', 'calendario'), async (req, res)
         const withMeet = modalidad === 'videollamada';
         const result = await googleCal.createEvent(pid(terapeuta_id), {
           titulo: gcalTitulo(pac, tipo),
-          fecha, horaInicio: hora_inicio, horaFin: hora_fin,
+          fecha: fechaVal, horaInicio: hora_inicio, horaFin: hora_fin,
           descripcion: `Modalidad: ${modalidad}${notas ? '\n' + notas : ''}`,
           withMeet,
         });
@@ -128,7 +135,7 @@ router.post('/', requireMenuPermisoApi('agenda', 'calendario'), async (req, res)
         if (withMeet && result.meetLink) meet_link = result.meetLink;
         if (gcal_event_id) await pool.execute('UPDATE citas SET gcal_event_id=?, meet_link=? WHERE id=?', [gcal_event_id, meet_link, r.insertId]);
       }
-    } catch (e) { console.error('[gcal create]', e.message); }
+    } catch (e) { console.error('[gcal create]', googleCal.detalleErrorGoogle(e)); }
     res.status(201).json({ id: r.insertId, meet_link, gcal_event_id });
   } catch (err) {
     console.error('[citas/crear] paciente_id=%s terapeuta_id=%s fecha=%s:', paciente_id, terapeuta_id, fecha, err);
@@ -215,7 +222,7 @@ router.delete('/:cid', requireMenuPermisoApi('agenda', 'calendario'), async (req
     if (!esAdmin && cita.terapeuta_id !== req.user.id)
       return res.status(403).json({ error: 'Sin acceso' });
     if (cita.gcal_event_id) {
-      try { await googleCal.deleteEvent(cita.terapeuta_id, cita.gcal_event_id); } catch (e) { console.error('[gcal delete]', e.message); }
+      try { await googleCal.deleteEvent(cita.terapeuta_id, cita.gcal_event_id); } catch (e) { console.error('[gcal delete]', googleCal.detalleErrorGoogle(e)); }
     }
     await pool.execute('DELETE FROM citas WHERE id=?', [cid]);
     res.json({ ok: true });
@@ -230,7 +237,7 @@ router.put('/:cid', requireMenuPermisoApi('agenda', 'calendario'), async (req, r
   if (!cid) return res.status(400).json({ error: 'ID inválido' });
   const { fecha, hora_inicio, hora_fin, modalidad, tipo, estado, notas } = req.body || {};
   try {
-    const [[cita]] = await pool.execute('SELECT * FROM citas WHERE id=?', [cid]);
+    const [[cita]] = await pool.execute("SELECT *, DATE_FORMAT(fecha,'%Y-%m-%d') AS fecha_ymd FROM citas WHERE id=?", [cid]);
     if (!cita) return res.status(404).json({ error: 'No encontrada' });
     const esAdmin = isStaffAdmin(req.user.rol);
     if (!esAdmin && cita.terapeuta_id !== req.user.id)
@@ -253,7 +260,7 @@ router.put('/:cid', requireMenuPermisoApi('agenda', 'calendario'), async (req, r
     // Generar Meet link si cambia a videollamada y no tiene uno
     const nuevaModalidad = updates.modalidad || cita.modalidad;
     if (nuevaModalidad === 'videollamada' && !cita.meet_link) {
-      const fechaFinal      = updates.fecha       || String(cita.fecha).slice(0,10);
+      const fechaFinal      = updates.fecha       || cita.fecha_ymd;
       const horaInicioFinal = updates.hora_inicio  || String(cita.hora_inicio).slice(0,5);
       const horaFinFinal    = updates.hora_fin     || String(cita.hora_fin).slice(0,5);
       const [[pac]] = await pool.execute('SELECT nombre, apellido FROM pacientes WHERE id=?', [cita.paciente_id]);
@@ -272,13 +279,13 @@ router.put('/:cid', requireMenuPermisoApi('agenda', 'calendario'), async (req, r
           if (result.gcalEventId && result.gcalEventId !== cita.gcal_event_id) {
             googleCal.deleteEvent(cita.terapeuta_id, result.gcalEventId).catch(() => {});
           }
-        } catch (e) { console.error('[meet gcal]', e.message); }
+        } catch (e) { console.error('[meet gcal]', googleCal.detalleErrorGoogle(e)); }
       } else if (!terConGcal && await isConnected().catch(() => false)) {
         // Fallback: cuenta global
         updates.meet_link = await createMeetLink({
           titulo: `Sesión VHM${pac ? ' — ' + pac.nombre + ' ' + pac.apellido : ''}`,
           fecha: fechaFinal, horaInicio: horaInicioFinal, horaFin: horaFinFinal,
-        }).catch(e => { console.error('[meet]', e.message); return null; });
+        }).catch(e => { console.error('[meet]', googleCal.detalleErrorGoogle(e)); return null; });
       }
     }
     const setsAll = Object.keys(updates).map(k => `${k}=?`).join(', ');
@@ -290,12 +297,12 @@ router.put('/:cid', requireMenuPermisoApi('agenda', 'calendario'), async (req, r
         const [[pac]] = await pool.execute('SELECT nombre, apellido FROM pacientes WHERE id=?', [cita.paciente_id]);
         await googleCal.updateEvent(cita.terapeuta_id, gcalId, {
           titulo: gcalTitulo(pac, updates.tipo || cita.tipo),
-          fecha: updates.fecha || String(cita.fecha).slice(0,10),
+          fecha: updates.fecha || cita.fecha_ymd,
           horaInicio: updates.hora_inicio || String(cita.hora_inicio).slice(0,5),
           horaFin: updates.hora_fin || String(cita.hora_fin).slice(0,5),
           descripcion: `Modalidad: ${updates.modalidad || cita.modalidad}${(updates.notas || cita.notas) ? '\n' + (updates.notas || cita.notas) : ''}`,
         });
-      } catch (e) { console.error('[gcal update]', e.message); }
+      } catch (e) { console.error('[gcal update]', googleCal.detalleErrorGoogle(e)); }
     }
     res.json({ ok: true, meet_link: updates.meet_link || cita.meet_link || null });
   } catch (err) {

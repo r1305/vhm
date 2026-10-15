@@ -169,7 +169,7 @@ router.get('/google/calendar-callback', async (req, res) => {
     await googleCal.saveTokens(terapeutaId, tokens);
     res.redirect(`${BASE}/${redirect}?gcal=ok&tid=${terapeutaId}`);
   } catch (err) {
-    console.error('[gcal callback]', err.message);
+    console.error('[gcal callback]', googleCal.detalleErrorGoogle(err));
     res.redirect(`${BASE}/terapeutas?gcal=error`);
   }
 });
@@ -200,7 +200,7 @@ router.get('/:id/google/events', requireMenuPermisoApi('calendario', 'terapeutas
     const events = await googleCal.getEvents(id, desde, hasta);
     res.json(events);
   } catch (e) {
-    console.error('[gcal getEvents]', e.message);
+    console.error('[gcal getEvents]', googleCal.detalleErrorGoogle(e));
     // Token expirado o error de Google — devolver vacío para no romper el calendario
     res.json([]);
   }
