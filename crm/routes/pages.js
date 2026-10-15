@@ -6,7 +6,8 @@ const { isStaffAdmin, isSuperAdmin } = require('../lib/roles');
 const { SQL } = require('../lib/paquetesPaciente');
 const { getMenuPermisosForRequest, tieneMenuPermiso } = require('../lib/menuPermisos');
 const { configParaCliente, enmascarar } = require('../lib/configSecretos');
-const { GRUPOS_UI, grupoVisible } = require('../lib/menuGrupos');
+const { grupoVisible } = require('../lib/menuGrupos');
+const { CATEGORIAS, categoriasParaCatalogo } = require('../lib/menuCategorias');
 
 const TITLES = {
   encuestas:       'Encuestas',
@@ -80,7 +81,7 @@ async function render(res, view, data = {}) {
     : '';
   const locals  = {
     ...data,
-    BASE, title: TITLES[view] || view, view, user, isAdmin, menuPermisos, grupoVisible,
+    BASE, title: TITLES[view] || view, view, user, isAdmin, menuPermisos, grupoVisible, CATEGORIAS,
     scripts, assetVersion: res.app.locals.assetVersion, partialView: view,
   };
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
@@ -706,7 +707,7 @@ router.get('/permisos-menu', requireSession, requireSuperAdmin, async (req, res)
 router.get('/api/menu-permisos/catalogo', requireSession, requireSuperAdmin, async (req, res) => {
   const { getCatalog } = require('../lib/menuPermisos');
   const catalog = await getCatalog();
-  res.json({ items: catalog, grupos: GRUPOS_UI });
+  res.json({ categorias: categoriasParaCatalogo(catalog) });
 });
 
 router.get('/api/menu-permisos', requireSession, requireSuperAdmin, async (req, res) => {

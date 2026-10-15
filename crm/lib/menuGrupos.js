@@ -1,6 +1,9 @@
-const GRUPOS_UI = {
-  chats: { label: 'Chats', icon: 'fa-comments', hijos: ['whatsapp', 'social'] },
-};
+const { CATEGORIAS } = require('./menuCategorias');
+
+const GRUPOS_UI = {};
+CATEGORIAS.forEach(cat => cat.items.forEach(it => {
+  if (it.hijos) GRUPOS_UI[it.clave] = { label: it.label, icon: it.icon, hijos: it.hijos.map(h => h.clave) };
+}));
 
 function hijosDe(padre) {
   return GRUPOS_UI[padre] ? GRUPOS_UI[padre].hijos : [];

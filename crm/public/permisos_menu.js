@@ -3,23 +3,20 @@
   'use strict';
 
   const { api, toast } = window.CRM;
+  const CATS_KEY = 'crm-permisos-menu-cerradas';
 
-  let ITEMS = [];
-  let GRUPOS = {};
+  let CATEGORIAS = [];
   let users = [];
   let userActivo = null;
+
+  function panel() { return document.getElementById('permisosPanel'); }
 
   async function load() {
     const [catalogData, usersData] = await Promise.all([
       api('/menu-permisos/catalogo'),
       api('/menu-permisos'),
     ]);
-    ITEMS = (catalogData.items || []).map(i => ({
-      key: i.clave,
-      label: i.label,
-      icon: i.icon || 'fa-circle',
-    }));
-    GRUPOS = catalogData.grupos || {};
+    CATEGORIAS = catalogData.categorias || [];
     users = usersData.users || [];
     renderUserSelect();
     if (users.length) selectUser(users[0].id);
@@ -43,34 +40,70 @@
     const meta = document.getElementById('permUserMeta');
     if (!userActivo) {
       meta.textContent = '';
-      document.getElementById('permisosPanel').innerHTML = '';
+      panel().innerHTML = '';
       return;
     }
     meta.textContent = `Rol: ${userActivo.rol} · Usuario: ${userActivo.username}`;
     render();
   }
 
-  function itemHtml(item, activos, extra) {
-    const sub = extra && extra.sub;
-    const attrs = sub ? `data-padre="${extra.padre}"` : (extra && extra.grupo ? 'data-grupo="1"' : 'data-item-hoja="1"');
+  function leerCerradas() {
+    try {
+      const raw = localStorage.getItem(CATS_KEY);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed.filter(c => typeof c === 'string') : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function guardarCerradas(lista) {
+    try { localStorage.setItem(CATS_KEY, JSON.stringify([...new Set(lista)])); } catch (e) {}
+  }
+
+  function itemHtml(item, activos, sub) {
     return `
-          <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;${sub ? 'margin-left:24px;' : ''}border:1px solid var(--border);border-radius:8px;cursor:pointer;background:var(--card-bg)">
-            <input type="checkbox" data-item="${item.key}" ${attrs} ${activos.has(item.key) ? 'checked' : ''} style="width:16px;height:16px;cursor:pointer">
-            <i class="fas ${item.icon}" style="width:16px;color:var(--primary)"></i>
-            <span style="font-size:13px">${item.label}</span>
+          <label class="perm-item${sub ? ' perm-item-sub' : ''}">
+            <input type="checkbox" data-item="${item.clave}" ${activos.has(item.clave) ? 'checked' : ''}>
+            <i class="${item.icon}" aria-hidden="true"></i>
+            <span>${item.label}</span>
           </label>`;
   }
 
+  function grupoHtml(grupo, activos) {
+    const claves = grupo.hijos.map(h => h.clave).join(',');
+    return `
+          <label class="perm-item perm-item-grupo">
+            <input type="checkbox" data-grupo="1" data-item="${grupo.clave}" data-hijos="${claves}">
+            <i class="${grupo.icon}" aria-hidden="true"></i>
+            <span>${grupo.label}</span>
+          </label>
+          ${grupo.hijos.map(h => itemHtml(h, activos, true)).join('')}`;
+  }
+
+  function categoriaHtml(cat, activos, cerradas) {
+    const abierta = !cerradas.has(cat.clave);
+    const cuerpoId = `perm-cat-${cat.clave}`;
+    const cuerpo = cat.items.map(it => (it.grupo ? grupoHtml(it, activos) : itemHtml(it, activos, false))).join('');
+    return `
+      <section class="perm-cat" data-cat="${cat.clave}">
+        <button type="button" class="perm-cat-toggle" aria-expanded="${abierta ? 'true' : 'false'}" aria-controls="${cuerpoId}">
+          <span class="perm-cat-label">${cat.label}</span>
+          <i class="fas fa-chevron-down perm-cat-chevron" aria-hidden="true"></i>
+        </button>
+        <div class="perm-cat-items" id="${cuerpoId}"${abierta ? '' : ' hidden'}>${cuerpo}</div>
+      </section>`;
+  }
+
   function hojasMarcadas() {
-    return new Set([...document.querySelectorAll('#permisosPanel input[data-item]:checked')]
+    return new Set([...panel().querySelectorAll('input[data-item]:checked')]
       .filter(el => !el.dataset.grupo).map(el => el.dataset.item));
   }
 
   function refrescarPadres() {
     const marcados = hojasMarcadas();
-    document.querySelectorAll('#permisosPanel input[data-grupo]').forEach(p => {
-      const g = GRUPOS[p.dataset.item];
-      const estado = window.MenuGruposUI.estadoPadre(marcados, g.hijos);
+    panel().querySelectorAll('input[data-grupo]').forEach(p => {
+      const estado = window.MenuGruposUI.estadoPadre(marcados, p.dataset.hijos.split(','));
       p.checked = estado === 'marcado';
       p.indeterminate = estado === 'indeterminado';
     });
@@ -79,42 +112,14 @@
   function render() {
     if (!userActivo) return;
     const activos = new Set(userActivo.items || []);
-    const hijoDe = {};
-    Object.entries(GRUPOS).forEach(([padre, g]) => g.hijos.forEach(h => { hijoDe[h] = padre; }));
-    const porClave = Object.fromEntries(ITEMS.map(i => [i.key, i]));
-    const html = [];
-    const emitidos = new Set();
-    ITEMS.forEach(item => {
-      const padre = hijoDe[item.key];
-      if (!padre) { html.push(itemHtml(item, activos)); return; }
-      if (emitidos.has(padre)) return;
-      emitidos.add(padre);
-      const g = GRUPOS[padre];
-      html.push(itemHtml({ key: padre, label: g.label, icon: g.icon }, new Set(), { grupo: true }));
-      g.hijos.forEach(k => {
-        if (porClave[k]) html.push(itemHtml(porClave[k], activos, { sub: true, padre }));
-      });
-    });
-    const panel = document.getElementById('permisosPanel');
-    panel.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${html.join('')}</div>`;
-    panel.querySelectorAll('input[data-grupo]').forEach(p => {
-      p.addEventListener('change', () => {
-        const g = GRUPOS[p.dataset.item];
-        const marcados = window.MenuGruposUI.aplicarPadre(hojasMarcadas(), g.hijos, p.checked);
-        g.hijos.forEach(h => {
-          const el = panel.querySelector(`input[data-item="${h}"]`);
-          if (el) el.checked = marcados.has(h);
-        });
-        refrescarPadres();
-      });
-    });
-    panel.querySelectorAll('input[data-padre]').forEach(h => h.addEventListener('change', refrescarPadres));
+    const cerradas = new Set(leerCerradas());
+    panel().innerHTML = CATEGORIAS.map(cat => categoriaHtml(cat, activos, cerradas)).join('');
     refrescarPadres();
   }
 
   async function save() {
     if (!userActivo) return;
-    const items = [...document.querySelectorAll('#permisosPanel input[data-item]:checked')]
+    const items = [...panel().querySelectorAll('input[data-item]:checked')]
       .filter(el => !el.dataset.grupo).map(el => el.dataset.item);
     const data = await api('/menu-permisos', {
       method: 'POST',
@@ -134,6 +139,33 @@
     userActivo.items = data.items || [];
     render();
   }
+
+  panel().addEventListener('click', e => {
+    const boton = e.target.closest('.perm-cat-toggle');
+    if (!boton) return;
+    const abierta = boton.getAttribute('aria-expanded') !== 'true';
+    boton.setAttribute('aria-expanded', abierta ? 'true' : 'false');
+    const cuerpo = document.getElementById(boton.getAttribute('aria-controls'));
+    if (cuerpo) cuerpo.hidden = !abierta;
+    const clave = boton.closest('.perm-cat').dataset.cat;
+    const cerradas = new Set(leerCerradas());
+    if (abierta) cerradas.delete(clave); else cerradas.add(clave);
+    guardarCerradas([...cerradas]);
+  });
+
+  panel().addEventListener('change', e => {
+    const el = e.target;
+    if (!(el instanceof HTMLInputElement) || !el.dataset.item) return;
+    if (el.dataset.grupo) {
+      const hijos = el.dataset.hijos.split(',');
+      const marcados = window.MenuGruposUI.aplicarPadre(hojasMarcadas(), hijos, el.checked);
+      hijos.forEach(h => {
+        const hijo = panel().querySelector(`input[data-item="${h}"]`);
+        if (hijo) hijo.checked = marcados.has(h);
+      });
+    }
+    refrescarPadres();
+  });
 
   document.getElementById('btnGuardarPermisos').addEventListener('click', async () => {
     try { await save(); } catch (e) { toast(e.message, 'danger'); }
