@@ -3,6 +3,7 @@ const env = require('./env');
 
 const { google } = require('googleapis');
 const pool = require('./db');
+const { crearState, redirectInterno } = require('./oauthState');
 
 const CLIENT_ID     = env('GOOGLE_CLIENT_ID');
 const CLIENT_SECRET = env('GOOGLE_CLIENT_SECRET');
@@ -13,8 +14,8 @@ function getOAuth2Client() {
   return new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, BASE_REDIRECT);
 }
 
-// state = base64(terapeutaId) para recuperarlo en el callback
-function getAuthUrl(terapeutaId, redirect = 'terapeutas') {
+// state firmado (HMAC) con terapeuta, usuario, nonce y expiración
+function getAuthUrl(terapeutaId, redirect = 'terapeutas', userId = terapeutaId) {
   return getOAuth2Client().generateAuthUrl({
     access_type: 'offline',
     prompt: 'consent',
@@ -22,7 +23,7 @@ function getAuthUrl(terapeutaId, redirect = 'terapeutas') {
       'https://www.googleapis.com/auth/calendar',
       'https://www.googleapis.com/auth/calendar.events',
     ],
-    state: Buffer.from(JSON.stringify({ id: terapeutaId, redirect })).toString('base64'),
+    state: crearState({ terapeutaId, userId, redirect: redirectInterno(redirect) }),
   });
 }
 

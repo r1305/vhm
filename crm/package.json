@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node app.js",
     "dev": "node --watch app.js",
-    "reset-admin": "node reset-admin.js"
+    "reset-admin": "node reset-admin.js",
+    "test": "node --test"
   },
   "engines": {
     "node": ">=22.0.0"

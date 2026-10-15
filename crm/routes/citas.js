@@ -245,25 +245,25 @@ router.put('/:cid', requireMenuPermisoApi('agenda', 'calendario'), async (req, r
     const updates = {};
     if (fecha != null && fecha !== '') {
       const fechaVal = t(fecha, 10);
-      if (!fechaVal || !/^\d{4}-\d{2}-\d{2}$/.test(fechaVal))
+      if (!fechaValida(fechaVal))
         return res.status(400).json({ error: 'Fecha inválida' });
       updates.fecha = fechaVal;
     }
-    if (hora_inicio != null) {
-      if (String(hora_inicio).trim() === '') updates.hora_inicio = String(cita.hora_inicio).slice(0, 5);
-      else {
-        const hIni = normHora(hora_inicio);
-        if (!hIni) return res.status(400).json({ error: 'Hora de inicio inválida' });
-        updates.hora_inicio = hIni.slice(0, 5);
-      }
+    const vacio = (v) => v == null || String(v).trim() === '';
+    if (!vacio(hora_inicio)) {
+      const hIni = normHora(hora_inicio);
+      if (!hIni) return res.status(400).json({ error: 'Hora de inicio inválida' });
+      updates.hora_inicio = hIni.slice(0, 5);
     }
-    if (hora_fin != null) {
-      if (String(hora_fin).trim() === '') updates.hora_fin = String(cita.hora_fin).slice(0, 5);
-      else {
-        const hFin = normHora(hora_fin);
-        if (!hFin) return res.status(400).json({ error: 'Hora de fin inválida' });
-        updates.hora_fin = hFin.slice(0, 5);
-      }
+    if (!vacio(hora_fin)) {
+      const hFin = normHora(hora_fin);
+      if (!hFin) return res.status(400).json({ error: 'Hora de fin inválida' });
+      updates.hora_fin = hFin.slice(0, 5);
+    }
+    if (updates.hora_inicio || updates.hora_fin) {
+      const hIniEf = updates.hora_inicio || (cita.hora_inicio != null ? normHora(cita.hora_inicio)?.slice(0, 5) : null);
+      const hFinEf = updates.hora_fin || (cita.hora_fin != null ? normHora(cita.hora_fin)?.slice(0, 5) : null);
+      if (!hIniEf || !hFinEf || hFinEf <= hIniEf) return res.status(400).json({ error: 'Horario inválido' });
     }
     if (modalidad != null) updates.modalidad = modalidad;
     if (tipo != null) updates.tipo = tipo;
@@ -275,8 +275,8 @@ router.put('/:cid', requireMenuPermisoApi('agenda', 'calendario'), async (req, r
     const nuevaModalidad = updates.modalidad || cita.modalidad;
     if (nuevaModalidad === 'videollamada' && !cita.meet_link) {
       const fechaFinal      = updates.fecha       || cita.fecha_ymd;
-      const horaInicioFinal = updates.hora_inicio  || String(cita.hora_inicio).slice(0,5);
-      const horaFinFinal    = updates.hora_fin     || String(cita.hora_fin).slice(0,5);
+      const horaInicioFinal = updates.hora_inicio  || normHora(cita.hora_inicio)?.slice(0,5);
+      const horaFinFinal    = updates.hora_fin     || normHora(cita.hora_fin)?.slice(0,5);
       const [[pac]] = await pool.execute('SELECT nombre, apellido FROM pacientes WHERE id=?', [cita.paciente_id]);
       const terConGcal = await googleCal.isConnected(cita.terapeuta_id).catch(() => false);
       if (terConGcal && cita.gcal_event_id) {
@@ -342,7 +342,7 @@ router.patch('/:cid/estado', requireMenuPermisoApi('agenda', 'calendario'), asyn
         return res.status(403).json({ error: 'Sin permiso para cambiar la fecha' });
       }
       const fechaVal = t(fecha, 10);
-      if (!fechaVal || !/^\d{4}-\d{2}-\d{2}$/.test(fechaVal)) {
+      if (!fechaValida(fechaVal)) {
         return res.status(400).json({ error: 'Fecha inválida' });
       }
       sets.push('fecha=?');

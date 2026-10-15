@@ -5,6 +5,7 @@ const pool = require('../lib/db');
 const { requireMenuPermisoApi } = require('../lib/menuPermisos');
 const { canAssignRole, canManageUser, listFilterForRole, isStaffAdmin } = require('../lib/roles');
 const googleCal = require('../lib/googleCalendar');
+const { verificarState, redirectInterno } = require('../lib/oauthState');
 
 const router = Router();
 
@@ -156,10 +157,12 @@ router.get('/google/calendar-callback', async (req, res) => {
   const { code, state } = req.query;
   if (!code || !state) return res.redirect(`${BASE}/terapeutas?gcal=error`);
   try {
-    const decoded = JSON.parse(Buffer.from(state, 'base64').toString());
-    const terapeutaId = parseInt(decoded.id, 10);
-    const redirect = decoded.redirect || 'terapeutas';
-    if (!terapeutaId) throw new Error('state inválido');
+    const st = verificarState(state);
+    if (!st) return res.redirect(`${BASE}/terapeutas?gcal=error`);
+    const sesionId = req.session?.user?.id;
+    if (!sesionId || sesionId !== st.userId) return res.redirect(`${BASE}/terapeutas?gcal=error`);
+    const terapeutaId = st.terapeutaId;
+    const redirect = redirectInterno(st.redirect);
     const auth = new (require('googleapis').google.auth.OAuth2)(
       env('GOOGLE_CLIENT_ID'),
       env('GOOGLE_CLIENT_SECRET'),
@@ -178,8 +181,8 @@ router.get('/:id/google/auth-url', requireMenuPermisoApi('calendario', 'terapeut
   const id = parseInt(req.params.id, 10);
   if (!isStaffAdmin(req.user.rol) && req.user.id !== id)
     return res.status(403).json({ error: 'Sin acceso' });
-  const redirect = req.query.redirect || 'terapeutas';
-  res.json({ url: googleCal.getAuthUrl(id, redirect) });
+  const redirect = redirectInterno(req.query.redirect);
+  res.json({ url: googleCal.getAuthUrl(id, redirect, req.user.id) });
 });
 
 router.get('/:id/google/status', requireMenuPermisoApi('calendario', 'terapeutas'), async (req, res) => {
