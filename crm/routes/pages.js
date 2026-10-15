@@ -6,6 +6,7 @@ const { isStaffAdmin, isSuperAdmin } = require('../lib/roles');
 const { SQL } = require('../lib/paquetesPaciente');
 const { getMenuPermisosForRequest, tieneMenuPermiso } = require('../lib/menuPermisos');
 const { configParaCliente, enmascarar } = require('../lib/configSecretos');
+const { MENU_GRUPOS } = require('../lib/menuGrupos');
 
 const TITLES = {
   encuestas:       'Encuestas',
@@ -705,7 +706,7 @@ router.get('/permisos-menu', requireSession, requireSuperAdmin, async (req, res)
 router.get('/api/menu-permisos/catalogo', requireSession, requireSuperAdmin, async (req, res) => {
   const { getCatalog } = require('../lib/menuPermisos');
   const catalog = await getCatalog();
-  res.json({ items: catalog });
+  res.json({ items: catalog, grupos: MENU_GRUPOS });
 });
 
 router.get('/api/menu-permisos', requireSession, requireSuperAdmin, async (req, res) => {

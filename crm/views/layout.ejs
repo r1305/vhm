@@ -33,7 +33,7 @@
       <span>VHM CRM</span>
     </div>
     <nav class="sidebar-nav">
-      <% const principalItems = ['dashboard','agenda','calendario','pacientes','whatsapp','social','mi_reporte','disponibilidad']; %>
+      <% const principalItems = ['dashboard','agenda','calendario','pacientes','chats','whatsapp','social','mi_reporte','disponibilidad']; %>
       <% const showPrincipal = principalItems.some(i => menuPermisos.has(i)); %>
       <% if (showPrincipal) { %>
       <div class="nav-group collapsed" data-nav-group="principal">
@@ -54,11 +54,14 @@
           <% if (menuPermisos.has('pacientes')) { %>
           <a class="nav-item <%= view === 'pacientes'  ? 'active' : '' %>" href="<%= BASE %>/pacientes"><i class="fas fa-users"></i><span> Pacientes</span></a>
           <% } %>
+          <% if (['chats','whatsapp','social'].some(i => menuPermisos.has(i))) { %>
+          <div class="nav-item nav-item-parent"><i class="fas fa-comments"></i><span> Chats</span></div>
           <% if (menuPermisos.has('whatsapp')) { %>
-          <a class="nav-item <%= view === 'whatsapp'   ? 'active' : '' %>" href="<%= BASE %>/whatsapp"><i class="fab fa-whatsapp"></i><span> WhatsApp</span></a>
+          <a class="nav-item nav-item-sub <%= view === 'whatsapp'   ? 'active' : '' %>" href="<%= BASE %>/whatsapp"><i class="fab fa-whatsapp"></i><span> WhatsApp</span></a>
           <% } %>
           <% if (menuPermisos.has('social')) { %>
-          <a class="nav-item <%= view === 'social'     ? 'active' : '' %>" href="<%= BASE %>/social"><i class="fab fa-instagram"></i><span> Instagram</span></a>
+          <a class="nav-item nav-item-sub <%= view === 'social'     ? 'active' : '' %>" href="<%= BASE %>/social"><i class="fab fa-instagram"></i><span> Instagram</span></a>
+          <% } %>
           <% } %>
           <% if (menuPermisos.has('mi_reporte')) { %>
           <a class="nav-item <%= view === 'mi_reporte'     ? 'active' : '' %>" href="<%= BASE %>/mi-reporte"><i class="fas fa-chart-bar"></i><span> Mi reporte</span></a>

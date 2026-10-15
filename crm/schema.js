@@ -723,6 +723,7 @@ async function ensureSchema() {
       ['reporte_financiero_detalles','Reporte Financiero · Detalles','fa-list',22],
       ['distribucion','Distribución','fa-hand-holding-dollar',23],
       ['social','Mensajes sociales','fa-instagram',24],
+      ['chats','Chats (acceso total)','fa-comments',25],
     ];
     for (const [clave, label, icon, orden] of CATALOG_ITEMS) {
       await conn.execute(
