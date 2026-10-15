@@ -47,7 +47,7 @@ test('state expirado devuelve null', (t) => {
 });
 
 test('redirectInterno rechaza rutas peligrosas', () => {
-  for (const v of ['//evil.com', '/evil.com', 'https:x', '..', 'a/../b', 'a\b', 'a//b']) {
+  for (const v of ['//evil.com', '/evil.com', 'https:x', '..', 'a/../b', 'a\\b', 'a//b']) {
     assert.strictEqual(redirectInterno(v), 'terapeutas', v);
   }
 });
