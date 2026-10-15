@@ -30,19 +30,19 @@ const sinPrecio = terapeutas.reduce((a, t) => a + Number(t.sin_precio), 0);
   <% if (terapeutas.length) { %>
   <div class="rf-table-wrap">
     <table class="rf-table">
-      <thead><tr><th>Terapeuta</th><th class="rf-num">Paquetes</th><% if (verMontos) { %><th class="rf-num">Ingresos</th><% } %></tr></thead>
+      <thead><tr><th>Terapeuta</th><th class="rf-num">Paquetes</th><% if (verMontos) { %><% meses.forEach((m, i) => { %><th class="rf-num"><%= mesesEtiqueta[i] %></th><% }) %><th class="rf-num"><%= meses.length ? 'Total' : 'Ingresos' %></th><% } %></tr></thead>
       <tbody>
         <% terapeutas.forEach(t => { %>
         <tr>
           <td><%= t.nombre %> <%= t.apellido %></td>
           <td class="rf-num"><%= t.paquetes %></td>
-          <% if (verMontos) { %><td class="rf-num rf-ok"><%= sol(t.ingresos) %></td><% } %>
+          <% if (verMontos) { %><% meses.forEach(m => { %><td class="rf-num"><%= sol(t.porMes[m] || 0) %></td><% }) %><td class="rf-num rf-ok"><%= sol(t.ingresos) %></td><% } %>
         </tr>
         <% }) %>
         <tr>
           <td><strong>Total</strong></td>
           <td class="rf-num"><strong><%= terapeutas.reduce((a, t) => a + Number(t.paquetes), 0) %></strong></td>
-          <% if (verMontos) { %><td class="rf-num"><strong><%= sol(total) %></strong></td><% } %>
+          <% if (verMontos) { %><% meses.forEach(m => { %><td class="rf-num"><strong><%= sol(terapeutas.reduce((a, t) => a + (t.porMes[m] || 0), 0)) %></strong></td><% }) %><td class="rf-num"><strong><%= sol(total) %></strong></td><% } %>
         </tr>
       </tbody>
     </table>

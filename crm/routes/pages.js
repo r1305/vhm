@@ -640,8 +640,8 @@ router.get('/distribucion', requireSession, requireMenuPermiso('distribucion'), 
       req.query.desde || req.query.hasta ? req.query : { desde: hoyLima.slice(0, 8) + '01', hasta: hoyLima }
     );
     const propio = isStaffAdmin(user.rol) ? '' : ' AND t.id = ?';
-    const [terapeutas] = await db.execute(
-      `SELECT t.id, t.nombre, t.apellido, COUNT(pp.id) AS paquetes,
+    const [filas] = await db.execute(
+      `SELECT t.id, t.nombre, t.apellido, DATE_FORMAT(pp.fecha_inicio, '%Y-%m') AS mes, COUNT(pp.id) AS paquetes,
               COALESCE(SUM(${ppPrecioEff}),0) AS ingresos,
               COALESCE(SUM(pp.id IS NOT NULL AND ${ppPrecioEff} = 0),0) AS sin_precio
        FROM terapeutas t
@@ -649,12 +649,36 @@ router.get('/distribucion', requireSession, requireMenuPermiso('distribucion'), 
        LEFT JOIN paciente_paquetes pp ON pp.paciente_id = p.id${filterDate('pp.fecha_inicio')}
        LEFT JOIN paquetes_catalogo pc ON pc.id = pp.paquete_catalogo_id
        WHERE t.rol = 'terapeuta' AND t.activo = 1${propio}
-       GROUP BY t.id, t.nombre, t.apellido
-       ORDER BY ingresos DESC, t.nombre`,
+       GROUP BY t.id, t.nombre, t.apellido, mes`,
       propio ? [user.id] : []
     );
+    let meses = [];
+    if (hayRango) {
+      let [a, m] = desde.slice(0, 7).split('-').map(Number);
+      const fin = hasta.slice(0, 7);
+      for (;;) {
+        const k = `${a}-${String(m).padStart(2, '0')}`;
+        if (k > fin) break;
+        meses.push(k);
+        if (m === 12) { a++; m = 1; } else m++;
+      }
+    } else {
+      meses = [...new Set(filas.map(f => f.mes).filter(Boolean))].sort();
+    }
+    const MESES_ES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+    const mesesEtiqueta = meses.map(k => `${MESES_ES[Number(k.slice(5)) - 1]} ${k.slice(0, 4)}`);
+    const porId = new Map();
+    for (const f of filas) {
+      let t = porId.get(f.id);
+      if (!t) { t = { id: f.id, nombre: f.nombre, apellido: f.apellido, paquetes: 0, ingresos: 0, sin_precio: 0, porMes: {} }; porId.set(f.id, t); }
+      t.paquetes += Number(f.paquetes);
+      t.ingresos += Number(f.ingresos);
+      t.sin_precio += Number(f.sin_precio);
+      if (f.mes) t.porMes[f.mes] = Number(f.ingresos);
+    }
+    const terapeutas = [...porId.values()].sort((x, y) => y.ingresos - x.ingresos || x.nombre.localeCompare(y.nombre));
     render(res, 'distribucion', {
-      user, terapeutas, verMontos: isStaffAdmin(user.rol),
+      user, terapeutas, meses: meses.length > 1 ? meses : [], mesesEtiqueta, verMontos: isStaffAdmin(user.rol),
       desde: hayRango ? desde : '', hasta: hayRango ? hasta : '',
       scripts: `<script src="${req.app.locals.BASE}/reportes.js"></script>`,
     });
